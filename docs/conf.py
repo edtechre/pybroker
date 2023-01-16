@@ -1,22 +1,9 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# For the full list of built-in configuration values, see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
-
-# -- Project information -----------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
-
 import os
 import sys
 sys.path.insert(0, os.path.abspath("../src/"))
 sys.path.insert(0, os.path.abspath("../docs/notebooks/"))
 
 nitpick_ignore = [("py:class", "type")]
-
-from importlib import metadata
-
-# PACKAGE_VERSION = metadata.version('pubpypack-pybroker-<firstname>-<lastname>')
-# version = release = PACKAGE_VERSION
 
 project = "PyBroker"
 copyright = "2023, Edward West"
