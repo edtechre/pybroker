@@ -1,5 +1,5 @@
 <h1>
-    <img src="https://github.com/edtechre/pybroker/blob/main/docs/_static/pybroker-logo.png?raw=true" alt="PyBroker">
+    <img src="https://github.com/edtechre/pybroker/blob/master/docs/_static/pybroker-logo.png?raw=true" alt="PyBroker">
 </h1>
 
 ## Algorithmic Trading in Python with Machine Learning
@@ -74,4 +74,4 @@ To learn how to use PyBroker, [**head over to the online documentation.**](http:
 
 ## Contact
 
-<img src="https://github.com/edtechre/pybroker/blob/main/docs/_static/email-image.png?raw=true">
+<img src="https://github.com/edtechre/pybroker/blob/master/docs/_static/email-image.png?raw=true">
