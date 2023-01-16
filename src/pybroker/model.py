@@ -70,7 +70,7 @@ class ModelSource:
             for ind_name in self.indicators:
                 if ind_name not in df_cols:
                     raise ValueError(
-                        f"Indicator '{ind_name}' not found in DataFrame."
+                        f"Indicator {ind_name!r} not found in DataFrame."
                     )
             return df[[*self.indicators]]
         return self._input_data_fn(df)
@@ -110,7 +110,7 @@ class ModelLoader(ModelSource):
         return self.__str__()
 
     def __str__(self):
-        return f"ModelLoader('{self.name}', {self._kwargs})"
+        return f"ModelLoader({self.name!r}, {self._kwargs})"
 
 
 class ModelTrainer(ModelSource):
@@ -150,7 +150,7 @@ class ModelTrainer(ModelSource):
         return self.__str__()
 
     def __str__(self):
-        return f"ModelTrainer('{self.name}', {self._kwargs})"
+        return f"ModelTrainer({self.name!r}, {self._kwargs})"
 
 
 def model(

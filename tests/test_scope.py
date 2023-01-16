@@ -230,7 +230,7 @@ class TestIndicatorScope:
     def test_fetch_when_not_found_then_error(self, ind_scope, sym, name):
         with pytest.raises(
             ValueError,
-            match=re.escape(f"Indicator '{name}' not found for {sym}."),
+            match=re.escape(f"Indicator {name!r} not found for {sym}."),
         ):
             ind_scope.fetch(sym, name)
 

@@ -165,7 +165,7 @@ class BarData:
     def __getattr__(self, attr):
         if self._custom_col_data and attr in self._custom_col_data:
             return self._custom_col_data[attr]
-        raise AttributeError(f"Attribute '{attr}' not found.")
+        raise AttributeError(f"Attribute {attr!r} not found.")
 
 
 def to_datetime(
@@ -263,7 +263,7 @@ def quantize(df: pd.DataFrame, col: str) -> pd.Series:
         The quantized column converted to ``float`` values.
     """
     if col not in df.columns:
-        raise ValueError(f"Column '{col}' not found in DataFrame.")
+        raise ValueError(f"Column {col!r} not found in DataFrame.")
     df = df[~df[col].isna()]
     values = df[col].apply(lambda d: d.quantize(_CENTS, ROUND_HALF_UP))
     return values.astype(float)

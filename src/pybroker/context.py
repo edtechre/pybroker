@@ -205,7 +205,7 @@ class BaseContext:
 
     def _verify_pos_type(self, pos_type: str):
         if pos_type != "short" and pos_type != "long":
-            raise ValueError(f"Unknown pos_type: '{pos_type}'.")
+            raise ValueError(f"Unknown pos_type: {pos_type!r}.")
 
     def calc_target_shares(self, target_size: float, price: float) -> int:
         r"""Calculates the number of shares given a ``target_size`` equity
@@ -239,7 +239,7 @@ class BaseContext:
         """
         model_sym = ModelSymbol(name, symbol)
         if model_sym not in self._models:
-            raise ValueError(f"Model '{name}' not found for {symbol}.")
+            raise ValueError(f"Model {name!r} not found for {symbol}.")
         return self._models[model_sym].instance
 
     def indicator(self, name: str, symbol: str) -> NDArray[np.float_]:
@@ -404,7 +404,7 @@ class PosSizeContext(BaseContext):
         """
         if signal_type is not None:
             if signal_type != "buy" and signal_type != "sell":
-                raise ValueError(f"Unknown signal_type: '{signal_type}'.")
+                raise ValueError(f"Unknown signal_type: {signal_type!r}.")
         if (
             signal_type is None or signal_type == "buy"
         ) and self._buy_results is not None:
@@ -667,7 +667,7 @@ class ExecContext(BaseContext):
         if symbol in self._foreign:
             return self._foreign[symbol]
         if symbol not in self._sym_end_index:
-            raise ValueError(f"Symbol '{symbol}' not found.")
+            raise ValueError(f"Symbol {symbol!r} not found.")
         end_index = self._sym_end_index[symbol]
         if col is None:
             bar_data = self._col_scope.bar_data_from_data_columns(
@@ -845,7 +845,7 @@ class ExecContext(BaseContext):
             if self.symbol is None:
                 raise ValueError("symbol is not set.")
             return self._col_scope.fetch(self.symbol, attr, self._end_index)
-        raise AttributeError(f"Attribute '{attr}' not found.")
+        raise AttributeError(f"Attribute {attr!r} not found.")
 
 
 def set_exec_ctx_data(

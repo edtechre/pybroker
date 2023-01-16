@@ -93,7 +93,7 @@ class StaticScope:
         """Retrieves a :class:`pybroker.indicator.Indicator` from static
         scope."""
         if not self.has_indicator(name):
-            raise ValueError(f"Indicator '{name}' does not exist.")
+            raise ValueError(f"Indicator {name!r} does not exist.")
         return self._indicators[name]
 
     def get_indicator_names(self, model_name: str) -> tuple[str]:
@@ -118,7 +118,7 @@ class StaticScope:
         scope.
         """
         if not self.has_model_source(name):
-            raise ValueError(f"ModelSource '{name}' does not exist.")
+            raise ValueError(f"ModelSource {name!r} does not exist.")
         return self._model_sources[name]
 
     def register_custom_cols(self, names: Union[str, Iterable[str]], *args):
@@ -337,7 +337,7 @@ class IndicatorScope:
         if ind_sym in self._sym_inds:
             return self._sym_inds[ind_sym][:end_index]
         if ind_sym not in self._indicator_data:
-            raise ValueError(f"Indicator '{name}' not found for {symbol}.")
+            raise ValueError(f"Indicator {name!r} not found for {symbol}.")
         ind_series = self._indicator_data[ind_sym]
         ind_data = ind_series[ind_series.index.isin(self._filter_dates)].values
         self._sym_inds[ind_sym] = ind_data
@@ -385,7 +385,7 @@ class ModelInputScope:
             if data is not None:
                 input_[col] = data
         if not self._scope.has_model_source(name):
-            raise ValueError(f"Model '{name}' not found.")
+            raise ValueError(f"Model {name!r} not found.")
         for ind_name in self._scope.get_indicator_names(name):
             input_[ind_name] = self._ind_scope.fetch(symbol, ind_name)
         df = pd.DataFrame.from_dict(input_)
@@ -434,7 +434,7 @@ class PredictionScope:
             return self._sym_preds[model_sym][:end_index]
         input_ = self._input_scope.fetch(symbol, name)
         if model_sym not in self._models:
-            raise ValueError(f"Model '{name}' not found for {symbol}.")
+            raise ValueError(f"Model {name!r} not found for {symbol}.")
         pred = self._models[model_sym].instance.predict(input_)
         if len(pred.shape) > 1:
             pred = np.squeeze(pred)

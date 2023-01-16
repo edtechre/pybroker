@@ -110,7 +110,7 @@ class Indicator:
         return self.__str__()
 
     def __str__(self):
-        return f"Indicator('{self.name}', {self._kwargs})"
+        return f"Indicator({self.name!r}, {self._kwargs})"
 
 
 def indicator(

@@ -861,7 +861,7 @@ class Strategy(
                 continue
             if col.value not in df.columns:
                 raise ValueError(
-                    f"data_source is missing column: '{col.value}'"
+                    f"data_source is missing column: {col.value!r}"
                 )
 
     def add_execution(
@@ -898,11 +898,11 @@ class Strategy(
             ):
                 if not self._scope.has_model_source(model.name):
                     raise ValueError(
-                        f"ModelSource '{model.name}' was not registered."
+                        f"ModelSource {model.name!r} was not registered."
                     )
                 if model is not self._scope.get_model_source(model.name):
                     raise ValueError(
-                        f"ModelSource '{model.name}' does not match "
+                        f"ModelSource {model.name!r} does not match "
                         "registered ModelSource."
                     )
         model_names = (
@@ -922,11 +922,11 @@ class Strategy(
             ):
                 if not self._scope.has_indicator(ind.name):
                     raise ValueError(
-                        f"Indicator '{ind.name} was not registered."
+                        f"Indicator {ind.name!r} was not registered."
                     )
                 if ind is not self._scope.get_indicator(ind.name):
                     raise ValueError(
-                        f"Indicator '{ind.name}' does not match registered "
+                        f"Indicator {ind.name!r} does not match registered "
                         "Indicator."
                     )
         ind_names = (
