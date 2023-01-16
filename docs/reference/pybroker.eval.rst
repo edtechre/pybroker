@@ -5,3 +5,10 @@ pybroker.eval module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: q_001, q_01, q_05, q_10, conf_intervals, drawdown_conf,
+      name, conf, lower, upper, metrics, bootstrap, trade_count, initial_value,
+      end_value, total_profit, total_loss, max_drawdown, max_drawdown_pct,
+      win_rate, lose_rate, avg_profit, avg_profit_pct, avg_loss, avg_loss_pct,
+      largest_win, largest_loss, max_wins, max_losses, sharpe, profit_factor,
+      ulcer_index, upi, r2, std_error, drawdown_confs, drawdown_pct_confs,
+      high_10, high_2p5, high_5, low_10, low_2p5, low_5

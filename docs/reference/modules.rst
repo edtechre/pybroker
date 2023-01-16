@@ -1,5 +1,5 @@
-pybroker
-========
+PyBroker Modules
+================
 
 .. toctree::
    :maxdepth: 4
