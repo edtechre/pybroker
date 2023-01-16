@@ -1,0 +1,10 @@
+__pycache__
+.pybrokercache
+.venv*
+.tox
+**/.coverage
+**/.coverage.*
+docs/_build/
+docs/notebooks/.ipynb_checkpoints
+dist/
+src/pybroker.egg-info
