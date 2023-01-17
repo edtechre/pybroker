@@ -89,7 +89,7 @@ To learn how to use PyBroker, see the notebooks under the User Guide:
    notebooks/7. Writing a Custom Data Source
 
 `The notebooks above are also available on Github
-<https://github.com/edtechre/pybroker/tree/main/docs/notebooks>`_.
+<https://github.com/edtechre/pybroker/tree/master/docs/notebooks>`_.
 
 .. toctree::
    :maxdepth: 4
