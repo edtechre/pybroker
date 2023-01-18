@@ -65,8 +65,8 @@ Some of PyBroker's key features are:
 A Quick Example
 ===============
 
-Code speaks louder than words! Here is a quick peek at what it looks like to
-write a strategy with PyBroker::
+Code speaks louder than words! Here is a peek at what writing a strategy with
+PyBroker looks like::
 
    import pybroker
    from pybroker import Alpaca, Strategy
