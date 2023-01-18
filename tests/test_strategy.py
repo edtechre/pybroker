@@ -1359,6 +1359,23 @@ class TestStrategy:
         ):
             strategy.add_execution(None, [])
 
+    def test_add_execution_when_duplicate_symbol_then_error(
+        self, data_source_df
+    ):
+        def exec_fn_1(ctx):
+            ctx.buy_shares = 100
+
+        def exec_fn_2(ctx):
+            ctx.sell_shares = 100
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn_1, ["AAPL", "SPY"])
+        with pytest.raises(
+            ValueError,
+            match=re.escape("AAPL was already added to an execution."),
+        ):
+            strategy.add_execution(exec_fn_2, "AAPL")
+
     @pytest.mark.parametrize(
         "initial_cash, max_long_positions, max_short_positions, buy_delay,"
         "sell_delay, bootstrap_samples, bootstrap_sample_size, expected_msg",

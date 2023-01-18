@@ -892,6 +892,12 @@ class Strategy(
         )
         if not symbols:
             raise ValueError("symbols cannot be empty.")
+        for sym in symbols:
+            for exec in self._executions:
+                if sym in exec.symbols:
+                    raise ValueError(
+                        f"{sym} was already added to an execution."
+                    )
         if models is not None:
             for model in (
                 (models,) if isinstance(models, ModelSource) else models
