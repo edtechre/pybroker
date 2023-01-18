@@ -20,6 +20,27 @@
 PyBroker
 ================
 
+.. raw:: html
+
+   <embed>
+      <a href="https://www.python.org/">
+         <img src="https://img.shields.io/badge/python-v3-brightgreen.svg"
+            alt="python">
+      </a> &nbsp;
+      <a href="https://pypi.org/project/lib-pybroker/">
+         <img src="https://img.shields.io/badge/pypi-v1.0.1-brightgreen.svg"
+            alt="PyPI">
+      </a> &nbsp;
+      <a href="https://opensource.org/licenses/LGPL-3.0">
+        <img src="https://img.shields.io/badge/license-LGPLv3-brightgreen.svg"
+            alt="LGPL v3">
+      </a> &nbsp;
+      <a href="https://github.com/edtechre/pybroker/">
+         <img src="https://github.com/edtechre/pybroker/actions/workflows/main.yml/badge.svg?event=push"
+            alt="Package status">
+      </a>
+   </embed>
+
 Algorithmic Trading in Python with Machine Learning
 ===================================================
 
