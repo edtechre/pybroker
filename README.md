@@ -12,7 +12,7 @@ is made fast with the help of [NumPy](https://numpy.org/) and
 
 Some of PyBroker's key features are:
 
-- Easy reuse of trading rules and models across multiple tickers.
+- Easy reuse of trading rules and models across multiple instruments.
 - Model training and backtesting using [Walkforward Analysis](https://www.youtube.com/watch?v=WBZ_Vv-iMv4).
 - Extensive coverage of trading metrics, calculated out-of-sample.
 - Robust performance metrics calculated with randomized [bootstrapping](https://en.wikipedia.org/wiki/Bootstrapping_(statistics)).
