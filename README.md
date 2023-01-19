@@ -37,8 +37,8 @@ Or you can clone the Git repository with:
 
 ## A Quick Example
 
-Code speaks louder than words! Here is a peek at what writing a strategy with
-PyBroker looks like:
+Code speaks louder than words! Here is a peek at what backtesting with PyBroker
+looks like:
 
 ```python
    import pybroker
