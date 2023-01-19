@@ -4,6 +4,7 @@ diskcache>=5.4.0
 flake8>=5.0.4
 flake8-bugbear>=22.10.25
 joblib>=1.2.0
+jupyter>=1.0.0
 mypy>=0.982
 nbsphinx>=0.8.11
 numba>=0.56.3
