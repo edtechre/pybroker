@@ -83,7 +83,7 @@ class Logger:
         self._progress_bar_disabled = False
 
     def download_bar_data_start(self):
-        self._out("Downloading bar data...")
+        self._out("Loading bar data...")
         self._download_start_time = time.time()
 
     def info_download_bar_data_start(
@@ -94,7 +94,7 @@ class Logger:
         timeframe: str,
     ):
         self._info(
-            "Downloading:\n"
+            "Loading:\n"
             f"{start_date} to {end_date}\n"
             f"timeframe: {timeframe}\n"
             f"{sorted(symbols)}"
@@ -128,7 +128,7 @@ class Logger:
         if self._download_start_time is None:
             return
         self._out(
-            "Finished download:",
+            "Loaded bar data:",
             self._format_time(self._download_start_time),
             "\n",
         )
