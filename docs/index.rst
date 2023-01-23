@@ -2,7 +2,7 @@
    :title: PyBroker
    :description: Algorithmic Trading in Python with Machine Learning
 
-.. _html_baseurl: https://www.pybroker.com
+.. title:: Algorithmic Trading in Python with Machine Learning
 
 .. raw:: html
 
