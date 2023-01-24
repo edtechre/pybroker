@@ -109,7 +109,7 @@ To learn how to use PyBroker, see the notebooks under the User Guide:
    notebooks/4. Ranking and Position Sizing
    notebooks/5. Writing Indicators
    notebooks/6. Training a Model with Walkforward Analysis
-   notebooks/7. Writing a Custom Data Source
+   notebooks/7. Creating a Custom Data Source
 
 `The notebooks above are also available on Github
 <https://github.com/edtechre/pybroker/tree/master/docs/notebooks>`_.
