@@ -37,6 +37,10 @@ PyBroker
         <img src="https://img.shields.io/badge/license-LGPLv3-brightgreen.svg"
             alt="LGPL v3">
       </a> &nbsp;
+      <a href="https://www.pybroker.com/en/latest/?badge=latest">
+         <img src="https://readthedocs.org/projects/pybroker/badge/?version=latest"
+            alt="Documentation Status">
+      </a> &nbsp;
       <a href="https://github.com/edtechre/pybroker/">
          <img src="https://github.com/edtechre/pybroker/actions/workflows/main.yml/badge.svg?event=push"
             alt="Package status">
