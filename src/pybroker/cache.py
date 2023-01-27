@@ -50,7 +50,6 @@ class CacheDateFields:
 class DataSourceCacheKey:
     """Cache key used for :class:`pybroker.data.DataSource` data."""
 
-    namespace: str
     symbol: str
     tf_seconds: int
     start_date: datetime
@@ -61,7 +60,6 @@ class DataSourceCacheKey:
 class IndicatorCacheKey:
     """Cache key used for indicator data."""
 
-    namespace: str
     symbol: str
     tf_seconds: int
     start_date: datetime
@@ -75,7 +73,6 @@ class IndicatorCacheKey:
 class ModelCacheKey:
     """Cache key used for trained models."""
 
-    namespace: str
     symbol: str
     tf_seconds: int
     start_date: datetime
@@ -85,13 +82,17 @@ class ModelCacheKey:
     model_name: str
 
 
-def _get_cache_dir(cache_dir: Optional[str], sub_dir: str) -> str:
+def _get_cache_dir(
+    cache_dir: Optional[str], namespace: str, sub_dir: str
+) -> str:
+    if not namespace:
+        raise ValueError("Cache namespace cannot be empty.")
     base_dir = (
         os.path.join(os.getcwd(), _DEFAULT_CACHE_DIRNAME)
         if cache_dir is None
         else cache_dir
     )
-    return os.path.join(base_dir, sub_dir)
+    return os.path.join(base_dir, namespace, sub_dir)
 
 
 def enable_data_source_cache(
@@ -108,8 +109,8 @@ def enable_data_source_cache(
         :class:`diskcache.Cache` instance.
     """
     scope = StaticScope.instance()
+    cache_dir = _get_cache_dir(cache_dir, namespace, "data_source")
     scope.data_source_cache_ns = namespace
-    cache_dir = _get_cache_dir(cache_dir, "data_source")
     cache = Cache(directory=cache_dir)
     scope.data_source_cache = cache
     scope.logger.debug_enable_data_source_cache(namespace, cache_dir)
@@ -153,8 +154,8 @@ def enable_indicator_cache(
         :class:`diskcache.Cache` instance.
     """
     scope = StaticScope.instance()
+    cache_dir = _get_cache_dir(cache_dir, namespace, "indicator")
     scope.indicator_cache_ns = namespace
-    cache_dir = _get_cache_dir(cache_dir, "indicator")
     cache = Cache(directory=cache_dir)
     scope.indicator_cache = cache
     scope.logger.debug_enable_indicator_cache(namespace, cache_dir)
@@ -196,8 +197,8 @@ def enable_model_cache(
         :class:`diskcache.Cache` instance.
     """
     scope = StaticScope.instance()
+    cache_dir = _get_cache_dir(cache_dir, namespace, "model")
     scope.model_cache_ns = namespace
-    cache_dir = _get_cache_dir(cache_dir, "model")
     cache = Cache(directory=cache_dir)
     scope.model_cache = cache
     scope.logger.debug_enable_model_cache(namespace, cache_dir)

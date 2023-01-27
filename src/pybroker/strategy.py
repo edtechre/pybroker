@@ -28,6 +28,7 @@ from .common import (
     to_datetime,
     to_decimal,
     to_seconds,
+    verify_data_source_columns,
 )
 from .config import StrategyConfig
 from .context import (
@@ -848,21 +849,10 @@ class Strategy(
         self, data_source: Union[DataSource, pd.DataFrame]
     ):
         if isinstance(data_source, pd.DataFrame):
-            data_source = data_source.rename(columns=str.lower)
-            self._verify_data_source_columns(data_source)
+            verify_data_source_columns(data_source)
             return
         elif not isinstance(data_source, DataSource):
             raise TypeError(f"Invalid data_source type: {type(data_source)}")
-
-    def _verify_data_source_columns(self, df: pd.DataFrame):
-        optional_cols = {DataCol.VWAP.value, DataCol.VOLUME.value}
-        for col in DataCol:
-            if col.value in optional_cols:
-                continue
-            if col.value not in df.columns:
-                raise ValueError(
-                    f"data_source is missing column: {col.value!r}"
-                )
 
     def add_execution(
         self,
@@ -1333,7 +1323,6 @@ class Strategy(
             df = self._data_source.query(
                 unique_syms, self._start_date, self._end_date, timeframe
             )
-            self._verify_data_source_columns(df)
         else:
             df = _between(self._data_source, self._start_date, self._end_date)
             df = df[df[DataCol.SYMBOL.value].isin(unique_syms)]

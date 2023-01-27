@@ -27,6 +27,7 @@ from pybroker.common import (
     to_datetime,
     to_decimal,
     to_seconds,
+    verify_data_source_columns,
 )
 import numpy as np
 import pandas as pd
@@ -195,6 +196,22 @@ def test_quantize_when_column_not_found_then_error():
 )
 def test_to_decimal(value, expected):
     assert to_decimal(value) == expected
+
+
+def test_verify_data_source_columns():
+    df = pd.DataFrame(
+        columns=["symbol", "date", "open", "high", "low", "close"]
+    )
+    verify_data_source_columns(df)
+    assert True
+
+
+def test_verify_data_source_columns_when_missing_then_error():
+    df = pd.DataFrame(columns=["symbol", "date", "open", "high", "low"])
+    with pytest.raises(
+        ValueError, match="DataFrame is missing required column: 'close'"
+    ):
+        verify_data_source_columns(df)
 
 
 def test_default_parallel():

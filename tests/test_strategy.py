@@ -1477,11 +1477,18 @@ class TestStrategy:
             Strategy(data_source_df, START_DATE, END_DATE, config)
 
     def test_when_data_source_missing_columns_then_error(self):
+        values = np.repeat(1, 100)
         df = pd.DataFrame(
-            {"symbol": ["SPY"] * 100, "close": np.repeat(1, 100)}
+            {
+                "symbol": ["SPY"] * 100,
+                "open": values,
+                "high": values,
+                "low": values,
+                "close": values,
+            }
         )
         with pytest.raises(
-            ValueError, match="data_source is missing column: 'date'"
+            ValueError, match="DataFrame is missing required column: 'date'"
         ):
             Strategy(df, START_DATE, END_DATE)
 

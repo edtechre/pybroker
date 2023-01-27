@@ -269,6 +269,25 @@ def quantize(df: pd.DataFrame, col: str) -> pd.Series:
     return values.astype(float)
 
 
+def verify_data_source_columns(df: pd.DataFrame):
+    """Verifies that a :class:`pandas.DataFrame` contains all of the
+    columns required by a :class:`pybroker.data.DataSource`.
+    """
+    required_cols = (
+        DataCol.SYMBOL,
+        DataCol.DATE,
+        DataCol.OPEN,
+        DataCol.HIGH,
+        DataCol.LOW,
+        DataCol.CLOSE,
+    )
+    for col in required_cols:
+        if col.value not in df.columns:
+            raise ValueError(
+                f"DataFrame is missing required column: {col.value!r}"
+            )
+
+
 def default_parallel() -> Parallel:
     """Returns a :class:`joblib.Parallel` instance with ``n_jobs`` equal to
     the number of CPUs on the host machine.

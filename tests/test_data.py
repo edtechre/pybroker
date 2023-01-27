@@ -97,13 +97,13 @@ def mock_alpaca():
 
 
 class TestDataSourceCacheMixin:
-    def test_set_cached(self, scope, alpaca_df, symbols, mock_cache):
+    @pytest.mark.usefixtures("scope")
+    def test_set_cached(self, alpaca_df, symbols, mock_cache):
         cache_mixin = DataSourceCacheMixin()
         cache_mixin.set_cached(TIMEFRAME, START_DATE, END_DATE, alpaca_df)
         assert len(mock_cache.set.call_args_list) == len(symbols)
         for i, sym in enumerate(symbols):
             expected_cache_key = DataSourceCacheKey(
-                namespace=scope.data_source_cache_ns,
                 symbol=sym,
                 tf_seconds=to_seconds(TIMEFRAME),
                 start_date=START_DATE,
@@ -113,10 +113,11 @@ class TestDataSourceCacheMixin:
             assert cache_key == repr(expected_cache_key)
             assert sym_df.equals(alpaca_df[alpaca_df["symbol"] == sym])
 
+    @pytest.mark.usefixtures("scope")
     @pytest.mark.parametrize(
         "query_symbols", [[], pytest.lazy_fixture("symbols")]
     )
-    def test_get_cached_when_empty(self, scope, mock_cache, query_symbols):
+    def test_get_cached_when_empty(self, mock_cache, query_symbols):
         cache_mixin = DataSourceCacheMixin()
         df, uncached_syms = cache_mixin.get_cached(
             query_symbols, TIMEFRAME, START_DATE, END_DATE
@@ -126,7 +127,6 @@ class TestDataSourceCacheMixin:
         assert len(mock_cache.get.call_args_list) == len(query_symbols)
         for i, sym in enumerate(query_symbols):
             expected_cache_key = DataSourceCacheKey(
-                namespace=scope.data_source_cache_ns,
                 symbol=sym,
                 tf_seconds=to_seconds(TIMEFRAME),
                 start_date=START_DATE,
@@ -238,6 +238,34 @@ class TestAlpaca:
             expected = expected.reset_index(drop=True)
             assert df.equals(expected)
 
+    @pytest.mark.usefixtures(
+        "setup_enabled_ds_cache", "mock_alpaca", "tmp_path"
+    )
+    def test_query_when_cache_mismatch(self, alpaca_df, bars_df, symbols):
+        alpaca = Alpaca(API_KEY, API_SECRET)
+        cached_df = alpaca_df[alpaca_df["symbol"].isin(symbols[-1:])]
+        cached_df = cached_df.drop(columns=["vwap"])
+        alpaca.set_cached(TIMEFRAME, START_DATE, END_DATE, cached_df)
+        mock_bars = mock.Mock()
+        mock_bars.df = bars_df[bars_df["symbol"].isin(symbols[:-1])]
+        with mock.patch.object(
+            alpaca._api, "get_bars", return_value=mock_bars
+        ):
+            df = alpaca.query(symbols, START_DATE, END_DATE, TIMEFRAME)
+            assert not df.empty
+            assert set(df.columns) == set(
+                (
+                    "date",
+                    "open",
+                    "high",
+                    "low",
+                    "close",
+                    "volume",
+                    "symbol",
+                    "vwap",
+                )
+            )
+
     @pytest.mark.usefixtures("setup_ds_cache", "mock_alpaca")
     def test_query_when_cached(self, alpaca_df, bars_df, symbols):
         alpaca = Alpaca(API_KEY, API_SECRET)
@@ -279,7 +307,18 @@ class TestAlpaca:
         ):
             df = alpaca.query(symbols, START_DATE, END_DATE, TIMEFRAME)
             assert df.empty
-            assert set(df.columns) == set(columns)
+            assert set(df.columns) == set(
+                (
+                    "date",
+                    "open",
+                    "high",
+                    "low",
+                    "close",
+                    "volume",
+                    "symbol",
+                    "vwap",
+                )
+            )
 
     @pytest.mark.usefixtures("setup_ds_cache", "mock_alpaca")
     def test_query_when_symbols_empty(self):
@@ -320,24 +359,41 @@ class TestYFinance:
         assert (df["date"].unique() == expected_df.index.unique()).all()
 
     @pytest.mark.usefixtures("setup_ds_cache")
-    def test_query_when_empty_result(self, symbols):
-        columns = (
-            "date",
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume",
-            "symbol",
-            "vwap",
-        )
+    @pytest.mark.parametrize(
+        "columns",
+        [
+            [],
+            [
+                "date",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "symbol",
+                "adj_close",
+            ],
+        ],
+    )
+    def test_query_when_empty_result(self, symbols, columns):
         yf = YFinance()
         with mock.patch.object(
             yfinance, "download", return_value=pd.DataFrame(columns=columns)
         ):
             df = yf.query(symbols, START_DATE, END_DATE)
         assert df.empty
-        assert set(df.columns) == set(columns)
+        assert set(df.columns) == set(
+            (
+                "date",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "symbol",
+                "adj_close",
+            )
+        )
 
     @pytest.mark.usefixtures("setup_ds_cache")
     def test_query_when_symbols_empty(self):

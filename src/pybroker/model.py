@@ -309,7 +309,6 @@ class ModelsMixin:
         uncached_model_syms = []
         for model_sym in model_syms:
             cache_key = ModelCacheKey(
-                namespace=scope.model_cache_ns,
                 symbol=model_sym.symbol,
                 model_name=model_sym.model_name,
                 **asdict(cache_date_fields),
@@ -332,7 +331,6 @@ class ModelsMixin:
         if scope.model_cache is None:
             return
         cache_key = ModelCacheKey(
-            namespace=scope.model_cache_ns,
             symbol=model_sym.symbol,
             model_name=model_sym.model_name,
             **asdict(cache_date_fields),

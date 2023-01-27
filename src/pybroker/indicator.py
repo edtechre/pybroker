@@ -238,7 +238,6 @@ class IndicatorsMixin:
         uncached_ind_syms = []
         for ind_sym in indicator_syms:
             cache_key = IndicatorCacheKey(
-                namespace=scope.indicator_cache_ns,
                 symbol=ind_sym.symbol,
                 ind_name=ind_sym.ind_name,
                 **asdict(cache_date_fields),
@@ -261,7 +260,6 @@ class IndicatorsMixin:
         if scope.indicator_cache is None:
             return
         cache_key = IndicatorCacheKey(
-            namespace=scope.indicator_cache_ns,
             symbol=ind_sym.symbol,
             ind_name=ind_sym.ind_name,
             **asdict(cache_date_fields),

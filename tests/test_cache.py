@@ -129,9 +129,26 @@ def test_clear_cache_when_not_enabled_then_error(clear_fn, expected_msg):
 
 
 @pytest.mark.usefixtures("setup_teardown")
+@pytest.mark.parametrize(
+    "enable_fn",
+    [
+        enable_data_source_cache,
+        enable_indicator_cache,
+        enable_model_cache,
+        enable_caches,
+    ],
+)
+def test_enable_cache_when_namespace_empty_then_error(enable_fn):
+    with pytest.raises(
+        ValueError, match=re.escape("Cache namespace cannot be empty.")
+    ):
+        enable_fn("")
+
+
+@pytest.mark.usefixtures("setup_teardown")
 def test_enable_and_disable_all_caches(scope, cache_dir, cache_path):
     enable_caches("test", cache_dir)
-    assert len(list(cache_path.iterdir())) == 3
+    assert len(list(cache_path.iterdir())) == 1
     assert isinstance(scope.data_source_cache, Cache)
     assert isinstance(scope.indicator_cache, Cache)
     assert isinstance(scope.model_cache, Cache)

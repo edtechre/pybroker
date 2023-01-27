@@ -118,6 +118,13 @@ class Logger:
             f"{sorted(symbols)}",
         )
 
+    def info_invalidate_data_source_cache(self):
+        self._info(
+            "Mismatched columns in data source cache:\n"
+            f"namespace={self._scope.data_source_cache_ns}\n"
+            "Invalidating cache..."
+        )
+
     def debug_get_data_source_cache(self, cache_key):
         self._debug(f"Fetched data source cache:\n{cache_key}")
 

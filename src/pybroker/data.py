@@ -16,7 +16,13 @@ with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from .cache import DataSourceCacheKey
-from .common import DataCol, parse_timeframe, to_datetime, to_seconds
+from .common import (
+    DataCol,
+    parse_timeframe,
+    to_datetime,
+    to_seconds,
+    verify_data_source_columns,
+)
 from .scope import StaticScope
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -75,7 +81,6 @@ class DataSourceCacheMixin:
         cached_syms = []
         for sym in symbols:
             cache_key = DataSourceCacheKey(
-                namespace=scope.data_source_cache_ns,
                 symbol=sym,
                 tf_seconds=tf_seconds,
                 start_date=start_date,
@@ -135,7 +140,6 @@ class DataSourceCacheMixin:
         for sym in data[DataCol.SYMBOL.value].unique():
             df = data[data[DataCol.SYMBOL.value] == sym]
             cache_key = DataSourceCacheKey(
-                namespace=scope.data_source_cache_ns,
                 symbol=sym,
                 tf_seconds=tf_seconds,
                 start_date=start_date,
@@ -210,6 +214,15 @@ class DataSource(ABC, DataSourceCacheMixin):
             end_date=end_date,
         )
         df = self._fetch_data(unique_syms, start_date, end_date, timeframe)
+        if (
+            self._scope.data_source_cache is not None
+            and not cached_df.columns.empty
+            and set(cached_df.columns) != set(df.columns)
+        ):
+            self._logger.info_invalidate_data_source_cache()
+            self._scope.data_source_cache.clear()
+            return self.query(symbols, start_date, end_date, timeframe)
+        verify_data_source_columns(df)
         self.set_cached(timeframe, start_date, end_date, df)
         df = pd.concat((cached_df, df))
         if not df.empty:
@@ -225,8 +238,11 @@ class DataSource(ABC, DataSourceCacheMixin):
         end_date: datetime,
         timeframe: str,
     ) -> pd.DataFrame:
-        """:meta public: Override this method to return data from a custom
-        source.
+        """:meta public:
+        Override this method to return data from a custom
+        source. The returned :class:`pandas.DataFrame` must contain the
+        following columns: ``symbol``, ``date``, ``open``, ``high``, ``low``,
+        and ``close``.
 
         Args:
             symbols: Ticker symbols of the data to query.
@@ -279,6 +295,19 @@ class Alpaca(DataSource):
         start = pd.Timestamp(start_date, tz=self.__NY).isoformat()
         end = pd.Timestamp(end_date, tz=self.__NY).isoformat()
         df = self._api.get_bars(symbols, timeframe, start, end).df
+        if df.columns.empty:
+            return pd.DataFrame(
+                columns=[
+                    DataCol.SYMBOL.value,
+                    DataCol.DATE.value,
+                    DataCol.OPEN.value,
+                    DataCol.HIGH.value,
+                    DataCol.LOW.value,
+                    DataCol.CLOSE.value,
+                    DataCol.VOLUME.value,
+                    DataCol.VWAP.value,
+                ]
+            )
         if df.empty:
             return df
         df = df.reset_index()
@@ -335,6 +364,19 @@ class YFinance(DataSource):
     ) -> pd.DataFrame:
         """:meta private:"""
         df = yfinance.download(list(symbols), start=start_date, end=end_date)
+        if df.columns.empty:
+            return pd.DataFrame(
+                columns=[
+                    DataCol.SYMBOL.value,
+                    DataCol.DATE.value,
+                    DataCol.OPEN.value,
+                    DataCol.HIGH.value,
+                    DataCol.LOW.value,
+                    DataCol.CLOSE.value,
+                    DataCol.VOLUME.value,
+                    self.ADJ_CLOSE,
+                ]
+            )
         if df.empty:
             return df
         df = df.reset_index()
