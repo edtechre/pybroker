@@ -17,7 +17,7 @@ Some of PyBroker's key features are:
 - Extensive coverage of trading metrics, which are calculated out-of-sample.
 - Robust performance metrics calculated with randomized [bootstrapping](https://en.wikipedia.org/wiki/Bootstrapping_(statistics)).
 - Support for downloading historical data from [Alpaca](https://alpaca.markets/).
-- Computing indicators in parallel for faster performance.
+- Parallelized computing of indicators for faster performance.
 - Quicker development from caching downloaded data, indicators, and trained models.
 
 ## Installation
