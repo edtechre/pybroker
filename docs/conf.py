@@ -46,3 +46,4 @@ intersphinx_mapping = {
 html_title = "PyBroker"
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
+html_extra_path = ["_html"]
