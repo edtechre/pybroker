@@ -15,12 +15,12 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from dataclasses import asdict
 from .cache import CacheDateFields, IndicatorCacheKey
 from .common import BarData, DataCol, IndicatorSymbol, default_parallel
 from .eval import iqr, relative_entropy
 from .scope import StaticScope
 from collections import defaultdict
+from dataclasses import asdict
 from joblib import delayed
 from numpy.typing import NDArray
 from typing import (

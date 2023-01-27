@@ -15,7 +15,6 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from dataclasses import asdict
 from .cache import CacheDateFields, ModelCacheKey
 from .common import (
     DataCol,
@@ -25,6 +24,7 @@ from .common import (
 )
 from .indicator import Indicator
 from .scope import StaticScope
+from dataclasses import asdict
 from typing import Any, Callable, Collection, Iterable, Mapping, Optional
 import functools
 import pandas as pd
