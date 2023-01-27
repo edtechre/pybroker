@@ -6,4 +6,4 @@ Allow: /en/stable
 
 Allow: /en/latest
 
-Sitemap: https://pybroker.readthedocs.io/en/latest/sitemap-index.xml
+Sitemap: https://www.pybroker.com/en/latest/sitemap-index.xml
