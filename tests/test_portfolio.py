@@ -267,7 +267,7 @@ def test_buy_when_multiple_positions():
     entry_2 = pos_2.entries[0]
     assert_entry(
         entry=entry_2,
-        date=DATE_1,
+        date=DATE_2,
         symbol=SYMBOL_2,
         shares=SHARES_2,
         price=FILL_PRICE_2,
@@ -371,7 +371,7 @@ def test_buy_when_existing_short_and_not_enough_cash():
     entry = pos.entries[0]
     assert_entry(
         entry=entry,
-        date=DATE_2,
+        date=DATE_1,
         symbol=SYMBOL_1,
         shares=pos.shares,
         price=5,
@@ -818,7 +818,7 @@ def test_short_when_multiple_positions():
     entry_2 = pos_2.entries[0]
     assert_entry(
         entry=entry_2,
-        date=DATE_1,
+        date=DATE_2,
         symbol=SYMBOL_2,
         shares=SHARES_2,
         price=FILL_PRICE_4,
@@ -1102,7 +1102,7 @@ def test_cover_when_not_enough_cash():
     entry = pos.entries[0]
     assert_entry(
         entry=entry,
-        date=DATE_2,
+        date=DATE_1,
         symbol=SYMBOL_1,
         shares=pos.shares,
         price=5,
