@@ -177,17 +177,38 @@ def bca_boot_conf(
 
 
 @njit
-def profit_factor(changes: NDArray[np.float_]) -> np.floating:
+def profit_factor(
+    changes: NDArray[np.float_], use_log: bool = False
+) -> np.floating:
+    """Computes the profit factor, which is the ratio of gross profit to gross
+    loss.
+
+    Args:
+        changes: Array of differences between each bar and the previous bar.
+        use_log: Whether to log transform the profit factor. Defaults to False.
+    """
+    wins = changes[changes > 0]
+    losses = changes[changes < 0]
+    if not len(wins) and not len(losses):
+        return np.float32(0)
+    numer = denom = 1.0e-10
+    numer += np.sum(wins)
+    denom -= np.sum(losses)
+    if use_log:
+        return np.log(numer / denom)
+    else:
+        return np.divide(numer, denom)
+
+
+@njit
+def log_profit_factor(changes: NDArray[np.float_]) -> np.floating:
     """Computes the log transformed profit factor, which is the ratio of gross
     profit to gross loss.
 
     Args:
         changes: Array of differences between each bar and the previous bar.
     """
-    numer = denom = 1.0e-10
-    numer += np.sum(changes[changes > 0])
-    denom -= np.sum(changes[changes < 0])
-    return np.log(numer / denom)
+    return profit_factor(changes, use_log=True)
 
 
 @njit
@@ -209,8 +230,8 @@ def sharpe_ratio(changes: NDArray[np.float_]) -> Union[float, np.floating]:
 def conf_profit_factor(
     x: NDArray[np.float_], n: int, n_boot: int
 ) -> BootConfIntervals:
-    """Computes confidence intervals for :func:`.profit_factor`."""
-    return bca_boot_conf(x, n, n_boot, profit_factor)
+    """Computes confidence intervals for :func:`.log_profit_factor`."""
+    return bca_boot_conf(x, n, n_boot, log_profit_factor)
 
 
 def conf_sharpe_ratio(
@@ -556,7 +577,7 @@ class BootstrapResult(NamedTuple):
 
     Attributes:
         conf_intervals: :class:`pandas.DataFrame` containing confidence
-            intervals for :func:`.profit_factor` and :func:`.sharpe_ratio`.
+            intervals for :func:`.log_profit_factor` and :func:`.sharpe_ratio`.
         drawdown_conf: :class:`pandas.DataFrame` containing upper bounds of
             confidence intervals for maximum drawdown.
     """
@@ -591,8 +612,8 @@ class EvalMetrics:
         max_losses: Maximum number of consecutive losing trades.
         sharpe: `Sharpe Ratio <https://en.wikipedia.org/wiki/Sharpe_ratio>`_,
             computed per bar.
-        profit_factor: Log transformed profit factor, defined as the ratio of
-            gross profit to gross loss, computed per bar.
+        profit_factor: The ratio of gross profit to gross loss, computed per
+            bar.
         ulcer_index: `Ulcer Index
             <https://en.wikipedia.org/wiki/Ulcer_index>`_, computed per bar.
         upi: `Ulcer Performance Index
@@ -797,7 +818,8 @@ class EvaluateMixin:
         samples: int,
     ) -> pd.DataFrame:
         pf_conf = self._to_conf_intervals(
-            "Profit Factor", conf_profit_factor(changes, sample_size, samples)
+            "Log Profit Factor",
+            conf_profit_factor(changes, sample_size, samples),
         )
         sharpe_conf = self._to_conf_intervals(
             "Sharpe Ratio", conf_sharpe_ratio(changes, sample_size, samples)

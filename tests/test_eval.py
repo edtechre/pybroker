@@ -147,10 +147,10 @@ def test_drawdown_conf_when_length_mismatch_then_error():
 @pytest.mark.parametrize(
     "values, expected_pf",
     [
-        ([0.1, -0.2, 0.3, 0, -0.4, 0.5], np.log(0.9 / 0.6)),
-        ([1, 1, 1, 1], 24.412145),
-        ([1], 23.02585),
-        ([-1], -23.025851),
+        ([0.1, -0.2, 0.3, 0, -0.4, 0.5], 1.499999),
+        ([1, 1, 1, 1], 40000000001),
+        ([1], 10000000001),
+        ([-1], 0),
         ([0, 0, 0, 0], 0),
         ([], 0),
     ],
@@ -422,7 +422,7 @@ class TestEvaluateMixin:
         ci = result.bootstrap.conf_intervals
         assert ci.columns.tolist() == ["lower", "upper"]
         names = ci.index.get_level_values(0).unique().tolist()
-        assert names == ["Profit Factor", "Sharpe Ratio"]
+        assert names == ["Log Profit Factor", "Sharpe Ratio"]
         for name in names:
             df = ci[ci.index.get_level_values(0) == name]
             confs = df.index.get_level_values(1).tolist()
