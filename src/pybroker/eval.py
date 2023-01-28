@@ -618,7 +618,7 @@ class EvalMetrics:
             <https://en.wikipedia.org/wiki/Ulcer_index>`_, computed per bar.
         upi: `Ulcer Performance Index
             <https://en.wikipedia.org/wiki/Ulcer_index>`_, computed per bar.
-        r2: R^2 of the equity curve, computed per bar.
+        equity_r2: R^2 of the equity curve, computed per bar.
         std_error: Standard error, computed per bar.
     """
 
@@ -643,7 +643,7 @@ class EvalMetrics:
     profit_factor: float = field(default=0)
     ulcer_index: float = field(default=0)
     upi: float = field(default=0)
-    r2: float = field(default=0)
+    equity_r2: float = field(default=0)
     std_error: float = field(default=0)
 
 
@@ -805,7 +805,7 @@ class EvaluateMixin:
             total_loss=total_loss,
             sharpe=sharpe,
             profit_factor=pf,
-            r2=r2,
+            equity_r2=r2,
             ulcer_index=ui,
             upi=upi_,
             std_error=std_error,
