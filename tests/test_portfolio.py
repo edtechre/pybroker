@@ -35,7 +35,7 @@ LIMIT_PRICE_3 = Decimal(102)
 SHARES_1 = 120
 SHARES_2 = 200
 DATE_1 = np.datetime64("2020-02-02")
-DATE_2 = DATE_1 = np.datetime64("2020-02-03")
+DATE_2 = np.datetime64("2020-02-03")
 
 
 def assert_order(
