@@ -1377,10 +1377,13 @@ class Strategy(
         for col in ("limit_price", "fill_price", "pnl"):
             orders_df[col] = quantize(orders_df, col)
         orders_df["pnl %"] = (
-            orders_df["pnl"]
-            / (orders_df["pnl"].abs() + orders_df["fill_price"])
-            * 100
-        )
+            orders_df["fill_price"]
+            / (
+                orders_df["fill_price"]
+                - orders_df["pnl"] / orders_df["shares"]
+            )
+            - 1
+        ) * 100
         eval_result = self.evaluate(
             portfolio_df=portfolio_df,
             orders_df=orders_df,
