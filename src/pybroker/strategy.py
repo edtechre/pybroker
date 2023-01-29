@@ -1390,7 +1390,7 @@ class Strategy(
         )
         trades_df["shares"] = trades_df["shares"].astype(int)
         trades_df["bars"] = trades_df["bars"].astype(int)
-        for col in ("pnl", "pnl_pct", "cumulative_pnl", "pnl_per_bar"):
+        for col in ("pnl", "return_pct", "cumulative_pnl", "pnl_per_bar"):
             trades_df[col] = quantize(trades_df, col)
         eval_result = self.evaluate(
             portfolio_df=portfolio_df,

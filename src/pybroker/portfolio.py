@@ -89,7 +89,7 @@ class Trade(NamedTuple):
         exit_date: Exit date.
         shares: Number of shares.
         pnl: Profit and loss (PnL).
-        pnl_pct: Profit and loss (PnL), measured in percentage.
+        return_pct: Return measured in percentage.
         cumulative_pnl: Cumulative profit and loss (PnL) of the strategy after
             the trade.
         bars: Number of bars the trade was held.
@@ -103,7 +103,7 @@ class Trade(NamedTuple):
     exit_date: np.datetime64
     shares: int
     pnl: Decimal
-    pnl_pct: Decimal
+    return_pct: Decimal
     cumulative_pnl: Decimal
     bars: int
     pnl_per_bar: Decimal
@@ -305,7 +305,7 @@ class Portfolio:
         exit_date: np.datetime64,
         shares: int,
         pnl: Decimal,
-        pnl_pct: Decimal,
+        return_pct: Decimal,
         cumulative_pnl: Decimal,
         bars: int,
         pnl_per_bar: Decimal,
@@ -319,7 +319,7 @@ class Portfolio:
             exit_date=exit_date,
             shares=shares,
             pnl=pnl,
-            pnl_pct=pnl_pct,
+            return_pct=return_pct,
             cumulative_pnl=cumulative_pnl,
             bars=bars,
             pnl_per_bar=pnl_per_bar,
@@ -405,7 +405,7 @@ class Portfolio:
                     exit_date=date,
                     shares=entry.shares,
                     pnl=entry_pnl,
-                    pnl_pct=((entry.price / fill_price) - 1) * 100,
+                    return_pct=((entry.price / fill_price) - 1) * 100,
                     cumulative_pnl=self.pnl + pnl,
                     bars=entry.bars,
                     pnl_per_bar=entry_pnl / entry.bars,
@@ -540,7 +540,7 @@ class Portfolio:
                     exit_date=date,
                     shares=entry.shares,
                     pnl=entry_pnl,
-                    pnl_pct=((fill_price / entry.price) - 1) * 100,
+                    return_pct=((fill_price / entry.price) - 1) * 100,
                     cumulative_pnl=self.pnl + pnl,
                     bars=entry.bars,
                     pnl_per_bar=entry_pnl / entry.bars,

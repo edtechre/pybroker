@@ -596,6 +596,7 @@ class EvalMetrics:
         end_market_value: Ending market value of the
             :class:`pybroker.portfolio.Portfolio`.
         total_pnl: Total realized profit and loss (PnL).
+        total_return_pct: Total realized return measured in percentage.
         total_profit: Total realized profit.
         total_loss: Total realized loss.
         max_drawdown: Maximum drawdown, measured in cash.
@@ -603,8 +604,7 @@ class EvalMetrics:
         win_rate: Win rate of trades.
         loss_rate: Loss rate of trades.
         avg_pnl: Average profit and loss (PnL) per trade, measured in cash.
-        avg_pnl_pct: Average profit and loss (PnL) per trade, measured in
-            percentage.
+        avg_return_pct: Average return per trade, measured in percentage.
         avg_trade_bars: Average number of bars per trade.
         avg_profit: Average profit per trade, measured in cash.
         avg_profit_pct: Average profit per trade, measured in percentage.
@@ -633,6 +633,7 @@ class EvalMetrics:
     initial_market_value: float = field(default=0)
     end_market_value: float = field(default=0)
     total_pnl: float = field(default=0)
+    total_return_pct: float = field(default=0)
     total_profit: float = field(default=0)
     total_loss: float = field(default=0)
     max_drawdown: float = field(default=0)
@@ -640,7 +641,7 @@ class EvalMetrics:
     win_rate: float = field(default=0)
     loss_rate: float = field(default=0)
     avg_pnl: float = field(default=0)
-    avg_pnl_pct: float = field(default=0)
+    avg_return_pct: float = field(default=0)
     avg_trade_bars: float = field(default=0)
     avg_profit: float = field(default=0)
     avg_profit_pct: float = field(default=0)
@@ -724,7 +725,7 @@ class EvaluateMixin:
         ):
             return EvalResult(EvalMetrics(), None)
         pnls = trades_df["pnl"].to_numpy()
-        pnl_pcts = trades_df["pnl_pct"].to_numpy()
+        return_pcts = trades_df["return_pct"].to_numpy()
         bars = trades_df["bars"].to_numpy()
         winning_bars = trades_df[trades_df["pnl"] > 0]["bars"].to_numpy()
         losing_bars = trades_df[trades_df["pnl"] < 0]["bars"].to_numpy()
@@ -741,7 +742,7 @@ class EvaluateMixin:
             bar_changes,
             bar_returns,
             pnls,
-            pnl_pcts,
+            return_pcts,
             bars=bars,
             winning_bars=winning_bars,
             losing_bars=losing_bars,
@@ -786,7 +787,7 @@ class EvaluateMixin:
         bar_changes: NDArray[np.float_],
         bar_returns: NDArray[np.float_],
         pnls: NDArray[np.float_],
-        pnl_pcts: NDArray[np.float_],
+        return_pcts: NDArray[np.float_],
         bars: NDArray[np.int_],
         winning_bars: NDArray[np.int_],
         losing_bars: NDArray[np.int_],
@@ -806,7 +807,7 @@ class EvaluateMixin:
         win_rate = 0.0
         loss_rate = 0.0
         avg_pnl = 0.0
-        avg_pnl_pct = 0.0
+        avg_return_pct = 0.0
         avg_trade_bars = 0.0
         avg_profit = 0.0
         avg_loss = 0.0
@@ -823,15 +824,15 @@ class EvaluateMixin:
             largest_win, largest_loss = largest_win_loss(pnls)
             win_rate, loss_rate = win_loss_rate(pnls)
             avg_profit, avg_loss = avg_profit_loss(pnls)
-            avg_profit_pct, avg_loss_pct = avg_profit_loss(pnl_pcts)
+            avg_profit_pct, avg_loss_pct = avg_profit_loss(return_pcts)
             total_profit, total_loss = total_profit_loss(pnls)
             max_wins, max_losses = max_wins_losses(pnls)
             total_pnl = float(np.sum(pnls))
             # Check length to avoid "Mean of empty slice" warning.
             if len(pnls):
                 avg_pnl = float(np.mean(pnls))
-            if len(pnl_pcts):
-                avg_pnl_pct = float(np.mean(pnl_pcts))
+            if len(return_pcts):
+                avg_return_pct = float(np.mean(return_pcts))
             if len(bars):
                 avg_trade_bars = float(np.mean(bars))
             if len(winning_bars):
@@ -853,7 +854,7 @@ class EvaluateMixin:
             win_rate=win_rate,
             loss_rate=loss_rate,
             avg_pnl=avg_pnl,
-            avg_pnl_pct=avg_pnl_pct,
+            avg_return_pct=avg_return_pct,
             avg_trade_bars=avg_trade_bars,
             avg_profit=avg_profit,
             avg_profit_pct=avg_profit_pct,
@@ -864,6 +865,10 @@ class EvaluateMixin:
             total_profit=total_profit,
             total_loss=total_loss,
             total_pnl=total_pnl,
+            total_return_pct=(
+                (total_pnl + market_values[0]) / market_values[0] - 1
+            )
+            * 100,
             sharpe=sharpe,
             profit_factor=pf,
             equity_r2=r2,

@@ -63,7 +63,7 @@ def assert_trade(
     exit_date,
     shares,
     pnl,
-    pnl_pct,
+    return_pct,
     cumulative_pnl,
     bars,
     pnl_per_bar,
@@ -74,7 +74,7 @@ def assert_trade(
     assert trade.exit_date == exit_date
     assert trade.shares == shares
     assert trade.pnl == pnl
-    assert trade.pnl_pct == pnl_pct
+    assert trade.return_pct == return_pct
     assert trade.cumulative_pnl == cumulative_pnl
     assert trade.bars == bars
     assert trade.pnl_per_bar == pnl_per_bar
@@ -364,7 +364,7 @@ def test_buy_when_existing_short_position():
         exit_date=DATE_2,
         shares=SHARES_1,
         pnl=expected_pnl,
-        pnl_pct=Decimal("2.210221022102210221022102200"),
+        return_pct=Decimal("2.210221022102210221022102200"),
         cumulative_pnl=expected_pnl,
         bars=1,
         pnl_per_bar=expected_pnl,
@@ -572,7 +572,7 @@ def test_sell_when_all_shares(fill_price, limit_price):
         exit_date=DATE_2,
         shares=SHARES_1,
         pnl=expected_pnl,
-        pnl_pct=Decimal("1.010101010101010101010101000"),
+        return_pct=Decimal("1.010101010101010101010101000"),
         cumulative_pnl=expected_pnl,
         bars=1,
         pnl_per_bar=expected_pnl,
@@ -618,7 +618,7 @@ def test_sell_when_all_shares_and_multiple_bars():
         exit_date=DATE_2,
         shares=SHARES_1,
         pnl=expected_pnl,
-        pnl_pct=Decimal("2.210221022102210221022102200"),
+        return_pct=Decimal("2.210221022102210221022102200"),
         cumulative_pnl=expected_pnl,
         bars=2,
         pnl_per_bar=expected_pnl / 2,
@@ -736,7 +736,7 @@ def test_sell_when_multiple_entries():
         exit_date=DATE_2,
         shares=SHARES_1,
         pnl=expected_trade_pnl,
-        pnl_pct=Decimal("2.210221022102210221022102200"),
+        return_pct=Decimal("2.210221022102210221022102200"),
         cumulative_pnl=expected_trade_pnl,
         bars=1,
         pnl_per_bar=expected_trade_pnl,
@@ -1016,7 +1016,7 @@ def test_short_when_existing_long_position():
         exit_date=DATE_2,
         shares=SHARES_1,
         pnl=expected_pnl,
-        pnl_pct=Decimal("2.210221022102210221022102200"),
+        return_pct=Decimal("2.210221022102210221022102200"),
         cumulative_pnl=expected_pnl,
         bars=1,
         pnl_per_bar=expected_pnl,
@@ -1127,7 +1127,7 @@ def test_cover_when_all_shares(fill_price, limit_price):
         exit_date=DATE_2,
         shares=SHARES_1,
         pnl=expected_pnl,
-        pnl_pct=Decimal("2.200"),
+        return_pct=Decimal("2.200"),
         cumulative_pnl=expected_pnl,
         bars=1,
         pnl_per_bar=expected_pnl,
@@ -1245,7 +1245,7 @@ def test_cover_when_multiple_entries():
         exit_date=DATE_2,
         shares=SHARES_1,
         pnl=expected_trade_pnl,
-        pnl_pct=Decimal("2.210221022102210221022102200"),
+        return_pct=Decimal("2.210221022102210221022102200"),
         cumulative_pnl=expected_trade_pnl,
         bars=1,
         pnl_per_bar=expected_trade_pnl,

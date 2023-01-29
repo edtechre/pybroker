@@ -435,6 +435,7 @@ class TestEvaluateMixin:
         assert metrics.initial_market_value == 500000
         assert metrics.end_market_value == 693111.87
         assert metrics.total_pnl == 165740.2
+        assert metrics.total_return_pct == 33.14804
         assert metrics.total_profit == 403511.07999999996
         assert metrics.total_loss == -237770.88
         assert metrics.max_drawdown == -56721.59999999998
@@ -442,7 +443,7 @@ class TestEvaluateMixin:
         assert metrics.win_rate == 0.5257731958762887
         assert metrics.loss_rate == 0.4742268041237113
         assert metrics.avg_pnl == 427.1654639175258
-        assert metrics.avg_pnl_pct == 0.279639175257732
+        assert metrics.avg_return_pct == 0.279639175257732
         assert metrics.avg_trade_bars == 2.4149484536082473
         assert metrics.avg_profit == 1977.9954901960782
         assert metrics.avg_profit_pct == 3.1687745098039217
@@ -497,7 +498,7 @@ class TestEvaluateMixin:
         mixin = EvaluateMixin()
         result = mixin.evaluate(
             portfolio_df,
-            pd.DataFrame(columns=["pnl", "pnl_pct", "bars"]),
+            pd.DataFrame(columns=["pnl", "return_pct", "bars"]),
             calc_bootstrap,
             bootstrap_sample_size=10,
             bootstrap_samples=100,
