@@ -591,10 +591,11 @@ class EvalMetrics:
 
     Attributes:
         trade_count: Number of trades that were filled.
-        initial_value: Initial market value of the
+        initial_equity: Initial equity of the
             :class:`pybroker.portfolio.Portfolio`.
-        end_value: Ending market value of the
+        end_value: Ending equity of the
             :class:`pybroker.portfolio.Portfolio`.
+        total_pnl: Total profit and loss (PnL).
         total_profit: Total realized profit.
         total_loss: Total realized loss.
         max_drawdown: Maximum drawdown, measured in cash.
@@ -629,8 +630,9 @@ class EvalMetrics:
     """
 
     trade_count: int = field(default=0)
-    initial_value: float = field(default=0)
-    end_value: float = field(default=0)
+    initial_equity: float = field(default=0)
+    end_equity: float = field(default=0)
+    total_pnl: float = field(default=0)
     total_profit: float = field(default=0)
     total_loss: float = field(default=0)
     max_drawdown: float = field(default=0)
@@ -713,6 +715,7 @@ class EvaluateMixin:
             :class:`.EvalResult` containing evaluation metrics.
         """
         market_values = portfolio_df["market_value"].to_numpy()
+        equity = portfolio_df["equity"].to_numpy()
         bar_returns = self._calc_bar_returns(portfolio_df)
         bar_changes = self._calc_bar_changes(portfolio_df)
         if (
@@ -736,6 +739,7 @@ class EvaluateMixin:
         )
         metrics = self._calc_eval_metrics(
             market_values,
+            equity,
             bar_changes,
             bar_returns,
             pnls,
@@ -781,6 +785,7 @@ class EvaluateMixin:
     def _calc_eval_metrics(
         self,
         market_values: NDArray[np.float_],
+        equity: NDArray[np.float_],
         bar_changes: NDArray[np.float_],
         bar_returns: NDArray[np.float_],
         pnls: NDArray[np.float_],
@@ -814,6 +819,7 @@ class EvaluateMixin:
         avg_losing_trade_bars = 0.0
         total_profit = 0.0
         total_loss = 0.0
+        total_pnl = 0.0
         max_wins = 0
         max_losses = 0
         if len(pnls):
@@ -823,6 +829,7 @@ class EvaluateMixin:
             avg_profit_pct, avg_loss_pct = avg_profit_loss(pnl_pcts)
             total_profit, total_loss = total_profit_loss(pnls)
             max_wins, max_losses = max_wins_losses(pnls)
+            total_pnl = np.sum(pnls)
             # Check length to avoid "Mean of empty slice" warning.
             if len(pnls):
                 avg_pnl = float(np.mean(pnls))
@@ -836,8 +843,8 @@ class EvaluateMixin:
                 avg_losing_trade_bars = float(np.mean(losing_bars))
         return EvalMetrics(
             trade_count=len(pnls),
-            initial_value=market_values[0],
-            end_value=market_values[-1],
+            initial_equity=equity[0],
+            end_equity=equity[-1],
             max_drawdown=max_dd,
             max_drawdown_pct=max_dd_pct,
             largest_win=largest_win,
@@ -859,6 +866,7 @@ class EvaluateMixin:
             avg_losing_trade_bars=avg_losing_trade_bars,
             total_profit=total_profit,
             total_loss=total_loss,
+            total_pnl=total_pnl,
             sharpe=sharpe,
             profit_factor=pf,
             equity_r2=r2,
