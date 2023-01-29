@@ -824,11 +824,17 @@ class EvaluateMixin:
             avg_profit_pct, avg_loss_pct = avg_profit_loss(pnl_pcts)
             total_profit, total_loss = total_profit_loss(pnls)
             max_wins, max_losses = max_wins_losses(pnls)
-            avg_pnl = float(np.mean(pnls))
-            avg_pnl_pct = float(np.mean(pnl_pcts))
-            avg_trade_bars = float(np.mean(bars))
-            avg_winning_trade_bars = float(np.mean(winning_bars))
-            avg_losing_trade_bars = float(np.mean(losing_bars))
+            # Check length to avoid "Mean of empty slice" warning.
+            if len(pnls):
+                avg_pnl = float(np.mean(pnls))
+            if len(pnl_pcts):
+                avg_pnl_pct = float(np.mean(pnl_pcts))
+            if len(bars):
+                avg_trade_bars = float(np.mean(bars))
+            if len(winning_bars):
+                avg_winning_trade_bars = float(np.mean(winning_bars))
+            if len(losing_bars):
+                avg_losing_trade_bars = float(np.mean(losing_bars))
         return EvalMetrics(
             trade_count=len(pnls),
             initial_value=market_values[0],
