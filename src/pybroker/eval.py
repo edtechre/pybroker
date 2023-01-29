@@ -560,14 +560,13 @@ def r_squared(values: NDArray[np.float_]) -> float:
     x = np.arange(n)
     try:
         coeffs = np.polyfit(x, values, 1)
-        pred = np.poly1d(coeffs)
-        y_hat = pred(x)
-        y = np.sum(values) / n
-        ssr = np.sum((y_hat - y) ** 2)
-        ssto = np.sum((values - y) ** 2)
-        if ssto == 0:
+        pred = np.poly1d(coeffs)(x)
+        y_hat = np.mean(values)
+        ssres = np.sum((values - pred) ** 2)
+        sstot = np.sum((values - y_hat) ** 2)
+        if sstot == 0:
             return 0
-        return ssr / ssto
+        return 1 - ssres / sstot
     except Exception:
         return 0
 

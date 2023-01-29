@@ -459,7 +459,7 @@ class TestEvaluateMixin:
         assert metrics.profit_factor == 1.0759385033768167
         assert metrics.ulcer_index == 1.898347959437099
         assert metrics.upi == 0.01844528848501509
-        assert metrics.equity_r2 == 0.8979045919638454
+        assert metrics.equity_r2 == 0.8979045919638434
         assert metrics.std_error == 69646.36129687089
 
     def test_evaluate_when_portfolio_empty(self, trades_df, calc_bootstrap):
