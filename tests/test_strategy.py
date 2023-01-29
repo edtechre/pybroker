@@ -345,7 +345,7 @@ class TestBacktestMixin:
             return Order(
                 id=1,
                 symbol=symbol,
-                order_type="buy",
+                type="buy",
                 date=date,
                 shares=shares,
                 fill_price=fill_price,
@@ -415,7 +415,7 @@ class TestBacktestMixin:
             return Order(
                 id=1,
                 symbol=symbol,
-                order_type="sell",
+                type="sell",
                 date=date,
                 shares=shares,
                 fill_price=fill_price,

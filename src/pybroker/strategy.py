@@ -42,7 +42,7 @@ from .data import DataSource
 from .eval import BootstrapResult, EvalMetrics, EvaluateMixin
 from .indicator import Indicator, IndicatorsMixin
 from .model import ModelSource, ModelsMixin, TrainedModel
-from .portfolio import Order, Portfolio, PortfolioBar, PositionBar
+from .portfolio import Order, Portfolio, PortfolioBar, PositionBar, Trade
 from .scope import (
     ColumnScope,
     IndicatorScope,
@@ -142,6 +142,8 @@ class BacktestResult(NamedTuple):
             executed.
         orders: :class:`pybroker.portfolio.Order`\ s that were filled during
             the backtest.
+        trades: :class:`pybroker.portfolio.Trade`\ s that were placed during
+            the backtest.
     """
 
     start_date: datetime
@@ -149,6 +151,7 @@ class BacktestResult(NamedTuple):
     portfolio_bars: deque[PortfolioBar]
     position_bars: deque[PositionBar]
     orders: deque[Order]
+    trades: deque[Trade]
 
 
 class BacktestMixin:
@@ -327,6 +330,7 @@ class BacktestMixin:
                     sched=sell_sched,
                     col_scope=col_scope,
                 )
+            portfolio.incr_bars()
             if i % 10 == 0 or i == len(test_dates) - 1:
                 logger.backtest_executions_loading(i + 1)
         return BacktestResult(
@@ -335,6 +339,7 @@ class BacktestMixin:
             portfolio_bars=portfolio.bars,
             position_bars=portfolio.position_bars,
             orders=portfolio.orders,
+            trades=portfolio.trades,
         )
 
     def _set_pos_sizes(
@@ -756,7 +761,8 @@ class TestResult:
             :class:`pybroker.portfolio.Portfolio` balances for every bar.
         positions: :class:`pandas.DataFrame` of
             :class:`pybroker.portfolio.Position` balances for every bar.
-        orders: :class:`pandas.DataFrame`` of all orders that were placed.
+        orders: :class:`pandas.DataFrame` of all orders that were placed.
+        trades: :class:`pandas.DataFrame` of all trades that were made.
         metrics: Evaluation metrics.
         metrics_df: :class:`pandas.DataFrame` of evaluation metrics.
         bootstrap: Randomized bootstrap evaluation metrics.
@@ -767,6 +773,7 @@ class TestResult:
     portfolio: pd.DataFrame
     positions: pd.DataFrame
     orders: pd.DataFrame
+    trades: pd.DataFrame
     metrics: EvalMetrics
     metrics_df: pd.DataFrame
     bootstrap: Optional[BootstrapResult]
@@ -1340,10 +1347,12 @@ class Strategy(
         portfolio_bars: deque[PortfolioBar] = deque()
         pos_bars: deque[PositionBar] = deque()
         orders: deque[Order] = deque()
+        trades: deque[Trade] = deque()
         for result in backtest_results:
             portfolio_bars.extend(result.portfolio_bars)
             pos_bars.extend(result.position_bars)
             orders.extend(result.orders)
+            trades.extend(result.trades)
         pos_df = pd.DataFrame.from_records(
             pos_bars, columns=PositionBar._fields
         )
@@ -1376,7 +1385,7 @@ class Strategy(
         orders_df["shares"] = orders_df["shares"].astype(int)
         for col in ("limit_price", "fill_price", "pnl"):
             orders_df[col] = quantize(orders_df, col)
-        orders_df["pnl %"] = (
+        orders_df["pnl_pct"] = (
             orders_df["fill_price"]
             / (
                 orders_df["fill_price"]
@@ -1384,9 +1393,16 @@ class Strategy(
             )
             - 1
         ) * 100
+        trades_df = pd.DataFrame.from_records(
+            trades, columns=Trade._fields, index="id"
+        )
+        trades_df["shares"] = trades_df["shares"].astype(int)
+        trades_df["bars"] = trades_df["bars"].astype(int)
+        for col in ("pnl", "pnl_pct", "cumulative_pnl", "pnl_per_bar"):
+            trades_df[col] = quantize(trades_df, col)
         eval_result = self.evaluate(
             portfolio_df=portfolio_df,
-            orders_df=orders_df,
+            trades_df=trades_df,
             calc_bootstrap=calc_bootstrap,
             bootstrap_sample_size=self._config.bootstrap_sample_size,
             bootstrap_samples=self._config.bootstrap_samples,
@@ -1403,6 +1419,7 @@ class Strategy(
             portfolio=portfolio_df,
             positions=pos_df,
             orders=orders_df,
+            trades=trades_df,
             metrics=eval_result.metrics,
             metrics_df=metrics_df,
             bootstrap=eval_result.bootstrap,

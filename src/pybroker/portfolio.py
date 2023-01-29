@@ -47,6 +47,7 @@ class Entry:
     shares: int
     price: Decimal
     type: Literal["long", "short"]
+    bars: int = field(default=0)
 
 
 @dataclass
@@ -76,6 +77,37 @@ class Position:
     entries: deque[Entry] = field(default_factory=deque)
 
 
+class Trade(NamedTuple):
+    """Holds information about a completed trade (entry and exit).
+
+    Attributes:
+        id: Unique identifier.
+        type: Type of trade, either ``long`` or ``short``.
+        symbol: Ticker symbol of the trade.
+        entry_date: Entry date.
+        exit_date: Exit date.
+        shares: Number of shares.
+        pnl: Profit and loss (PnL).
+        pnl_pct: Profit and loss (PnL), measured in percentage.
+        cumulative_pnl: The cumulative profit and loss (PnL) of the strategy
+            after the trade.
+        bars: The number of bars the trade was held.
+        pnl_per_bar: The profit and loss (PnL) per bar held.
+    """
+
+    id: int
+    type: Literal["long", "short"]
+    symbol: str
+    entry_date: np.datetime64
+    exit_date: np.datetime64
+    shares: int
+    pnl: Decimal
+    pnl_pct: Decimal
+    cumulative_pnl: Decimal
+    bars: int
+    pnl_per_bar: Decimal
+
+
 class Order(NamedTuple):
     """Holds information about a filled order.
 
@@ -83,7 +115,7 @@ class Order(NamedTuple):
         id: Unique identifier.
         date: Date the order was filled.
         symbol: Ticker symbol of the order.
-        order_type: Type of order, either ``buy`` or ``sell``.
+        type: Type of order, either ``buy`` or ``sell``.
         limit_price: Limit price that was used for the order.
         fill_price: Price that the order was filled at.
         shares: Number of shares bought or sold.
@@ -93,7 +125,7 @@ class Order(NamedTuple):
     id: int
     date: np.datetime64
     symbol: str
-    order_type: Literal["buy", "sell"]
+    type: Literal["buy", "sell"]
     limit_price: Optional[Decimal]
     fill_price: Decimal
     shares: int
@@ -207,6 +239,7 @@ class Portfolio:
 
     _order_id: int = 0
     _entry_id: int = 0
+    _trade_id: int = 0
 
     def __init__(
         self,
@@ -220,6 +253,7 @@ class Portfolio:
         self._max_long_positions = max_long_positions
         self._max_short_positions = max_short_positions
         self.orders: deque[Order] = deque()
+        self.trades: deque[Trade] = deque()
         self.margin: Decimal = Decimal()
         self.pnl: Decimal = Decimal()
         self.long_positions: dict[str, Position] = {}
@@ -241,6 +275,59 @@ class Portfolio:
             raise ValueError(f"Fill price must be > 0: {fill_price}")
         if limit_price is not None and limit_price <= 0:
             raise ValueError(f"Limit price must be > 0: {limit_price}")
+
+    def _add_order(
+        self,
+        date: np.datetime64,
+        symbol: str,
+        type: Literal["buy", "sell"],
+        limit_price: Optional[Decimal],
+        fill_price: Decimal,
+        shares: int,
+        pnl: Decimal,
+    ) -> Order:
+        self._order_id += 1
+        order = Order(
+            id=self._order_id,
+            date=date,
+            symbol=symbol,
+            type=type,
+            limit_price=limit_price,
+            fill_price=fill_price,
+            shares=shares,
+            pnl=pnl,
+        )
+        self.orders.append(order)
+        return order
+
+    def _add_trade(
+        self,
+        type: Literal["long", "short"],
+        symbol: str,
+        entry_date: np.datetime64,
+        exit_date: np.datetime64,
+        shares: int,
+        pnl: Decimal,
+        pnl_pct: Decimal,
+        cumulative_pnl: Decimal,
+        bars: int,
+        pnl_per_bar: Decimal,
+    ):
+        self._trade_id += 1
+        trade = Trade(
+            id=self._trade_id,
+            type=type,
+            symbol=symbol,
+            entry_date=entry_date,
+            exit_date=exit_date,
+            shares=shares,
+            pnl=pnl,
+            pnl_pct=pnl_pct,
+            cumulative_pnl=cumulative_pnl,
+            bars=bars,
+            pnl_per_bar=pnl_per_bar,
+        )
+        self.trades.append(trade)
 
     def buy(
         self,
@@ -275,26 +362,27 @@ class Portfolio:
             return None
         if shares == 0:
             return None
-        covered = self._cover(symbol, shares, fill_price)
+        covered = self._cover(date, symbol, shares, fill_price)
         bought_shares = self._buy(date, symbol, covered.rem_shares, fill_price)
         if not covered.filled_shares and not bought_shares:
             return None
-        self._order_id += 1
-        order = Order(
-            id=self._order_id,
+        order = self._add_order(
             date=date,
             symbol=symbol,
-            order_type="buy",
+            type="buy",
             limit_price=limit_price,
             fill_price=fill_price,
             shares=covered.filled_shares + bought_shares,
             pnl=covered.pnl,
         )
-        self.orders.append(order)
         return order
 
     def _cover(
-        self, symbol: str, shares: int, fill_price: Decimal
+        self,
+        date: np.datetime64,
+        symbol: str,
+        shares: int,
+        fill_price: Decimal,
     ) -> _OrderResult:
         pnl = Decimal()
         if symbol not in self.short_positions:
@@ -307,12 +395,25 @@ class Portfolio:
             entry = pos.entries[0]
             if rem_shares >= entry.shares:
                 order_amount = entry.shares * fill_price
-                entry_pnl = (entry.shares * entry.price) - order_amount
+                entry_amount = entry.shares * entry.price
+                entry_pnl = entry_amount - order_amount
                 pnl += entry_pnl
                 self.cash -= order_amount
                 rem_shares -= entry.shares
                 pos.shares -= entry.shares
                 pos.entries.popleft()
+                self._add_trade(
+                    type=entry.type,
+                    symbol=symbol,
+                    entry_date=entry.date,
+                    exit_date=date,
+                    shares=entry.shares,
+                    pnl=entry_pnl,
+                    pnl_pct=((entry.price / fill_price) - 1) * 100,
+                    cumulative_pnl=self.pnl + pnl,
+                    bars=entry.bars,
+                    pnl_per_bar=entry_pnl / entry.bars,
+                )
             else:
                 order_amount = rem_shares * fill_price
                 entry_pnl = (rem_shares * entry.price) - order_amount
@@ -399,26 +500,27 @@ class Portfolio:
             return None
         if shares == 0:
             return None
-        sold = self._sell_existing(symbol, shares, fill_price)
+        sold = self._sell_existing(date, symbol, shares, fill_price)
         short_shares = self._short(date, symbol, sold.rem_shares, fill_price)
         if not sold.filled_shares and not short_shares:
             return None
-        self._order_id += 1
-        order = Order(
-            id=self._order_id,
+        order = self._add_order(
             date=date,
             symbol=symbol,
-            order_type="sell",
+            type="sell",
             limit_price=limit_price,
             fill_price=fill_price,
             shares=sold.filled_shares + short_shares,
             pnl=sold.pnl,
         )
-        self.orders.append(order)
         return order
 
     def _sell_existing(
-        self, symbol: str, shares: int, fill_price: Decimal
+        self,
+        date: np.datetime64,
+        symbol: str,
+        shares: int,
+        fill_price: Decimal,
     ) -> _OrderResult:
         pnl = Decimal()
         if symbol not in self.long_positions:
@@ -429,11 +531,25 @@ class Portfolio:
             entry = pos.entries[0]
             if rem_shares >= entry.shares:
                 order_amount = entry.shares * fill_price
-                pnl += order_amount - (entry.shares * entry.price)
+                entry_amount = entry.shares * entry.price
+                entry_pnl = order_amount - entry_amount
+                pnl += entry_pnl
                 self.cash += order_amount
                 rem_shares -= entry.shares
                 pos.shares -= entry.shares
                 pos.entries.popleft()
+                self._add_trade(
+                    type=entry.type,
+                    symbol=symbol,
+                    entry_date=entry.date,
+                    exit_date=date,
+                    shares=entry.shares,
+                    pnl=entry_pnl,
+                    pnl_pct=((fill_price / entry.price) - 1) * 100,
+                    cumulative_pnl=self.pnl + pnl,
+                    bars=entry.bars,
+                    pnl_per_bar=entry_pnl / entry.bars,
+                )
             else:
                 order_amount = rem_shares * fill_price
                 pnl += order_amount - (rem_shares * entry.price)
@@ -559,3 +675,12 @@ class Portfolio:
                 unrealized_pnl=total_pnl,
             )
         )
+
+    def incr_bars(self):
+        """Increments the number of bars held of each trade entry."""
+        for pos in self.long_positions.values():
+            for entry in pos.entries:
+                entry.bars += 1
+        for pos in self.short_positions.values():
+            for entry in pos.entries:
+                entry.bars += 1

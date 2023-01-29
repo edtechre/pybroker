@@ -602,12 +602,20 @@ class EvalMetrics:
         max_drawdown_pct: Maximum drawdown, measured in percentage.
         win_rate: Win rate of trades.
         loss_rate: Loss rate of trades.
+        avg_pnl: Average profit and loss (PnL) per trade, measured in cash.
+        avg_pnl_pct: Average profit and loss (PnL) per trade, measured in
+            percentage.
+        avg_trade_bars: The average number of bars per trade.
         avg_profit: Average profit per trade, measured in cash.
         avg_profit_pct: Average profit per trade, measured in percentage.
+        avg_winning_trade_bars: The average number of bars per winning trade.
         avg_loss: Average loss per trade, measured in cash.
         avg_loss_pct: Average loss per trade, measured in percentage.
+        avg_losing_trade_bars: The average number of bars per losing trade.
         largest_win: Largest profit of a trade, measured in cash.
+        largest_win_bars: The number of bars in the largest winning trade.
         largest_loss: Largest loss of a trade, measured in cash.
+        largest_loss_bars: The number of bars in the largest losing trade.
         max_wins: Maximum number of consecutive winning trades.
         max_losses: Maximum number of consecutive losing trades.
         sharpe: `Sharpe Ratio <https://en.wikipedia.org/wiki/Sharpe_ratio>`_,
@@ -631,12 +639,19 @@ class EvalMetrics:
     max_drawdown_pct: float = field(default=0)
     win_rate: float = field(default=0)
     loss_rate: float = field(default=0)
+    avg_pnl: float = field(default=0)
+    avg_pnl_pct: float = field(default=0)
+    avg_trade_bars: float = field(default=0)
     avg_profit: float = field(default=0)
     avg_profit_pct: float = field(default=0)
+    avg_winning_trade_bars: float = field(default=0)
     avg_loss: float = field(default=0)
     avg_loss_pct: float = field(default=0)
+    avg_losing_trade_bars: float = field(default=0)
     largest_win: float = field(default=0)
+    largest_win_bars: int = field(default=0)
     largest_loss: float = field(default=0)
+    largest_loss_bars: int = field(default=0)
     max_wins: int = field(default=0)
     max_losses: int = field(default=0)
     sharpe: float = field(default=0)
@@ -681,7 +696,7 @@ class EvaluateMixin:
     def evaluate(
         self,
         portfolio_df: pd.DataFrame,
-        orders_df: pd.DataFrame,
+        trades_df: pd.DataFrame,
         calc_bootstrap: bool,
         bootstrap_sample_size: int,
         bootstrap_samples: int,
@@ -691,8 +706,7 @@ class EvaluateMixin:
         Args:
             portfolio_df: :class:`pandas.DataFrame` of portfolio market values
                 per bar.
-            orders_df: :class:`pandas.DataFrame`` of profits and losses (PnLs)
-                per order.
+            trades_df: :class:`pandas.DataFrame` of trades.
             calc_bootstrap: ``True`` to calculate randomized bootstrap metrics.
             bootstrap_sample_size: Size of each random bootstrap sample.
             bootstrap_samples: Number of random bootstrap samples to use.
@@ -709,14 +723,30 @@ class EvaluateMixin:
             or not len(bar_changes)
         ):
             return EvalResult(EvalMetrics(), None)
-        pnls = orders_df["pnl"].to_numpy()
-        pnl_pcts = orders_df["pnl %"].to_numpy()
+        pnls = trades_df["pnl"].to_numpy()
+        pnl_pcts = trades_df["pnl_pct"].to_numpy()
+        bars = trades_df["bars"].to_numpy()
+        winning_bars = trades_df[trades_df["pnl"] > 0]["bars"].to_numpy()
+        losing_bars = trades_df[trades_df["pnl"] < 0]["bars"].to_numpy()
+        largest_win = trades_df[trades_df["pnl"] == trades_df["pnl"].max()]
+        largest_win_bars = (
+            0 if largest_win.empty else largest_win["bars"].values[0]
+        )
+        largest_loss = trades_df[trades_df["pnl"] == trades_df["pnl"].min()]
+        largest_loss_bars = (
+            0 if largest_loss.empty else largest_loss["bars"].values[0]
+        )
         metrics = self._calc_eval_metrics(
             market_values,
             bar_changes,
             bar_returns,
             pnls,
             pnl_pcts,
+            bars=bars,
+            winning_bars=winning_bars,
+            losing_bars=losing_bars,
+            largest_win_num_bars=largest_win_bars,
+            largest_loss_num_bars=largest_loss_bars,
         )
         logger = StaticScope.instance().logger
         if not calc_bootstrap:
@@ -757,6 +787,11 @@ class EvaluateMixin:
         bar_returns: NDArray[np.float_],
         pnls: NDArray[np.float_],
         pnl_pcts: NDArray[np.float_],
+        bars: NDArray[np.int_],
+        winning_bars: NDArray[np.int_],
+        losing_bars: NDArray[np.int_],
+        largest_win_num_bars: int,
+        largest_loss_num_bars: int,
     ) -> EvalMetrics:
         max_dd = max_drawdown(bar_changes)
         max_dd_pct = max_drawdown_percent(bar_returns)
@@ -770,10 +805,15 @@ class EvaluateMixin:
         largest_loss = 0.0
         win_rate = 0.0
         loss_rate = 0.0
+        avg_pnl = 0.0
+        avg_pnl_pct = 0.0
+        avg_trade_bars = 0.0
         avg_profit = 0.0
         avg_loss = 0.0
         avg_profit_pct = 0.0
         avg_loss_pct = 0.0
+        avg_winning_trade_bars = 0.0
+        avg_losing_trade_bars = 0.0
         total_profit = 0.0
         total_loss = 0.0
         max_wins = 0
@@ -785,6 +825,11 @@ class EvaluateMixin:
             avg_profit_pct, avg_loss_pct = avg_profit_loss(pnl_pcts)
             total_profit, total_loss = total_profit_loss(pnls)
             max_wins, max_losses = max_wins_losses(pnls)
+            avg_pnl = float(np.mean(pnls))
+            avg_pnl_pct = float(np.mean(pnl_pcts))
+            avg_trade_bars = float(np.mean(bars))
+            avg_winning_trade_bars = float(np.mean(winning_bars))
+            avg_losing_trade_bars = float(np.mean(losing_bars))
         return EvalMetrics(
             trade_count=len(pnls),
             initial_value=market_values[0],
@@ -792,15 +837,22 @@ class EvaluateMixin:
             max_drawdown=max_dd,
             max_drawdown_pct=max_dd_pct,
             largest_win=largest_win,
+            largest_win_bars=largest_win_num_bars,
             largest_loss=largest_loss,
+            largest_loss_bars=largest_loss_num_bars,
             max_wins=max_wins,
             max_losses=max_losses,
             win_rate=win_rate,
             loss_rate=loss_rate,
+            avg_pnl=avg_pnl,
+            avg_pnl_pct=avg_pnl_pct,
+            avg_trade_bars=avg_trade_bars,
             avg_profit=avg_profit,
             avg_profit_pct=avg_profit_pct,
+            avg_winning_trade_bars=avg_winning_trade_bars,
             avg_loss=avg_loss,
             avg_loss_pct=avg_loss_pct,
+            avg_losing_trade_bars=avg_losing_trade_bars,
             total_profit=total_profit,
             total_loss=total_loss,
             sharpe=sharpe,

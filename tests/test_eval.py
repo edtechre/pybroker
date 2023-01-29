@@ -78,9 +78,9 @@ def portfolio_df():
 
 
 @pytest.fixture()
-def orders_df():
+def trades_df():
     return joblib.load(
-        os.path.join(os.path.dirname(__file__), "testdata/orders_df.joblib")
+        os.path.join(os.path.dirname(__file__), "testdata/trades_df.joblib")
     )
 
 
@@ -403,13 +403,13 @@ class TestEvaluateMixin:
         bootstrap_sample_size,
         bootstrap_samples,
         portfolio_df,
-        orders_df,
+        trades_df,
         calc_bootstrap,
     ):
         mixin = EvaluateMixin()
         result = mixin.evaluate(
             portfolio_df,
-            orders_df,
+            trades_df,
             calc_bootstrap,
             bootstrap_sample_size=bootstrap_sample_size,
             bootstrap_samples=bootstrap_samples,
@@ -431,12 +431,42 @@ class TestEvaluateMixin:
         assert dd.columns.tolist() == ["amount", "percent"]
         conf = dd.index.get_level_values(0).tolist()
         assert conf == ["99.9%", "99%", "95%", "90%"]
+        metrics = result.metrics
+        assert metrics.initial_value == 500000
+        assert metrics.end_value == 693111.87
+        assert metrics.total_profit == 403511.07999999996
+        assert metrics.total_loss == -237770.88
+        assert metrics.max_drawdown == -56721.59999999998
+        assert metrics.max_drawdown_pct == -7.908428778116649
+        assert metrics.win_rate == 0.5257731958762887
+        assert metrics.loss_rate == 0.4742268041237113
+        assert metrics.avg_pnl == 427.1654639175258
+        assert metrics.avg_pnl_pct == 0.279639175257732
+        assert metrics.avg_trade_bars == 2.4149484536082473
+        assert metrics.avg_profit == 1977.9954901960782
+        assert metrics.avg_profit_pct == 3.1687745098039217
+        assert metrics.avg_winning_trade_bars == 2.465686274509804
+        assert metrics.avg_loss == -1292.233043478261
+        assert metrics.avg_loss_pct == -2.9235326086956523
+        assert metrics.avg_losing_trade_bars == 2.358695652173913
+        assert metrics.largest_win == 21069.63
+        assert metrics.largest_win_bars == 3
+        assert metrics.largest_loss == -11487.43
+        assert metrics.largest_loss_bars == 3
+        assert metrics.max_wins == 7
+        assert metrics.max_losses == 7
+        assert metrics.sharpe == 0.01710828175162464
+        assert metrics.profit_factor == 1.0759385033768167
+        assert metrics.ulcer_index == 1.898347959437099
+        assert metrics.upi == 0.01844528848501509
+        assert metrics.equity_r2 == 0.8979045919638454
+        assert metrics.std_error == 69646.36129687089
 
-    def test_evaluate_when_portfolio_empty(self, orders_df, calc_bootstrap):
+    def test_evaluate_when_portfolio_empty(self, trades_df, calc_bootstrap):
         mixin = EvaluateMixin()
         result = mixin.evaluate(
             pd.DataFrame(columns=["market_value"]),
-            orders_df,
+            trades_df,
             calc_bootstrap,
             bootstrap_sample_size=10,
             bootstrap_samples=100,
@@ -447,12 +477,12 @@ class TestEvaluateMixin:
         assert result.bootstrap is None
 
     def test_evaluate_when_single_market_value(
-        self, orders_df, calc_bootstrap
+        self, trades_df, calc_bootstrap
     ):
         mixin = EvaluateMixin()
         result = mixin.evaluate(
             pd.DataFrame([[1000]], columns=["market_value"]),
-            orders_df,
+            trades_df,
             calc_bootstrap,
             bootstrap_sample_size=10,
             bootstrap_samples=100,
@@ -462,11 +492,11 @@ class TestEvaluateMixin:
             assert getattr(result.metrics, field) == 0
         assert result.bootstrap is None
 
-    def test_evaluate_when_orders_empty(self, portfolio_df, calc_bootstrap):
+    def test_evaluate_when_trades_empty(self, portfolio_df, calc_bootstrap):
         mixin = EvaluateMixin()
         result = mixin.evaluate(
             portfolio_df,
-            pd.DataFrame(columns=["pnl", "pnl %"]),
+            pd.DataFrame(columns=["pnl", "pnl_pct", "bars"]),
             calc_bootstrap,
             bootstrap_sample_size=10,
             bootstrap_samples=100,
