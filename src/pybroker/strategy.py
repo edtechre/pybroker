@@ -1385,14 +1385,6 @@ class Strategy(
         orders_df["shares"] = orders_df["shares"].astype(int)
         for col in ("limit_price", "fill_price", "pnl"):
             orders_df[col] = quantize(orders_df, col)
-        orders_df["pnl_pct"] = (
-            orders_df["fill_price"]
-            / (
-                orders_df["fill_price"]
-                - orders_df["pnl"] / orders_df["shares"]
-            )
-            - 1
-        ) * 100
         trades_df = pd.DataFrame.from_records(
             trades, columns=Trade._fields, index="id"
         )

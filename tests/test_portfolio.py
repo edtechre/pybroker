@@ -39,7 +39,14 @@ DATE_2 = np.datetime64("2020-02-03")
 
 
 def assert_order(
-    order, date, symbol, type, limit_price, fill_price, shares, pnl
+    order,
+    date,
+    symbol,
+    type,
+    limit_price,
+    fill_price,
+    shares,
+    pnl,
 ):
     assert order.date == date
     assert order.symbol == symbol
