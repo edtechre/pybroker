@@ -567,7 +567,7 @@ def r_squared(values: NDArray[np.float_]) -> float:
         ssto = np.sum((values - y) ** 2)
         if ssto == 0:
             return 0
-        return 1 - ssr / ssto
+        return ssr / ssto
     except Exception:
         return 0
 
