@@ -423,7 +423,21 @@ def test_buy_when_existing_short_and_not_enough_cash():
         price=5,
         type="short",
     )
-    assert not portfolio.trades
+    assert len(portfolio.trades) == 1
+    expected_return_pct = (5 / 200 - 1) * 100
+    assert_trade(
+        trade=portfolio.trades[0],
+        type="short",
+        symbol=SYMBOL_1,
+        entry_date=DATE_1,
+        exit_date=DATE_2,
+        shares=expected_shares,
+        pnl=expected_pnl,
+        return_pct=expected_return_pct,
+        cumulative_pnl=expected_pnl,
+        bars=1,
+        pnl_per_bar=expected_pnl,
+    )
 
 
 def test_buy_when_negative_cash():
@@ -675,7 +689,21 @@ def test_sell_when_partial_shares():
         price=FILL_PRICE_1,
         type="long",
     )
-    assert not portfolio.trades
+    assert len(portfolio.trades) == 1
+    expected_return_pct = (FILL_PRICE_3 / FILL_PRICE_1 - 1) * 100
+    assert_trade(
+        trade=portfolio.trades[0],
+        type="long",
+        symbol=SYMBOL_1,
+        entry_date=DATE_1,
+        exit_date=DATE_2,
+        shares=SHARES_1,
+        pnl=expected_pnl,
+        return_pct=expected_return_pct,
+        cumulative_pnl=expected_pnl,
+        bars=1,
+        pnl_per_bar=expected_pnl,
+    )
 
 
 def test_sell_when_multiple_entries():
@@ -683,10 +711,10 @@ def test_sell_when_multiple_entries():
     buy_order_1 = portfolio.buy(
         DATE_1, SYMBOL_1, SHARES_1, FILL_PRICE_1, LIMIT_PRICE_1
     )
-    portfolio.incr_bars()
     buy_order_2 = portfolio.buy(
-        DATE_2, SYMBOL_1, SHARES_1, FILL_PRICE_1, LIMIT_PRICE_1
+        DATE_1, SYMBOL_1, SHARES_1, FILL_PRICE_1, LIMIT_PRICE_1
     )
+    portfolio.incr_bars()
     sell_order = portfolio.sell(
         DATE_2, SYMBOL_1, SHARES_2, FILL_PRICE_3, LIMIT_PRICE_3
     )
@@ -723,14 +751,14 @@ def test_sell_when_multiple_entries():
     entry = pos.entries[0]
     assert_entry(
         entry=entry,
-        date=DATE_2,
+        date=DATE_1,
         symbol=SYMBOL_1,
         shares=expected_shares,
         price=FILL_PRICE_1,
         type="long",
     )
-    assert len(portfolio.trades) == 1
-    expected_trade_pnl = (FILL_PRICE_3 - FILL_PRICE_1) * SHARES_1
+    assert len(portfolio.trades) == 2
+    expected_trade_pnl_1 = (FILL_PRICE_3 - FILL_PRICE_1) * SHARES_1
     expected_return_pct = (FILL_PRICE_3 / FILL_PRICE_1 - 1) * 100
     assert_trade(
         trade=portfolio.trades[0],
@@ -739,11 +767,27 @@ def test_sell_when_multiple_entries():
         entry_date=DATE_1,
         exit_date=DATE_2,
         shares=SHARES_1,
-        pnl=expected_trade_pnl,
+        pnl=expected_trade_pnl_1,
         return_pct=expected_return_pct,
-        cumulative_pnl=expected_trade_pnl,
+        cumulative_pnl=expected_trade_pnl_1,
         bars=1,
-        pnl_per_bar=expected_trade_pnl,
+        pnl_per_bar=expected_trade_pnl_1,
+    )
+    expected_trade_pnl_2 = (FILL_PRICE_3 - FILL_PRICE_1) * (
+        SHARES_2 - SHARES_1
+    )
+    assert_trade(
+        trade=portfolio.trades[1],
+        type="long",
+        symbol=SYMBOL_1,
+        entry_date=DATE_1,
+        exit_date=DATE_2,
+        shares=SHARES_2 - SHARES_1,
+        pnl=expected_trade_pnl_2,
+        return_pct=expected_return_pct,
+        cumulative_pnl=expected_trade_pnl_1 + expected_trade_pnl_2,
+        bars=1,
+        pnl_per_bar=expected_trade_pnl_2,
     )
 
 
@@ -1187,7 +1231,21 @@ def test_cover_when_partial_shares():
         price=FILL_PRICE_3,
         type="short",
     )
-    assert not portfolio.trades
+    assert len(portfolio.trades) == 1
+    expected_return_pct = (FILL_PRICE_3 / FILL_PRICE_1 - 1) * 100
+    assert_trade(
+        trade=portfolio.trades[0],
+        type="short",
+        symbol=SYMBOL_1,
+        entry_date=DATE_1,
+        exit_date=DATE_2,
+        shares=SHARES_1,
+        pnl=expected_pnl,
+        return_pct=expected_return_pct,
+        cumulative_pnl=expected_pnl,
+        bars=1,
+        pnl_per_bar=expected_pnl,
+    )
 
 
 def test_cover_when_multiple_entries():
@@ -1195,10 +1253,10 @@ def test_cover_when_multiple_entries():
     sell_order_1 = portfolio.sell(
         DATE_1, SYMBOL_1, SHARES_1, FILL_PRICE_3, LIMIT_PRICE_3
     )
-    portfolio.incr_bars()
     sell_order_2 = portfolio.sell(
-        DATE_2, SYMBOL_1, SHARES_1, FILL_PRICE_3, LIMIT_PRICE_3
+        DATE_1, SYMBOL_1, SHARES_1, FILL_PRICE_3, LIMIT_PRICE_3
     )
+    portfolio.incr_bars()
     buy_order = portfolio.buy(
         DATE_2, SYMBOL_1, SHARES_2, FILL_PRICE_1, LIMIT_PRICE_1
     )
@@ -1235,14 +1293,14 @@ def test_cover_when_multiple_entries():
     entry = pos.entries[0]
     assert_entry(
         entry=entry,
-        date=DATE_2,
+        date=DATE_1,
         symbol=SYMBOL_1,
         shares=expected_shares,
         price=FILL_PRICE_3,
         type="short",
     )
-    assert len(portfolio.trades) == 1
-    expected_trade_pnl = (FILL_PRICE_3 - FILL_PRICE_1) * SHARES_1
+    assert len(portfolio.trades) == 2
+    expected_trade_pnl_1 = (FILL_PRICE_3 - FILL_PRICE_1) * SHARES_1
     expected_return_pct = (FILL_PRICE_3 / FILL_PRICE_1 - 1) * 100
     assert_trade(
         trade=portfolio.trades[0],
@@ -1251,11 +1309,27 @@ def test_cover_when_multiple_entries():
         entry_date=DATE_1,
         exit_date=DATE_2,
         shares=SHARES_1,
-        pnl=expected_trade_pnl,
+        pnl=expected_trade_pnl_1,
         return_pct=expected_return_pct,
-        cumulative_pnl=expected_trade_pnl,
+        cumulative_pnl=expected_trade_pnl_1,
         bars=1,
-        pnl_per_bar=expected_trade_pnl,
+        pnl_per_bar=expected_trade_pnl_1,
+    )
+    expected_trade_pnl_2 = (FILL_PRICE_3 - FILL_PRICE_1) * (
+        SHARES_2 - SHARES_1
+    )
+    assert_trade(
+        trade=portfolio.trades[1],
+        type="short",
+        symbol=SYMBOL_1,
+        entry_date=DATE_1,
+        exit_date=DATE_2,
+        shares=SHARES_2 - SHARES_1,
+        pnl=expected_trade_pnl_2,
+        return_pct=expected_return_pct,
+        cumulative_pnl=expected_trade_pnl_1 + expected_trade_pnl_2,
+        bars=1,
+        pnl_per_bar=expected_trade_pnl_2,
     )
 
 

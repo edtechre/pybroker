@@ -397,6 +397,9 @@ class Portfolio:
                 rem_shares -= entry.shares
                 pos.shares -= entry.shares
                 pos.entries.popleft()
+                pnl_per_bar = (
+                    entry_pnl if not entry.bars else entry_pnl / entry.bars
+                )
                 self._add_trade(
                     type=entry.type,
                     symbol=symbol,
@@ -407,15 +410,30 @@ class Portfolio:
                     return_pct=((entry.price / fill_price) - 1) * 100,
                     cumulative_pnl=self.pnl + pnl,
                     bars=entry.bars,
-                    pnl_per_bar=entry_pnl / entry.bars,
+                    pnl_per_bar=pnl_per_bar,
                 )
             else:
                 order_amount = rem_shares * fill_price
                 entry_pnl = (rem_shares * entry.price) - order_amount
-                pnl += (rem_shares * entry.price) - order_amount
+                pnl += entry_pnl
                 self.cash -= order_amount
                 entry.shares -= rem_shares
                 pos.shares -= rem_shares
+                pnl_per_bar = (
+                    entry_pnl if not entry.bars else entry_pnl / entry.bars
+                )
+                self._add_trade(
+                    type=entry.type,
+                    symbol=symbol,
+                    entry_date=entry.date,
+                    exit_date=date,
+                    shares=rem_shares,
+                    pnl=entry_pnl,
+                    return_pct=((entry.price / fill_price) - 1) * 100,
+                    cumulative_pnl=self.pnl + pnl,
+                    bars=entry.bars,
+                    pnl_per_bar=pnl_per_bar,
+                )
                 rem_shares = 0
                 break
         self.pnl += pnl
@@ -532,6 +550,9 @@ class Portfolio:
                 rem_shares -= entry.shares
                 pos.shares -= entry.shares
                 pos.entries.popleft()
+                pnl_per_bar = (
+                    entry_pnl if not entry.bars else entry_pnl / entry.bars
+                )
                 self._add_trade(
                     type=entry.type,
                     symbol=symbol,
@@ -542,14 +563,30 @@ class Portfolio:
                     return_pct=((fill_price / entry.price) - 1) * 100,
                     cumulative_pnl=self.pnl + pnl,
                     bars=entry.bars,
-                    pnl_per_bar=entry_pnl / entry.bars,
+                    pnl_per_bar=pnl_per_bar,
                 )
             else:
                 order_amount = rem_shares * fill_price
-                pnl += order_amount - (rem_shares * entry.price)
+                entry_pnl = order_amount - (rem_shares * entry.price)
+                pnl += entry_pnl
                 self.cash += order_amount
                 entry.shares -= rem_shares
                 pos.shares -= rem_shares
+                pnl_per_bar = (
+                    entry_pnl if not entry.bars else entry_pnl / entry.bars
+                )
+                self._add_trade(
+                    type=entry.type,
+                    symbol=symbol,
+                    entry_date=entry.date,
+                    exit_date=date,
+                    shares=rem_shares,
+                    pnl=entry_pnl,
+                    return_pct=((fill_price / entry.price) - 1) * 100,
+                    cumulative_pnl=self.pnl + pnl,
+                    bars=entry.bars,
+                    pnl_per_bar=pnl_per_bar,
+                )
                 rem_shares = 0
                 break
         self.pnl += pnl
