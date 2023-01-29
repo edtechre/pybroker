@@ -183,7 +183,6 @@ class PositionBar(NamedTuple):
 class _OrderResult(NamedTuple):
     filled_shares: int
     rem_shares: int
-    pnl: Decimal
 
 
 def _calculate_pnl(
@@ -382,10 +381,10 @@ class Portfolio:
     ) -> _OrderResult:
         pnl = Decimal()
         if symbol not in self.short_positions:
-            return _OrderResult(0, shares, pnl)
+            return _OrderResult(0, shares)
         rem_shares = int(min(shares, math.floor(self.cash / fill_price)))
         if rem_shares <= 0:
-            return _OrderResult(0, shares, pnl)
+            return _OrderResult(0, shares)
         pos = self.short_positions[symbol]
         while pos.entries:
             entry = pos.entries[0]
@@ -424,7 +423,7 @@ class Portfolio:
             del self.short_positions[symbol]
             if symbol not in self.long_positions:
                 self.symbols.remove(symbol)
-        return _OrderResult(shares - rem_shares, rem_shares, pnl)
+        return _OrderResult(shares - rem_shares, rem_shares)
 
     def _buy(
         self,
@@ -519,7 +518,7 @@ class Portfolio:
     ) -> _OrderResult:
         pnl = Decimal()
         if symbol not in self.long_positions:
-            return _OrderResult(0, shares, pnl)
+            return _OrderResult(0, shares)
         rem_shares = shares
         pos = self.long_positions[symbol]
         while pos.entries:
@@ -558,7 +557,7 @@ class Portfolio:
             del self.long_positions[symbol]
             if symbol not in self.short_positions:
                 self.symbols.remove(symbol)
-        return _OrderResult(shares - rem_shares, rem_shares, pnl)
+        return _OrderResult(shares - rem_shares, rem_shares)
 
     def _short(
         self,
