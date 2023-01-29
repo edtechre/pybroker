@@ -829,7 +829,7 @@ class EvaluateMixin:
             avg_profit_pct, avg_loss_pct = avg_profit_loss(pnl_pcts)
             total_profit, total_loss = total_profit_loss(pnls)
             max_wins, max_losses = max_wins_losses(pnls)
-            total_pnl = np.sum(pnls)
+            total_pnl = float(np.sum(pnls))
             # Check length to avoid "Mean of empty slice" warning.
             if len(pnls):
                 avg_pnl = float(np.mean(pnls))
