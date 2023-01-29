@@ -73,7 +73,6 @@ def orders(dates, symbols):
             limit_price=None,
             fill_price=10,
             shares=200,
-            pnl=10,
         ),
         Order(
             id=2,
@@ -83,7 +82,6 @@ def orders(dates, symbols):
             limit_price=100,
             fill_price=101.1,
             shares=100,
-            pnl=-30,
         ),
     )
 

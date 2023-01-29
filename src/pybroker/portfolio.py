@@ -120,7 +120,6 @@ class Order(NamedTuple):
         limit_price: Limit price that was used for the order.
         fill_price: Price that the order was filled at.
         shares: Number of shares bought or sold.
-        pnl: Realized profit and loss (PnL).
     """
 
     id: int
@@ -130,7 +129,6 @@ class Order(NamedTuple):
     limit_price: Optional[Decimal]
     fill_price: Decimal
     shares: int
-    pnl: Decimal
 
 
 class PortfolioBar(NamedTuple):
@@ -285,7 +283,6 @@ class Portfolio:
         limit_price: Optional[Decimal],
         fill_price: Decimal,
         shares: int,
-        pnl: Decimal,
     ) -> Order:
         self._order_id += 1
         order = Order(
@@ -296,7 +293,6 @@ class Portfolio:
             limit_price=limit_price,
             fill_price=fill_price,
             shares=shares,
-            pnl=pnl,
         )
         self.orders.append(order)
         return order
@@ -374,7 +370,6 @@ class Portfolio:
             limit_price=limit_price,
             fill_price=fill_price,
             shares=covered.filled_shares + bought_shares,
-            pnl=covered.pnl,
         )
         return order
 
@@ -512,7 +507,6 @@ class Portfolio:
             limit_price=limit_price,
             fill_price=fill_price,
             shares=sold.filled_shares + short_shares,
-            pnl=sold.pnl,
         )
         return order
 

@@ -350,7 +350,6 @@ class TestBacktestMixin:
                 shares=shares,
                 fill_price=fill_price,
                 limit_price=limit_price,
-                pnl=Decimal(),
             )
 
         mock_portfolio.buy = MagicMock(side_effect=buy_fn)
@@ -420,7 +419,6 @@ class TestBacktestMixin:
                 shares=shares,
                 fill_price=fill_price,
                 limit_price=limit_price,
-                pnl=Decimal(),
             )
 
         mock_portfolio.sell = MagicMock(side_effect=sell_fn)

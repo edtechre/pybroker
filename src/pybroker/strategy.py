@@ -1383,7 +1383,7 @@ class Strategy(
             orders, columns=Order._fields, index="id"
         )
         orders_df["shares"] = orders_df["shares"].astype(int)
-        for col in ("limit_price", "fill_price", "pnl"):
+        for col in ("limit_price", "fill_price"):
             orders_df[col] = quantize(orders_df, col)
         trades_df = pd.DataFrame.from_records(
             trades, columns=Trade._fields, index="id"
