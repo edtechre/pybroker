@@ -356,6 +356,7 @@ def test_buy_when_existing_short_position():
         type="long",
     )
     assert len(portfolio.trades) == 1
+    expected_return_pct = (FILL_PRICE_3 / FILL_PRICE_1 - 1) * 100
     assert_trade(
         trade=portfolio.trades[0],
         type="short",
@@ -364,7 +365,7 @@ def test_buy_when_existing_short_position():
         exit_date=DATE_2,
         shares=SHARES_1,
         pnl=expected_pnl,
-        return_pct=Decimal("2.210221022102210221022102200"),
+        return_pct=expected_return_pct,
         cumulative_pnl=expected_pnl,
         bars=1,
         pnl_per_bar=expected_pnl,
@@ -564,6 +565,7 @@ def test_sell_when_all_shares(fill_price, limit_price):
         long_positions_len=0,
     )
     assert len(portfolio.trades) == 1
+    expected_return_pct = (fill_price / FILL_PRICE_1 - 1) * 100
     assert_trade(
         trade=portfolio.trades[0],
         type="long",
@@ -572,7 +574,7 @@ def test_sell_when_all_shares(fill_price, limit_price):
         exit_date=DATE_2,
         shares=SHARES_1,
         pnl=expected_pnl,
-        return_pct=Decimal("1.010101010101010101010101000"),
+        return_pct=expected_return_pct,
         cumulative_pnl=expected_pnl,
         bars=1,
         pnl_per_bar=expected_pnl,
@@ -610,6 +612,7 @@ def test_sell_when_all_shares_and_multiple_bars():
         long_positions_len=0,
     )
     assert len(portfolio.trades) == 1
+    expected_return_pct = (FILL_PRICE_3 / FILL_PRICE_1 - 1) * 100
     assert_trade(
         trade=portfolio.trades[0],
         type="long",
@@ -618,7 +621,7 @@ def test_sell_when_all_shares_and_multiple_bars():
         exit_date=DATE_2,
         shares=SHARES_1,
         pnl=expected_pnl,
-        return_pct=Decimal("2.210221022102210221022102200"),
+        return_pct=expected_return_pct,
         cumulative_pnl=expected_pnl,
         bars=2,
         pnl_per_bar=expected_pnl / 2,
@@ -728,6 +731,7 @@ def test_sell_when_multiple_entries():
     )
     assert len(portfolio.trades) == 1
     expected_trade_pnl = (FILL_PRICE_3 - FILL_PRICE_1) * SHARES_1
+    expected_return_pct = (FILL_PRICE_3 / FILL_PRICE_1 - 1) * 100
     assert_trade(
         trade=portfolio.trades[0],
         type="long",
@@ -736,7 +740,7 @@ def test_sell_when_multiple_entries():
         exit_date=DATE_2,
         shares=SHARES_1,
         pnl=expected_trade_pnl,
-        return_pct=Decimal("2.210221022102210221022102200"),
+        return_pct=expected_return_pct,
         cumulative_pnl=expected_trade_pnl,
         bars=1,
         pnl_per_bar=expected_trade_pnl,
@@ -1008,6 +1012,7 @@ def test_short_when_existing_long_position():
         type="short",
     )
     assert len(portfolio.trades) == 1
+    expected_return_pct = (FILL_PRICE_3 / FILL_PRICE_1 - 1) * 100
     assert_trade(
         trade=portfolio.trades[0],
         type="long",
@@ -1016,7 +1021,7 @@ def test_short_when_existing_long_position():
         exit_date=DATE_2,
         shares=SHARES_1,
         pnl=expected_pnl,
-        return_pct=Decimal("2.210221022102210221022102200"),
+        return_pct=expected_return_pct,
         cumulative_pnl=expected_pnl,
         bars=1,
         pnl_per_bar=expected_pnl,
@@ -1119,6 +1124,7 @@ def test_cover_when_all_shares(fill_price, limit_price):
         long_positions_len=0,
     )
     assert len(portfolio.trades) == 1
+    expected_return_pct = (FILL_PRICE_3 / fill_price - 1) * 100
     assert_trade(
         trade=portfolio.trades[0],
         type="short",
@@ -1127,7 +1133,7 @@ def test_cover_when_all_shares(fill_price, limit_price):
         exit_date=DATE_2,
         shares=SHARES_1,
         pnl=expected_pnl,
-        return_pct=Decimal("2.200"),
+        return_pct=expected_return_pct,
         cumulative_pnl=expected_pnl,
         bars=1,
         pnl_per_bar=expected_pnl,
@@ -1237,6 +1243,7 @@ def test_cover_when_multiple_entries():
     )
     assert len(portfolio.trades) == 1
     expected_trade_pnl = (FILL_PRICE_3 - FILL_PRICE_1) * SHARES_1
+    expected_return_pct = (FILL_PRICE_3 / FILL_PRICE_1 - 1) * 100
     assert_trade(
         trade=portfolio.trades[0],
         type="short",
@@ -1245,7 +1252,7 @@ def test_cover_when_multiple_entries():
         exit_date=DATE_2,
         shares=SHARES_1,
         pnl=expected_trade_pnl,
-        return_pct=Decimal("2.210221022102210221022102200"),
+        return_pct=expected_return_pct,
         cumulative_pnl=expected_trade_pnl,
         bars=1,
         pnl_per_bar=expected_trade_pnl,
