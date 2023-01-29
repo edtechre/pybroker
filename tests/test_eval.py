@@ -432,8 +432,8 @@ class TestEvaluateMixin:
         conf = dd.index.get_level_values(0).tolist()
         assert conf == ["99.9%", "99%", "95%", "90%"]
         metrics = result.metrics
-        assert metrics.initial_equity == 500000
-        assert metrics.end_equity == 693933.2
+        assert metrics.initial_market_value == 500000
+        assert metrics.end_market_value == 693111.87
         assert metrics.total_pnl == 165740.2
         assert metrics.total_profit == 403511.07999999996
         assert metrics.total_loss == -237770.88
@@ -466,7 +466,7 @@ class TestEvaluateMixin:
     def test_evaluate_when_portfolio_empty(self, trades_df, calc_bootstrap):
         mixin = EvaluateMixin()
         result = mixin.evaluate(
-            pd.DataFrame(columns=["market_value", "equity"]),
+            pd.DataFrame(columns=["market_value"]),
             trades_df,
             calc_bootstrap,
             bootstrap_sample_size=10,
@@ -482,7 +482,7 @@ class TestEvaluateMixin:
     ):
         mixin = EvaluateMixin()
         result = mixin.evaluate(
-            pd.DataFrame([[1000, 1000]], columns=["market_value", "equity"]),
+            pd.DataFrame([[1000]], columns=["market_value"]),
             trades_df,
             calc_bootstrap,
             bootstrap_sample_size=10,
