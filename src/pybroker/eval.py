@@ -604,23 +604,22 @@ class EvalMetrics:
         avg_pnl: Average profit and loss (PnL) per trade, measured in cash.
         avg_pnl_pct: Average profit and loss (PnL) per trade, measured in
             percentage.
-        avg_trade_bars: The average number of bars per trade.
+        avg_trade_bars: Average number of bars per trade.
         avg_profit: Average profit per trade, measured in cash.
         avg_profit_pct: Average profit per trade, measured in percentage.
-        avg_winning_trade_bars: The average number of bars per winning trade.
+        avg_winning_trade_bars: Average number of bars per winning trade.
         avg_loss: Average loss per trade, measured in cash.
         avg_loss_pct: Average loss per trade, measured in percentage.
-        avg_losing_trade_bars: The average number of bars per losing trade.
+        avg_losing_trade_bars: Average number of bars per losing trade.
         largest_win: Largest profit of a trade, measured in cash.
-        largest_win_bars: The number of bars in the largest winning trade.
+        largest_win_bars: Number of bars in the largest winning trade.
         largest_loss: Largest loss of a trade, measured in cash.
-        largest_loss_bars: The number of bars in the largest losing trade.
+        largest_loss_bars: Number of bars in the largest losing trade.
         max_wins: Maximum number of consecutive winning trades.
         max_losses: Maximum number of consecutive losing trades.
         sharpe: `Sharpe Ratio <https://en.wikipedia.org/wiki/Sharpe_ratio>`_,
             computed per bar.
-        profit_factor: The ratio of gross profit to gross loss, computed per
-            bar.
+        profit_factor: Ratio of gross profit to gross loss, computed per bar.
         ulcer_index: `Ulcer Index
             <https://en.wikipedia.org/wiki/Ulcer_index>`_, computed per bar.
         upi: `Ulcer Performance Index

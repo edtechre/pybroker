@@ -39,6 +39,7 @@ class Entry:
         shares: Number of shares.
         price: Share price of the entry.
         type: Type of  :class:`.Position`, either ``long`` or ``short``.
+        bars: Current number of bars since entry.
     """
 
     id: int
@@ -89,10 +90,10 @@ class Trade(NamedTuple):
         shares: Number of shares.
         pnl: Profit and loss (PnL).
         pnl_pct: Profit and loss (PnL), measured in percentage.
-        cumulative_pnl: The cumulative profit and loss (PnL) of the strategy
-            after the trade.
-        bars: The number of bars the trade was held.
-        pnl_per_bar: The profit and loss (PnL) per bar held.
+        cumulative_pnl: Cumulative profit and loss (PnL) of the strategy after
+            the trade.
+        bars: Number of bars the trade was held.
+        pnl_per_bar: Profit and loss (PnL) per bar held.
     """
 
     id: int
