@@ -388,6 +388,7 @@ class Portfolio:
         pos = self.short_positions[symbol]
         while pos.entries:
             entry = pos.entries[0]
+            return_pct = ((entry.price / fill_price) - 1) * 100
             if rem_shares >= entry.shares:
                 order_amount = entry.shares * fill_price
                 entry_amount = entry.shares * entry.price
@@ -407,7 +408,7 @@ class Portfolio:
                     exit_date=date,
                     shares=entry.shares,
                     pnl=entry_pnl,
-                    return_pct=((entry.price / fill_price) - 1) * 100,
+                    return_pct=return_pct,
                     cumulative_pnl=self.pnl + pnl,
                     bars=entry.bars,
                     pnl_per_bar=pnl_per_bar,
@@ -429,7 +430,7 @@ class Portfolio:
                     exit_date=date,
                     shares=rem_shares,
                     pnl=entry_pnl,
-                    return_pct=((entry.price / fill_price) - 1) * 100,
+                    return_pct=return_pct,
                     cumulative_pnl=self.pnl + pnl,
                     bars=entry.bars,
                     pnl_per_bar=pnl_per_bar,
@@ -541,6 +542,7 @@ class Portfolio:
         pos = self.long_positions[symbol]
         while pos.entries:
             entry = pos.entries[0]
+            return_pct = ((fill_price / entry.price) - 1) * 100
             if rem_shares >= entry.shares:
                 order_amount = entry.shares * fill_price
                 entry_amount = entry.shares * entry.price
@@ -560,7 +562,7 @@ class Portfolio:
                     exit_date=date,
                     shares=entry.shares,
                     pnl=entry_pnl,
-                    return_pct=((fill_price / entry.price) - 1) * 100,
+                    return_pct=return_pct,
                     cumulative_pnl=self.pnl + pnl,
                     bars=entry.bars,
                     pnl_per_bar=pnl_per_bar,
@@ -582,7 +584,7 @@ class Portfolio:
                     exit_date=date,
                     shares=rem_shares,
                     pnl=entry_pnl,
-                    return_pct=((fill_price / entry.price) - 1) * 100,
+                    return_pct=return_pct,
                     cumulative_pnl=self.pnl + pnl,
                     bars=entry.bars,
                     pnl_per_bar=pnl_per_bar,
