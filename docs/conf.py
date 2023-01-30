@@ -1,5 +1,6 @@
 import os
 import sys
+
 sys.path.insert(0, os.path.abspath("../src/"))
 sys.path.insert(0, os.path.abspath("../docs/notebooks/"))
 
@@ -34,10 +35,10 @@ keep_warnings = False
 
 python_version = ".".join(map(str, sys.version_info[0:2]))
 intersphinx_mapping = {
-    'python': ("https://docs.python.org/" + python_version, None),
-    'numpy': ("https://numpy.org/doc/stable/", None),
-    'pandas': ("https://pandas.pydata.org/docs/", None),
-    'diskcache': ("https://grantjenks.com/docs/diskcache/", None),
+    "python": ("https://docs.python.org/" + python_version, None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
+    "diskcache": ("https://grantjenks.com/docs/diskcache/", None),
 }
 
 # -- Options for HTML output -------------------------------------------------
