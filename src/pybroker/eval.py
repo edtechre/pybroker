@@ -800,6 +800,7 @@ class EvaluateMixin:
         largest_loss_num_bars: int,
         fees: NDArray[np.float_],
     ) -> EvalMetrics:
+        total_fees = fees[-1] if len(fees) else 0
         max_dd = max_drawdown(bar_changes)
         max_dd_pct = max_drawdown_percent(bar_returns)
         sharpe = sharpe_ratio(bar_changes)
@@ -845,6 +846,9 @@ class EvaluateMixin:
                 avg_winning_trade_bars = float(np.mean(winning_bars))
             if len(losing_bars):
                 avg_losing_trade_bars = float(np.mean(losing_bars))
+        total_return_pct = (
+            (total_pnl + market_values[0]) / market_values[0] - 1
+        ) * 100
         return EvalMetrics(
             trade_count=len(pnls),
             initial_market_value=market_values[0],
@@ -871,11 +875,8 @@ class EvaluateMixin:
             total_profit=total_profit,
             total_loss=total_loss,
             total_pnl=total_pnl,
-            total_return_pct=(
-                (total_pnl + market_values[0]) / market_values[0] - 1
-            )
-            * 100,
-            total_fees=fees[-1] if len(fees) else 0,
+            total_return_pct=total_return_pct,
+            total_fees=total_fees,
             sharpe=sharpe,
             profit_factor=pf,
             equity_r2=r2,
