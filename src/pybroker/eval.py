@@ -599,7 +599,8 @@ class EvalMetrics:
         total_return_pct: Total realized return measured in percentage.
         total_profit: Total realized profit.
         total_loss: Total realized loss.
-        total_fees: Total brokerage fees.
+        total_fees: Total brokerage fees. See
+            :attr:`pybroker.config.StrategyConfig.fee_mode` for more info.
         max_drawdown: Maximum drawdown, measured in cash.
         max_drawdown_pct: Maximum drawdown, measured in percentage.
         win_rate: Win rate of trades.
