@@ -29,7 +29,7 @@ from .cache import (
     enable_indicator_cache,
     enable_model_cache,
 )
-from .common import BarData, DataCol, Day, PriceType
+from .common import BarData, DataCol, Day, FeeMode, PriceType
 from .context import ExecContext
 from .config import StrategyConfig
 from .data import Alpaca, YFinance
