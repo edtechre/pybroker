@@ -15,6 +15,7 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from .common import FeeMode
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -25,6 +26,9 @@ class StrategyConfig:
 
     Attributes:
         initial_cash: Starting cash of strategy.
+        fee_mode: Brokerage :class:`pybroker.common.FeeMode`, disabled when
+            ``None``. Defaults to ``None``.
+        fee_amount: Brokerage fee amount.
         max_long_positions: Maximum number of long positions that can be held
             at any time in :class:`pybroker.portfolio.Portfolio`. Unlimited
             when ``None``. Defaults to ``None``.
@@ -44,6 +48,8 @@ class StrategyConfig:
     """
 
     initial_cash: float = field(default=100_000)
+    fee_mode: Optional[FeeMode] = field(default=None)
+    fee_amount: float = field(default=0)
     max_long_positions: Optional[int] = field(default=None)
     max_short_positions: Optional[int] = field(default=None)
     buy_delay: int = field(default=1)

@@ -17,6 +17,7 @@ with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from collections import deque
 from decimal import Decimal
+from pybroker.common import FeeMode
 from pybroker.portfolio import Portfolio
 import numpy as np
 import pandas as pd
@@ -46,6 +47,7 @@ def assert_order(
     limit_price,
     fill_price,
     shares,
+    fees,
 ):
     assert order.date == date
     assert order.symbol == symbol
@@ -53,6 +55,7 @@ def assert_order(
     assert order.limit_price == limit_price
     assert order.fill_price == fill_price
     assert order.shares == shares
+    assert order.fees == fees
 
 
 def assert_trade(
@@ -126,6 +129,7 @@ def test_buy(fill_price, limit_price):
         limit_price=limit_price,
         fill_price=fill_price,
         shares=SHARES_1,
+        fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
@@ -167,6 +171,7 @@ def test_buy_when_partial_filled():
         limit_price=LIMIT_PRICE_1,
         fill_price=FILL_PRICE_1,
         shares=shares,
+        fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
@@ -211,6 +216,7 @@ def test_buy_when_existing_long_position():
         limit_price=LIMIT_PRICE_1,
         fill_price=FILL_PRICE_2,
         shares=SHARES_2,
+        fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
@@ -268,6 +274,7 @@ def test_buy_when_multiple_positions():
         limit_price=LIMIT_PRICE_2,
         fill_price=FILL_PRICE_2,
         shares=SHARES_2,
+        fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
@@ -328,6 +335,7 @@ def test_buy_when_existing_short_position():
         limit_price=LIMIT_PRICE_1,
         fill_price=FILL_PRICE_1,
         shares=SHARES_2,
+        fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
@@ -387,6 +395,7 @@ def test_buy_when_existing_short_and_not_enough_cash():
         limit_price=Decimal("4.9"),
         fill_price=5,
         shares=SHARES_1,
+        fees=0,
     )
     assert_order(
         order=buy_order,
@@ -396,6 +405,7 @@ def test_buy_when_existing_short_and_not_enough_cash():
         limit_price=201,
         fill_price=200,
         shares=SHARES_1,
+        fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
@@ -568,6 +578,7 @@ def test_sell_when_all_shares(fill_price, limit_price):
         limit_price=limit_price,
         fill_price=fill_price,
         shares=SHARES_1,
+        fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
@@ -615,6 +626,7 @@ def test_sell_when_all_shares_and_multiple_bars():
         limit_price=LIMIT_PRICE_3,
         fill_price=FILL_PRICE_3,
         shares=SHARES_1,
+        fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
@@ -642,6 +654,56 @@ def test_sell_when_all_shares_and_multiple_bars():
     )
 
 
+@pytest.mark.parametrize(
+    "fee_mode, expected_buy_fees, expected_sell_fees",
+    [
+        (
+            FeeMode.ORDER_PERCENT,
+            FILL_PRICE_1 * SHARES_1 * Decimal("0.01"),
+            FILL_PRICE_3 * SHARES_1 * Decimal("0.01"),
+        ),
+        (
+            FeeMode.PER_SHARE,
+            SHARES_1 * Decimal("0.01"),
+            SHARES_1 * Decimal("0.01"),
+        ),
+        (FeeMode.PER_ORDER, Decimal("0.01"), Decimal("0.01")),
+    ],
+)
+def test_buy_and_sell_when_fees(
+    fee_mode, expected_buy_fees, expected_sell_fees
+):
+    portfolio = Portfolio(CASH, fee_mode, 0.01)
+    buy_order = portfolio.buy(
+        DATE_1, SYMBOL_1, SHARES_1, FILL_PRICE_1, LIMIT_PRICE_1
+    )
+    portfolio.incr_bars()
+    sell_order = portfolio.sell(
+        DATE_2, SYMBOL_1, SHARES_1, FILL_PRICE_3, LIMIT_PRICE_3
+    )
+    assert_order(
+        order=buy_order,
+        date=DATE_1,
+        symbol=SYMBOL_1,
+        type="buy",
+        limit_price=LIMIT_PRICE_1,
+        fill_price=FILL_PRICE_1,
+        shares=SHARES_1,
+        fees=expected_buy_fees,
+    )
+    assert_order(
+        order=sell_order,
+        date=DATE_2,
+        symbol=SYMBOL_1,
+        type="sell",
+        limit_price=LIMIT_PRICE_3,
+        fill_price=FILL_PRICE_3,
+        shares=SHARES_1,
+        fees=expected_sell_fees,
+    )
+    assert portfolio.fees == expected_buy_fees + expected_sell_fees
+
+
 def test_sell_when_partial_shares():
     portfolio = Portfolio(CASH)
     buy_order = portfolio.buy(
@@ -662,6 +724,7 @@ def test_sell_when_partial_shares():
         limit_price=LIMIT_PRICE_3,
         fill_price=FILL_PRICE_3,
         shares=SHARES_1,
+        fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
@@ -730,6 +793,7 @@ def test_sell_when_multiple_entries():
         limit_price=LIMIT_PRICE_3,
         fill_price=FILL_PRICE_3,
         shares=SHARES_2,
+        fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
@@ -859,6 +923,7 @@ def test_short(fill_price, limit_price):
         limit_price=limit_price,
         fill_price=fill_price,
         shares=SHARES_1,
+        fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
@@ -903,6 +968,7 @@ def test_short_when_existing_short_position():
         limit_price=LIMIT_PRICE_3,
         fill_price=FILL_PRICE_4,
         shares=SHARES_2,
+        fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
@@ -960,6 +1026,7 @@ def test_short_when_multiple_positions():
         limit_price=LIMIT_PRICE_3,
         fill_price=FILL_PRICE_4,
         shares=SHARES_2,
+        fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
@@ -1028,6 +1095,7 @@ def test_short_when_existing_long_position():
         limit_price=LIMIT_PRICE_3,
         fill_price=FILL_PRICE_3,
         shares=SHARES_2,
+        fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
@@ -1157,6 +1225,7 @@ def test_cover_when_all_shares(fill_price, limit_price):
         limit_price=limit_price,
         fill_price=fill_price,
         shares=SHARES_1,
+        fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
@@ -1204,6 +1273,7 @@ def test_cover_when_partial_shares():
         limit_price=LIMIT_PRICE_1,
         fill_price=FILL_PRICE_1,
         shares=SHARES_1,
+        fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
@@ -1272,6 +1342,7 @@ def test_cover_when_multiple_entries():
         limit_price=LIMIT_PRICE_1,
         fill_price=FILL_PRICE_1,
         shares=SHARES_2,
+        fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
@@ -1347,6 +1418,7 @@ def test_cover_when_not_enough_cash():
         limit_price=Decimal("4.9"),
         fill_price=5,
         shares=SHARES_1,
+        fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
@@ -1479,3 +1551,4 @@ def test_capture_bar():
         bar.unrealized_pnl
         == pos_bar_1.unrealized_pnl + pos_bar_2.unrealized_pnl
     )
+    assert bar.fees == 0

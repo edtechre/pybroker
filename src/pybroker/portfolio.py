@@ -17,7 +17,7 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from .common import DataCol, to_decimal
+from .common import DataCol, FeeMode, to_decimal
 from .scope import StaticScope
 from collections import deque
 from dataclasses import dataclass, field
@@ -120,6 +120,7 @@ class Order(NamedTuple):
         limit_price: Limit price that was used for the order.
         fill_price: Price that the order was filled at.
         shares: Number of shares bought or sold.
+        fees: Brokerage fees for order.
     """
 
     id: int
@@ -129,6 +130,7 @@ class Order(NamedTuple):
     limit_price: Optional[Decimal]
     fill_price: Decimal
     shares: int
+    fees: Decimal
 
 
 class PortfolioBar(NamedTuple):
@@ -143,6 +145,7 @@ class PortfolioBar(NamedTuple):
         pnl: Realized profit and loss (PnL) of :class:`.Portfolio`.
         unrealized_pnl: Unrealized profit and loss (PnL) of
             :class:`.Portfolio`.
+        fees: Brokerage fees.
     """
 
     date: np.datetime64
@@ -152,6 +155,7 @@ class PortfolioBar(NamedTuple):
     market_value: Decimal
     pnl: Decimal
     unrealized_pnl: Decimal
+    fees: Decimal
 
 
 class PositionBar(NamedTuple):
@@ -209,6 +213,8 @@ class Portfolio:
 
     Args:
         cash: Starting cash balance.
+        fee_mode: Brokerage fee mode.
+        fee_amount: Brokerage fee amount.
         max_long_positions: Maximum number of long :class:`.Position`\ s that
             can be held at a time. If ``None``, then unlimited.
         max_short_positions: Maximum number of short :class:`.Position`\ s that
@@ -220,6 +226,7 @@ class Portfolio:
         market_value: Current market value. The market value is defined as
             the amount of equity held in cash and long positions added together
             with the unrealized PnL of all open short positions.
+        fees: Current brokerage fees.
         orders: ``deque`` of all filled orders, sorted in ascending
             chronological order.
         margin: Current amount of margin held in open positions.
@@ -242,12 +249,19 @@ class Portfolio:
     def __init__(
         self,
         cash: float,
+        fee_mode: Optional[FeeMode] = None,
+        fee_amount: Optional[float] = None,
         max_long_positions: Optional[int] = None,
         max_short_positions: Optional[int] = None,
     ):
         self.cash: Decimal = to_decimal(cash)
+        self._fee_mode = fee_mode
+        self._fee_amount: Optional[Decimal] = (
+            None if fee_amount is None else to_decimal(fee_amount)
+        )
         self.equity: Decimal = self.cash
         self.market_value: Decimal = self.cash
+        self.fees = Decimal()
         self._max_long_positions = max_long_positions
         self._max_short_positions = max_short_positions
         self.orders: deque[Order] = deque()
@@ -260,6 +274,20 @@ class Portfolio:
         self.bars: deque[PortfolioBar] = deque()
         self.position_bars: deque[PositionBar] = deque()
         self._logger = StaticScope.instance().logger
+
+    def _calculate_fees(self, fill_price: Decimal, shares: int) -> Decimal:
+        fees = Decimal()
+        if self._fee_mode is None or self._fee_amount is None:
+            return fees
+        if self._fee_mode == FeeMode.ORDER_PERCENT:
+            fees = self._fee_amount * fill_price * shares
+        elif self._fee_mode == FeeMode.PER_ORDER:
+            fees = self._fee_amount
+        elif self._fee_mode == FeeMode.PER_SHARE:
+            fees = self._fee_amount * shares
+        else:
+            raise ValueError(f"Unknown FeeMode: {self._fee_mode!r}")
+        return fees
 
     def _verify_input(
         self,
@@ -305,6 +333,7 @@ class Portfolio:
         shares: int,
     ) -> Order:
         self._order_id += 1
+        fees = self._calculate_fees(fill_price, shares)
         order = Order(
             id=self._order_id,
             date=date,
@@ -313,8 +342,10 @@ class Portfolio:
             limit_price=limit_price,
             fill_price=fill_price,
             shares=shares,
+            fees=fees,
         )
         self.orders.append(order)
+        self.fees += fees
         return order
 
     def _add_trade(
@@ -723,6 +754,7 @@ class Portfolio:
                 margin=self.margin,
                 pnl=self.pnl,
                 unrealized_pnl=total_pnl,
+                fees=self.fees,
             )
         )
 

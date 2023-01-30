@@ -1217,6 +1217,8 @@ class Strategy(
         }
         portfolio = Portfolio(
             self._config.initial_cash,
+            self._config.fee_mode,
+            self._config.fee_amount,
             self._config.max_long_positions,
             self._config.max_short_positions,
         )
@@ -1377,13 +1379,14 @@ class Strategy(
             "market_value",
             "pnl",
             "unrealized_pnl",
+            "fees",
         ):
             portfolio_df[col] = quantize(portfolio_df, col)
         orders_df = pd.DataFrame.from_records(
             orders, columns=Order._fields, index="id"
         )
         orders_df["shares"] = orders_df["shares"].astype(int)
-        for col in ("limit_price", "fill_price"):
+        for col in ("limit_price", "fill_price", "fees"):
             orders_df[col] = quantize(orders_df, col)
         trades_df = pd.DataFrame.from_records(
             trades, columns=Trade._fields, index="id"

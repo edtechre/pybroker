@@ -126,6 +126,21 @@ class PriceType(Enum):
     AVERAGE = "average"
 
 
+class FeeMode(Enum):
+    """Brokerage fee mode to use for backtesting.
+
+    Attributes:
+        ORDER_PERCENT: Fee is a percentage of order amount, where order amount
+            is fill_price * shares.
+        PER_ORDER: Fee is a constant amount per order.
+        PER_SHARE: Fee is a constant amount per share in order.
+    """
+
+    ORDER_PERCENT = "order_percent"
+    PER_ORDER = "per_order"
+    PER_SHARE = "per_share"
+
+
 class BarData:
     r"""Contains data of a series of bars. Each field is a
     :class:`numpy.ndarray` that holds values of the bars in the series. The

@@ -463,11 +463,12 @@ class TestEvaluateMixin:
         assert metrics.upi == 0.01844528848501509
         assert metrics.equity_r2 == 0.8979045919638434
         assert metrics.std_error == 69646.36129687089
+        assert metrics.total_fees == 0
 
     def test_evaluate_when_portfolio_empty(self, trades_df, calc_bootstrap):
         mixin = EvaluateMixin()
         result = mixin.evaluate(
-            pd.DataFrame(columns=["market_value"]),
+            pd.DataFrame(columns=["market_value", "fees"]),
             trades_df,
             calc_bootstrap,
             bootstrap_sample_size=10,
@@ -483,7 +484,7 @@ class TestEvaluateMixin:
     ):
         mixin = EvaluateMixin()
         result = mixin.evaluate(
-            pd.DataFrame([[1000]], columns=["market_value"]),
+            pd.DataFrame([[1000, 0]], columns=["market_value", "fees"]),
             trades_df,
             calc_bootstrap,
             bootstrap_sample_size=10,

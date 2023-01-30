@@ -599,6 +599,7 @@ class EvalMetrics:
         total_return_pct: Total realized return measured in percentage.
         total_profit: Total realized profit.
         total_loss: Total realized loss.
+        total_fees: Total brokerage fees.
         max_drawdown: Maximum drawdown, measured in cash.
         max_drawdown_pct: Maximum drawdown, measured in percentage.
         win_rate: Win rate of trades.
@@ -636,6 +637,7 @@ class EvalMetrics:
     total_return_pct: float = field(default=0)
     total_profit: float = field(default=0)
     total_loss: float = field(default=0)
+    total_fees: float = field(default=0)
     max_drawdown: float = field(default=0)
     max_drawdown_pct: float = field(default=0)
     win_rate: float = field(default=0)
@@ -716,6 +718,7 @@ class EvaluateMixin:
             :class:`.EvalResult` containing evaluation metrics.
         """
         market_values = portfolio_df["market_value"].to_numpy()
+        fees = portfolio_df["fees"].to_numpy()
         bar_returns = self._calc_bar_returns(portfolio_df)
         bar_changes = self._calc_bar_changes(portfolio_df)
         if (
@@ -748,6 +751,7 @@ class EvaluateMixin:
             losing_bars=losing_bars,
             largest_win_num_bars=largest_win_bars,
             largest_loss_num_bars=largest_loss_bars,
+            fees=fees,
         )
         logger = StaticScope.instance().logger
         if not calc_bootstrap:
@@ -793,6 +797,7 @@ class EvaluateMixin:
         losing_bars: NDArray[np.int_],
         largest_win_num_bars: int,
         largest_loss_num_bars: int,
+        fees: NDArray[np.float_],
     ) -> EvalMetrics:
         max_dd = max_drawdown(bar_changes)
         max_dd_pct = max_drawdown_percent(bar_returns)
@@ -869,6 +874,7 @@ class EvaluateMixin:
                 (total_pnl + market_values[0]) / market_values[0] - 1
             )
             * 100,
+            total_fees=fees[-1] if len(fees) else 0,
             sharpe=sharpe,
             profit_factor=pf,
             equity_r2=r2,
