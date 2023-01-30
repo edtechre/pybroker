@@ -274,6 +274,27 @@ class Portfolio:
         if limit_price is not None and limit_price <= 0:
             raise ValueError(f"Limit price must be > 0: {limit_price}")
 
+    def _add_entry(
+        self,
+        date: np.datetime64,
+        symbol: str,
+        shares: int,
+        price: Decimal,
+        type: Literal["long", "short"],
+        pos: Position,
+    ) -> Entry:
+        self._entry_id += 1
+        entry = Entry(
+            id=self._entry_id,
+            symbol=symbol,
+            shares=shares,
+            price=price,
+            date=date,
+            type=type,
+        )
+        pos.entries.append(entry)
+        return entry
+
     def _add_order(
         self,
         date: np.datetime64,
@@ -462,15 +483,6 @@ class Portfolio:
             return 0
         order_amount = shares * fill_price
         self.cash -= order_amount
-        self._entry_id += 1
-        entry = Entry(
-            id=self._entry_id,
-            symbol=symbol,
-            shares=shares,
-            price=fill_price,
-            date=date,
-            type="long",
-        )
         if symbol not in self.long_positions:
             self.symbols.add(symbol)
             pos = Position(symbol=symbol, shares=shares, type="long")
@@ -478,7 +490,14 @@ class Portfolio:
         else:
             pos = self.long_positions[symbol]
             pos.shares += shares
-        pos.entries.append(entry)
+        self._add_entry(
+            date=date,
+            symbol=symbol,
+            shares=shares,
+            price=fill_price,
+            type="long",
+            pos=pos,
+        )
         return shares
 
     def sell(
@@ -614,15 +633,6 @@ class Portfolio:
         ):
             return 0
         self.cash += shares * fill_price
-        self._entry_id += 1
-        entry = Entry(
-            id=self._entry_id,
-            symbol=symbol,
-            shares=shares,
-            price=fill_price,
-            date=date,
-            type="short",
-        )
         if symbol not in self.short_positions:
             self.symbols.add(symbol)
             pos = Position(symbol=symbol, shares=shares, type="short")
@@ -630,7 +640,14 @@ class Portfolio:
         else:
             pos = self.short_positions[symbol]
             pos.shares += shares
-        pos.entries.append(entry)
+        self._add_entry(
+            date=date,
+            symbol=symbol,
+            shares=shares,
+            price=fill_price,
+            type="short",
+            pos=pos,
+        )
         return shares
 
     def capture_bar(self, date: np.datetime64, df: pd.DataFrame):
