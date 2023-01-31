@@ -114,22 +114,22 @@ class Order(NamedTuple):
 
     Attributes:
         id: Unique identifier.
-        date: Date the order was filled.
-        symbol: Ticker symbol of the order.
         type: Type of order, either ``buy`` or ``sell``.
+        symbol: Ticker symbol of the order.
+        date: Date the order was filled.
+        shares: Number of shares bought or sold.
         limit_price: Limit price that was used for the order.
         fill_price: Price that the order was filled at.
-        shares: Number of shares bought or sold.
         fees: Brokerage fees for order.
     """
 
     id: int
-    date: np.datetime64
-    symbol: str
     type: Literal["buy", "sell"]
+    symbol: str
+    date: np.datetime64
+    shares: int
     limit_price: Optional[Decimal]
     fill_price: Decimal
-    shares: int
     fees: Decimal
 
 
