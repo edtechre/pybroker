@@ -1,6 +1,7 @@
 .. meta::
    :title: PyBroker
    :description: Algorithmic Trading in Python with Machine Learning
+   :google-site-verification: XJpTXQaAdlEb2eAbndHa2ZmaUiOixSMaRusk-kKVKOQ
 
 .. title:: Algorithmic Trading in Python with Machine Learning
 
