@@ -1552,3 +1552,17 @@ def test_capture_bar():
         == pos_bar_1.unrealized_pnl + pos_bar_2.unrealized_pnl
     )
     assert bar.fees == 0
+
+
+def test_incr_ids():
+    portfolio = Portfolio(CASH)
+    buy_order = portfolio.buy(
+        DATE_1, SYMBOL_1, SHARES_1, FILL_PRICE_1, LIMIT_PRICE_1
+    )
+    assert buy_order.id == 1
+    assert list(portfolio.long_positions.values())[0].entries[0].id == 1
+    sell_order = portfolio.sell(
+        DATE_2, SYMBOL_1, SHARES_1, FILL_PRICE_3, LIMIT_PRICE_3
+    )
+    assert sell_order.id == 2
+    assert portfolio.trades[0].id == 1
