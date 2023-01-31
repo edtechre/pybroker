@@ -38,13 +38,13 @@ class StaticScope:
 
     Attributes:
         logger: :class:`pybroker.log.Logger`
-        data_source_cache: ``diskcache.Cache`` that stores data retrieved from
-            :class:`pybroker.data.DataSource`.
+        data_source_cache: :class:`diskcache.Cache` that stores data retrieved
+            from :class:`pybroker.data.DataSource`.
         data_source_cache_ns: Namespace set for ``data_source_cache``.
-        indicator_cache: ``diskcache.Cache`` that stores
+        indicator_cache: :class:`diskcache.Cache` that stores
             :class:`pybroker.indicator.Indicator` data.
         indicator_cache_ns: Namespace set for ``indicator_cache_ns``.
-        model_cache: ``diskcache.Cache`` that stores trained models.
+        model_cache: :class:`diskcache.Cache` that stores trained models.
         model_cache_ns: Namespace set for ``model_cache``.
         default_data_cols: Default data columns in :class:`pandas.DataFrame`
             retrieved from a :class:`pybroker.data.DataSource`.
@@ -301,11 +301,11 @@ class IndicatorScope:
     """Caches and retrieves :class:`pybroker.indicator.Indicator` data.
 
     Args:
-        indicator_data: ``Mapping`` of
+        indicator_data: :class:`Mapping` of
             :class:`pybroker.common.IndicatorSymbol` pairs to ``pandas.Series``
             of :class:`pybroker.indicator.Indicator` values.
         filter_dates: Filters :class:`pybroker.indicator.Indicator` data on
-            ``Iterable`` of dates.
+            :class:`Iterable` of dates.
     """
 
     def __init__(
@@ -398,7 +398,7 @@ class PredictionScope:
     r"""Caches and retrieves model predictions.
 
     Args:
-        models: ``Mapping`` of
+        models: :class:`Mapping` of
             :class:`pybroker.common.ModelSymbol` pairs to
             :class:`pybroker.common.TrainedModel`\ s.
         input_scope: :class:`.ModelInputScope`.

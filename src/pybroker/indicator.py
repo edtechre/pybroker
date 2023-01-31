@@ -71,7 +71,7 @@ class Indicator:
 
     Args:
         name: Name of indicator.
-        fn: ``Callable`` used to compute the series of indicator values.
+        fn: :class:`Callable` used to compute the series of indicator values.
         kwargs: ``dict`` of kwargs to pass to ``fn``.
     """
 
@@ -191,7 +191,7 @@ class IndicatorsMixin:
 
         Returns:
             ``dict`` mapping each :class:`pybroker.common.IndicatorSymbol` pair
-            to a computed sequence of indicator values.
+            to a computed :class:`pandas.Series` of indicator values.
         """
         if not indicator_syms or df.empty:
             return {}

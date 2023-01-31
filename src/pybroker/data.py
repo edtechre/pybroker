@@ -50,7 +50,7 @@ class DataSourceCacheMixin:
         :meth:`pybroker.cache.enable_data_source_cache`.
 
         Args:
-            symbols: ``Iterable`` of symbols for fetching cached data.
+            symbols: :class:`Iterable` of symbols for fetching cached data.
             timeframe: Formatted string that specifies the timeframe
                 resolution of the cached data. The timeframe string supports
                 the following units:
@@ -67,7 +67,8 @@ class DataSourceCacheMixin:
         Returns:
             ``tuple[pandas.DataFrame, Iterable[str]]`` containing a
             :class:`pandas.DataFrame` with the cached data, and an
-            ``Iterable[str]`` of symbols for which no cached data was found.
+            ``Iterable[str]`` of symbols for which no cached data was
+            found.
         """
         df = pd.DataFrame()
         scope = StaticScope.instance()

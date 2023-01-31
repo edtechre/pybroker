@@ -36,12 +36,13 @@ class ModelSource:
 
     Args:
         name: Name of model.
-        indicator_names: ``Iterable`` of names of
+        indicator_names: :class:`Iterable` of names of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
-        input_data_fn: ``Callable`` for preprocessing input data passed to the
-            model when making predictions. If set, ```input_data_fn``` will be
-            called with a :class:`pandas.DataFrame` containing all test data.
+        input_data_fn: :class:`Callable` for preprocessing input data passed to
+            the model when making predictions. If set, ```input_data_fn``` will
+            be called with a :class:`pandas.DataFrame` containing all test
+            data.
         kwargs: ``dict`` of additional kwargs.
     """
 
@@ -83,12 +84,13 @@ class ModelLoader(ModelSource):
         name: Name of model.
         load_fn: ``Callable[[symbol: str, ...], DataFrame]`` used to load and
             return a pre-trained model.
-        indicator_names: ``Iterable`` of names of
+        indicator_names: :class:`Iterable` of names of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
-        input_data_fn: ``Callable`` for preprocessing input data passed to the
-            model when making predictions. If set, ```input_data_fn``` will be
-            called with a :class:`pandas.DataFrame` containing all test data.
+        input_data_fn: :class:`Callable` for preprocessing input data passed to
+            the model when making predictions. If set, ```input_data_fn``` will
+            be called with a :class:`pandas.DataFrame` containing all test
+            data.
         kwargs: ``dict`` of kwargs to pass to ``load_fn``.
     """
 
@@ -121,12 +123,13 @@ class ModelTrainer(ModelSource):
         train_fn: ``Callable[[symbol: str, train_data: DataFrame,
             test_data: DataFrame, ...], DataFrame]`` used to train and return a
             model.
-        indicator_names: ``Iterable`` of names of
+        indicator_names: :class:`Iterable` of names of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
-        input_data_fn: ``Callable`` for preprocessing input data passed to the
-            model when making predictions. If set, ```input_data_fn``` will be
-            called with a :class:`pandas.DataFrame` containing all test data.
+        input_data_fn: :class:`Callable` for preprocessing input data passed to
+            the model when making predictions. If set, ```input_data_fn``` will
+            be called with a :class:`pandas.DataFrame` containing all test
+            data.
         kwargs: ``dict`` of kwargs to pass to ``train_fn``.
     """
 
@@ -166,16 +169,18 @@ def model(
 
     Args:
         name: Name for referencing the model globally.
-        fn: ``Callable`` used to either train or load a model instance. If for
-            training, then ``fn`` has signature ``Callable[[symbol: str,
+        fn: :class:`Callable` used to either train or load a model instance. If
+            for training, then ``fn`` has signature ``Callable[[symbol: str,
             train_data: DataFrame, test_data: DataFrame, ...], DataFrame]``.
             If for loading, then ``fn`` has signature
             ``Callable[[symbol: str, ...], DataFrame]``.
-        indicators: ``Iterable`` of :class:`pybroker.indicator.Indicator`\ s
-            used as features of the model.
-        input_data_fn: ``Callable`` for preprocessing input data passed to the
-            model when making predictions. If set, ```input_data_fn``` will be
-            called with a :class:`pandas.DataFrame` containing all test data.
+        indicators: :class:`Iterable` of
+            :class:`pybroker.indicator.Indicator`\ s used as features of the
+            model.
+        input_data_fn: :class:`Callable` for preprocessing input data passed to
+            the model when making predictions. If set, ```input_data_fn``` will
+            be called with a :class:`pandas.DataFrame` containing all test
+            data.
         pretrained: If ``True``, then ``fn`` is used to load and return a
             pre-trained model. If ``False``, ``fn`` is used to train and return
             a new model. Defaults to ``False``.

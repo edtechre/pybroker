@@ -109,7 +109,7 @@ def _sort_by_score(result: ExecResult) -> float:
 
 class Execution(NamedTuple):
     r"""Represents an execution of a :class:`.Strategy`. Holds a reference to
-    a ``Callable`` that implements trading logic.
+    a :class:`Callable` that implements trading logic.
 
     Attributes:
         id: Unique ID.
@@ -176,14 +176,14 @@ class BacktestMixin:
 
         Args:
             executions: :class:`.Execution`\ s to run.
-            sessions: ``Mapping`` of :class:`pybroker.common.ExecSymbol` pairs
-                to ``Mapping`` of custom data that persists for every bar
-                during the :class:`.Execution`.
-            models: ``Mapping`` of :class:`pybroker.common.ModelSymbol` pairs
-                to :class:`pybroker.common.TrainedModel`\ s.
-            indicator_data: ``Mapping`` of
+            sessions: :class:`Mapping` of :class:`pybroker.common.ExecSymbol`
+                pairs to :class:`Mapping` of custom data that persists for
+                every bar during the :class:`.Execution`.
+            models: :class:`Mapping` of :class:`pybroker.common.ModelSymbol`
+                pairs to :class:`pybroker.common.TrainedModel`\ s.
+            indicator_data: :class:`Mapping` of
                 :class:`pybroker.common.IndicatorSymbol` pairs to
-                ``pandas.Series`` of :class:`pybroker.indicator.Indicator`
+                :class:`pandas.Series` of :class:`pybroker.indicator.Indicator`
                 values.
             test_data: :class:`pandas.DataFrame` of test data.
             portfolio: :class:`pybroker.portfolio.Portfolio`.
@@ -194,7 +194,7 @@ class BacktestMixin:
                 held at a time. If ``None``, then unlimited.
             max_short_positions: Maximum number of short positions that can be
                 held at a time. If ``None``, then unlimited.
-            pos_size_handler: ``Callable`` that sets position sizes when
+            pos_size_handler: :class:`Callable` that sets position sizes when
                 placing orders for buy and sell signals.
 
         Returns:
@@ -618,7 +618,7 @@ class WalkforwardMixin:
         shuffle: bool = False,
     ) -> Iterator[WalkforwardWindow]:
         r"""Splits a :class:`pandas.DataFrame` containing data for multiple
-        ticker symbols into an ``Iterator`` of train/test time windows for
+        ticker symbols into an :class:`Iterator` of train/test time windows for
         `Walkforward Analysis
         <https://en.wikipedia.org/wiki/Walk_forward_optimization>`_.
 
@@ -638,8 +638,8 @@ class WalkforwardMixin:
                 Defaults to ``False``.
 
         Returns:
-            ``Iterator`` of :class:`.WalkforwardWindow`\ s containing train
-            and test data.
+            :class:`Iterator` of :class:`.WalkforwardWindow`\ s containing
+            train and test data.
         """
         if windows <= 0:
             raise ValueError("windows needs to be > 0.")
@@ -871,14 +871,14 @@ class Strategy(
         r"""Adds an execution to backtest.
 
         Args:
-            fn: ``Callable`` invoked on every bar of data during the backtest
-                and passed an :class:`pybroker.context.ExecContext` for each
-                ticker symbol in ``symbols``.
+            fn: :class:`Callable` invoked on every bar of data during the
+                backtest and passed an :class:`pybroker.context.ExecContext`
+                for each ticker symbol in ``symbols``.
             symbols: Ticker symbols used to run ``fn``, where ``fn`` is called
                 separately for each symbol.
-            models: ``Iterable`` of :class:`pybroker.model.ModelSource`\ s
+            models: :class:`Iterable` of :class:`pybroker.model.ModelSource`\ s
                 to train/load for backtesting.
-            indicators: ``Iterable`` of
+            indicators: :class:`Iterable` of
                 :class:`pybroker.indicator.Indicator`\ s to compute for
                 backtesting.
         """
@@ -959,12 +959,12 @@ class Strategy(
     def set_pos_size_handler(
         self, fn: Optional[Callable[[PosSizeContext], None]]
     ):
-        r"""Sets a ``Callable`` that determines position sizes to use for buy
-        and sell signals.
+        r"""Sets a :class:`Callable` that determines position sizes to use for
+        buy and sell signals.
 
         Args:
-            fn: ``Callable`` invoked before placing orders for buy and sell
-                signals, and is passed a
+            fn: :class:`Callable` invoked before placing orders for buy and
+                sell signals, and is passed a
                 :class:`pybroker.context.PosSizeContext`.
         """
         self._pos_size_handler = fn

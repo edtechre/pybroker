@@ -89,8 +89,8 @@ def bca_boot_conf(
             bootstrap sampling.
         n: Number of elements in each random bootstrap sample.
         n_boot: Number of random bootstrap samples to use.
-        fn: ``Callable`` for computing the parameter used for the confidence
-            intervals.
+        fn: :class:`Callable` for computing the parameter used for the
+            confidence intervals.
 
     Returns:
         :class:`.BootConfIntervals` containing the computed confidence

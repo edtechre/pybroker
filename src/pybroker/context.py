@@ -103,15 +103,15 @@ class BaseContext:
         return self._portfolio.market_value
 
     def orders(self) -> Iterator[Order]:
-        r"""``Iterator`` of all :class:`pybroker.portfolio.Order`\ s that have
-        been placed and filled.
+        r""":class:`Iterator` of all :class:`pybroker.portfolio.Order`\ s that
+        have been placed and filled.
         """
         for order in self._portfolio.orders:
             yield order
 
     def trades(self) -> Iterator[Trade]:
-        r"""`Iterator`` of all :class:`pybroker.portfolio.Trade`\ s that have
-        been completed.
+        r""":class:`Iterator` of all :class:`pybroker.portfolio.Trade`\ s that
+        have been completed.
         """
         for trade in self._portfolio.trades:
             yield trade
@@ -154,7 +154,7 @@ class BaseContext:
                 and ``short`` positions are returned.
 
         Returns:
-            ``Iterator`` of currently held
+            :class:`Iterator` of currently held
             :class:`pybroker.portfolio.Position` \s.
         """
         if pos_type is not None:
@@ -189,7 +189,7 @@ class BaseContext:
                 ``None``.
 
         Returns:
-            ``Iterator`` of currently held long
+            :class:`Iterator` of currently held long
             :class:`pybroker.portfolio.Position` \s.
         """
         return self.positions(symbol, "long")
@@ -205,7 +205,7 @@ class BaseContext:
                 ``None``.
 
         Returns:
-            ``Iterator`` of currently held short
+            :class:`Iterator` of currently held short
             :class:`pybroker.portfolio.Position` \s.
         """
         return self.positions(symbol, "short")
@@ -406,7 +406,7 @@ class PosSizeContext(BaseContext):
     def signals(
         self, signal_type: Optional[Literal["buy", "sell"]] = None
     ) -> Iterator[ExecSignal]:
-        r"""Returns ``Iterator`` of :class:`.ExecSignal`\ s containing
+        r"""Returns :class:`Iterator` of :class:`.ExecSignal`\ s containing
         data for buy and sell signals.
         """
         if signal_type is not None:
