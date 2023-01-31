@@ -26,7 +26,7 @@ from .common import (
     to_decimal,
 )
 from .model import TrainedModel
-from .portfolio import Order, Portfolio, Position
+from .portfolio import Order, Portfolio, Position, Trade
 from .scope import (
     ColumnScope,
     IndicatorScope,
@@ -108,6 +108,13 @@ class BaseContext:
         """
         for order in self._portfolio.orders:
             yield order
+
+    def trades(self) -> Iterator[Trade]:
+        r"""`Iterator`` of all :class:`pybroker.portfolio.Trade`\ s that have
+        been completed.
+        """
+        for trade in self._portfolio.trades:
+            yield trade
 
     def pos(
         self,

@@ -26,7 +26,7 @@ from pybroker.context import (
     set_exec_ctx_data,
     set_pos_size_ctx_data,
 )
-from pybroker.portfolio import Order, Portfolio, Position
+from pybroker.portfolio import Order, Portfolio, Position, Trade
 import numpy as np
 import pytest
 import re
@@ -85,6 +85,23 @@ def orders(dates, symbols):
             shares=100,
             fees=0,
         ),
+    )
+
+
+@pytest.fixture()
+def trades(dates, symbols):
+    return Trade(
+        id=1,
+        type="long",
+        symbol=symbols[-1],
+        entry_date=dates[0],
+        exit_date=dates[1],
+        shares=100,
+        pnl=Decimal(100),
+        return_pct=Decimal(5),
+        cumulative_pnl=Decimal(100),
+        bars=1,
+        pnl_per_bar=Decimal(100),
     )
 
 
@@ -160,8 +177,10 @@ def ctx_with_orders(
     symbol,
     date,
     orders,
+    trades,
 ):
     portfolio.orders = deque(orders)
+    portfolio.trades = deque(trades)
     ctx = ExecContext(
         portfolio=portfolio,
         col_scope=col_scope,
@@ -428,6 +447,14 @@ def test_orders(ctx_with_orders, orders):
 
 def test_orders_when_empty(ctx):
     assert not len(list(ctx.orders()))
+
+
+def test_trades(ctx_with_orders, trades):
+    assert tuple(ctx_with_orders.trades()) == trades
+
+
+def test_trades_when_empty(ctx):
+    assert not len(list(ctx.trades()))
 
 
 def test_set_exec_ctx_data(ctx, symbols):
