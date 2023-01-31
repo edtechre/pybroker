@@ -36,6 +36,7 @@ from .data import Alpaca, YFinance
 from .eval import EvalMetrics, BootstrapResult
 from .indicator import Indicator, indicator
 from .model import ModelLoader, ModelSource, ModelTrainer, model
+from .portfolio import Entry, Order, Position, Trade
 from .scope import (
     disable_logging,
     enable_logging,
