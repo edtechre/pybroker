@@ -458,7 +458,7 @@ def upi(
 
 
 def win_loss_rate(pnls: NDArray[np.float_]) -> tuple[float, float]:
-    """Computes the win rate and loss rate.
+    """Computes the win rate and loss rate as percentages.
 
     Args:
         pnls: Array of profits and losses (PnLs) per trade.
@@ -470,9 +470,24 @@ def win_loss_rate(pnls: NDArray[np.float_]) -> tuple[float, float]:
     n = len(pnls)
     if not n:
         return 0, 0
-    win_rate = len(pnls[pnls > 0]) / n
-    loss_rate = len(pnls[pnls < 0]) / n
+    win_rate = len(pnls[pnls > 0]) / n * 100
+    loss_rate = len(pnls[pnls < 0]) / n * 100
     return win_rate, loss_rate
+
+
+def winning_losing_trades(pnls: NDArray[np.float_]) -> tuple[int, int]:
+    """Returns the number of winning and losing trades.
+
+    Args:
+        pnls: Array of profits and losses (PnLs) per trade.
+
+    Returns:
+        ``tuple[int, int]`` containing numbers of winning and losing trades.
+    """
+    pnls = pnls[pnls != 0]
+    if not len(pnls):
+        return 0, 0
+    return len(pnls[pnls > 0]), len(pnls[pnls < 0])
 
 
 def total_profit_loss(pnls: NDArray[np.float_]) -> tuple[float, float]:
@@ -605,6 +620,8 @@ class EvalMetrics:
         max_drawdown_pct: Maximum drawdown, measured in percentage.
         win_rate: Win rate of trades.
         loss_rate: Loss rate of trades.
+        winning_trades: Number of winning trades.
+        losing_trades: Number of losing trades.
         avg_pnl: Average profit and loss (PnL) per trade, measured in cash.
         avg_return_pct: Average return per trade, measured in percentage.
         avg_trade_bars: Average number of bars per trade.
@@ -643,6 +660,8 @@ class EvalMetrics:
     max_drawdown_pct: float = field(default=0)
     win_rate: float = field(default=0)
     loss_rate: float = field(default=0)
+    winning_trades: int = field(default=0)
+    losing_trades: int = field(default=0)
     avg_pnl: float = field(default=0)
     avg_return_pct: float = field(default=0)
     avg_trade_bars: float = field(default=0)
@@ -813,6 +832,8 @@ class EvaluateMixin:
         largest_loss = 0.0
         win_rate = 0.0
         loss_rate = 0.0
+        winning_trades = 0
+        losing_trades = 0
         avg_pnl = 0.0
         avg_return_pct = 0.0
         avg_trade_bars = 0.0
@@ -830,6 +851,7 @@ class EvaluateMixin:
         if len(pnls):
             largest_win, largest_loss = largest_win_loss(pnls)
             win_rate, loss_rate = win_loss_rate(pnls)
+            winning_trades, losing_trades = winning_losing_trades(pnls)
             avg_profit, avg_loss = avg_profit_loss(pnls)
             avg_profit_pct, avg_loss_pct = avg_profit_loss(return_pcts)
             total_profit, total_loss = total_profit_loss(pnls)
@@ -863,6 +885,8 @@ class EvaluateMixin:
             max_losses=max_losses,
             win_rate=win_rate,
             loss_rate=loss_rate,
+            winning_trades=winning_trades,
+            losing_trades=losing_trades,
             avg_pnl=avg_pnl,
             avg_return_pct=avg_return_pct,
             avg_trade_bars=avg_trade_bars,

@@ -36,6 +36,7 @@ from pybroker.eval import (
     ulcer_index,
     upi,
     win_loss_rate,
+    winning_losing_trades,
 )
 from typing import get_type_hints
 import joblib
@@ -296,9 +297,9 @@ def test_upi_when_invalid_period_then_error(values, period):
 @pytest.mark.parametrize(
     "values, expected_win_rate, expected_loss_rate",
     [
-        ([0.1, 0.2, 0.3, -0.2, 0.11, -0.3, -0.4, 0, 0.1, 0.2, 0.2], 0.7, 0.3),
-        ([0.1], 1, 0),
-        ([-0.1], 0, 1),
+        ([0.1, 0.2, 0.3, -0.2, 0.11, -0.3, -0.4, 0, 0.1, 0.2, 0.2], 70, 30),
+        ([0.1], 100, 0),
+        ([-0.1], 0, 100),
         ([0, 0, 0, 0, 0], 0, 0),
         ([], 0, 0),
     ],
@@ -308,6 +309,25 @@ def test_win_loss_rate(values, expected_win_rate, expected_loss_rate):
     win_rate, loss_rate = win_loss_rate(pnls)
     assert win_rate == expected_win_rate
     assert loss_rate == expected_loss_rate
+
+
+@pytest.mark.parametrize(
+    "values, expected_winning_trades, expected_losing_trades",
+    [
+        ([0.1, 0.2, 0.3, -0.2, 0.11, -0.3, -0.4, 0, 0.1, 0.2, 0.2], 7, 3),
+        ([0.1], 1, 0),
+        ([-0.1], 0, 1),
+        ([0, 0, 0, 0, 0], 0, 0),
+        ([], 0, 0),
+    ],
+)
+def test_winning_losing_trades(
+    values, expected_winning_trades, expected_losing_trades
+):
+    pnls = np.array(values)
+    winning_trades, losing_trades = winning_losing_trades(pnls)
+    assert winning_trades == expected_winning_trades
+    assert losing_trades == expected_losing_trades
 
 
 @pytest.mark.parametrize(
@@ -440,8 +460,10 @@ class TestEvaluateMixin:
         assert metrics.total_loss == -237770.88
         assert metrics.max_drawdown == -56721.59999999998
         assert metrics.max_drawdown_pct == -7.908428778116649
-        assert metrics.win_rate == 0.5257731958762887
-        assert metrics.loss_rate == 0.4742268041237113
+        assert metrics.win_rate == 52.57731958762887
+        assert metrics.loss_rate == 47.42268041237113
+        assert metrics.winning_trades == 204
+        assert metrics.losing_trades == 184
         assert metrics.avg_pnl == 427.1654639175258
         assert metrics.avg_return_pct == 0.279639175257732
         assert metrics.avg_trade_bars == 2.4149484536082473
