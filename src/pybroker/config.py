@@ -26,8 +26,8 @@ class StrategyConfig:
 
     Attributes:
         initial_cash: Starting cash of strategy.
-        fee_mode: Brokerage :class:`pybroker.common.FeeMode`, disabled when
-            ``None``. Defaults to ``None``.
+        fee_mode: :class:`pybroker.common.FeeMode` for calculating brokerage
+            fees, disabled when ``None``. Defaults to ``None``.
         fee_amount: Brokerage fee amount.
         max_long_positions: Maximum number of long positions that can be held
             at any time in :class:`pybroker.portfolio.Portfolio`. Unlimited
