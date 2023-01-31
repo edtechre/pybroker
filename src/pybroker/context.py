@@ -569,6 +569,10 @@ class ExecContext(BaseContext):
         self.score: Optional[float] = None
         self.session: Optional[dict] = None
 
+    def _verify_symbol(self):
+        if self.symbol is None:
+            raise ValueError("symbol is not set.")
+
     @property
     def dt(self) -> datetime:
         """Current bar's date expressed as a ``datetime``."""
@@ -581,64 +585,71 @@ class ExecContext(BaseContext):
     @property
     def date(self) -> NDArray[np.datetime64]:
         """Current bar's date expressed as a ``numpy.datetime64``."""
-        if self.symbol is None:
-            raise ValueError("symbol is not set.")
+        self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol, DataCol.DATE.value, self._end_index
+            self.symbol,  # type: ignore[arg-type]
+            DataCol.DATE.value,
+            self._end_index,
         )
 
     @property
     def open(self) -> NDArray[np.float_]:
         """Current bar's open price."""
-        if self.symbol is None:
-            raise ValueError("symbol is not set.")
+        self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol, DataCol.OPEN.value, self._end_index
+            self.symbol,  # type: ignore[arg-type]
+            DataCol.OPEN.value,
+            self._end_index,
         )
 
     @property
     def high(self) -> NDArray[np.float_]:
         """Current bar's high price."""
-        if self.symbol is None:
-            raise ValueError("symbol is not set.")
+        self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol, DataCol.HIGH.value, self._end_index
+            self.symbol,  # type: ignore[arg-type]
+            DataCol.HIGH.value,
+            self._end_index,
         )
 
     @property
     def low(self) -> NDArray[np.float_]:
         """Current bar's low price."""
-        if self.symbol is None:
-            raise ValueError("symbol is not set.")
+        self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol, DataCol.LOW.value, self._end_index
+            self.symbol,  # type: ignore[arg-type]
+            DataCol.LOW.value,
+            self._end_index,
         )
 
     @property
     def close(self) -> NDArray[np.float_]:
         """Current bar's close price."""
-        if self.symbol is None:
-            raise ValueError("symbol is not set.")
+        self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol, DataCol.CLOSE.value, self._end_index
+            self.symbol,  # type: ignore[arg-type]
+            DataCol.CLOSE.value,
+            self._end_index,
         )
 
     @property
     def volume(self) -> Optional[NDArray[np.float_]]:
         """Current bar's volume."""
-        if self.symbol is None:
-            raise ValueError("symbol is not set.")
+        self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol, DataCol.VOLUME.value, self._end_index
+            self.symbol,  # type: ignore[arg-type]
+            DataCol.VOLUME.value,
+            self._end_index,
         )
 
     @property
     def vwap(self) -> Optional[NDArray[np.float_]]:
         """Current bar's volume-weighted average price (VWAP)."""
-        if self.symbol is None:
-            raise ValueError("symbol is not set.")
+        self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol, DataCol.VWAP.value, self._end_index
+            self.symbol,  # type: ignore[arg-type]
+            DataCol.VWAP.value,
+            self._end_index,
         )
 
     def sell_all_shares(self):
