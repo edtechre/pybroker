@@ -342,9 +342,9 @@ class ExecResult:
     ]
     score: Optional[float]
     hold_bars: Optional[int]
-    buy_shares: Optional[int]
+    buy_shares: Optional[Union[int, float, Decimal]]
     buy_limit_price: Optional[Decimal]
-    sell_shares: Optional[int]
+    sell_shares: Optional[Union[int, float, Decimal]]
     sell_limit_price: Optional[Decimal]
 
 
@@ -364,7 +364,7 @@ class ExecSignal(NamedTuple):
 
     id: int
     symbol: str
-    shares: int
+    shares: Union[int, float, Decimal]
     score: Optional[float]
     bar_data: BarData
     type: Literal["buy", "sell"]
@@ -397,7 +397,7 @@ class PosSizeContext(BaseContext):
             models=models,
             sym_end_index=sym_end_index,
         )
-        self._signal_shares: dict[int, int] = {}
+        self._signal_shares: dict[int, Union[int, float, Decimal]] = {}
         self._buy_results: Optional[list[ExecResult]] = None
         self._sell_results: Optional[list[ExecResult]] = None
         self._max_long_positions = max_long_positions
@@ -460,7 +460,9 @@ class PosSizeContext(BaseContext):
                 ):
                     break
 
-    def set_shares(self, signal: ExecSignal, shares: int):
+    def set_shares(
+        self, signal: ExecSignal, shares: Union[int, float, Decimal]
+    ):
         """Sets the number of shares of an order for the buy or sell signal."""
         self._signal_shares[signal.id] = shares
 
@@ -553,7 +555,7 @@ class ExecContext(BaseContext):
             PriceType,
             Callable[[BarData], Union[int, float, Decimal, str]],
         ] = PriceType.MIDDLE
-        self.buy_shares: Optional[int] = None
+        self.buy_shares: Optional[Union[int, float, Decimal]] = None
         self.buy_limit_price: Optional[Union[int, float, Decimal, str]] = None
         self.sell_fill_price: Union[
             int,
@@ -563,7 +565,7 @@ class ExecContext(BaseContext):
             PriceType,
             Callable[[BarData], Union[int, float, Decimal, str]],
         ] = PriceType.MIDDLE
-        self.sell_shares: Optional[int] = None
+        self.sell_shares: Optional[Union[int, float, Decimal]] = None
         self.sell_limit_price: Optional[Union[int, float, Decimal, str]] = None
         self.hold_bars: Optional[int] = None
         self.score: Optional[float] = None

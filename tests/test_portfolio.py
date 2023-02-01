@@ -548,7 +548,7 @@ def test_buy_when_zero_shares():
         (SHARES_1, FILL_PRICE_1, -1, "Limit price must be > 0: -1"),
     ],
 )
-def test_buy_when_negative_then_error(
+def test_buy_when_invalid_input_then_error(
     shares, fill_price, limit_price, expected_msg
 ):
     portfolio = Portfolio(CASH)
@@ -651,6 +651,76 @@ def test_sell_when_all_shares_and_multiple_bars():
         cumulative_pnl=expected_pnl,
         bars=2,
         pnl_per_bar=expected_pnl / 2,
+    )
+
+
+def test_sell_when_all_shares_and_fractional():
+    shares = Decimal("0.34")
+    portfolio = Portfolio(CASH, enable_fractional_shares=True)
+    buy_order = portfolio.buy(
+        DATE_1, SYMBOL_1, shares, FILL_PRICE_1, LIMIT_PRICE_1
+    )
+    assert_order(
+        buy_order,
+        date=DATE_1,
+        symbol=SYMBOL_1,
+        type="buy",
+        limit_price=LIMIT_PRICE_1,
+        fill_price=FILL_PRICE_1,
+        shares=shares,
+        fees=0,
+    )
+    pos = portfolio.long_positions[SYMBOL_1]
+    assert_position(
+        pos=pos, symbol=SYMBOL_1, shares=shares, type="long", entries_len=1
+    )
+    entry = pos.entries[0]
+    assert_entry(
+        entry=entry,
+        date=DATE_1,
+        symbol=SYMBOL_1,
+        shares=shares,
+        price=FILL_PRICE_1,
+        type="long",
+    )
+    portfolio.incr_bars()
+    sell_order = portfolio.sell(
+        DATE_2, SYMBOL_1, shares, FILL_PRICE_3, LIMIT_PRICE_3
+    )
+    expected_pnl = (FILL_PRICE_3 - FILL_PRICE_1) * shares
+    assert_order(
+        order=sell_order,
+        date=DATE_2,
+        symbol=SYMBOL_1,
+        type="sell",
+        limit_price=LIMIT_PRICE_3,
+        fill_price=FILL_PRICE_3,
+        shares=shares,
+        fees=0,
+    )
+    assert_portfolio(
+        portfolio=portfolio,
+        cash=CASH + expected_pnl,
+        pnl=expected_pnl,
+        symbols=set(),
+        orders=[buy_order, sell_order],
+        short_positions_len=0,
+        long_positions_len=0,
+    )
+    assert len(portfolio.trades) == 1
+    expected_return_pct = (FILL_PRICE_3 / FILL_PRICE_1 - 1) * 100
+    assert_trade(
+        trade=portfolio.trades[0],
+        type="long",
+        symbol=SYMBOL_1,
+        entry_date=DATE_1,
+        exit_date=DATE_2,
+        shares=shares,
+        pnl=expected_pnl,
+        return_pct=expected_return_pct,
+        cumulative_pnl=expected_pnl,
+        bars=1,
+        pnl_per_bar=expected_pnl,
     )
 
 
@@ -901,7 +971,7 @@ def test_sell_when_zero_shares():
         (SHARES_1, FILL_PRICE_3, -1, "Limit price must be > 0: -1"),
     ],
 )
-def test_sell_when_negative_shares_then_error(
+def test_sell_when_invalid_input_then_error(
     shares, fill_price, limit_price, expected_msg
 ):
     portfolio = Portfolio(CASH)

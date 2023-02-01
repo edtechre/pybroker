@@ -18,7 +18,7 @@ with this program.  If not, see <https://www.gnu.org/licenses/>.
 from .common import Day, IndicatorSymbol, ModelSymbol, to_datetime
 from decimal import Decimal
 from progressbar import ProgressBar
-from typing import Iterable, Optional, Sequence, Sized
+from typing import Iterable, Optional, Sequence, Sized, Union
 import datetime
 import logging
 import numpy as np
@@ -278,7 +278,7 @@ class Logger:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: int,
+        shares: Union[int, float, Decimal],
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
@@ -295,7 +295,7 @@ class Logger:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: int,
+        shares: Union[int, float, Decimal],
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
@@ -312,7 +312,7 @@ class Logger:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: int,
+        shares: Union[int, float, Decimal],
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
@@ -329,7 +329,7 @@ class Logger:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: int,
+        shares: Union[int, float, Decimal],
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
@@ -346,7 +346,7 @@ class Logger:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: int,
+        shares: Union[int, float, Decimal],
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
@@ -363,7 +363,7 @@ class Logger:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: int,
+        shares: Union[int, float, Decimal],
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
@@ -447,7 +447,7 @@ class Logger:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: int,
+        shares: Union[int, float, Decimal],
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):

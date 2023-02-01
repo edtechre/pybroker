@@ -22,7 +22,7 @@ from .scope import StaticScope
 from collections import deque
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Iterable, Literal, NamedTuple, Optional
+from typing import Iterable, Literal, NamedTuple, Optional, Union
 import math
 import numpy as np
 import pandas as pd
@@ -45,7 +45,7 @@ class Entry:
     id: int
     date: np.datetime64
     symbol: str
-    shares: int
+    shares: Decimal
     price: Decimal
     type: Literal["long", "short"]
     bars: int = field(default=0)
@@ -68,7 +68,7 @@ class Position:
             chronological order.
     """
     symbol: str
-    shares: int
+    shares: Decimal
     type: Literal["long", "short"]
     close: Decimal = field(default_factory=Decimal)
     equity: Decimal = field(default_factory=Decimal)
@@ -101,7 +101,7 @@ class Trade(NamedTuple):
     symbol: str
     entry_date: np.datetime64
     exit_date: np.datetime64
-    shares: int
+    shares: Decimal
     pnl: Decimal
     return_pct: Decimal
     cumulative_pnl: Decimal
@@ -127,7 +127,7 @@ class Order(NamedTuple):
     type: Literal["buy", "sell"]
     symbol: str
     date: np.datetime64
-    shares: int
+    shares: Decimal
     limit_price: Optional[Decimal]
     fill_price: Decimal
     fees: Decimal
@@ -175,8 +175,8 @@ class PositionBar(NamedTuple):
 
     symbol: str
     date: np.datetime64
-    long_shares: int
-    short_shares: int
+    long_shares: Decimal
+    short_shares: Decimal
     close: Decimal
     equity: Decimal
     market_value: Decimal
@@ -185,8 +185,8 @@ class PositionBar(NamedTuple):
 
 
 class _OrderResult(NamedTuple):
-    filled_shares: int
-    rem_shares: int
+    filled_shares: Decimal
+    rem_shares: Decimal
 
 
 def _calculate_pnl(
@@ -251,6 +251,7 @@ class Portfolio:
         cash: float,
         fee_mode: Optional[FeeMode] = None,
         fee_amount: Optional[float] = None,
+        enable_fractional_shares: bool = False,
         max_long_positions: Optional[int] = None,
         max_short_positions: Optional[int] = None,
     ):
@@ -259,6 +260,7 @@ class Portfolio:
         self._fee_amount: Optional[Decimal] = (
             None if fee_amount is None else to_decimal(fee_amount)
         )
+        self._enable_fractional_shares = enable_fractional_shares
         self.equity: Decimal = self.cash
         self.market_value: Decimal = self.cash
         self.fees = Decimal()
@@ -275,7 +277,7 @@ class Portfolio:
         self.position_bars: deque[PositionBar] = deque()
         self._logger = StaticScope.instance().logger
 
-    def _calculate_fees(self, fill_price: Decimal, shares: int) -> Decimal:
+    def _calculate_fees(self, fill_price: Decimal, shares: Decimal) -> Decimal:
         fees = Decimal()
         if self._fee_mode is None or self._fee_amount is None:
             return fees
@@ -291,7 +293,7 @@ class Portfolio:
 
     def _verify_input(
         self,
-        shares: int,
+        shares: Union[int, float, Decimal],
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
@@ -306,7 +308,7 @@ class Portfolio:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: int,
+        shares: Decimal,
         price: Decimal,
         type: Literal["long", "short"],
         pos: Position,
@@ -330,7 +332,7 @@ class Portfolio:
         type: Literal["buy", "sell"],
         limit_price: Optional[Decimal],
         fill_price: Decimal,
-        shares: int,
+        shares: Decimal,
     ) -> Order:
         self._order_id += 1
         fees = self._calculate_fees(fill_price, shares)
@@ -354,7 +356,7 @@ class Portfolio:
         symbol: str,
         entry_date: np.datetime64,
         exit_date: np.datetime64,
-        shares: int,
+        shares: Decimal,
         pnl: Decimal,
         return_pct: Decimal,
         cumulative_pnl: Decimal,
@@ -377,11 +379,19 @@ class Portfolio:
         )
         self.trades.append(trade)
 
+    def _clamp_shares(self, fill_price: Decimal, shares: Decimal) -> Decimal:
+        max_shares = (
+            Decimal(self.cash / fill_price)
+            if self._enable_fractional_shares
+            else Decimal(math.floor(self.cash / fill_price))
+        )
+        return min(shares, max_shares)
+
     def buy(
         self,
         date: np.datetime64,
         symbol: str,
-        shares: int,
+        shares: Union[int, float, Decimal],
         fill_price: Decimal,
         limit_price: Optional[Decimal] = None,
     ) -> Optional[Order]:
@@ -398,7 +408,9 @@ class Portfolio:
             :class:`.Order` if the order was filled, otherwise ``None``.
         """
         self._verify_input(shares, fill_price, limit_price)
-        shares = int(shares)
+        if not self._enable_fractional_shares:
+            shares = int(shares)
+        shares = Decimal(shares)
         self._logger.debug_place_buy_order(
             date=date,
             symbol=symbol,
@@ -428,15 +440,15 @@ class Portfolio:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: int,
+        shares: Decimal,
         fill_price: Decimal,
     ) -> _OrderResult:
         pnl = Decimal()
         if symbol not in self.short_positions:
-            return _OrderResult(0, shares)
-        rem_shares = int(min(shares, math.floor(self.cash / fill_price)))
+            return _OrderResult(Decimal(), shares)
+        rem_shares = self._clamp_shares(fill_price, shares)
         if rem_shares <= 0:
-            return _OrderResult(0, shares)
+            return _OrderResult(Decimal(), shares)
         pos = self.short_positions[symbol]
         while pos.entries:
             entry = pos.entries[0]
@@ -487,7 +499,7 @@ class Portfolio:
                     bars=entry.bars,
                     pnl_per_bar=pnl_per_bar,
                 )
-                rem_shares = 0
+                rem_shares = Decimal()
                 break
         self.pnl += pnl
         if not pos.entries:
@@ -500,18 +512,18 @@ class Portfolio:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: int,
+        shares: Decimal,
         fill_price: Decimal,
-    ) -> int:
-        shares = int(min(shares, math.floor(self.cash / fill_price)))
+    ) -> Decimal:
+        shares = self._clamp_shares(fill_price, shares)
         if shares <= 0:
-            return 0
+            return Decimal()
         if (
             self._max_long_positions is not None
             and symbol not in self.long_positions
             and len(self.long_positions) == self._max_long_positions
         ):
-            return 0
+            return Decimal()
         order_amount = shares * fill_price
         self.cash -= order_amount
         if symbol not in self.long_positions:
@@ -535,7 +547,7 @@ class Portfolio:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: int,
+        shares: Union[int, float, Decimal],
         fill_price: Decimal,
         limit_price: Optional[Decimal] = None,
     ) -> Optional[Order]:
@@ -552,7 +564,9 @@ class Portfolio:
             :class:`.Order` if the order was filled, otherwise ``None``.
         """
         self._verify_input(shares, fill_price, limit_price)
-        shares = int(shares)
+        if not self._enable_fractional_shares:
+            shares = int(shares)
+        shares = Decimal(shares)
         self._logger.debug_place_sell_order(
             date=date,
             symbol=symbol,
@@ -582,12 +596,12 @@ class Portfolio:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: int,
+        shares: Decimal,
         fill_price: Decimal,
     ) -> _OrderResult:
         pnl = Decimal()
         if symbol not in self.long_positions:
-            return _OrderResult(0, shares)
+            return _OrderResult(Decimal(), shares)
         rem_shares = shares
         pos = self.long_positions[symbol]
         while pos.entries:
@@ -639,7 +653,7 @@ class Portfolio:
                     bars=entry.bars,
                     pnl_per_bar=pnl_per_bar,
                 )
-                rem_shares = 0
+                rem_shares = Decimal()
                 break
         self.pnl += pnl
         if not pos.entries:
@@ -652,17 +666,17 @@ class Portfolio:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: int,
+        shares: Decimal,
         fill_price: Decimal,
-    ) -> int:
+    ) -> Decimal:
         if shares <= 0:
-            return 0
+            return Decimal()
         if (
             self._max_short_positions is not None
             and symbol not in self.short_positions
             and len(self.short_positions) == self._max_short_positions
         ):
-            return 0
+            return Decimal()
         self.cash += shares * fill_price
         if symbol not in self.short_positions:
             self.symbols.add(symbol)
@@ -697,8 +711,8 @@ class Portfolio:
             if index not in df.index:
                 continue
             close = to_decimal(df.loc[index][DataCol.CLOSE.value])
-            pos_long_shares = 0
-            pos_short_shares = 0
+            pos_long_shares = Decimal()
+            pos_short_shares = Decimal()
             pos_equity = Decimal()
             pos_market_value = Decimal()
             pos_margin = Decimal()
