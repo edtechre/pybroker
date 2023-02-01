@@ -9,7 +9,7 @@ strategies, especially those that use machine learning. With PyBroker, it is
 easy to write trading rules, build models, and analyze a strategy's
 performance.
 
-Some of PyBroker's key features:
+## Key Features
 
 - Fast backtesting engine built with [NumPy](https://numpy.org/) with [Numba](https://numba.pydata.org/) acceleration.
 - Easy to write trading rules and models that are used across multiple instruments.
