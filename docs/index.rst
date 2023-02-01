@@ -51,21 +51,21 @@ PyBroker
 Algorithmic Trading in Python with Machine Learning
 ===================================================
 
-**PyBroker** is a Python framework for backtesting algorithmic trading
-strategies, including strategies that use machine learning. With PyBroker, it
-is easy to write trading rules, build models, and analyze a strategy's
-performance. And it is made fast with the help of `NumPy <https://numpy.org/>`_
-and `Numba <https://numba.pydata.org/>`_ acceleration.
+**PyBroker** is a Python framework for developing algorithmic trading
+strategies, especially those that use machine learning. With PyBroker, it is
+easy to write trading rules, build models, and analyze a strategy's
+performance.
 
-Some of PyBroker's key features are:
+Some of PyBroker's key features:
 
-* Easy reuse of trading rules and models across multiple instruments.
-* Model training and backtesting using `Walkforward Analysis <https://www.youtube.com/watch?v=WBZ_Vv-iMv4>`_.
-* Extensive coverage of trading metrics, which are calculated out-of-sample.
-* Robust performance metrics calculated with randomized `bootstrapping <https://en.wikipedia.org/wiki/Bootstrapping_(statistics)>`_.
-* Support for downloading historical data from `Alpaca <https://alpaca.markets/>`_.
-* Parallelized computing of indicators for faster performance.
-* Quicker development from caching downloaded data, indicators, and trained models.
+* Fast backtesting engine built with `NumPy <https://numpy.org/>`_ and `Numba <https://numba.pydata.org/>`_ acceleration.
+* Easy to write trading rules and models that are used across multiple instruments.
+* Downloading historical data from `Alpaca <https://alpaca.markets/>`_ and `Yahoo Finance <https://finance.yahoo.com/>`_.
+* Model training and backtesting using `Walkforward Analysis <https://www.youtube.com/watch?v=WBZ_Vv-iMv4>`_ to simulate real trading.
+* Extensive coverage of trading metrics calculated out-of-sample.
+* More robust metrics calculated with randomized `bootstrapping <https://en.wikipedia.org/wiki/Bootstrapping_(statistics)>`_.
+* Caching of downloaded data, indicators, and trained models for faster development.
+* Parallelized computations for faster performance.
 
 .. include:: install.rst
 

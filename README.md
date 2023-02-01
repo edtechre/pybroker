@@ -4,21 +4,21 @@
 
 ## Algorithmic Trading in Python with Machine Learning
 
-**PyBroker** is a Python framework for backtesting algorithmic trading strategies,
-including strategies that use machine learning. With PyBroker, it is easy to
-write trading rules, build models, and analyze a strategy's performance. And it
-is made fast with the help of [NumPy](https://numpy.org/) and
-[Numba](https://numba.pydata.org/) acceleration.
+**PyBroker** is a Python framework for developing algorithmic trading
+strategies, especially those that use machine learning. With PyBroker, it is
+easy to write trading rules, build models, and analyze a strategy's
+performance.
 
-Some of PyBroker's key features are:
+Some of PyBroker's key features:
 
-- Easy reuse of trading rules and models across multiple instruments.
+- Fast backtesting engine based on [NumPy](https://numpy.org/) with [Numba](https://numba.pydata.org/) acceleration.
+- Easy to write trading rules and models that are used across multiple instruments.
+- Downloading historical data from [Alpaca](https://alpaca.markets/) and [Yahoo Finance](https://finance.yahoo.com/).
 - Model training and backtesting using [Walkforward Analysis](https://www.youtube.com/watch?v=WBZ_Vv-iMv4).
-- Extensive coverage of trading metrics, which are calculated out-of-sample.
-- Robust performance metrics calculated with randomized [bootstrapping](https://en.wikipedia.org/wiki/Bootstrapping_(statistics)).
-- Support for downloading historical data from [Alpaca](https://alpaca.markets/).
-- Parallelized computing of indicators for faster performance.
-- Quicker development from caching downloaded data, indicators, and trained models.
+- Extensive coverage of trading metrics calculated out-of-sample.
+- More robust metrics calculated with randomized [bootstrapping](https://en.wikipedia.org/wiki/Bootstrapping_(statistics)).
+- Caching of downloaded data, indicators, and trained models for faster development.
+- Parallelized computations for faster performance.
 
 ## Installation
 
