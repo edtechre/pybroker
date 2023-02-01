@@ -27,7 +27,13 @@ import os
 import re
 
 _tf_pattern: Final = re.compile(r"(\d+)([A-Za-z]+)")
-_tf_abbr: Final = {"m": "min", "h": "hour", "d": "day", "w": "week"}
+_tf_abbr: Final = {
+    "s": "sec",
+    "m": "min",
+    "h": "hour",
+    "d": "day",
+    "w": "week",
+}
 _CENTS: Final = Decimal(".01")
 
 
@@ -213,10 +219,11 @@ def to_decimal(value: Union[int, float, Decimal, str]) -> Decimal:
 def parse_timeframe(timeframe: str) -> list[tuple[int, str]]:
     """Parses timeframe string with the following units:
 
-    - m/min: minutes
-    - h/hour: hours
-    - d/day: days
-    - w/week: weeks
+    - ``"s"``/``"sec"``: seconds
+    - ``"m"``/``"min"``: minutes
+    - ``"h"``/``"hour"``: hours
+    - ``"d"``/``"day"``: days
+    - ``"w"``/``"week"``: weeks
 
     An example timeframe string is ``1h 30m``.
 
@@ -247,10 +254,11 @@ def to_seconds(timeframe: Optional[str]) -> int:
     """Converts a timeframe string to seconds, where ``timeframe`` supports the
     following units:
 
-    - m/min: minutes
-    - h/hour: hours
-    - d/day: days
-    - w/week: weeks
+    - ``"s"``/``"sec"``: seconds
+    - ``"m"``/``"min"``: minutes
+    - ``"h"``/``"hour"``: hours
+    - ``"d"``/``"day"``: days
+    - ``"w"``/``"week"``: weeks
 
     An example timeframe string is ``1h 30m``.
 
@@ -260,6 +268,7 @@ def to_seconds(timeframe: Optional[str]) -> int:
     if not timeframe:
         return 0
     seconds = {
+        "sec": 1,
         "min": 60,
         "hour": 60 * 60,
         "day": 24 * 60 * 60,

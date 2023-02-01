@@ -996,6 +996,7 @@ class Strategy(
                 resolution of the backtesting data. The timeframe string
                 supports the following units:
 
+                - ``"s"``/``"sec"``: seconds
                 - ``"m"``/``"min"``: minutes
                 - ``"h"``/``"hour"``: hours
                 - ``"d"``/``"day"``: days
@@ -1078,6 +1079,7 @@ class Strategy(
                 resolution of the backtesting data. The timeframe string
                 supports the following units:
 
+                - ``"s"``/``"sec"``: seconds
                 - ``"m"``/``"min"``: minutes
                 - ``"h"``/``"hour"``: hours
                 - ``"d"``/``"day"``: days

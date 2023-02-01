@@ -253,6 +253,7 @@ class DataSource(ABC, DataSourceCacheMixin):
                 resolution to query. The timeframe string supports the
                 following units:
 
+                - ``"s"``/``"sec"``: seconds
                 - ``"m"``/``"min"``: minutes
                 - ``"h"``/``"hour"``: hours
                 - ``"d"``/``"day"``: days

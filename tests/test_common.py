@@ -85,6 +85,7 @@ def test_bar_data_get_custom_data_when_no_attr_then_error():
         ("1day 2h 3min", [(1, "day"), (2, "hour"), (3, "min")]),
         ("10week", [(10, "week")]),
         ("3d 20m", [(3, "day"), (20, "min")]),
+        ("30s", [(30, "sec")]),
     ],
 )
 def test_parse_timeframe_success(tf, expected):
@@ -118,6 +119,7 @@ def test_parse_timeframe_invalid(tf):
         ("1day 2h 3min", 24 * 60 * 60 + 2 * 60 * 60 + 3 * 60),
         ("10week", 10 * 7 * 24 * 60 * 60),
         ("3d 20m", 3 * 24 * 60 * 60 + 20 * 60),
+        ("30s", 30),
         (None, 0),
     ],
 )
