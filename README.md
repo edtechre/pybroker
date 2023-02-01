@@ -14,7 +14,7 @@ Some of PyBroker's key features:
 - Fast backtesting engine based on [NumPy](https://numpy.org/) with [Numba](https://numba.pydata.org/) acceleration.
 - Easy to write trading rules and models that are used across multiple instruments.
 - Downloading historical data from [Alpaca](https://alpaca.markets/) and [Yahoo Finance](https://finance.yahoo.com/).
-- Model training and backtesting using [Walkforward Analysis](https://www.youtube.com/watch?v=WBZ_Vv-iMv4).
+- Model training and backtesting using [Walkforward Analysis](https://www.youtube.com/watch?v=WBZ_Vv-iMv4) to simulate real trading.
 - Extensive coverage of trading metrics calculated out-of-sample.
 - More robust metrics calculated with randomized [bootstrapping](https://en.wikipedia.org/wiki/Bootstrapping_(statistics)).
 - Caching of downloaded data, indicators, and trained models for faster development.
