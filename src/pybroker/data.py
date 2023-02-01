@@ -316,8 +316,7 @@ class Alpaca(DataSource):
         df.rename(columns={"timestamp": DataCol.DATE.value}, inplace=True)
         df = df[[col.value for col in DataCol]]
         df[DataCol.DATE.value] = pd.to_datetime(df[DataCol.DATE.value])
-        df[DataCol.DATE.value] = df[DataCol.DATE.value].dt.tz_localize(None)
-        df[DataCol.DATE.value] = df[DataCol.DATE.value].dt.tz_localize(
+        df[DataCol.DATE.value] = df[DataCol.DATE.value].dt.tz_convert(
             self.__EST
         )
         return df
