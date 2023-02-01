@@ -26,7 +26,7 @@ from .common import (
 from .scope import StaticScope
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Final, Iterable, Union
+from typing import Final, Iterable, Optional, Union
 import alpaca_trade_api as tradeapi
 import itertools
 import numpy as np
@@ -166,7 +166,7 @@ class DataSource(ABC, DataSourceCacheMixin):
         symbols: Union[str, Iterable[str]],
         start_date: Union[str, datetime],
         end_date: Union[str, datetime],
-        timeframe: str = "",
+        timeframe: Optional[str] = "",
     ) -> pd.DataFrame:
         """Queries data. Cached data is returned if caching is enabled by
         calling :meth:`pybroker.cache.enable_data_source_cache`.
@@ -237,7 +237,7 @@ class DataSource(ABC, DataSourceCacheMixin):
         symbols: frozenset[str],
         start_date: datetime,
         end_date: datetime,
-        timeframe: str,
+        timeframe: Optional[str],
     ) -> pd.DataFrame:
         """:meta public:
         Override this method to return data from a custom
@@ -264,7 +264,7 @@ class DataSource(ABC, DataSourceCacheMixin):
             :class:`pandas.DataFrame` containing the queried data.
         """
 
-    def _format_timeframe(self, timeframe: str) -> str:
+    def _format_timeframe(self, timeframe: Optional[str]) -> str:
         if not timeframe:
             return ""
         return " ".join(
@@ -290,7 +290,7 @@ class Alpaca(DataSource):
         symbols: frozenset[str],
         start_date: Union[str, datetime],
         end_date: Union[str, datetime],
-        timeframe: str,
+        timeframe: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
         start = pd.Timestamp(start_date, tz=self.__NY).isoformat()
@@ -341,7 +341,7 @@ class YFinance(DataSource):
         symbols: Union[str, Iterable[str]],
         start_date: Union[str, datetime],
         end_date: Union[str, datetime],
-        _: str = "",
+        _: Optional[str] = "",
     ) -> pd.DataFrame:
         r"""Queries data from `Yahoo Finance <https://finance.yahoo.com/>`_\ .
         The timeframe of the data is limited to per day only.
@@ -361,7 +361,7 @@ class YFinance(DataSource):
         symbols: frozenset[str],
         start_date: datetime,
         end_date: datetime,
-        _: str,
+        _: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
         df = yfinance.download(list(symbols), start=start_date, end=end_date)
