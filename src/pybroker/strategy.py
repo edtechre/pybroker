@@ -1369,8 +1369,6 @@ class Strategy(
             "unrealized_pnl",
         ):
             pos_df[col] = quantize(pos_df, col)
-        pos_df["long_shares"] = pos_df["long_shares"].astype(int)
-        pos_df["short_shares"] = pos_df["short_shares"].astype(int)
         pos_df.set_index(["symbol", "date"], inplace=True)
         portfolio_df = pd.DataFrame.from_records(
             portfolio_bars, columns=PortfolioBar._fields, index="date"
@@ -1388,16 +1386,19 @@ class Strategy(
         orders_df = pd.DataFrame.from_records(
             orders, columns=Order._fields, index="id"
         )
-        orders_df["shares"] = orders_df["shares"].astype(int)
         for col in ("limit_price", "fill_price", "fees"):
             orders_df[col] = quantize(orders_df, col)
         trades_df = pd.DataFrame.from_records(
             trades, columns=Trade._fields, index="id"
         )
-        trades_df["shares"] = trades_df["shares"].astype(int)
         trades_df["bars"] = trades_df["bars"].astype(int)
         for col in ("pnl", "return_pct", "cumulative_pnl", "pnl_per_bar"):
             trades_df[col] = quantize(trades_df, col)
+        shares_type = float if self._config.enable_fractional_shares else int
+        pos_df["long_shares"] = pos_df["long_shares"].astype(shares_type)
+        pos_df["short_shares"] = pos_df["short_shares"].astype(shares_type)
+        orders_df["shares"] = orders_df["shares"].astype(shares_type)
+        trades_df["shares"] = trades_df["shares"].astype(shares_type)
         eval_result = self.evaluate(
             portfolio_df=portfolio_df,
             trades_df=trades_df,
