@@ -376,6 +376,18 @@ class Logger:
         )
         self._debug(f"Unfilled sell order:\n{order}")
 
+    def warn_shares_over_limit(
+        self,
+        shares: Decimal,
+        max_shares: Decimal,
+        fill_price: Decimal,
+        cash: Decimal,
+    ):
+        self._warn(
+            f"Not enough funds to buy shares={shares} with cash={cash} at "
+            f"fill_price={fill_price}. Buying shares={max_shares}."
+        )
+
     def debug_schedule_order(self, date: np.datetime64, exec_result):
         self._debug(f"Scheduling order: {date}\n{exec_result}")
 
