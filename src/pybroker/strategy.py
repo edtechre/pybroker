@@ -38,7 +38,7 @@ from .context import (
     set_exec_ctx_data,
     set_pos_size_ctx_data,
 )
-from .data import DataSource
+from .data import AlpacaCrypto, DataSource
 from .eval import BootstrapResult, EvalMetrics, EvaluateMixin
 from .indicator import Indicator, IndicatorsMixin
 from .model import ModelSource, ModelsMixin, TrainedModel
@@ -1217,11 +1217,15 @@ class Strategy(
             if execution.fn is not None
             for sym in execution.symbols
         }
+        enable_fractional_shares = (
+            self._config.enable_fractional_shares
+            or isinstance(self._data_source, AlpacaCrypto)
+        )
         portfolio = Portfolio(
             self._config.initial_cash,
             self._config.fee_mode,
             self._config.fee_amount,
-            self._config.enable_fractional_shares,
+            enable_fractional_shares,
             self._config.max_long_positions,
             self._config.max_short_positions,
         )

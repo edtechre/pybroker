@@ -189,15 +189,17 @@ class DataSource(ABC, DataSourceCacheMixin):
         Returns:
             :class:`pandas.DataFrame` containing the queried data.
         """
-        if not symbols:
-            return pd.DataFrame()
         start_date = to_datetime(start_date)
         end_date = to_datetime(end_date)
+        if type(symbols) == str and not symbols:
+            raise ValueError("Symbols cannot be empty.")
         unique_syms = (
             frozenset((symbols,))
             if type(symbols) == str
             else frozenset(symbols)
         )
+        if not unique_syms:
+            raise ValueError("Symbols cannot be empty.")
         timeframe = self._format_timeframe(timeframe)
         cached_df, uncached_syms = self.get_cached(
             symbols=unique_syms,
@@ -274,7 +276,7 @@ class DataSource(ABC, DataSourceCacheMixin):
 
 
 class Alpaca(DataSource):
-    """Retrieves data from `Alpaca <https://alpaca.markets/>`_."""
+    """Retrieves stock data from `Alpaca <https://alpaca.markets/>`_."""
 
     __NY: Final = "America/New_York"
     __EST: Final = "US/Eastern"
@@ -315,6 +317,66 @@ class Alpaca(DataSource):
         df = df.reset_index()
         df.rename(columns={"timestamp": DataCol.DATE.value}, inplace=True)
         df = df[[col.value for col in DataCol]]
+        df[DataCol.DATE.value] = pd.to_datetime(df[DataCol.DATE.value])
+        df[DataCol.DATE.value] = df[DataCol.DATE.value].dt.tz_convert(
+            self.__EST
+        )
+        return df
+
+
+class AlpacaCrypto(DataSource):
+    """Retrieves crypto data from `Alpaca <https://alpaca.markets/>`_.
+
+    Args:
+        api_key: Alpaca API key.
+        api_secret: Alpaca API secret.
+        exchange: Cryptocurrency exchange to use for data.
+    """
+
+    TRADE_COUNT: Final = "trade_count"
+    COLUMNS: Final = (
+        DataCol.SYMBOL.value,
+        DataCol.DATE.value,
+        DataCol.OPEN.value,
+        DataCol.HIGH.value,
+        DataCol.LOW.value,
+        DataCol.CLOSE.value,
+        DataCol.VOLUME.value,
+        DataCol.VWAP.value,
+        TRADE_COUNT,
+    )
+
+    __NY: Final = "America/New_York"
+    __EST: Final = "US/Eastern"
+    __API_VERSION: Final = "v2"
+
+    def __init__(self, api_key: str, api_secret: str, exchange: str):
+        super().__init__()
+        self._scope.register_custom_cols(self.TRADE_COUNT)
+        self._api = tradeapi.REST(
+            api_key, api_secret, api_version=self.__API_VERSION
+        )
+        self.exchange = exchange
+
+    def _fetch_data(
+        self,
+        symbols: frozenset[str],
+        start_date: Union[str, datetime],
+        end_date: Union[str, datetime],
+        timeframe: Optional[str],
+    ) -> pd.DataFrame:
+        """:meta private:"""
+        start = pd.Timestamp(start_date, tz=self.__NY).isoformat()
+        end = pd.Timestamp(end_date, tz=self.__NY).isoformat()
+        df = self._api.get_crypto_bars(symbols, timeframe, start, end).df
+        if df.columns.empty:
+            return pd.DataFrame(columns=self.COLUMNS)
+        if df.empty:
+            return df
+        df = df[df["exchange"] == self.exchange]
+        df = df.reset_index()
+        df.rename(columns={"timestamp": DataCol.DATE.value}, inplace=True)
+        df = df[[col for col in self.COLUMNS]]
         df[DataCol.DATE.value] = pd.to_datetime(df[DataCol.DATE.value])
         df[DataCol.DATE.value] = df[DataCol.DATE.value].dt.tz_convert(
             self.__EST

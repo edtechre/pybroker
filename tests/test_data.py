@@ -19,13 +19,13 @@ from .fixtures import *  # noqa: F401
 from datetime import datetime
 from pybroker.cache import DataSourceCacheKey
 from pybroker.common import to_seconds
-from pybroker.data import Alpaca, DataSourceCacheMixin, YFinance
+from pybroker.data import Alpaca, AlpacaCrypto, DataSourceCacheMixin, YFinance
 from unittest import mock
 import joblib
-import numpy as np
 import os
 import pandas as pd
 import pytest
+import re
 import yfinance
 
 API_KEY = "api_key"
@@ -44,6 +44,8 @@ ALPACA_COLS = [
     "volume",
     "vwap",
 ]
+ALPACA_CRYPTO_COLS = ALPACA_COLS + ["exchange", "trade_count"]
+EXCHANGE = "CBSE"
 
 
 @pytest.fixture()
@@ -52,13 +54,28 @@ def alpaca_df():
         os.path.join(os.path.dirname(__file__), "testdata/daily_1.joblib")
     )
     df["date"] = df["date"].dt.tz_localize("US/Eastern")
-    df["vwap"] = np.full(len(df["close"]), 1)
-    return df[ALPACA_COLS]
+    return df.assign(vwap=1)[ALPACA_COLS]
+
+
+@pytest.fixture()
+def alpaca_crypto_df():
+    df = joblib.load(
+        os.path.join(os.path.dirname(__file__), "testdata/daily_1.joblib")
+    )
+    df["date"] = df["date"].dt.tz_localize("US/Eastern")
+    return df.assign(vwap=1, trade_count=1, exchange=EXCHANGE)[
+        ALPACA_CRYPTO_COLS
+    ]
 
 
 @pytest.fixture()
 def bars_df(alpaca_df):
     return alpaca_df.rename(columns={"date": "timestamp"})
+
+
+@pytest.fixture()
+def crypto_bars_df(alpaca_crypto_df):
+    return alpaca_crypto_df.rename(columns={"date": "timestamp"})
 
 
 @pytest.fixture()
@@ -215,9 +232,16 @@ class TestAlpaca:
             alpaca._api, "get_bars", return_value=mock_bars
         ):
             df = alpaca.query(symbols, START_DATE, END_DATE, TIMEFRAME)
-            df = df.sort_values(["symbol", "date"]).reset_index(drop=True)
-            expected = alpaca_df.sort_values(["symbol", "date"])
-            expected = df.reset_index(drop=True)
+            df = (
+                df.sort_values(["symbol", "date"])
+                .reset_index(drop=True)
+                .sort_index(axis=1)
+            )
+            expected = (
+                alpaca_df.sort_values(["symbol", "date"])
+                .reset_index(drop=True)
+                .sort_index(axis=1)
+            )
             assert df.equals(expected)
 
     @pytest.mark.usefixtures(
@@ -233,9 +257,16 @@ class TestAlpaca:
             alpaca._api, "get_bars", return_value=mock_bars
         ):
             df = alpaca.query(symbols, START_DATE, END_DATE, TIMEFRAME)
-            df = df.sort_values(["symbol", "date"]).reset_index(drop=True)
-            expected = alpaca_df.sort_values(["symbol", "date"])
-            expected = expected.reset_index(drop=True)
+            df = (
+                df.sort_values(["symbol", "date"])
+                .reset_index(drop=True)
+                .sort_index(axis=1)
+            )
+            expected = (
+                alpaca_df.sort_values(["symbol", "date"])
+                .reset_index(drop=True)
+                .sort_index(axis=1)
+            )
             assert df.equals(expected)
 
     @pytest.mark.usefixtures(
@@ -276,9 +307,16 @@ class TestAlpaca:
         ):
             alpaca.query(symbols, START_DATE, END_DATE, TIMEFRAME)
             df = alpaca.query(symbols, START_DATE, END_DATE, TIMEFRAME)
-            df = df.sort_values(["symbol", "date"]).reset_index(drop=True)
-            expected = alpaca_df.sort_values(["symbol", "date"])
-            expected = df.reset_index(drop=True)
+            df = (
+                df.sort_values(["symbol", "date"])
+                .reset_index(drop=True)
+                .sort_index(axis=1)
+            )
+            expected = (
+                alpaca_df.sort_values(["symbol", "date"])
+                .reset_index(drop=True)
+                .sort_index(axis=1)
+            )
             assert df.equals(expected)
 
     @pytest.mark.parametrize(
@@ -320,11 +358,85 @@ class TestAlpaca:
                 )
             )
 
+    @pytest.mark.parametrize("empty_symbols", ["", []])
     @pytest.mark.usefixtures("setup_ds_cache", "mock_alpaca")
-    def test_query_when_symbols_empty(self):
+    def test_query_when_symbols_empty(self, empty_symbols):
         alpaca = Alpaca(API_KEY, API_SECRET)
-        df = alpaca.query([], START_DATE, END_DATE, TIMEFRAME)
-        assert df.empty
+        with pytest.raises(
+            ValueError, match=re.escape("Symbols cannot be empty.")
+        ):
+            alpaca.query(empty_symbols, START_DATE, END_DATE, TIMEFRAME)
+
+
+class TestAlpacaCrypto:
+    def test_init(self, mock_alpaca):
+        AlpacaCrypto(API_KEY, API_SECRET, EXCHANGE)
+        mock_alpaca.assert_called_once_with(
+            API_KEY, API_SECRET, api_version=API_VERSION
+        )
+
+    @pytest.mark.usefixtures("setup_ds_cache", "mock_alpaca")
+    def test_query(self, alpaca_crypto_df, crypto_bars_df, symbols):
+        crypto = AlpacaCrypto(API_KEY, API_SECRET, EXCHANGE)
+        mock_bars = mock.Mock()
+        mock_bars.df = crypto_bars_df
+        with mock.patch.object(
+            crypto._api, "get_crypto_bars", return_value=mock_bars
+        ):
+            df = crypto.query(symbols, START_DATE, END_DATE, TIMEFRAME)
+            df = (
+                df.sort_values(["symbol", "date"])
+                .reset_index(drop=True)
+                .sort_index(axis=1)
+            )
+            expected = (
+                alpaca_crypto_df.drop(columns=["exchange"])
+                .sort_values(["symbol", "date"])
+                .reset_index(drop=True)
+                .sort_index(axis=1)
+            )
+            assert df.equals(expected)
+
+    @pytest.mark.parametrize(
+        "columns",
+        [
+            [],
+            [
+                "date",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "symbol",
+                "vwap",
+                "trade_count",
+            ],
+        ],
+    )
+    @pytest.mark.usefixtures("setup_ds_cache", "mock_alpaca")
+    def test_query_when_empty_result(self, symbols, columns):
+        crypto = AlpacaCrypto(API_KEY, API_SECRET, EXCHANGE)
+        mock_bars = mock.Mock()
+        mock_bars.df = pd.DataFrame(columns=columns)
+        with mock.patch.object(
+            crypto._api, "get_crypto_bars", return_value=mock_bars
+        ):
+            df = crypto.query(symbols, START_DATE, END_DATE, TIMEFRAME)
+            assert df.empty
+            assert set(df.columns) == set(
+                (
+                    "date",
+                    "open",
+                    "high",
+                    "low",
+                    "close",
+                    "volume",
+                    "symbol",
+                    "vwap",
+                    "trade_count",
+                )
+            )
 
 
 class TestYFinance:
@@ -394,9 +506,3 @@ class TestYFinance:
                 "adj_close",
             )
         )
-
-    @pytest.mark.usefixtures("setup_ds_cache")
-    def test_query_when_symbols_empty(self):
-        yf = YFinance()
-        df = yf.query([], START_DATE, END_DATE, TIMEFRAME)
-        assert df.empty

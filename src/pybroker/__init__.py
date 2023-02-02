@@ -32,7 +32,7 @@ from .cache import (
 from .common import BarData, DataCol, Day, FeeMode, PriceType
 from .context import ExecContext
 from .config import StrategyConfig
-from .data import Alpaca, YFinance
+from .data import Alpaca, AlpacaCrypto, YFinance
 from .eval import EvalMetrics, BootstrapResult
 from .indicator import Indicator, indicator
 from .model import ModelLoader, ModelSource, ModelTrainer, model
