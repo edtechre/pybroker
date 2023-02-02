@@ -1396,7 +1396,14 @@ class Strategy(
             trades, columns=Trade._fields, index="id"
         )
         trades_df["bars"] = trades_df["bars"].astype(int)
-        for col in ("pnl", "return_pct", "cumulative_pnl", "pnl_per_bar"):
+        for col in (
+            "entry",
+            "exit",
+            "pnl",
+            "return_pct",
+            "agg_pnl",
+            "pnl_per_bar",
+        ):
             trades_df[col] = quantize(trades_df, col)
         shares_type = float if self._config.enable_fractional_shares else int
         pos_df["long_shares"] = pos_df["long_shares"].astype(shares_type)

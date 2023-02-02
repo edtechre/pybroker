@@ -96,10 +96,12 @@ def trades(dates, symbols):
         symbol=symbols[-1],
         entry_date=dates[0],
         exit_date=dates[1],
+        entry=100,
+        exit=101,
         shares=100,
         pnl=Decimal(100),
         return_pct=Decimal(5),
-        cumulative_pnl=Decimal(100),
+        agg_pnl=Decimal(100),
         bars=1,
         pnl_per_bar=Decimal(100),
     )

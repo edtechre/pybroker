@@ -87,10 +87,12 @@ class Trade(NamedTuple):
         symbol: Ticker symbol of the trade.
         entry_date: Entry date.
         exit_date: Exit date.
+        entry: Entry price.
+        exit: Exit price.
         shares: Number of shares.
         pnl: Profit and loss (PnL).
         return_pct: Return measured in percentage.
-        cumulative_pnl: Cumulative profit and loss (PnL) of the strategy after
+        agg_pnl: Aggregate profit and loss (PnL) of the strategy after
             the trade.
         bars: Number of bars the trade was held.
         pnl_per_bar: Profit and loss (PnL) per bar held.
@@ -101,10 +103,12 @@ class Trade(NamedTuple):
     symbol: str
     entry_date: np.datetime64
     exit_date: np.datetime64
+    entry: Decimal
+    exit: Decimal
     shares: Decimal
     pnl: Decimal
     return_pct: Decimal
-    cumulative_pnl: Decimal
+    agg_pnl: Decimal
     bars: int
     pnl_per_bar: Decimal
 
@@ -356,10 +360,12 @@ class Portfolio:
         symbol: str,
         entry_date: np.datetime64,
         exit_date: np.datetime64,
+        entry_price: Decimal,
+        exit_price: Decimal,
         shares: Decimal,
         pnl: Decimal,
         return_pct: Decimal,
-        cumulative_pnl: Decimal,
+        agg_pnl: Decimal,
         bars: int,
         pnl_per_bar: Decimal,
     ):
@@ -370,10 +376,12 @@ class Portfolio:
             symbol=symbol,
             entry_date=entry_date,
             exit_date=exit_date,
+            entry=entry_price,
+            exit=exit_price,
             shares=shares,
             pnl=pnl,
             return_pct=return_pct,
-            cumulative_pnl=cumulative_pnl,
+            agg_pnl=agg_pnl,
             bars=bars,
             pnl_per_bar=pnl_per_bar,
         )
@@ -479,10 +487,12 @@ class Portfolio:
                     symbol=symbol,
                     entry_date=entry.date,
                     exit_date=date,
+                    entry_price=entry.price,
+                    exit_price=fill_price,
                     shares=entry.shares,
                     pnl=entry_pnl,
                     return_pct=return_pct,
-                    cumulative_pnl=self.pnl + pnl,
+                    agg_pnl=self.pnl + pnl,
                     bars=entry.bars,
                     pnl_per_bar=pnl_per_bar,
                 )
@@ -501,10 +511,12 @@ class Portfolio:
                     symbol=symbol,
                     entry_date=entry.date,
                     exit_date=date,
+                    entry_price=entry.price,
+                    exit_price=fill_price,
                     shares=rem_shares,
                     pnl=entry_pnl,
                     return_pct=return_pct,
-                    cumulative_pnl=self.pnl + pnl,
+                    agg_pnl=self.pnl + pnl,
                     bars=entry.bars,
                     pnl_per_bar=pnl_per_bar,
                 )
@@ -633,10 +645,12 @@ class Portfolio:
                     symbol=symbol,
                     entry_date=entry.date,
                     exit_date=date,
+                    entry_price=entry.price,
+                    exit_price=fill_price,
                     shares=entry.shares,
                     pnl=entry_pnl,
                     return_pct=return_pct,
-                    cumulative_pnl=self.pnl + pnl,
+                    agg_pnl=self.pnl + pnl,
                     bars=entry.bars,
                     pnl_per_bar=pnl_per_bar,
                 )
@@ -655,10 +669,12 @@ class Portfolio:
                     symbol=symbol,
                     entry_date=entry.date,
                     exit_date=date,
+                    entry_price=entry.price,
+                    exit_price=fill_price,
                     shares=rem_shares,
                     pnl=entry_pnl,
                     return_pct=return_pct,
-                    cumulative_pnl=self.pnl + pnl,
+                    agg_pnl=self.pnl + pnl,
                     bars=entry.bars,
                     pnl_per_bar=pnl_per_bar,
                 )

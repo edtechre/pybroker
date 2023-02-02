@@ -64,10 +64,12 @@ def assert_trade(
     symbol,
     entry_date,
     exit_date,
+    entry,
+    exit,
     shares,
     pnl,
     return_pct,
-    cumulative_pnl,
+    agg_pnl,
     bars,
     pnl_per_bar,
 ):
@@ -75,10 +77,12 @@ def assert_trade(
     assert trade.symbol == symbol
     assert trade.entry_date == entry_date
     assert trade.exit_date == exit_date
+    assert trade.entry == entry
+    assert trade.exit == exit
     assert trade.shares == shares
     assert trade.pnl == pnl
     assert trade.return_pct == return_pct
-    assert trade.cumulative_pnl == cumulative_pnl
+    assert trade.agg_pnl == agg_pnl
     assert trade.bars == bars
     assert trade.pnl_per_bar == pnl_per_bar
 
@@ -371,10 +375,12 @@ def test_buy_when_existing_short_position():
         symbol=SYMBOL_1,
         entry_date=DATE_1,
         exit_date=DATE_2,
+        entry=FILL_PRICE_3,
+        exit=FILL_PRICE_1,
         shares=SHARES_1,
         pnl=expected_pnl,
         return_pct=expected_return_pct,
-        cumulative_pnl=expected_pnl,
+        agg_pnl=expected_pnl,
         bars=1,
         pnl_per_bar=expected_pnl,
     )
@@ -382,17 +388,25 @@ def test_buy_when_existing_short_position():
 
 def test_buy_when_existing_short_and_not_enough_cash():
     portfolio = Portfolio(100)
-    short_order = portfolio.sell(DATE_1, SYMBOL_1, SHARES_1, 5, Decimal("4.9"))
+    entry_price = Decimal(5)
+    entry_limit = Decimal("4.9")
+    exit_price = Decimal(200)
+    exit_limit = Decimal(201)
+    short_order = portfolio.sell(
+        DATE_1, SYMBOL_1, SHARES_1, entry_price, entry_limit
+    )
     portfolio.incr_bars()
-    buy_order = portfolio.buy(DATE_2, SYMBOL_1, SHARES_1, 200, 201)
-    expected_shares = SHARES_1 / (200 / 5)
-    expected_pnl = (5 - 200) * expected_shares
+    buy_order = portfolio.buy(
+        DATE_2, SYMBOL_1, SHARES_1, exit_price, exit_limit
+    )
+    expected_shares = SHARES_1 / (exit_price / entry_price)
+    expected_pnl = (entry_price - exit_price) * expected_shares
     assert_order(
         order=short_order,
         date=DATE_1,
         symbol=SYMBOL_1,
         type="sell",
-        limit_price=Decimal("4.9"),
+        limit_price=entry_limit,
         fill_price=5,
         shares=SHARES_1,
         fees=0,
@@ -402,8 +416,8 @@ def test_buy_when_existing_short_and_not_enough_cash():
         date=DATE_2,
         symbol=SYMBOL_1,
         type="buy",
-        limit_price=201,
-        fill_price=200,
+        limit_price=exit_limit,
+        fill_price=exit_price,
         shares=SHARES_1,
         fees=0,
     )
@@ -434,17 +448,19 @@ def test_buy_when_existing_short_and_not_enough_cash():
         type="short",
     )
     assert len(portfolio.trades) == 1
-    expected_return_pct = (5 / 200 - 1) * 100
+    expected_return_pct = (entry_price / exit_price - 1) * 100
     assert_trade(
         trade=portfolio.trades[0],
         type="short",
         symbol=SYMBOL_1,
         entry_date=DATE_1,
         exit_date=DATE_2,
+        entry=entry_price,
+        exit=exit_price,
         shares=expected_shares,
         pnl=expected_pnl,
         return_pct=expected_return_pct,
-        cumulative_pnl=expected_pnl,
+        agg_pnl=expected_pnl,
         bars=1,
         pnl_per_bar=expected_pnl,
     )
@@ -597,10 +613,12 @@ def test_sell_when_all_shares(fill_price, limit_price):
         symbol=SYMBOL_1,
         entry_date=DATE_1,
         exit_date=DATE_2,
+        entry=FILL_PRICE_1,
+        exit=fill_price,
         shares=SHARES_1,
         pnl=expected_pnl,
         return_pct=expected_return_pct,
-        cumulative_pnl=expected_pnl,
+        agg_pnl=expected_pnl,
         bars=1,
         pnl_per_bar=expected_pnl,
     )
@@ -645,10 +663,12 @@ def test_sell_when_all_shares_and_multiple_bars():
         symbol=SYMBOL_1,
         entry_date=DATE_1,
         exit_date=DATE_2,
+        entry=FILL_PRICE_1,
+        exit=FILL_PRICE_3,
         shares=SHARES_1,
         pnl=expected_pnl,
         return_pct=expected_return_pct,
-        cumulative_pnl=expected_pnl,
+        agg_pnl=expected_pnl,
         bars=2,
         pnl_per_bar=expected_pnl / 2,
     )
@@ -715,10 +735,12 @@ def test_sell_when_all_shares_and_fractional():
         symbol=SYMBOL_1,
         entry_date=DATE_1,
         exit_date=DATE_2,
+        entry=FILL_PRICE_1,
+        exit=FILL_PRICE_3,
         shares=shares,
         pnl=expected_pnl,
         return_pct=expected_return_pct,
-        cumulative_pnl=expected_pnl,
+        agg_pnl=expected_pnl,
         bars=1,
         pnl_per_bar=expected_pnl,
     )
@@ -830,10 +852,12 @@ def test_sell_when_partial_shares():
         symbol=SYMBOL_1,
         entry_date=DATE_1,
         exit_date=DATE_2,
+        entry=FILL_PRICE_1,
+        exit=FILL_PRICE_3,
         shares=SHARES_1,
         pnl=expected_pnl,
         return_pct=expected_return_pct,
-        cumulative_pnl=expected_pnl,
+        agg_pnl=expected_pnl,
         bars=1,
         pnl_per_bar=expected_pnl,
     )
@@ -900,10 +924,12 @@ def test_sell_when_multiple_entries():
         symbol=SYMBOL_1,
         entry_date=DATE_1,
         exit_date=DATE_2,
+        entry=FILL_PRICE_1,
+        exit=FILL_PRICE_3,
         shares=SHARES_1,
         pnl=expected_trade_pnl_1,
         return_pct=expected_return_pct,
-        cumulative_pnl=expected_trade_pnl_1,
+        agg_pnl=expected_trade_pnl_1,
         bars=1,
         pnl_per_bar=expected_trade_pnl_1,
     )
@@ -916,10 +942,12 @@ def test_sell_when_multiple_entries():
         symbol=SYMBOL_1,
         entry_date=DATE_1,
         exit_date=DATE_2,
+        entry=FILL_PRICE_1,
+        exit=FILL_PRICE_3,
         shares=SHARES_2 - SHARES_1,
         pnl=expected_trade_pnl_2,
         return_pct=expected_return_pct,
-        cumulative_pnl=expected_trade_pnl_1 + expected_trade_pnl_2,
+        agg_pnl=expected_trade_pnl_1 + expected_trade_pnl_2,
         bars=1,
         pnl_per_bar=expected_trade_pnl_2,
     )
@@ -1201,10 +1229,12 @@ def test_short_when_existing_long_position():
         symbol=SYMBOL_1,
         entry_date=DATE_1,
         exit_date=DATE_2,
+        entry=FILL_PRICE_1,
+        exit=FILL_PRICE_3,
         shares=SHARES_1,
         pnl=expected_pnl,
         return_pct=expected_return_pct,
-        cumulative_pnl=expected_pnl,
+        agg_pnl=expected_pnl,
         bars=1,
         pnl_per_bar=expected_pnl,
     )
@@ -1314,10 +1344,12 @@ def test_cover_when_all_shares(fill_price, limit_price):
         symbol=SYMBOL_1,
         entry_date=DATE_1,
         exit_date=DATE_2,
+        entry=FILL_PRICE_3,
+        exit=fill_price,
         shares=SHARES_1,
         pnl=expected_pnl,
         return_pct=expected_return_pct,
-        cumulative_pnl=expected_pnl,
+        agg_pnl=expected_pnl,
         bars=1,
         pnl_per_bar=expected_pnl,
     )
@@ -1379,10 +1411,12 @@ def test_cover_when_partial_shares():
         symbol=SYMBOL_1,
         entry_date=DATE_1,
         exit_date=DATE_2,
+        entry=FILL_PRICE_3,
+        exit=FILL_PRICE_1,
         shares=SHARES_1,
         pnl=expected_pnl,
         return_pct=expected_return_pct,
-        cumulative_pnl=expected_pnl,
+        agg_pnl=expected_pnl,
         bars=1,
         pnl_per_bar=expected_pnl,
     )
@@ -1449,10 +1483,12 @@ def test_cover_when_multiple_entries():
         symbol=SYMBOL_1,
         entry_date=DATE_1,
         exit_date=DATE_2,
+        entry=FILL_PRICE_3,
+        exit=FILL_PRICE_1,
         shares=SHARES_1,
         pnl=expected_trade_pnl_1,
         return_pct=expected_return_pct,
-        cumulative_pnl=expected_trade_pnl_1,
+        agg_pnl=expected_trade_pnl_1,
         bars=1,
         pnl_per_bar=expected_trade_pnl_1,
     )
@@ -1465,10 +1501,12 @@ def test_cover_when_multiple_entries():
         symbol=SYMBOL_1,
         entry_date=DATE_1,
         exit_date=DATE_2,
+        entry=FILL_PRICE_3,
+        exit=FILL_PRICE_1,
         shares=SHARES_2 - SHARES_1,
         pnl=expected_trade_pnl_2,
         return_pct=expected_return_pct,
-        cumulative_pnl=expected_trade_pnl_1 + expected_trade_pnl_2,
+        agg_pnl=expected_trade_pnl_1 + expected_trade_pnl_2,
         bars=1,
         pnl_per_bar=expected_trade_pnl_2,
     )
