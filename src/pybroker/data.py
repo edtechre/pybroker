@@ -55,6 +55,7 @@ class DataSourceCacheMixin:
                 resolution of the cached data. The timeframe string supports
                 the following units:
 
+                - ``"s"``/``"sec"``: seconds
                 - ``"m"``/``"min"``: minutes
                 - ``"h"``/``"hour"``: hours
                 - ``"d"``/``"day"``: days
@@ -119,6 +120,7 @@ class DataSourceCacheMixin:
                 resolution of the data to cache. The timeframe string supports
                 the following units:
 
+                - ``"s"``/``"sec"``: seconds
                 - ``"m"``/``"min"``: minutes
                 - ``"h"``/``"hour"``: hours
                 - ``"d"``/``"day"``: days
@@ -179,6 +181,7 @@ class DataSource(ABC, DataSourceCacheMixin):
                 resolution to query. The timeframe string supports the
                 following units:
 
+                - ``"s"``/``"sec"``: seconds
                 - ``"m"``/``"min"``: minutes
                 - ``"h"``/``"hour"``: hours
                 - ``"d"``/``"day"``: days
