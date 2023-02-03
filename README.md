@@ -16,7 +16,7 @@ performance.
 - Download historical data from [Alpaca](https://alpaca.markets/) and [Yahoo Finance](https://finance.yahoo.com/).
 - Train and backtest models using [Walkforward Analysis](https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model%20with%20Walkforward%20Analysis.html#Walkforward-Analysis) to simulate real trading.
 - Includes robust metrics calculated from randomized [bootstrapping](https://en.wikipedia.org/wiki/Bootstrapping_(statistics)).
-- Caching of downloaded data, indicators, and trained models for faster development.
+- Caching of downloaded data, indicators, and models for faster development.
 - Parallelized computations for faster performance.
 
 ## Installation
