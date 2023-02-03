@@ -1,4 +1,4 @@
-"""Contains configuration classes."""
+"""Contains configuration options."""
 
 """Copyright (C) 2023 Edward West
 
@@ -22,15 +22,20 @@ from typing import Optional
 
 @dataclass(frozen=True)
 class StrategyConfig:
-    """Configuration for :class:`pybroker.strategy.Strategy`.
+    """Configuration options for :class:`pybroker.strategy.Strategy`.
 
     Attributes:
         initial_cash: Starting cash of strategy.
         fee_mode: :class:`pybroker.common.FeeMode` for calculating brokerage
-            fees, disabled when ``None``. Defaults to ``None``.
+            fees. Supports one of:
+
+            - ``ORDER_PERCENT``: Fee is a percentage of order amount.
+            - ``PER_ORDER``: Fee is a constant amount per order.
+            - ``PER_SHARE``: Fee is a constant amount per share in order.
+            - ``None``: Fees are disabled (default).
         fee_amount: Brokerage fee amount.
         enable_fractional_shares: Whether to enable trading fractional shares.
-            Defaults to False.
+            Set to ``True`` for crypto trading. Defaults to ``False``.
         max_long_positions: Maximum number of long positions that can be held
             at any time in :class:`pybroker.portfolio.Portfolio`. Unlimited
             when ``None``. Defaults to ``None``.

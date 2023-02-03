@@ -124,6 +124,7 @@ To learn how to use PyBroker, see the notebooks under the User Guide:
    :maxdepth: 4
    :caption: Reference
 
+   Configuration Options <reference/pybroker.config>
    Modules <reference/modules>
    Index <genindex>
 
