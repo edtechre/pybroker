@@ -382,7 +382,10 @@ def drawdown_conf(
 
 @njit
 def relative_entropy(values: NDArray[np.float_]) -> float:
-    """Computes relative entropy by partitioning ``values`` into bins."""
+    """Computes relative `entropy
+    <https://en.wikipedia.org/wiki/Entropy_(information_theory)>`_ by
+    partitioning ``values`` into bins.
+    """
     x = values[~np.isnan(values)]
     n = len(x)
     if not n:
@@ -411,7 +414,8 @@ def relative_entropy(values: NDArray[np.float_]) -> float:
 
 
 def iqr(values: NDArray[np.float_]) -> float:
-    """Computes the interquartile range (IQR) of ``values``."""
+    """Computes the `interquartile range (IQR)
+    <https://en.wikipedia.org/wiki/Interquartile_range>`_ of ``values``."""
     x = values[~np.isnan(values)]
     if not len(x):
         return 0

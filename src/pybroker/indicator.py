@@ -87,14 +87,15 @@ class Indicator:
 
     def relative_entropy(self, data: Union[BarData, pd.DataFrame]) -> float:
         """Generates indicator data with ``data`` and computes its relative
-        entropy. Relative entropy measures the information content of the
-        indicator.
+        `entropy
+        <https://en.wikipedia.org/wiki/Entropy_(information_theory)>`_.
         """
         return relative_entropy(self(data).values)
 
     def iqr(self, data: Union[BarData, pd.DataFrame]) -> float:
         """Generates indicator data with ``data`` and computes its
-        interquartile range (IQR).
+        `interquartile range (IQR)
+        <https://en.wikipedia.org/wiki/Interquartile_range>`_.
         """
         return iqr(self(data).values)
 
