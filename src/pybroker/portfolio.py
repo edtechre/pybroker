@@ -393,16 +393,7 @@ class Portfolio:
             if self._enable_fractional_shares
             else Decimal(math.floor(self.cash / fill_price))
         )
-        if shares > max_shares:
-            self._logger.warn_shares_over_limit(
-                shares=shares,
-                max_shares=max_shares,
-                fill_price=fill_price,
-                cash=self.cash,
-            )
-            return max_shares
-        else:
-            return shares
+        return min(shares, max_shares)
 
     def buy(
         self,
