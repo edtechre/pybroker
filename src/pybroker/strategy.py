@@ -1198,6 +1198,11 @@ class Strategy(
             )
         )  # type: ignore[return-value]
 
+    def _fractional_shares_enabled(self):
+        return self._config.enable_fractional_shares or isinstance(
+            self._data_source, AlpacaCrypto
+        )
+
     def _run_walkfoward(
         self,
         df: pd.DataFrame,
@@ -1217,15 +1222,11 @@ class Strategy(
             if execution.fn is not None
             for sym in execution.symbols
         }
-        enable_fractional_shares = (
-            self._config.enable_fractional_shares
-            or isinstance(self._data_source, AlpacaCrypto)
-        )
         portfolio = Portfolio(
             self._config.initial_cash,
             self._config.fee_mode,
             self._config.fee_amount,
-            enable_fractional_shares,
+            self._fractional_shares_enabled(),
             self._config.max_long_positions,
             self._config.max_short_positions,
         )
@@ -1405,7 +1406,7 @@ class Strategy(
             "pnl_per_bar",
         ):
             trades_df[col] = quantize(trades_df, col)
-        shares_type = float if self._config.enable_fractional_shares else int
+        shares_type = float if self._fractional_shares_enabled() else int
         pos_df["long_shares"] = pos_df["long_shares"].astype(shares_type)
         pos_df["short_shares"] = pos_df["short_shares"].astype(shares_type)
         orders_df["shares"] = orders_df["shares"].astype(shares_type)
