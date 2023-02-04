@@ -16,14 +16,22 @@ with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from .fixtures import *
+from collections import deque
 from datetime import datetime
 from decimal import Decimal
 from pybroker.common import DataCol, PriceType
 from pybroker.config import StrategyConfig
 from pybroker.data import DataSource
-from pybroker.portfolio import Order, Portfolio
+from pybroker.portfolio import (
+    Order,
+    Portfolio,
+    PortfolioBar,
+    PositionBar,
+    Trade,
+)
 from pybroker.strategy import (
     BacktestMixin,
+    BacktestResult,
     Execution,
     ExecSymbol,
     Strategy,
@@ -1502,3 +1510,131 @@ class TestStrategy:
         strategy.add_execution(None, "SPY")
         strategy.clear_executions()
         assert not strategy._executions
+
+    @pytest.mark.parametrize(
+        "enable_fractional_shares, expected_shares_type,"
+        "expected_short_shares, expected_long_shares",
+        [(True, np.float_, 0.1, 3.14), (False, np.int_, 0, 3)],
+    )
+    def test_to_test_result_when_fractional_shares(
+        self,
+        data_source_df,
+        enable_fractional_shares,
+        expected_shares_type,
+        expected_long_shares,
+        expected_short_shares,
+    ):
+        portfolio_bars = deque(
+            (
+                PortfolioBar(
+                    date=np.datetime64(START_DATE),
+                    cash=Decimal(100_000),
+                    equity=Decimal(100_000),
+                    margin=Decimal(),
+                    market_value=Decimal(100_000),
+                    pnl=Decimal(1000),
+                    unrealized_pnl=Decimal(100),
+                    fees=Decimal(),
+                ),
+            )
+        )
+        position_bars = deque(
+            (
+                PositionBar(
+                    symbol="SPY",
+                    date=np.datetime64(START_DATE),
+                    long_shares=Decimal("3.14"),
+                    short_shares=Decimal("0.1"),
+                    close=Decimal(100),
+                    equity=Decimal(100_000),
+                    market_value=Decimal(100_000),
+                    margin=Decimal(),
+                    unrealized_pnl=Decimal(100),
+                ),
+            )
+        )
+        orders = deque(
+            (
+                Order(
+                    id=1,
+                    type="buy",
+                    symbol="SPY",
+                    date=np.datetime64(START_DATE),
+                    shares=Decimal("3.14"),
+                    limit_price=Decimal(100),
+                    fill_price=Decimal(99),
+                    fees=Decimal(),
+                ),
+            )
+        )
+        trades = deque(
+            (
+                Trade(
+                    id=1,
+                    type="long",
+                    symbol="SPY",
+                    entry_date=np.datetime64(START_DATE),
+                    exit_date=np.datetime64(END_DATE),
+                    entry=Decimal(100),
+                    exit=Decimal(101),
+                    shares=Decimal("3.14"),
+                    pnl=Decimal(1000),
+                    return_pct=Decimal("10.3"),
+                    agg_pnl=Decimal(1000),
+                    bars=2,
+                    pnl_per_bar=Decimal(500),
+                ),
+            )
+        )
+        backtest_result = BacktestResult(
+            START_DATE, END_DATE, portfolio_bars, position_bars, orders, trades
+        )
+        config = StrategyConfig(
+            enable_fractional_shares=enable_fractional_shares
+        )
+        strategy = Strategy(
+            data_source_df,
+            START_DATE,
+            END_DATE,
+            config,
+        )
+        result = strategy._to_test_result(
+            START_DATE, END_DATE, (backtest_result,), calc_bootstrap=False
+        )
+        assert np.issubdtype(
+            result.positions["long_shares"].dtype, expected_shares_type
+        )
+        assert np.issubdtype(
+            result.positions["short_shares"].dtype, expected_shares_type
+        )
+        assert np.issubdtype(
+            result.orders["shares"].dtype, expected_shares_type
+        )
+        assert np.issubdtype(
+            result.trades["shares"].dtype, expected_shares_type
+        )
+        assert (
+            result.positions["long_shares"].values[0] == expected_long_shares
+        )
+        assert (
+            result.positions["short_shares"].values[0] == expected_short_shares
+        )
+        assert result.orders["shares"].values[0] == expected_long_shares
+        assert result.trades["shares"].values[0] == expected_long_shares
+
+    def test_to_test_result_when_empty(self, data_source_df):
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        result = strategy._to_test_result(
+            START_DATE,
+            END_DATE,
+            (
+                BacktestResult(
+                    START_DATE, END_DATE, deque(), deque(), deque(), deque()
+                ),
+            ),
+            calc_bootstrap=False,
+        )
+        assert result.portfolio.empty
+        assert result.positions.empty
+        assert result.orders.empty
+        assert result.trades.empty
