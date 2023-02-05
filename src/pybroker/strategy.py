@@ -170,6 +170,7 @@ class BacktestMixin:
         max_long_positions: Optional[int],
         max_short_positions: Optional[int],
         pos_size_handler: Optional[Callable[[PosSizeContext], None]],
+        enable_fractional_shares: bool = False,
     ) -> BacktestResult:
         r"""Backtests a ``set`` of :class:`.Execution`\ s that implement
         trading logic.
@@ -196,6 +197,8 @@ class BacktestMixin:
                 held at a time. If ``None``, then unlimited.
             pos_size_handler: :class:`Callable` that sets position sizes when
                 placing orders for buy and sell signals.
+            enable_fractional_shares: Whether to enable trading fractional
+                shares.
 
         Returns:
             :class:`.TestResult` of the backtest.
@@ -290,6 +293,7 @@ class BacktestMixin:
                     sell_sched=sell_sched,
                     buy_sched=buy_sched,
                     portfolio=portfolio,
+                    enable_fractional_shares=enable_fractional_shares,
                 )
             if is_buy_sched:
                 self._place_buy_orders(
@@ -300,6 +304,7 @@ class BacktestMixin:
                     buy_sched=buy_sched,
                     sell_sched=sell_sched,
                     portfolio=portfolio,
+                    enable_fractional_shares=enable_fractional_shares,
                 )
             portfolio.capture_bar(date, test_data)
             for exec_symbol in exec_symbols:
@@ -405,11 +410,15 @@ class BacktestMixin:
         buy_sched: dict[np.datetime64, list[ExecResult]],
         sell_sched: dict[np.datetime64, list[ExecResult]],
         portfolio: Portfolio,
+        enable_fractional_shares: bool,
     ):
         buy_results = buy_sched[date]
         for result in buy_results:
             if result.buy_shares is None:
                 continue
+            buy_shares = self._get_shares(
+                result.buy_shares, enable_fractional_shares
+            )
             fill_price = self._get_price(
                 symbol=result.symbol,
                 date=date,
@@ -421,7 +430,7 @@ class BacktestMixin:
             order = portfolio.buy(
                 date=date,
                 symbol=result.symbol,
-                shares=result.buy_shares,
+                shares=buy_shares,
                 fill_price=fill_price,
                 limit_price=result.buy_limit_price,
             )
@@ -430,7 +439,7 @@ class BacktestMixin:
                 logger.debug_unfilled_buy_order(
                     date=date,
                     symbol=result.symbol,
-                    shares=result.buy_shares,
+                    shares=buy_shares,
                     fill_price=fill_price,
                     limit_price=result.buy_limit_price,
                 )
@@ -438,7 +447,7 @@ class BacktestMixin:
                 logger.debug_filled_buy_order(
                     date=date,
                     symbol=result.symbol,
-                    shares=result.buy_shares,
+                    shares=buy_shares,
                     fill_price=fill_price,
                     limit_price=result.buy_limit_price,
                 )
@@ -475,11 +484,15 @@ class BacktestMixin:
         sell_sched: dict[np.datetime64, list[ExecResult]],
         buy_sched: dict[np.datetime64, list[ExecResult]],
         portfolio: Portfolio,
+        enable_fractional_shares: bool,
     ):
         sell_results = sell_sched[date]
         for result in sell_results:
             if result.sell_shares is None:
                 continue
+            sell_shares = self._get_shares(
+                result.sell_shares, enable_fractional_shares
+            )
             fill_price = self._get_price(
                 symbol=result.symbol,
                 date=date,
@@ -491,7 +504,7 @@ class BacktestMixin:
             order = portfolio.sell(
                 date=date,
                 symbol=result.symbol,
-                shares=result.sell_shares,
+                shares=sell_shares,
                 fill_price=fill_price,
                 limit_price=result.sell_limit_price,
             )
@@ -500,7 +513,7 @@ class BacktestMixin:
                 logger.debug_unfilled_sell_order(
                     date=date,
                     symbol=result.symbol,
-                    shares=result.sell_shares,
+                    shares=sell_shares,
                     fill_price=fill_price,
                     limit_price=result.sell_limit_price,
                 )
@@ -508,7 +521,7 @@ class BacktestMixin:
                 logger.debug_filled_sell_order(
                     date=date,
                     symbol=result.symbol,
-                    shares=result.sell_shares,
+                    shares=sell_shares,
                     fill_price=fill_price,
                     limit_price=result.sell_limit_price,
                 )
@@ -536,6 +549,16 @@ class BacktestMixin:
                     )
         del sell_sched[date]
 
+    def _get_shares(
+        self,
+        shares: Union[int, float, Decimal],
+        enable_fractional_shares: bool,
+    ) -> Decimal:
+        if enable_fractional_shares:
+            return to_decimal(shares)
+        else:
+            return to_decimal(int(shares))
+
     def _get_price(
         self,
         symbol: str,
@@ -544,9 +567,8 @@ class BacktestMixin:
             float,
             int,
             Decimal,
-            str,
             PriceType,
-            Callable[[BarData], Union[int, float, Decimal, str]],
+            Callable[[BarData], Union[int, float, Decimal]],
         ],
         df: pd.DataFrame,
         col_scope: ColumnScope,
@@ -1277,6 +1299,7 @@ class Strategy(
                     max_long_positions=self._config.max_long_positions,
                     max_short_positions=self._config.max_short_positions,
                     pos_size_handler=self._pos_size_handler,
+                    enable_fractional_shares=self._fractional_shares_enabled(),
                 )
                 backtest_results.append(backtest_result)
         return backtest_results

@@ -231,6 +231,7 @@ class Portfolio:
             the amount of equity held in cash and long positions added together
             with the unrealized PnL of all open short positions.
         fees: Current brokerage fees.
+        enable_fractional_shares: Whether to enable trading fractional shares.
         orders: ``deque`` of all filled orders, sorted in ascending
             chronological order.
         margin: Current amount of margin held in open positions.
@@ -399,7 +400,7 @@ class Portfolio:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: Union[int, float, Decimal],
+        shares: Decimal,
         fill_price: Decimal,
         limit_price: Optional[Decimal] = None,
     ) -> Optional[Order]:
@@ -416,9 +417,6 @@ class Portfolio:
             :class:`.Order` if the order was filled, otherwise ``None``.
         """
         self._verify_input(shares, fill_price, limit_price)
-        if not self._enable_fractional_shares:
-            shares = int(shares)
-        shares = Decimal(shares)
         self._logger.debug_place_buy_order(
             date=date,
             symbol=symbol,
@@ -559,7 +557,7 @@ class Portfolio:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: Union[int, float, Decimal],
+        shares: Decimal,
         fill_price: Decimal,
         limit_price: Optional[Decimal] = None,
     ) -> Optional[Order]:
@@ -576,9 +574,6 @@ class Portfolio:
             :class:`.Order` if the order was filled, otherwise ``None``.
         """
         self._verify_input(shares, fill_price, limit_price)
-        if not self._enable_fractional_shares:
-            shares = int(shares)
-        shares = Decimal(shares)
         self._logger.debug_place_sell_order(
             date=date,
             symbol=symbol,

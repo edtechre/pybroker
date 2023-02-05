@@ -206,12 +206,12 @@ def to_datetime(
         raise TypeError(f"Unsupported date type: {date_type}")
 
 
-def to_decimal(value: Union[int, float, Decimal, str]) -> Decimal:
+def to_decimal(value: Union[int, float, Decimal]) -> Decimal:
     """Converts ``value`` to :class:`Decimal`."""
     value_type = type(value)
     if value_type == Decimal:
         return value  # type: ignore[return-value]
-    elif value_type == str:
+    elif value_type == int:
         return Decimal(value)
     return Decimal(str(value))
 

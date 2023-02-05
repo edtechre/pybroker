@@ -193,7 +193,6 @@ def test_quantize_when_column_not_found_then_error():
         (1, Decimal(1)),
         (30.33, Decimal("30.33")),
         (Decimal("10.1"), Decimal("10.1")),
-        ("13.13", Decimal("13.13")),
     ],
 )
 def test_to_decimal(value, expected):

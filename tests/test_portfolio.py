@@ -33,8 +33,8 @@ FILL_PRICE_4 = Decimal("103.30")
 LIMIT_PRICE_1 = Decimal(100)
 LIMIT_PRICE_2 = Decimal(101)
 LIMIT_PRICE_3 = Decimal(102)
-SHARES_1 = 120
-SHARES_2 = 200
+SHARES_1 = Decimal(120)
+SHARES_2 = Decimal(200)
 DATE_1 = np.datetime64("2020-02-02")
 DATE_2 = np.datetime64("2020-02-03")
 
@@ -161,7 +161,7 @@ def test_buy(fill_price, limit_price):
 
 
 def test_buy_when_partial_filled():
-    shares = SHARES_1 - 100
+    shares = Decimal(SHARES_1 - 100)
     cash = 50 + FILL_PRICE_1 * shares
     portfolio = Portfolio(cash)
     order = portfolio.buy(
