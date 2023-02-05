@@ -54,10 +54,10 @@ looks like:
    def exec_fn(ctx):
       preds = ctx.preds('my_model')
       # Open a long position given my_model's latest prediction.
-      if not ctx.long_pos() and preds[-1] > threshold:
+      if not ctx.long_pos() and preds[-1] > buy_threshold:
          ctx.buy_shares = 100
       # Close the long position given my_model's latest prediction.
-      elif ctx.long_pos() and preds[-1] < threshold:
+      elif ctx.long_pos() and preds[-1] < sell_threshold:
          ctx.sell_all_shares()
 
    alpaca = Alpaca(api_key=..., api_secret=...)
