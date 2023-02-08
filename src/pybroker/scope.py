@@ -435,7 +435,11 @@ class PredictionScope:
         input_ = self._input_scope.fetch(symbol, name)
         if model_sym not in self._models:
             raise ValueError(f"Model {name!r} not found for {symbol}.")
-        pred = self._models[model_sym].instance.predict(input_)
+        trained_model = self._models[model_sym]
+        if trained_model.predict_fn is not None:
+            pred = trained_model.predict_fn(trained_model.instance, input_)
+        else:
+            pred = trained_model.instance.predict(input_)
         if len(pred.shape) > 1:
             pred = np.squeeze(pred)
         self._sym_preds[model_sym] = pred

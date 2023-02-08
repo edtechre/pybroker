@@ -64,24 +64,39 @@ def model_syms(train_data, model_source):
 
 @pytest.mark.parametrize("pretrained", [True, False])
 def test_model(indicators, pretrained):
+    def input_data_fn(df):
+        pass
+
+    def predict_fn(model, df):
+        pass
+
     name = f"pretrained={pretrained}"
-    source = model(name, lambda x: x, indicators, None, pretrained=pretrained)
+    source = model(
+        name,
+        lambda x: x,
+        indicators,
+        input_data_fn=input_data_fn,
+        predict_fn=predict_fn,
+        pretrained=pretrained,
+    )
     assert isinstance(source, ModelLoader if pretrained else ModelTrainer)
     assert source.name == name
     assert source.indicators == ("hhv", "llv", "sumv")
+    assert source._input_data_fn is input_data_fn
+    assert source._predict_fn is predict_fn
 
 
 class TestModelSource:
     @pytest.mark.parametrize("clazz", [ModelLoader, ModelTrainer])
     def test_model_prepare_input_fn(self, data_source_df, clazz):
         prepare_fn = Mock()
-        source = clazz("model_source", lambda x: x, [], prepare_fn, {})
+        source = clazz("model_source", lambda x: x, [], prepare_fn, None, {})
         source.prepare_input_data(data_source_df)
         prepare_fn.assert_called_once_with(data_source_df)
 
     @pytest.mark.parametrize("clazz", [ModelLoader, ModelTrainer])
     def test_model_prepare_input_fn_when_empty_data(self, clazz):
-        source = clazz("model_source", lambda x: x, [], None, {})
+        source = clazz("model_source", lambda x: x, [], None, None, {})
         df = source.prepare_input_data(pd.DataFrame())
         assert df.empty
 
@@ -89,7 +104,7 @@ class TestModelSource:
     def test_model_prepare_input_fn_when_fn_none(
         self, ind_df, ind_names, clazz
     ):
-        source = clazz("model_source", lambda x: x, ind_names, None, {})
+        source = clazz("model_source", lambda x: x, ind_names, None, None, {})
         df = source.prepare_input_data(ind_df)
         assert df.equals(ind_df)
 
@@ -97,7 +112,7 @@ class TestModelSource:
     def test_model_prepare_input_fn_when_indicators_not_found_then_error(
         self, ind_df, clazz
     ):
-        source = clazz("model_source", lambda x: x, ["foo"], None, {})
+        source = clazz("model_source", lambda x: x, ["foo"], None, None, {})
         with pytest.raises(
             ValueError,
             match=re.escape("Indicator 'foo' not found in DataFrame."),
@@ -107,13 +122,13 @@ class TestModelSource:
     def test_model_loader_call_with_kwargs(self):
         load_fn = Mock()
         kwargs = {"a": 1, "b": 2}
-        ModelLoader("loader", load_fn, [], None, kwargs)("SPY")
+        ModelLoader("loader", load_fn, [], None, None, kwargs)("SPY")
         load_fn.assert_called_once_with("SPY", **kwargs)
 
     def test_model_trainer_call_with_kwargs(self, train_data, test_data):
         train_fn = Mock()
         kwargs = {"a": 1, "b": 2}
-        ModelTrainer("trainer", train_fn, [], None, kwargs)(
+        ModelTrainer("trainer", train_fn, [], None, None, kwargs)(
             "SPY", train_data, test_data
         )
         train_fn.assert_called_once_with(
@@ -121,11 +136,13 @@ class TestModelSource:
         )
 
     def test_model_trainer_repr(self):
-        trainer = ModelTrainer("trainer", lambda x: x, [], None, {"a": 1})
+        trainer = ModelTrainer(
+            "trainer", lambda x: x, [], None, None, {"a": 1}
+        )
         assert repr(trainer) == "ModelTrainer('trainer', {'a': 1})"
 
     def test_model_loader_repr(self):
-        trainer = ModelLoader("loader", lambda x: x, [], None, {"a": 1})
+        trainer = ModelLoader("loader", lambda x: x, [], None, None, {"a": 1})
         assert repr(trainer) == "ModelLoader('loader', {'a': 1})"
 
 

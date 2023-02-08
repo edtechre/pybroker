@@ -43,6 +43,8 @@ class ModelSource:
             the model when making predictions. If set, ```input_data_fn``` will
             be called with a :class:`pandas.DataFrame` containing all test
             data.
+        predict_fn: :class:`Callable` that overrides calling the model's
+            default ``predict`` function.
         kwargs: ``dict`` of additional kwargs.
     """
 
@@ -51,11 +53,13 @@ class ModelSource:
         name: str,
         indicator_names: Iterable[str],
         input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]],
+        predict_fn: Optional[Callable[[Any, pd.DataFrame], Any]],
         kwargs: dict[str, Any],
     ):
         self.name = name
         self.indicators = tuple(indicator_names)
         self._input_data_fn = input_data_fn
+        self._predict_fn = predict_fn
         self._kwargs = kwargs
 
     def prepare_input_data(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -91,6 +95,8 @@ class ModelLoader(ModelSource):
             the model when making predictions. If set, ```input_data_fn``` will
             be called with a :class:`pandas.DataFrame` containing all test
             data.
+        predict_fn: :class:`Callable` that overrides calling the model's
+            default ``predict`` function.
         kwargs: ``dict`` of kwargs to pass to ``load_fn``.
     """
 
@@ -100,9 +106,12 @@ class ModelLoader(ModelSource):
         load_fn: Callable[..., Any],
         indicator_names: Iterable[str],
         input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]],
+        predict_fn: Optional[Callable[[Any, pd.DataFrame], Any]],
         kwargs: dict[str, Any],
     ):
-        super().__init__(name, indicator_names, input_data_fn, kwargs)
+        super().__init__(
+            name, indicator_names, input_data_fn, predict_fn, kwargs
+        )
         self._load_fn = functools.partial(load_fn, **kwargs)
 
     def __call__(self, symbol: str) -> Any:
@@ -130,6 +139,8 @@ class ModelTrainer(ModelSource):
             the model when making predictions. If set, ```input_data_fn``` will
             be called with a :class:`pandas.DataFrame` containing all test
             data.
+        predict_fn: :class:`Callable` that overrides calling the model's
+            default ``predict`` function.
         kwargs: ``dict`` of kwargs to pass to ``train_fn``.
     """
 
@@ -139,9 +150,12 @@ class ModelTrainer(ModelSource):
         train_fn: Callable[..., Any],
         indicator_names: Iterable[str],
         input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]],
+        predict_fn: Optional[Callable[[Any, pd.DataFrame], Any]],
         kwargs: dict[str, Any],
     ):
-        super().__init__(name, indicator_names, input_data_fn, kwargs)
+        super().__init__(
+            name, indicator_names, input_data_fn, predict_fn, kwargs
+        )
         self._train_fn = functools.partial(train_fn, **kwargs)
 
     def __call__(
@@ -161,6 +175,7 @@ def model(
     fn: Callable[..., Any],
     indicators: Optional[Iterable[Indicator]] = None,
     input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]] = None,
+    predict_fn: Optional[Callable[[Any, pd.DataFrame], Any]] = None,
     pretrained: bool = False,
     **kwargs,
 ) -> ModelSource:
@@ -181,6 +196,8 @@ def model(
             the model when making predictions. If set, ```input_data_fn``` will
             be called with a :class:`pandas.DataFrame` containing all test
             data.
+        predict_fn: :class:`Callable` that overrides calling the model's
+            default ``predict`` function.
         pretrained: If ``True``, then ``fn`` is used to load and return a
             pre-trained model. If ``False``, ``fn`` is used to train and return
             a new model. Defaults to ``False``.
@@ -201,6 +218,7 @@ def model(
             load_fn=fn,
             indicator_names=indicator_names,
             input_data_fn=input_data_fn,
+            predict_fn=predict_fn,
             kwargs=kwargs,
         )
         scope.set_model_source(loader)
@@ -211,6 +229,7 @@ def model(
             train_fn=fn,
             indicator_names=indicator_names,
             input_data_fn=input_data_fn,
+            predict_fn=predict_fn,
             kwargs=kwargs,
         )
         scope.set_model_source(trainer)
@@ -291,7 +310,9 @@ class ModelsMixin:
                 scope.logger.info_loaded_model(model_sym)
             else:
                 raise TypeError(f"Invalid ModelSource type: {source_type}")
-            models[model_sym] = TrainedModel(model_name, model)
+            models[model_sym] = TrainedModel(
+                model_name, model, source._predict_fn
+            )
             self._set_cached_model(model, model_sym, cache_date_fields)
         scope.logger.train_split_completed()
         return models
@@ -321,7 +342,10 @@ class ModelsMixin:
             model = scope.model_cache.get(repr(cache_key))
             scope.logger.debug_get_model_cache(cache_key)
             if model is not None:
-                models[model_sym] = TrainedModel(model_sym.model_name, model)
+                source = scope.get_model_source(model_sym.model_name)
+                models[model_sym] = TrainedModel(
+                    model_sym.model_name, model, source._predict_fn
+                )
             else:
                 uncached_model_syms.append(model_sym)
         return models, uncached_model_syms

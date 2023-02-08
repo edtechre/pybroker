@@ -20,7 +20,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from enum import Enum
 from joblib import Parallel
 from numpy.typing import NDArray
-from typing import Any, Final, NamedTuple, Optional, Union
+from typing import Any, Callable, Final, NamedTuple, Optional, Union
 import numpy as np
 import pandas as pd
 import os
@@ -67,10 +67,13 @@ class TrainedModel(NamedTuple):
     Attributes:
         name: Trained model name.
         instance: Trained model instance.
+        predict_fn: :class:`Callable` that overrides calling the model's
+            default ``predict`` function.
     """
 
     name: str
     instance: Any
+    predict_fn: Optional[Callable[[Any, pd.DataFrame], Any]]
 
 
 class ExecSymbol(NamedTuple):
