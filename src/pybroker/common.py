@@ -73,7 +73,7 @@ class TrainedModel(NamedTuple):
 
     name: str
     instance: Any
-    predict_fn: Optional[Callable[[Any, pd.DataFrame], Any]]
+    predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]]
 
 
 class ExecSymbol(NamedTuple):

@@ -25,6 +25,7 @@ from .common import (
 from .indicator import Indicator
 from .scope import StaticScope
 from dataclasses import asdict
+from numpy.typing import NDArray
 from typing import Any, Callable, Collection, Iterable, Mapping, Optional
 import functools
 import pandas as pd
@@ -53,7 +54,7 @@ class ModelSource:
         name: str,
         indicator_names: Iterable[str],
         input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]],
-        predict_fn: Optional[Callable[[Any, pd.DataFrame], Any]],
+        predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]],
         kwargs: dict[str, Any],
     ):
         self.name = name
@@ -106,7 +107,7 @@ class ModelLoader(ModelSource):
         load_fn: Callable[..., Any],
         indicator_names: Iterable[str],
         input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]],
-        predict_fn: Optional[Callable[[Any, pd.DataFrame], Any]],
+        predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]],
         kwargs: dict[str, Any],
     ):
         super().__init__(
@@ -150,7 +151,7 @@ class ModelTrainer(ModelSource):
         train_fn: Callable[..., Any],
         indicator_names: Iterable[str],
         input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]],
-        predict_fn: Optional[Callable[[Any, pd.DataFrame], Any]],
+        predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]],
         kwargs: dict[str, Any],
     ):
         super().__init__(
@@ -175,7 +176,7 @@ def model(
     fn: Callable[..., Any],
     indicators: Optional[Iterable[Indicator]] = None,
     input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]] = None,
-    predict_fn: Optional[Callable[[Any, pd.DataFrame], Any]] = None,
+    predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]] = None,
     pretrained: bool = False,
     **kwargs,
 ) -> ModelSource:
