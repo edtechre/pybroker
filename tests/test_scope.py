@@ -46,6 +46,7 @@ def mock_logger(scope):
 
 
 def test_register_columns(scope):
+    scope.custom_data_cols = set()
     register_columns("a")
     register_columns("b", "b", "c")
     register_columns(["d", "e"])
@@ -61,9 +62,11 @@ def test_register_columns_when_frozen_then_error(scope):
         match=re.escape("Cannot modify columns when strategy is running."),
     ):
         register_columns("a")
+    scope.unfreeze_data_cols()
 
 
 def test_unregister_columns(scope):
+    scope.custom_data_cols = set()
     register_columns("a", "b", "c", "d", "e")
     unregister_columns("a", "b")
     unregister_columns("c")
@@ -79,6 +82,7 @@ def test_unregister_columns_when_frozen_then_error(scope):
         match=re.escape("Cannot modify columns when strategy is running."),
     ):
         unregister_columns("a")
+    scope.unfreeze_data_cols()
 
 
 def test_enable_logging(mock_logger):
@@ -135,7 +139,6 @@ class TestColumnScope:
     def _assert_length(self, values, end_index, data_source_df, sym):
         df = data_source_df[data_source_df["symbol"] == sym]
         expected = df.shape[0] if end_index is None else end_index
-        print(len(values), expected)
         assert len(values) == expected
 
     def test_fetch_dict(self, col_scope, data_source_df, symbols, end_index):
@@ -249,6 +252,7 @@ class TestModelInputScope:
 
     def test_fetch_when_input_fn(
         self,
+        scope,
         indicators,
         ind_names,
         input_scope,
@@ -256,6 +260,7 @@ class TestModelInputScope:
         data_source_df,
         end_index,
     ):
+        scope.custom_data_cols = set()
         expected_cols = set(ind_names) | {
             "date",
             "open",

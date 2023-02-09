@@ -80,10 +80,7 @@ def dates(data_source_df):
 def scope():
     scope = StaticScope.instance()
     yield scope
-    scope._indicators = {}
-    scope._model_sources = {}
-    scope.custom_data_cols = set()
-    scope.unfreeze_data_cols()
+    StaticScope.__instance = None
 
 
 @pytest.fixture()
