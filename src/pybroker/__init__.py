@@ -34,7 +34,7 @@ from .context import ExecContext
 from .config import StrategyConfig
 from .data import Alpaca, AlpacaCrypto, YFinance
 from .eval import EvalMetrics, BootstrapResult
-from .indicator import Indicator, indicator
+from .indicator import Indicator, highest, indicator, lowest
 from .model import ModelLoader, ModelSource, ModelTrainer, model
 from .portfolio import Entry, Order, Position, Trade
 from .scope import (
