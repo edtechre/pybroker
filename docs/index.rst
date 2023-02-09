@@ -62,7 +62,7 @@ Key Features
 * Fast backtesting engine built in `NumPy <https://numpy.org/>`_ with `Numba <https://numba.pydata.org/>`_ acceleration.
 * Easily write trading rules and models that execute on multiple instruments.
 * Download historical data from `Alpaca <https://alpaca.markets/>`_ and `Yahoo Finance <https://finance.yahoo.com/>`_.
-* Train and backtest models using `Walkforward Analysis <https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model%20with%20Walkforward%20Analysis.html#Walkforward-Analysis>`_ to simulate real trading.
+* Train and backtest models using `Walkforward Analysis <https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis>`_ to simulate real trading.
 * Includes robust metrics calculated from randomized `bootstrapping <https://en.wikipedia.org/wiki/Bootstrapping_(statistics)>`_.
 * Caching of downloaded data, indicators, and models for faster development.
 * Parallelized computations for faster performance.
