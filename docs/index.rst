@@ -123,7 +123,7 @@ looks like:
    # Run Walkforward Analysis on 1 minute data using 5 windows with 50/50 train/test data.
    result = strategy.walkforward(timeframe='1m', windows=5, train_size=0.5)
 
-To learn how to use PyBroker, see the notebooks under the User Guide:
+To learn how to use PyBroker, see the notebooks under the *User Guide*:
 
 .. toctree::
    :maxdepth: 1
