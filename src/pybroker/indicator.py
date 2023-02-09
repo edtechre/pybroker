@@ -318,6 +318,7 @@ def highest(name: str, field: str, lookback: int) -> Indicator:
     Returns:
         Rolling high :class:`.Indicator`.
     """
+
     def _highest(data: BarData):
         values = getattr(data, field)
         return highv(values, lookback)
@@ -337,6 +338,7 @@ def lowest(name: str, field: str, lookback: int) -> Indicator:
     Returns:
         Rolling low :class:`.Indicator`.
     """
+
     def _lowest(data: BarData):
         values = getattr(data, field)
         return lowv(values, lookback)
