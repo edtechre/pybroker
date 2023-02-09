@@ -572,6 +572,13 @@ class ExecContext(BaseContext):
             raise ValueError("symbol is not set.")
 
     @property
+    def bar_count(self) -> int:
+        """Number of bars of data that have completed."""
+        if not self._end_index:
+            return 0
+        return self._end_index
+
+    @property
     def dt(self) -> datetime:
         """Current bar's date expressed as a ``datetime``."""
         if self._curr_date is None:

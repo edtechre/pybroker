@@ -459,13 +459,15 @@ def test_trades_when_empty(ctx):
     assert not len(list(ctx.trades()))
 
 
-def test_set_exec_ctx_data(ctx, symbols):
+def test_set_exec_ctx_data(ctx, symbols, sym_end_index):
+    sym = symbols[-1]
     session = {"a": 1, "b": 2}
     date = np.datetime64("2020-01-01")
-    set_exec_ctx_data(ctx, session, symbols[-1], date)
+    set_exec_ctx_data(ctx, session, sym, date)
     assert ctx.session == session
-    assert ctx.symbol == symbols[-1]
+    assert ctx.symbol == sym
     assert ctx.dt == to_datetime(date)
+    assert ctx.bar_count == sym_end_index[sym]
 
 
 def test_set_pos_ctx_data(
