@@ -572,7 +572,7 @@ class ExecContext(BaseContext):
             raise ValueError("symbol is not set.")
 
     @property
-    def bar_count(self) -> int:
+    def bars(self) -> int:
         """Number of bars of data that have completed."""
         if not self._end_index:
             return 0

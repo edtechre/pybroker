@@ -467,7 +467,7 @@ def test_set_exec_ctx_data(ctx, symbols, sym_end_index):
     assert ctx.session == session
     assert ctx.symbol == sym
     assert ctx.dt == to_datetime(date)
-    assert ctx.bar_count == sym_end_index[sym]
+    assert ctx.bars == sym_end_index[sym]
 
 
 def test_set_pos_ctx_data(
