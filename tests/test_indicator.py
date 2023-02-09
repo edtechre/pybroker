@@ -17,11 +17,13 @@ with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from pybroker.cache import CacheDateFields
 from .fixtures import *  # noqa: F401
-from pybroker.common import DataCol, IndicatorSymbol, to_datetime
+from pybroker.common import BarData, DataCol, IndicatorSymbol, to_datetime
 from pybroker.indicator import (
     Indicator,
     IndicatorsMixin,
+    highest,
     indicator,
+    lowest,
     _to_bar_data,
 )
 from pybroker.vect import lowv
@@ -180,3 +182,45 @@ class TestIndicatorsMixin:
             disable_parallel=disable_parallel,
         )
         self._assert_indicators(ind_data, ind_syms, data_source_df)
+
+
+@pytest.mark.parametrize(
+    "fn, values, lookback, expected",
+    [
+        (
+            highest,
+            [3, 3, 4, 2, 5, 6, 1, 3],
+            3,
+            [np.nan, np.nan, 4, 4, 5, 6, 6, 6],
+        ),
+        (highest, [3, 3, 4, 2, 5, 6, 1, 3], 1, [3, 3, 4, 2, 5, 6, 1, 3]),
+        (highest, [4, 3, 2, 1], 4, [np.nan, np.nan, np.nan, 4]),
+        (highest, [1], 1, [1]),
+        (
+            lowest,
+            [3, 3, 4, 2, 5, 6, 1, 3],
+            3,
+            [np.nan, np.nan, 3, 2, 2, 2, 1, 1],
+        ),
+        (lowest, [3, 3, 4, 2, 5, 6, 1, 3], 1, [3, 3, 4, 2, 5, 6, 1, 3]),
+        (lowest, [4, 3, 2, 1], 4, [np.nan, np.nan, np.nan, 1]),
+        (lowest, [1], 1, [1]),
+    ],
+)
+def test_wrappers(fn, values, lookback, expected):
+    n = len(values)
+    dates = pd.date_range(start="1/1/2018", end="1/1/2019").to_numpy()[:n]
+    bar_data = BarData(
+        date=dates,
+        open=np.zeros(n),
+        high=np.zeros(n),
+        low=np.zeros(n),
+        close=np.array(values),
+        volume=None,
+        vwap=None,
+    )
+    indicator = fn("my_indicator", "close", lookback)
+    assert indicator.name == "my_indicator"
+    series = indicator(bar_data)
+    assert np.array_equal(series.index.to_numpy(), dates)
+    assert np.array_equal(series.values, expected, equal_nan=True)
