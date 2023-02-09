@@ -73,7 +73,29 @@ A Quick Example
 ===============
 
 Code speaks louder than words! Here is a peek at what backtesting with PyBroker
-looks like::
+looks like:
+
+**Rule-based Strategy**::
+
+   from pybroker import Strategy, YFinance, highest
+
+   def exec_fn(ctx):
+      # Require at least 20 days of data.
+      if ctx.bars < 20:
+         return
+      # Get the rolling 10 day high.
+      high_10d = ctx.indicator('high_10d')
+      # Buy on a new 10 day high.
+      if not ctx.long_pos() and high_10d[-1] > high_10d[-2]:
+         ctx.buy_shares = 100
+         # Hold the position for 2 days.
+         ctx.hold_bars = 2
+
+   strategy = Strategy(YFinance(), start_date='1/1/2022', end_date='7/1/2022')
+   strategy.add_execution(exec_fn, ['AAPL', 'MSFT'], indicators=highest('high_10d', 'high', period=10))
+   result = strategy.backtest()
+
+**Model-based Strategy**::
 
    import pybroker
    from pybroker import Alpaca, Strategy
