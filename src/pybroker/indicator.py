@@ -306,14 +306,14 @@ class IndicatorsMixin:
                 )
 
 
-def highest(name: str, field: str, lookback: int) -> Indicator:
+def highest(name: str, field: str, period: int) -> Indicator:
     """Creates a rolling high :class:`.Indicator`.
 
     Args:
         name: Indicator name.
         field: :class:`pybroker.common.BarData` field for computing the rolling
             high.
-        lookback: Lookback period.
+        period: Lookback period.
 
     Returns:
         Rolling high :class:`.Indicator`.
@@ -321,12 +321,12 @@ def highest(name: str, field: str, lookback: int) -> Indicator:
 
     def _highest(data: BarData):
         values = getattr(data, field)
-        return highv(values, lookback)
+        return highv(values, period)
 
     return indicator(name, _highest)
 
 
-def lowest(name: str, field: str, lookback: int) -> Indicator:
+def lowest(name: str, field: str, period: int) -> Indicator:
     """Creates a rolling low :class:`.Indicator`.
 
     Args:
@@ -341,6 +341,6 @@ def lowest(name: str, field: str, lookback: int) -> Indicator:
 
     def _lowest(data: BarData):
         values = getattr(data, field)
-        return lowv(values, lookback)
+        return lowv(values, period)
 
     return indicator(name, _lowest)

@@ -185,7 +185,7 @@ class TestIndicatorsMixin:
 
 
 @pytest.mark.parametrize(
-    "fn, values, lookback, expected",
+    "fn, values, period, expected",
     [
         (
             highest,
@@ -207,7 +207,7 @@ class TestIndicatorsMixin:
         (lowest, [1], 1, [1]),
     ],
 )
-def test_wrappers(fn, values, lookback, expected):
+def test_wrappers(fn, values, period, expected):
     n = len(values)
     dates = pd.date_range(start="1/1/2018", end="1/1/2019").to_numpy()[:n]
     bar_data = BarData(
@@ -219,7 +219,7 @@ def test_wrappers(fn, values, lookback, expected):
         volume=None,
         vwap=None,
     )
-    indicator = fn("my_indicator", "close", lookback)
+    indicator = fn("my_indicator", "close", period)
     assert indicator.name == "my_indicator"
     series = indicator(bar_data)
     assert np.array_equal(series.index.to_numpy(), dates)
