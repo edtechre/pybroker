@@ -299,7 +299,7 @@ class IndicatorsMixin:
             )
         else:
             scope.logger.debug_compute_indicators(is_parallel=True)
-            with default_parallel() as parallel:
+            with default_parallel(len(ind_syms)) as parallel:
                 return parallel(
                     delayed(fns[ind_name])(**args_fn(ind_name, sym))
                     for ind_name, sym in ind_syms
