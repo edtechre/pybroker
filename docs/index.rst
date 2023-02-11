@@ -31,7 +31,7 @@ PyBroker
             alt="python">
       </a> &nbsp;
       <a href="https://pypi.org/project/lib-pybroker/">
-         <img src="https://img.shields.io/badge/pypi-v1.0.13-brightgreen.svg"
+         <img src="https://img.shields.io/badge/pypi-v1.0.14-brightgreen.svg"
             alt="PyPI">
       </a> &nbsp;
       <a href="https://opensource.org/licenses/LGPL-3.0">
