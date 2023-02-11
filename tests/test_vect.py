@@ -28,6 +28,7 @@ import re
         ([3, 3, 4, 2, 5, 6, 1, 3], 1, [3, 3, 4, 2, 5, 6, 1, 3]),
         ([4, 3, 2, 1], 4, [np.nan, np.nan, np.nan, 1]),
         ([1], 1, [1]),
+        ([], 5, [])
     ],
 )
 def test_lowv(array, n, expected):
@@ -41,6 +42,7 @@ def test_lowv(array, n, expected):
         ([3, 3, 4, 2, 5, 6, 1, 3], 1, [3, 3, 4, 2, 5, 6, 1, 3]),
         ([4, 3, 2, 1], 4, [np.nan, np.nan, np.nan, 4]),
         ([1], 1, [1]),
+        ([], 5, [])
     ],
 )
 def test_highv(array, n, expected):
@@ -54,6 +56,7 @@ def test_highv(array, n, expected):
         ([3, 3, 4, 2, 5, 6, 1, 3], 1, [3, 3, 4, 2, 5, 6, 1, 3]),
         ([4, 3, 2, 1], 4, [np.nan, np.nan, np.nan, 10]),
         ([1], 1, [1]),
+        ([], 5, [])
     ],
 )
 def test_sumv(array, n, expected):
@@ -64,7 +67,6 @@ def test_sumv(array, n, expected):
 @pytest.mark.parametrize(
     "array, n, expected_msg",
     [
-        ([], 0, "Array is empty."),
         ([1, 2, 3], 10, "n is greater than array length."),
         ([1, 2, 3], 0, "n needs to be >= 1."),
         ([1, 2, 3], -1, "n needs to be >= 1."),

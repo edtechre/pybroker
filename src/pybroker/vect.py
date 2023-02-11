@@ -22,8 +22,6 @@ import numpy as np
 
 @njit
 def _verify_input(array: NDArray[np.float_], n: int):
-    if not len(array):
-        raise ValueError("Array is empty.")
     if n <= 0:
         raise ValueError("n needs to be >= 1.")
     if n > len(array):
@@ -43,6 +41,8 @@ def lowv(array: NDArray[np.float_], n: int) -> NDArray[np.float_]:
         :class:`numpy.ndarray` of the lowest values of every ``n`` periods in
         ``array``.
     """
+    if not len(array):
+        return np.array(tuple())
     _verify_input(array, n)
     out_len = len(array)
     out = np.array([np.nan for _ in range(out_len)])
@@ -64,6 +64,8 @@ def highv(array: NDArray[np.float_], n: int) -> NDArray[np.float_]:
         :class:`numpy.ndarray` of the highest values of every ``n`` periods in
         ``array``.
     """
+    if not len(array):
+        return np.array(tuple())
     _verify_input(array, n)
     out_len = len(array)
     out = np.array([np.nan for _ in range(out_len)])
@@ -84,6 +86,8 @@ def sumv(array: NDArray[np.float_], n: int) -> NDArray[np.float_]:
     Returns:
         :class:`numpy.ndarray` of the sums of every ``n`` periods in ``array``.
     """
+    if not len(array):
+        return np.array(tuple())
     _verify_input(array, n)
     out_len = len(array)
     out = np.array([np.nan for _ in range(out_len)])
@@ -114,3 +118,5 @@ def cross(a: NDArray[np.float_], b: NDArray[np.float_]) -> NDArray[np.bool_]:
         raise ValueError("a and b must have length >= 2.")
     crossed = np.where(a > b, 1, 0)
     return (sumv(crossed > 0, 2) == 1) * crossed
+
+
