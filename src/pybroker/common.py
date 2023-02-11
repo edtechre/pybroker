@@ -315,12 +315,8 @@ def verify_data_source_columns(df: pd.DataFrame):
             )
 
 
-def default_parallel(workers: int) -> Parallel:
-    """Returns a new :class:`joblib.Parallel` instance.
-
-    Args:
-        workers: Number of workers to be bound by CPU count.
+def default_parallel() -> Parallel:
+    """Returns a :class:`joblib.Parallel` instance with ``n_jobs`` equal to
+    the number of CPUs on the host machine.
     """
-    cpu_count = os.cpu_count()
-    n_jobs = min(workers, 1 if cpu_count is None else cpu_count)
-    return Parallel(n_jobs=n_jobs, prefer="processes", backend="loky")
+    return Parallel(n_jobs=os.cpu_count(), prefer="processes", backend="loky")

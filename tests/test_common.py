@@ -216,4 +216,4 @@ def test_verify_data_source_columns_when_missing_then_error():
 
 
 def test_default_parallel():
-    assert type(default_parallel(3)) == Parallel
+    assert type(default_parallel()) == Parallel
