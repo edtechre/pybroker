@@ -58,7 +58,7 @@ looks like:
 
    strategy = Strategy(YFinance(), start_date='1/1/2022', end_date='7/1/2022')
    strategy.add_execution(
-      exec_fn, ['AAPL', 'MSFT'], indicators=highest('high_10d', 'high', period=10))
+      exec_fn, ['AAPL', 'MSFT'], indicators=highest('high_10d', 'close', period=10))
    result = strategy.backtest()
 ```
 
