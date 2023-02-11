@@ -19,7 +19,7 @@ from .cache import CacheDateFields, IndicatorCacheKey
 from .common import BarData, DataCol, IndicatorSymbol, default_parallel
 from .eval import iqr, relative_entropy
 from .scope import StaticScope
-from .vect import highv, lowv
+from .vect import highv, lowv, returnv
 from collections import defaultdict
 from dataclasses import asdict
 from joblib import delayed
@@ -333,7 +333,7 @@ def lowest(name: str, field: str, period: int) -> Indicator:
         name: Indicator name.
         field: :class:`pybroker.common.BarData` field for computing the rolling
             low.
-        lookback: Lookback period.
+        period: Lookback period.
 
     Returns:
         Rolling low :class:`.Indicator`.
@@ -344,3 +344,23 @@ def lowest(name: str, field: str, period: int) -> Indicator:
         return lowv(values, period)
 
     return indicator(name, _lowest)
+
+
+def returns(name: str, field: str, period: int = 1) -> Indicator:
+    """Creates a rolling returns :class:`.Indicator`.
+
+    Args:
+        name: Indicator name.
+        field: :class:`pybroker.common.BarData` field for computing the rolling
+            returns.
+        period: Returns period. Defaults to 1.
+
+    Returns:
+        Rolling returns :class:`.Indicator`.
+    """
+
+    def _returns(data: BarData):
+        values = getattr(data, field)
+        return returnv(values, period)
+
+    return indicator(name, _returns)

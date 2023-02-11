@@ -97,6 +97,26 @@ def sumv(array: NDArray[np.float_], n: int) -> NDArray[np.float_]:
 
 
 @njit
+def returnv(array: NDArray[np.float_], n: int = 1) -> NDArray[np.float_]:
+    """Calculates returns.
+
+    Args:
+        n: Return period. Defaults to 1.
+
+    Returns:
+        :class:`numpy.ndarray` of returns.
+    """
+    if not len(array):
+        return np.array(tuple())
+    _verify_input(array, n)
+    out_len = len(array)
+    out = np.array([np.nan for _ in range(out_len)])
+    for i in range(n, out_len):
+        out[i] = (array[i] - array[i - n]) / array[i - 1]
+    return out
+
+
+@njit
 def cross(a: NDArray[np.float_], b: NDArray[np.float_]) -> NDArray[np.bool_]:
     """Checks for crossover of ``a`` above ``b``.
 
@@ -118,5 +138,3 @@ def cross(a: NDArray[np.float_], b: NDArray[np.float_]) -> NDArray[np.bool_]:
         raise ValueError("a and b must have length >= 2.")
     crossed = np.where(a > b, 1, 0)
     return (sumv(crossed > 0, 2) == 1) * crossed
-
-

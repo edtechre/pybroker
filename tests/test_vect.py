@@ -15,7 +15,7 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from pybroker.vect import lowv, highv, sumv, cross
+from pybroker.vect import lowv, highv, sumv, cross, returnv
 import numpy as np
 import pytest
 import re
@@ -28,7 +28,7 @@ import re
         ([3, 3, 4, 2, 5, 6, 1, 3], 1, [3, 3, 4, 2, 5, 6, 1, 3]),
         ([4, 3, 2, 1], 4, [np.nan, np.nan, np.nan, 1]),
         ([1], 1, [1]),
-        ([], 5, [])
+        ([], 5, []),
     ],
 )
 def test_lowv(array, n, expected):
@@ -42,7 +42,7 @@ def test_lowv(array, n, expected):
         ([3, 3, 4, 2, 5, 6, 1, 3], 1, [3, 3, 4, 2, 5, 6, 1, 3]),
         ([4, 3, 2, 1], 4, [np.nan, np.nan, np.nan, 4]),
         ([1], 1, [1]),
-        ([], 5, [])
+        ([], 5, []),
     ],
 )
 def test_highv(array, n, expected):
@@ -56,14 +56,39 @@ def test_highv(array, n, expected):
         ([3, 3, 4, 2, 5, 6, 1, 3], 1, [3, 3, 4, 2, 5, 6, 1, 3]),
         ([4, 3, 2, 1], 4, [np.nan, np.nan, np.nan, 10]),
         ([1], 1, [1]),
-        ([], 5, [])
+        ([], 5, []),
     ],
 )
 def test_sumv(array, n, expected):
     assert np.array_equal(sumv(np.array(array), n), expected, equal_nan=True)
 
 
-@pytest.mark.parametrize("fnv", [lowv, highv, sumv])
+@pytest.mark.parametrize(
+    "array, n, expected",
+    [
+        (
+            [1, 1.5, 1.7, 1.3, 1.2, 1.4],
+            1,
+            [np.nan, 0.5, 0.13333333, -0.23529412, -0.07692308, 0.16666667],
+        ),
+        (
+            [1, 1.5, 1.7, 1.3, 1.2, 1.4],
+            2,
+            [np.nan, np.nan, 0.46666667, -0.11764706, -0.38461538, 0.08333333],
+        ),
+        ([1], 1, [np.nan]),
+        ([], 5, []),
+    ],
+)
+def test_returnv(array, n, expected):
+    assert np.array_equal(
+        np.round(returnv(np.array(array), n), 6),
+        np.round(expected, 6),
+        equal_nan=True,
+    )
+
+
+@pytest.mark.parametrize("fnv", [lowv, highv, sumv, returnv])
 @pytest.mark.parametrize(
     "array, n, expected_msg",
     [

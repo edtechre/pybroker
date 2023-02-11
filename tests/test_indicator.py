@@ -24,6 +24,7 @@ from pybroker.indicator import (
     highest,
     indicator,
     lowest,
+    returns,
     _to_bar_data,
 )
 from pybroker.vect import lowv
@@ -205,6 +206,20 @@ class TestIndicatorsMixin:
         (lowest, [3, 3, 4, 2, 5, 6, 1, 3], 1, [3, 3, 4, 2, 5, 6, 1, 3]),
         (lowest, [4, 3, 2, 1], 4, [np.nan, np.nan, np.nan, 1]),
         (lowest, [1], 1, [1]),
+        (
+            returns,
+            [1, 1.5, 1.7, 1.3, 1.2, 1.4],
+            1,
+            [np.nan, 0.5, 0.13333333, -0.23529412, -0.07692308, 0.16666667],
+        ),
+        (
+            returns,
+            [1, 1.5, 1.7, 1.3, 1.2, 1.4],
+            2,
+            [np.nan, np.nan, 0.46666667, -0.11764706, -0.38461538, 0.08333333],
+        ),
+        (returns, [1], 1, [np.nan]),
+        (returns, [], 5, []),
     ],
 )
 def test_wrappers(fn, values, period, expected):
@@ -223,4 +238,6 @@ def test_wrappers(fn, values, period, expected):
     assert indicator.name == "my_indicator"
     series = indicator(bar_data)
     assert np.array_equal(series.index.to_numpy(), dates)
-    assert np.array_equal(series.values, expected, equal_nan=True)
+    assert np.array_equal(
+        np.round(series.values, 6), np.round(expected, 6), equal_nan=True
+    )
