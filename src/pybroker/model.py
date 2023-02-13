@@ -116,6 +116,14 @@ class ModelLoader(ModelSource):
         self._load_fn = functools.partial(load_fn, **kwargs)
 
     def __call__(self, symbol: str) -> Any:
+        """Loads pre-trained model.
+
+        Args:
+            symbol: Ticker symbol for loading the pre-trained model.
+
+        Returns:
+            Pre-trained model.
+        """
         return self._load_fn(symbol)
 
     def __repr__(self):
@@ -162,6 +170,16 @@ class ModelTrainer(ModelSource):
     def __call__(
         self, symbol: str, train_data: pd.DataFrame, test_data: pd.DataFrame
     ) -> Any:
+        """Trains model.
+
+        Args:
+            symbol: Ticker symbol of model (models are trained per symbol).
+            train_data: Train data.
+            test_data: Test data.
+
+        Returns:
+            Trained model.
+        """
         return self._train_fn(symbol, train_data, test_data)
 
     def __repr__(self):

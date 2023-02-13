@@ -103,6 +103,7 @@ class Indicator:
         return iqr(self(data).values)
 
     def __call__(self, data: Union[BarData, pd.DataFrame]) -> pd.Series:
+        """Computes indicator values."""
         if isinstance(data, pd.DataFrame):
             data = _to_bar_data(data)
         values = self._fn(data)
