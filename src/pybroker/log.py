@@ -142,7 +142,7 @@ class Logger:
         self._download_start_time = None
 
     def indicator_data_start(self, ind_syms: Sized):
-        self._start_progress_bar("Generating indicators...", len(ind_syms))
+        self._start_progress_bar("Computing indicators...", len(ind_syms))
 
     def info_indicator_data_start(self, ind_syms: Iterable[IndicatorSymbol]):
         self._info(f"Indicators: {sorted(ind_syms)}")
