@@ -320,21 +320,23 @@ class IndicatorSet(IndicatorsMixin):
     def __init__(self):
         self._ind_names: set[str] = set()
 
-    def add(self, indicators: Union[Indicator, Iterable[Indicator]]):
+    def add(self, indicators: Union[Indicator, Iterable[Indicator]], *args):
         """Adds indicators."""
         if isinstance(indicators, Indicator):
-            self._ind_names.add(indicators.name)
+            indicators = (indicators, *args)
         else:
-            self._ind_names.update(map(op.attrgetter("name"), indicators))
+            indicators = (*indicators, *args)
+        self._ind_names.update(map(op.attrgetter("name"), indicators))
 
-    def remove(self, indicators: Union[Indicator, Iterable[Indicator]]):
+    def remove(self, indicators: Union[Indicator, Iterable[Indicator]], *args):
         """Removes indicators."""
         if isinstance(indicators, Indicator):
-            self._ind_names.remove(indicators.name)
+            indicators = (indicators, *args)
         else:
-            self._ind_names.difference_update(
-                map(op.attrgetter("name"), indicators)
-            )
+            indicators = (*indicators, *args)
+        self._ind_names.difference_update(
+            map(op.attrgetter("name"), indicators)
+        )
 
     def __call__(
         self, df: pd.DataFrame, disable_parallel: bool = False

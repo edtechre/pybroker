@@ -190,11 +190,11 @@ class TestIndicatorSet:
     def test_add_and_remove(self, hhv_ind, llv_ind, sumv_ind):
         ind_set = IndicatorSet()
         ind_set.add(hhv_ind)
-        ind_set.add([llv_ind, sumv_ind, hhv_ind])
+        ind_set.add([llv_ind, sumv_ind], hhv_ind)
         assert ind_set._ind_names == set(["llv", "hhv", "sumv"])
         ind_set.remove(llv_ind)
         assert ind_set._ind_names == set(["hhv", "sumv"])
-        ind_set.remove([hhv_ind, sumv_ind])
+        ind_set.remove(hhv_ind, sumv_ind)
         assert not ind_set._ind_names
 
     def test_call_when_indicators_empty_then_error(self, data_source_df):
