@@ -49,7 +49,7 @@ def test_register_columns(scope):
     scope.custom_data_cols = set()
     register_columns("a")
     register_columns("b", "b", "c")
-    register_columns(["d", "e"])
+    register_columns(["d", "e"], "c")
     expected = {"a", "b", "c", "d", "e"}
     assert scope.custom_data_cols == expected
     assert scope.all_data_cols == scope.default_data_cols | expected
@@ -70,7 +70,7 @@ def test_unregister_columns(scope):
     register_columns("a", "b", "c", "d", "e")
     unregister_columns("a", "b")
     unregister_columns("c")
-    unregister_columns(["c", "d"])
+    unregister_columns(["c"], "d")
     assert scope.custom_data_cols == {"e"}
     assert scope.all_data_cols == scope.default_data_cols | {"e"}
 

@@ -126,6 +126,8 @@ class StaticScope:
         self._verify_unfrozen_cols()
         if type(names) == str:
             names = (names, *args)
+        else:
+            names = (*names, *args)
         names = filter(lambda col: col not in self.default_data_cols, names)
         self.custom_data_cols.update(names)
 
@@ -134,6 +136,8 @@ class StaticScope:
         self._verify_unfrozen_cols()
         if type(names) == str:
             names = (names, *args)
+        else:
+            names = (*names, *args)
         self.custom_data_cols.difference_update(names)
 
     @property
