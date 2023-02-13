@@ -22,6 +22,7 @@ from .scope import StaticScope
 from .vect import highv, lowv, returnv
 from collections import defaultdict
 from dataclasses import asdict
+import itertools
 from joblib import delayed
 from numpy.typing import NDArray
 from typing import (
@@ -35,6 +36,7 @@ from typing import (
 )
 import functools
 import numpy as np
+import operator as op
 import pandas as pd
 
 
@@ -174,7 +176,7 @@ class IndicatorsMixin:
         self,
         df: pd.DataFrame,
         indicator_syms: Collection[IndicatorSymbol],
-        cache_date_fields: CacheDateFields,
+        cache_date_fields: Optional[CacheDateFields],
         disable_parallel: bool,
     ) -> dict[IndicatorSymbol, pd.Series]:
         """Computes indicator data for the provided
@@ -185,7 +187,8 @@ class IndicatorsMixin:
             indicator_syms: ``Collection`` of
                 :class:`pybroker.common.IndicatorSymbol` pairs of indicators
                 to compute.
-            cache_date_fields: Date fields used to key cache data.
+            cache_date_fields: Date fields used to key cache data. Pass
+                ``None`` to disable caching.
             disable_parallel: If ``True``, indicator data is computed
                 serially for all :class:`pybroker.common.IndicatorSymbol`
                 pairs. If ``False``, indicator data is computed in parallel
@@ -230,10 +233,12 @@ class IndicatorsMixin:
     def _get_cached_indicators(
         self,
         indicator_syms: Collection[IndicatorSymbol],
-        cache_date_fields: CacheDateFields,
+        cache_date_fields: Optional[CacheDateFields],
     ) -> tuple[dict[IndicatorSymbol, pd.Series], Collection[IndicatorSymbol]]:
         indicator_syms = sorted(indicator_syms)
         indicator_data: dict[IndicatorSymbol, pd.Series] = {}
+        if cache_date_fields is None:
+            return indicator_data, indicator_syms
         scope = StaticScope.instance()
         if scope.indicator_cache is None:
             return indicator_data, indicator_syms
@@ -256,8 +261,10 @@ class IndicatorsMixin:
         self,
         series: pd.Series,
         ind_sym: IndicatorSymbol,
-        cache_date_fields: CacheDateFields,
+        cache_date_fields: Optional[CacheDateFields],
     ):
+        if cache_date_fields is None:
+            return
         scope = StaticScope.instance()
         if scope.indicator_cache is None:
             return
@@ -304,6 +311,76 @@ class IndicatorsMixin:
                     delayed(fns[ind_name])(**args_fn(ind_name, sym))
                     for ind_name, sym in ind_syms
                 )
+
+
+class IndicatorSet(IndicatorsMixin):
+    """Computes data for multiple indicators."""
+
+    def __init__(self):
+        self._ind_names: set[str] = set()
+
+    def add(self, indicators: Union[Indicator, Iterable[Indicator]]):
+        """Adds indicators."""
+        if isinstance(indicators, Indicator):
+            self._ind_names.add(indicators.name)
+        else:
+            self._ind_names.update(map(op.attrgetter("name"), indicators))
+
+    def remove(self, indicators: Union[Indicator, Iterable[Indicator]]):
+        """Removes indicators."""
+        if isinstance(indicators, Indicator):
+            self._ind_names.remove(indicators.name)
+        else:
+            self._ind_names.difference_update(
+                map(op.attrgetter("name"), indicators)
+            )
+
+    def __call__(
+        self, df: pd.DataFrame, disable_parallel: bool = False
+    ) -> pd.DataFrame:
+        """Computes indicator data.
+
+        Args:
+            df: :class:`pandas.DataFrame` of input data.
+            disable_parallel: If ``True``, indicator data is computed serially.
+                If ``False``, indicator data is computed in parallel using
+                multiple processes. Defaults to ``False``.
+
+        Returns:
+            :class:`pandas.DataFrame` containing the computed indicator data.
+        """
+        if not self._ind_names:
+            raise ValueError("No indicators were added.")
+        if df.empty:
+            return pd.DataFrame(
+                columns=[DataCol.DATE.value, DataCol.SYMBOL.value]
+                + list(self._ind_names)
+            )
+        syms = df[DataCol.SYMBOL.value].unique()
+        ind_syms = tuple(
+            itertools.starmap(
+                IndicatorSymbol, itertools.product(self._ind_names, syms)
+            )
+        )
+        ind_dict = self.compute_indicators(
+            df=df,
+            indicator_syms=ind_syms,
+            cache_date_fields=None,
+            disable_parallel=disable_parallel,
+        )
+        sym_dict: dict[str, dict[str, pd.Series]] = defaultdict(dict)
+        for ind_sym, series in ind_dict.items():
+            sym_dict[ind_sym.symbol][ind_sym.ind_name] = series
+        data: dict[str, list] = defaultdict(list)
+        for sym, ind_series in sym_dict.items():
+            dates = df[df[DataCol.SYMBOL.value] == sym][DataCol.DATE.value]
+            data[DataCol.SYMBOL.value].extend(
+                itertools.repeat(sym, len(dates))
+            )
+            data[DataCol.DATE.value].extend(dates)
+            for ind_name, series in ind_series.items():
+                data[ind_name].extend(series.values)
+        return pd.DataFrame.from_dict(data)
 
 
 def highest(name: str, field: str, period: int) -> Indicator:

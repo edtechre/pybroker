@@ -25,6 +25,10 @@ extensions = [
     "sphinx.ext.viewcode",
 ]
 
+autodoc_default_options = {
+    "special-members": "__call__",
+}
+
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 master_doc = "index"

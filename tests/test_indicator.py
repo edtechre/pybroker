@@ -21,6 +21,7 @@ from pybroker.common import BarData, DataCol, IndicatorSymbol, to_datetime
 from pybroker.indicator import (
     Indicator,
     IndicatorsMixin,
+    IndicatorSet,
     highest,
     indicator,
     lowest,
@@ -183,6 +184,33 @@ class TestIndicatorsMixin:
             disable_parallel=disable_parallel,
         )
         self._assert_indicators(ind_data, ind_syms, data_source_df)
+
+
+class TestIndicatorSet:
+    def test_add_and_remove(self, hhv_ind, llv_ind, sumv_ind):
+        ind_set = IndicatorSet()
+        ind_set.add(hhv_ind)
+        ind_set.add([llv_ind, sumv_ind, hhv_ind])
+        assert ind_set._ind_names == set(["llv", "hhv", "sumv"])
+        ind_set.remove(llv_ind)
+        assert ind_set._ind_names == set(["hhv", "sumv"])
+        ind_set.remove([hhv_ind, sumv_ind])
+        assert not ind_set._ind_names
+
+    def test_call_when_indicators_empty_then_error(self, data_source_df):
+        ind_set = IndicatorSet()
+        with pytest.raises(ValueError, match="No indicators were added."):
+            ind_set(data_source_df)
+
+    @pytest.mark.parametrize(
+        "df", [pd.DataFrame(), pytest.lazy_fixture("data_source_df")]
+    )
+    def test_call(self, df, hhv_ind, llv_ind, disable_parallel):
+        ind_set = IndicatorSet()
+        ind_set.add([hhv_ind, llv_ind])
+        result = ind_set(df, disable_parallel)
+        assert len(result) == len(df)
+        assert set(result.columns) == set(["date", "symbol", "hhv", "llv"])
 
 
 @pytest.mark.parametrize(
