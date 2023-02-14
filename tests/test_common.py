@@ -210,7 +210,8 @@ def test_verify_data_source_columns():
 def test_verify_data_source_columns_when_missing_then_error():
     df = pd.DataFrame(columns=["symbol", "date", "open", "high", "low"])
     with pytest.raises(
-        ValueError, match="DataFrame is missing required column: 'close'"
+        ValueError,
+        match=re.escape("DataFrame is missing required columns: ['close']"),
     ):
         verify_data_source_columns(df)
 

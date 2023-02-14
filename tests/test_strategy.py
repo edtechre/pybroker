@@ -1496,7 +1496,8 @@ class TestStrategy:
             }
         )
         with pytest.raises(
-            ValueError, match="DataFrame is missing required column: 'date'"
+            ValueError,
+            match=re.escape("DataFrame is missing required columns: ['date']"),
         ):
             Strategy(df, START_DATE, END_DATE)
 
