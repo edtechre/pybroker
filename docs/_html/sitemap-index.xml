@@ -7,217 +7,217 @@
 
   <url>
     <loc>https://www.pybroker.com/en/latest/</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>1.00</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/install.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/notebooks/1.%20Getting%20Started%20with%20Data%20Sources.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/notebooks/2.%20Backtesting%20a%20Strategy.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
-    <loc>https://www.pybroker.com/en/latest/notebooks/3.%20Evaluate%20Using%20Bootstrap%20Metrics.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <loc>https://www.pybroker.com/en/latest/notebooks/3.%20Evaluating%20with%20Bootstrap%20Metrics.html</loc>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/notebooks/4.%20Ranking%20and%20Position%20Sizing.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/notebooks/5.%20Writing%20Indicators.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/notebooks/7.%20Creating%20a%20Custom%20Data%20Source.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/reference/pybroker.config.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/reference/modules.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/genindex.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/changelog.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/license.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/?badge=latest</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/reference/pybroker.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/reference/pybroker.cache.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/reference/pybroker.common.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/reference/pybroker.context.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/reference/pybroker.data.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/reference/pybroker.eval.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/reference/pybroker.indicator.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/reference/pybroker.log.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/reference/pybroker.model.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/reference/pybroker.scope.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/reference/pybroker.strategy.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/reference/pybroker.vect.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/index.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.64</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/_modules/pybroker/config.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.64</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/_modules/pybroker/cache.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.64</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/_modules/pybroker/common.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.64</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/_modules/pybroker/context.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.64</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/_modules/pybroker/data.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.64</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/_modules/pybroker/eval.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.64</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/_modules/pybroker/indicator.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.64</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/_modules/pybroker/log.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.64</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/_modules/pybroker/model.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.64</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/_modules/pybroker/portfolio.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.64</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/_modules/pybroker/scope.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.64</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/_modules/pybroker/strategy.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.64</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/_modules/pybroker/vect.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.64</priority>
   </url>
   <url>
     <loc>https://www.pybroker.com/en/latest/_modules/index.html</loc>
-    <lastmod>2023-02-14T08:55:23+00:00</lastmod>
+    <lastmod>2023-02-14T18:33:21+00:00</lastmod>
     <priority>0.51</priority>
   </url>
 
