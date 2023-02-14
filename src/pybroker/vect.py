@@ -30,15 +30,14 @@ def _verify_input(array: NDArray[np.float_], n: int):
 
 @njit
 def lowv(array: NDArray[np.float_], n: int) -> NDArray[np.float_]:
-    """Calculates the lowest (minimum) values of every preceding ``n``
-    periods of each value in ``array``.
+    """Calculates the lowest values for every ``n`` period in ``array``.
 
     Args:
         array: :class:`numpy.ndarray` of data.
-        n: Number of periods.
+        n: Length of period.
 
     Returns:
-        :class:`numpy.ndarray` of the lowest values of every ``n`` periods in
+        :class:`numpy.ndarray` of the lowest values for every ``n`` period in
         ``array``.
     """
     if not len(array):
@@ -53,15 +52,14 @@ def lowv(array: NDArray[np.float_], n: int) -> NDArray[np.float_]:
 
 @njit
 def highv(array: NDArray[np.float_], n: int) -> NDArray[np.float_]:
-    """Calculates the highest (maximum) values of every preceding ``n``
-    periods of each value in ``array``.
+    """Calculates the highest values for every ``n`` period in ``array``.
 
     Args:
         array: :class:`numpy.ndarray` of data.
-        n: Number of periods.
+        n: Length of period.
 
     Returns:
-        :class:`numpy.ndarray` of the highest values of every ``n`` periods in
+        :class:`numpy.ndarray` of the highest values for every ``n`` period in
         ``array``.
     """
     if not len(array):
@@ -76,15 +74,14 @@ def highv(array: NDArray[np.float_], n: int) -> NDArray[np.float_]:
 
 @njit
 def sumv(array: NDArray[np.float_], n: int) -> NDArray[np.float_]:
-    """Calculates the sums of every preceding ``n`` periods of each value in
-    ``array``.
+    """Calculates the sums for every ``n`` period in ``array``.
 
     Args:
         array: :class:`numpy.ndarray` of data.
-        n: Number of periods.
+        n: Length of period.
 
     Returns:
-        :class:`numpy.ndarray` of the sums of every ``n`` periods in ``array``.
+        :class:`numpy.ndarray` of the sums for every ``n`` period in ``array``.
     """
     if not len(array):
         return np.array(tuple())
