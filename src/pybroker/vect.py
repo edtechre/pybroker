@@ -109,7 +109,7 @@ def returnv(array: NDArray[np.float_], n: int = 1) -> NDArray[np.float_]:
     out_len = len(array)
     out = np.array([np.nan for _ in range(out_len)])
     for i in range(n, out_len):
-        out[i] = (array[i] - array[i - n]) / array[i - 1]
+        out[i] = (array[i] - array[i - n]) / array[i - n]
     return out
 
 
