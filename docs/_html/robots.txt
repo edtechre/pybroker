@@ -1,9 +1,3 @@
 User-agent: *
-
-Disallow: /
-
-Allow: /en/stable
-
-Allow: /en/latest
-
+Disallow: 
 Sitemap: https://www.pybroker.com/en/latest/sitemap-index.xml
