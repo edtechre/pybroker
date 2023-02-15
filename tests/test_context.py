@@ -421,10 +421,18 @@ def test_long_positions(ctx_with_pos, symbol):
     assert positions[0] == Position(symbol, 200, "long")
 
 
+def test_long_positions_when_empty(ctx, symbol):
+    assert not len(tuple(ctx.long_positions(symbol)))
+
+
 def test_short_positions(ctx_with_pos, symbol):
     positions = tuple(ctx_with_pos.short_positions(symbol))
     assert len(positions) == 1
     assert positions[0] == Position(symbol, 100, "short")
+
+
+def test_short_positions_when_empty(ctx, symbol):
+    assert not len(tuple(ctx.short_positions(symbol)))
 
 
 def test_calc_target_shares(ctx):
