@@ -287,7 +287,7 @@ class Portfolio:
         if self._fee_mode is None or self._fee_amount is None:
             return fees
         if self._fee_mode == FeeMode.ORDER_PERCENT:
-            fees = self._fee_amount * fill_price * shares
+            fees = self._fee_amount / Decimal(100) * fill_price * shares
         elif self._fee_mode == FeeMode.PER_ORDER:
             fees = self._fee_amount
         elif self._fee_mode == FeeMode.PER_SHARE:

@@ -756,16 +756,16 @@ def test_sell_when_all_shares_and_fractional():
         ),
         (
             FeeMode.PER_SHARE,
-            SHARES_1 * Decimal("0.01"),
-            SHARES_1 * Decimal("0.01"),
+            SHARES_1,
+            SHARES_1,
         ),
-        (FeeMode.PER_ORDER, Decimal("0.01"), Decimal("0.01")),
+        (FeeMode.PER_ORDER, Decimal("1"), Decimal("1")),
     ],
 )
 def test_buy_and_sell_when_fees(
     fee_mode, expected_buy_fees, expected_sell_fees
 ):
-    portfolio = Portfolio(CASH, fee_mode, 0.01)
+    portfolio = Portfolio(CASH, fee_mode, 1)
     buy_order = portfolio.buy(
         DATE_1, SYMBOL_1, SHARES_1, FILL_PRICE_1, LIMIT_PRICE_1
     )
