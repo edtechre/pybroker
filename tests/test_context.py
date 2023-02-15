@@ -415,6 +415,18 @@ def test_foreign_with_empty_col(
     verify_bar_data(ctx.foreign(foreign))
 
 
+def test_long_positions(ctx_with_pos, symbol):
+    positions = tuple(ctx_with_pos.long_positions(symbol))
+    assert len(positions) == 1
+    assert positions[0] == Position(symbol, 200, "long")
+
+
+def test_short_positions(ctx_with_pos, symbol):
+    positions = tuple(ctx_with_pos.short_positions(symbol))
+    assert len(positions) == 1
+    assert positions[0] == Position(symbol, 100, "short")
+
+
 def test_calc_target_shares(ctx):
     assert ctx.calc_target_shares(0.5, 33.50) == 50_000 // 33.5
 
