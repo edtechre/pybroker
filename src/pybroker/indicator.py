@@ -338,6 +338,10 @@ class IndicatorSet(IndicatorsMixin):
             map(op.attrgetter("name"), indicators)
         )
 
+    def clear(self):
+        """Removes all indicators."""
+        self._ind_names.clear()
+
     def __call__(
         self, df: pd.DataFrame, disable_parallel: bool = False
     ) -> pd.DataFrame:

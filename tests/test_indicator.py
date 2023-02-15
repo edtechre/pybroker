@@ -197,6 +197,13 @@ class TestIndicatorSet:
         ind_set.remove(hhv_ind, sumv_ind)
         assert not ind_set._ind_names
 
+    def test_clear(self, hhv_ind, llv_ind, sumv_ind):
+        ind_set = IndicatorSet()
+        ind_set.add(llv_ind, sumv_ind, hhv_ind)
+        assert ind_set._ind_names == set(["llv", "hhv", "sumv"])
+        ind_set.clear()
+        assert not ind_set._ind_names
+
     def test_call_when_indicators_empty_then_error(self, data_source_df):
         ind_set = IndicatorSet()
         with pytest.raises(ValueError, match="No indicators were added."):
