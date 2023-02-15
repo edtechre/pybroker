@@ -223,7 +223,7 @@ class BaseContext:
                 used to calculate the number of shares, where the max
                 ``target_size`` is ``1``. For example, a ``target_size`` of
                 ``0.1`` would represent 10% of equity.
-            price: Share price used to calculated the number of shares.
+            price: Share price used to calculate the number of shares.
 
         Returns:
             Number of shares given ``target_size`` and share ``price``.
@@ -237,7 +237,7 @@ class BaseContext:
         r"""Returns a trained model.
 
         Args:
-            name: Name used to identify the model, registered with
+            name: Name used to identify the model that was registered with
                 :meth:`pybroker.model.model`.
             symbol: Ticker symbol of the data that was used to train the model.
 
@@ -253,12 +253,12 @@ class BaseContext:
         r"""Returns indicator data.
 
         Args:
-            name: Name used to identify the indicator, registered with
+            name: Name used to identify the indicator that was registered with
                 :meth:`pybroker.indicator.indicator`.
             symbol: Ticker symbol that was used to generate the indicator data.
 
         Returns:
-            :class:`numpy.ndarray` of indicator values for all bars up to the
+            :class:`numpy.ndarray` of indicator data for all bars up to the
             current one, sorted in ascending chronological order.
         """
         end_index = self._sym_end_index[symbol]
@@ -705,7 +705,7 @@ class ExecContext(BaseContext):
         r"""Returns a trained model.
 
         Args:
-            name: Name used to identify the model, registered with
+            name: Name used to identify the model that was registered with
                 :meth:`pybroker.model.model`.
             symbol: Ticker symbol of the data that was used to train the model.
                 If ``None``, the ``ExecContext``\ 's :attr:`.symbol` is used.
@@ -816,7 +816,7 @@ class ExecContext(BaseContext):
                 used to calculate the number of shares, where the max
                 ``target_size`` is ``1``. For example, a ``target_size`` of
                 ``0.1`` would result in 10% of equity.
-            price: Share price used to calculated the number of shares. If
+            price: Share price used to calculate the number of shares. If
                 ``None``, the share price of the ``ExecContext``\ 's
                 :attr:`.symbol` is used.
         Returns:

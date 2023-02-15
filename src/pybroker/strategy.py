@@ -616,7 +616,7 @@ class BacktestMixin:
 class WalkforwardWindow(NamedTuple):
     """Contains ``train_data`` and ``test_data`` of a time window used for
     `Walkforward Analysis
-    <https://en.wikipedia.org/wiki/Walk_forward_optimization>`_.
+    <https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis>`_.
 
     Attributes:
         train_data: Train data.
@@ -629,7 +629,8 @@ class WalkforwardWindow(NamedTuple):
 
 class WalkforwardMixin:
     """Mixin implementing logic for `Walkforward Analysis
-    <https://en.wikipedia.org/wiki/Walk_forward_optimization>`_."""
+    <https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis>`_.
+    """
 
     def walkforward_split(
         self,
@@ -642,7 +643,7 @@ class WalkforwardMixin:
         r"""Splits a :class:`pandas.DataFrame` containing data for multiple
         ticker symbols into an :class:`Iterator` of train/test time windows for
         `Walkforward Analysis
-        <https://en.wikipedia.org/wiki/Walk_forward_optimization>`_.
+        <https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis>`_.
 
         Args:
             df: :class:`pandas.DataFrame` of data to split into train/test
@@ -811,11 +812,12 @@ class Strategy(
     """Class representing a trading strategy to backtest.
 
     Args:
-        data_source: :class:`pybroker.data.DataSource` used for backtesting.
+        data_source: :class:`pybroker.data.DataSource` or
+            :class:`pandas.DataFrame` of backtesting data.
         start_date: Starting date of the data to fetch from ``data_source``
-            used for the backtest (inclusive).
-        end_date: Ending date of the data to fetch from ``data_source`` used
-            for the backtest (inclusive).
+            (inclusive).
+        end_date: Ending date of the data to fetch from ``data_source``
+            (inclusive).
         config: ``Optional`` :class:`pybroker.config.StrategyConfig`.
     """
 
@@ -1082,7 +1084,7 @@ class Strategy(
         disable_parallel: bool = False,
     ) -> Optional[TestResult]:
         """Backtests the trading strategy using `Walkforward Analysis
-        <https://en.wikipedia.org/wiki/Walk_forward_optimization>`_.
+        <https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis>`_.
         Backtesting data supplied by the :class:`pybroker.data.DataSource` is
         divided into ``windows`` number of equal sized time windows, with each
         window split into train and test data as specified by ``train_size``.

@@ -382,9 +382,8 @@ def drawdown_conf(
 
 @njit
 def relative_entropy(values: NDArray[np.float_]) -> float:
-    """Computes relative `entropy
-    <https://en.wikipedia.org/wiki/Entropy_(information_theory)>`_ by
-    partitioning ``values`` into bins.
+    """Computes the relative `entropy
+    <https://en.wikipedia.org/wiki/Entropy_(information_theory)>`_.
     """
     x = values[~np.isnan(values)]
     n = len(x)

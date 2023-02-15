@@ -142,7 +142,7 @@ class PortfolioBar(NamedTuple):
 
     Attributes:
         date: Date of bar.
-        cash: Amount of cash in :class:`.Portfolio` .
+        cash: Amount of cash in :class:`.Portfolio`.
         equity: Amount of equity in :class:`.Portfolio`.
         margin: Amount of margin in :class:`.Portfolio`.
         market_value: Market value of :class:`.Portfolio`.
@@ -784,7 +784,7 @@ class Portfolio:
         )
 
     def incr_bars(self):
-        """Increments the number of bars held of each trade entry."""
+        """Increments the number of bars held by every trade entry."""
         for pos in self.long_positions.values():
             for entry in pos.entries:
                 entry.bars += 1

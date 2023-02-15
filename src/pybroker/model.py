@@ -41,7 +41,7 @@ class ModelSource:
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
         input_data_fn: :class:`Callable` for preprocessing input data passed to
-            the model when making predictions. If set, ```input_data_fn``` will
+            the model when making predictions. If set, ``input_data_fn`` will
             be called with a :class:`pandas.DataFrame` containing all test
             data.
         predict_fn: :class:`Callable` that overrides calling the model's
@@ -93,7 +93,7 @@ class ModelLoader(ModelSource):
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
         input_data_fn: :class:`Callable` for preprocessing input data passed to
-            the model when making predictions. If set, ```input_data_fn``` will
+            the model when making predictions. If set, ``input_data_fn`` will
             be called with a :class:`pandas.DataFrame` containing all test
             data.
         predict_fn: :class:`Callable` that overrides calling the model's
@@ -145,7 +145,7 @@ class ModelTrainer(ModelSource):
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
         input_data_fn: :class:`Callable` for preprocessing input data passed to
-            the model when making predictions. If set, ```input_data_fn``` will
+            the model when making predictions. If set, ``input_data_fn`` will
             be called with a :class:`pandas.DataFrame` containing all test
             data.
         predict_fn: :class:`Callable` that overrides calling the model's
@@ -212,7 +212,7 @@ def model(
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
         input_data_fn: :class:`Callable` for preprocessing input data passed to
-            the model when making predictions. If set, ```input_data_fn``` will
+            the model when making predictions. If set, ``input_data_fn`` will
             be called with a :class:`pandas.DataFrame` containing all test
             data.
         predict_fn: :class:`Callable` that overrides calling the model's

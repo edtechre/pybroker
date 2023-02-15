@@ -148,7 +148,7 @@ def enable_indicator_cache(
 
     Args:
         namespace: Namespace of the cache.
-        cache_dir: Directory used to store cached data.
+        cache_dir: Directory used to store cached indicator data.
 
     Returns:
         :class:`diskcache.Cache` instance.

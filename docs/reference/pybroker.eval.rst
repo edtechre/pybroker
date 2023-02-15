@@ -14,4 +14,5 @@ pybroker.eval module
       drawdown_confs, drawdown_pct_confs, high_10, high_2p5, high_5, low_10,
       low_2p5, low_5, avg_losing_trade_bars, avg_pnl, avg_return_pct,
       avg_trade_bars, avg_winning_trade_bars, equity_r2, largest_loss_bars,
-      largest_win_bars, loss_rate, total_pnl, total_return_pct, total_fees
+      largest_win_bars, loss_rate, total_pnl, total_return_pct, total_fees,
+      losing_trades, winning_trades

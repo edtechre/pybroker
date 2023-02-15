@@ -40,12 +40,12 @@ class StaticScope:
         logger: :class:`pybroker.log.Logger`
         data_source_cache: :class:`diskcache.Cache` that stores data retrieved
             from :class:`pybroker.data.DataSource`.
-        data_source_cache_ns: Namespace set for ``data_source_cache``.
+        data_source_cache_ns: Namespace set for  :attr:`.data_source_cache`.
         indicator_cache: :class:`diskcache.Cache` that stores
             :class:`pybroker.indicator.Indicator` data.
-        indicator_cache_ns: Namespace set for ``indicator_cache_ns``.
+        indicator_cache_ns: Namespace set for :attr:`.indicator_cache`.
         model_cache: :class:`diskcache.Cache` that stores trained models.
-        model_cache_ns: Namespace set for ``model_cache``.
+        model_cache_ns: Namespace set for :attr:`.model_cache`.
         default_data_cols: Default data columns in :class:`pandas.DataFrame`
             retrieved from a :class:`pybroker.data.DataSource`.
         custom_data_cols: User-defined data columns in
@@ -261,7 +261,7 @@ class ColumnScope:
     def fetch(
         self, symbol: str, name: str, end_index: Optional[int] = None
     ) -> Optional[NDArray]:
-        """Fetches a :class:``numpy.ndarray` of column data for ``symbol``.
+        """Fetches a :class:`numpy.ndarray` of column data for ``symbol``.
 
         Args:
             symbol: Ticker symbol to query.
@@ -335,7 +335,7 @@ class IndicatorScope:
 
         Returns:
             :class:`numpy.ndarray` of :class:`pybroker.indicator.Indicator`
-            data forevery bar until ``end_index`` (when specified).
+            data for every bar until ``end_index`` (when specified).
         """
         ind_sym = IndicatorSymbol(name, symbol)
         if ind_sym in self._sym_inds:

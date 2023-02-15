@@ -89,7 +89,7 @@ class ExecSymbol(NamedTuple):
 
 
 class DataCol(Enum):
-    """Names of default data columns."""
+    """Default data column names."""
 
     DATE = "date"
     SYMBOL = "symbol"
@@ -151,12 +151,12 @@ class FeeMode(Enum):
 
 
 class BarData:
-    r"""Contains data of a series of bars. Each field is a
-    :class:`numpy.ndarray` that holds values of the bars in the series. The
-    values are sorted in ascending chronological order.
+    r"""Contains data for a series of bars. Each field is a
+    :class:`numpy.ndarray` that contains bar values in the series. The values
+    are sorted in ascending chronological order.
 
     Args:
-        date: Timestamps of each bar in the series.
+        date: Timestamps of each bar.
         open: Open prices.
         high: High prices.
         low: Low prices.
