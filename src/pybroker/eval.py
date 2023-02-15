@@ -647,8 +647,10 @@ class EvalMetrics:
             <https://en.wikipedia.org/wiki/Ulcer_index>`_, computed per bar.
         upi: `Ulcer Performance Index
             <https://en.wikipedia.org/wiki/Ulcer_index>`_, computed per bar.
-        equity_r2: R^2 of the equity curve, computed per bar.
-        std_error: Standard error, computed per bar.
+        equity_r2: R^2 of the equity curve, computed per bar on market values
+            of portfolio.
+        std_error: Standard error, computed per bar on market values of
+            portfolio.
     """
 
     trade_count: int = field(default=0)
