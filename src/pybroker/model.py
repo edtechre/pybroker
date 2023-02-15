@@ -358,8 +358,8 @@ class ModelsMixin:
                 model_name=model_sym.model_name,
                 **asdict(cache_date_fields),
             )
-            model = scope.model_cache.get(repr(cache_key))
             scope.logger.debug_get_model_cache(cache_key)
+            model = scope.model_cache.get(repr(cache_key))
             if model is not None:
                 source = scope.get_model_source(model_sym.model_name)
                 models[model_sym] = TrainedModel(
@@ -383,4 +383,5 @@ class ModelsMixin:
             model_name=model_sym.model_name,
             **asdict(cache_date_fields),
         )
+        scope.logger.debug_set_model_cache(cache_key)
         scope.model_cache.set(repr(cache_key), model)

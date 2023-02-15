@@ -250,8 +250,8 @@ class IndicatorsMixin:
                 ind_name=ind_sym.ind_name,
                 **asdict(cache_date_fields),
             )
-            data = scope.indicator_cache.get(repr(cache_key))
             scope.logger.debug_get_indicator_cache(cache_key)
+            data = scope.indicator_cache.get(repr(cache_key))
             if data is not None:
                 indicator_data[ind_sym] = data
             else:
@@ -274,6 +274,7 @@ class IndicatorsMixin:
             ind_name=ind_sym.ind_name,
             **asdict(cache_date_fields),
         )
+        scope.logger.debug_set_indicator_cache(cache_key)
         scope.indicator_cache.set(repr(cache_key), series)
 
     def _run_indicators(
