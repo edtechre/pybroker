@@ -1,3 +1,4 @@
+.numba_config.yaml
 __pycache__
 .pybrokercache
 .venv*
