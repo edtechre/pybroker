@@ -17,19 +17,31 @@ with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from .fixtures import *  # noqa: F401
 from pybroker.log import Logger
+import logging
 
 
 class TestLogger:
-    def test_enable_and_disable(scope, capsys):
+    def test_enable_and_disable(scope, capsys, caplog):
+        caplog.set_level(logging.DEBUG)
         logger = Logger(scope)
         logger.disable()
         logger.indicator_data_start([])
+        logger.info_indicator_data_start([])
+        logger.debug_compute_indicators(is_parallel=False)
+        logger.loaded_indicator_data()
+        logger.warn_bootstrap_sample_size(10, 100)
         assert capsys.readouterr() == ("", "")
+        assert not caplog.record_tuples
         logger.enable()
         logger.indicator_data_start([])
+        logger.info_indicator_data_start([])
+        logger.debug_compute_indicators(is_parallel=False)
+        logger.loaded_indicator_data()
+        logger.warn_bootstrap_sample_size(10, 100)
         captured = capsys.readouterr()
         assert captured.out
         assert captured.err == ""
+        assert len(caplog.record_tuples) == 3
 
     def test_enable_and_disable_progress_bar(scope, capsys):
         logger = Logger(scope)
