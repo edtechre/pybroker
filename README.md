@@ -4,20 +4,26 @@
 
 ## Algorithmic Trading in Python with Machine Learning
 
-**PyBroker** is a Python framework for developing algorithmic trading
-strategies, especially those that use machine learning. With PyBroker, it is
-easy to write trading rules, build models, and analyze a strategy's
-performance.
+Are you looking to enhance your trading strategies with the power of Python and
+machine learning? Then you need to check out **PyBroker**! This Python framework
+is designed for developing algorithmic trading strategies, with a focus on those
+that use machine learning. With PyBroker, you can easily create and fine-tune
+trading rules, build powerful models, and gain valuable insights into your
+strategy’s performance.
 
 ## Key Features
 
-- Fast backtesting engine built in [NumPy](https://numpy.org/) with [Numba](https://numba.pydata.org/) acceleration.
-- Easily write trading rules and models that execute on multiple instruments.
-- Download historical data from [Alpaca](https://alpaca.markets/) and [Yahoo Finance](https://finance.yahoo.com/).
-- Train and backtest models using [Walkforward Analysis](https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis) to simulate real trading.
-- More reliable trading metrics with randomized [bootstrapping](https://en.wikipedia.org/wiki/Bootstrapping_(statistics)).
-- Caching of downloaded data, indicators, and models for quicker development.
-- Parallelized computations for faster performance.
+- A super-fast backtesting engine built in [NumPy](https://numpy.org/) and accelerated with [Numba](https://numba.pydata.org/).
+- The ability to create and execute trading rules and models across multiple instruments with ease.
+- Access to historical data from [Alpaca](https://alpaca.markets/) and [Yahoo Finance](https://finance.yahoo.com/).
+- The option to train and backtest models using [Walkforward Analysis](https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis), which simulates how the strategy would work during real trading.
+- More reliable trading metrics that use randomized [bootstrapping](https://en.wikipedia.org/wiki/Bootstrapping_(statistics)) to provide more accurate results.
+- Caching of downloaded data, indicators, and models to speed up your development process.
+- Parallelized computations that enable top-notch performance.
+
+With PyBroker, you'll have all the tools you need to create winning trading
+strategies backed by the power of data and machine learning. So why wait? Start
+using PyBroker today and take your trading to the next level!
 
 ## Installation
 
@@ -36,8 +42,8 @@ Or you can clone the Git repository with:
 
 ## A Quick Example
 
-Code speaks louder than words! Here is a peek at what backtesting with PyBroker
-looks like:
+Code speaks louder than words! Get a glimpse of what backtesting with PyBroker
+looks like with these code snippets:
 
 **Rule-based Strategy**:
 
