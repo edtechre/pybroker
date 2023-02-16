@@ -42,8 +42,8 @@ Or you can clone the Git repository with:
 
 ## A Quick Example
 
-Code speaks louder than words! Get a glimpse of what backtesting with PyBroker
-looks like with these code snippets:
+Get a glimpse of what backtesting with PyBroker looks like with these code
+snippets:
 
 **Rule-based Strategy**:
 
