@@ -22,8 +22,7 @@ strategy’s performance.
 - Parallelized computations that enable top-notch performance.
 
 With PyBroker, you'll have all the tools you need to create winning trading
-strategies backed by the power of data and machine learning. So why wait? Start
-using PyBroker today and take your trading to the next level!
+strategies backed by the power of data and machine learning.
 
 ## Installation
 
