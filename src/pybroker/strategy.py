@@ -1027,8 +1027,9 @@ class Strategy(
                 - ``"w"``/``"week"``: weeks
 
                 An example timeframe string is ``1h 30m``.
-            between_time: ``tuple[str, str]`` of times of day
-                (e.g. 9:00-9:30) used to filter the backtesting data.
+            between_time: ``tuple[str, str]`` of times of day e.g.
+                ('9:30', '16:00') used to filter the backtesting data
+                (inclusive).
             days: Days (e.g. ``"mon"``, ``"tues"`` etc.) used to filter the
                 backtesting data.
             lookahead: Number of bars in the future of the target prediction.
@@ -1110,8 +1111,9 @@ class Strategy(
                 - ``"w"``/``"week"``: weeks
 
                 An example timeframe string is ``1h 30m``.
-            between_time: ``tuple[str, str]`` of times of day
-                (e.g. 9:00-9:30 AM) used to filter the backtesting data.
+            between_time: ``tuple[str, str]`` of times of day e.g.
+                ('9:30', '16:00') used to filter the backtesting data
+                (inclusive).
             days: Days (e.g. ``"mon"``, ``"tues"`` etc.) used to filter the
                 backtesting data.
             lookahead: Number of bars in the future of the target prediction.
@@ -1329,6 +1331,11 @@ class Strategy(
             self._logger.info_walkforward_on_days(days)
             df = df[df.index.weekday.isin(frozenset(days))]
         if between_time is not None:
+            if len(between_time) != 2:
+                raise ValueError(
+                    "between_time must be a tuple[str, str] of start time and"
+                    f" end time, received {between_time!r}."
+                )
             self._logger.info_walkforward_between_time(between_time)
             df = df.between_time(*between_time)
         if is_time_range:

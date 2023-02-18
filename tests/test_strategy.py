@@ -1340,12 +1340,14 @@ class TestStrategy:
         )
         assert df.iloc[0]["date"] >= start_date
         assert df.iloc[-1]["date"] <= end_date
+        row_days = set()
         for _, row in df.iterrows():
             if between_time is not None:
                 assert row["date"].hour >= expected_hour[0]
                 assert row["date"].hour <= expected_hour[1]
-            if expected_days is not None:
-                assert row["date"].weekday() in expected_days
+            row_days.add(row["date"].weekday())
+        if expected_days is not None:
+            assert row_days == expected_days
 
     def test_filter_dates_when_empty(self, data_source_df):
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
@@ -1359,6 +1361,27 @@ class TestStrategy:
             days=strategy._to_day_ids("tues"),
         )
         assert df.empty
+
+    def test_filter_dates_when_invalid_between_time_then_error(
+        self, data_source_df
+    ):
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        start_date = pd.to_datetime("1/1/2021").to_pydatetime()
+        end_date = pd.to_datetime("12/1/2021").to_pydatetime()
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "between_time must be a tuple[str, str] of start time and end"
+                " time, received '9:00'."
+            ),
+        ):
+            strategy._filter_dates(
+                data_source_df,
+                start_date,
+                end_date,
+                days=None,
+                between_time=("9:00"),
+            )
 
     def test_add_execution_when_empty_symbols_then_error(self, data_source_df):
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
