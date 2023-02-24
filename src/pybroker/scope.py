@@ -246,8 +246,7 @@ class ColumnScope:
             else:
                 if symbol not in self._symbols:
                     raise ValueError(f"Symbol not found: {symbol}.")
-                sym_df = self._df.loc[pd.IndexSlice[symbol, :]]
-                sym_df = sym_df.reset_index()
+                sym_df = self._df.loc[pd.IndexSlice[symbol, :]].reset_index()
                 sym_dfs[symbol] = sym_df
             if name not in sym_df.columns:
                 self._sym_cols[symbol][name] = None

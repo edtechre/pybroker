@@ -212,10 +212,11 @@ class BacktestMixin:
             for exec in executions
             if exec.fn is not None and sym in exec.symbols
         )
-        test_data = test_data.reset_index(drop=True).set_index(
-            [DataCol.SYMBOL.value, DataCol.DATE.value]
+        test_data = (
+            test_data.reset_index(drop=True)
+            .set_index([DataCol.SYMBOL.value, DataCol.DATE.value])
+            .sort_index()
         )
-        test_data = test_data.sort_index()
         test_symbols = frozenset(
             exec_symbol.symbol for exec_symbol in exec_symbols
         )
@@ -1317,16 +1318,14 @@ class Strategy(
         days: Optional[tuple[int]],
     ) -> pd.DataFrame:
         if start_date != self._start_date or end_date != self._end_date:
-            df = _between(df, start_date, end_date)
-            df = df.reset_index(drop=True)
+            df = _between(df, start_date, end_date).reset_index(drop=True)
         if df[DataCol.DATE.value].dt.tz is not None:
             # Fixes bug on Windows.
             # https://stackoverflow.com/questions/51827582/message-exception-ignored-when-dealing-pandas-datetime-type
             df[DataCol.DATE.value] = df[DataCol.DATE.value].dt.tz_convert(None)
         is_time_range = between_time is not None or days is not None
         if is_time_range:
-            df = df.reset_index(drop=True)
-            df = df.set_index(DataCol.DATE.value)
+            df = df.reset_index(drop=True).set_index(DataCol.DATE.value)
         if days is not None:
             self._logger.info_walkforward_on_days(days)
             df = df[df.index.weekday.isin(frozenset(days))]

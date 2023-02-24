@@ -337,9 +337,11 @@ class ModelsMixin:
         return models
 
     def _slice_by_symbol(self, symbol: str, df: pd.DataFrame) -> pd.DataFrame:
-        df = df.loc[df[DataCol.SYMBOL.value] == symbol]
-        df = df.drop(columns=DataCol.SYMBOL.value)
-        return df.sort_values(DataCol.DATE.value)
+        return (
+            df.loc[df[DataCol.SYMBOL.value] == symbol]
+            .drop(columns=DataCol.SYMBOL.value)
+            .sort_values(DataCol.DATE.value)
+        )
 
     def _get_cached_models(
         self,
