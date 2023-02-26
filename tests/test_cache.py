@@ -15,6 +15,9 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import os
+import pytest
+import re
 from .fixtures import *
 from diskcache import Cache
 from pybroker.cache import (
@@ -29,9 +32,6 @@ from pybroker.cache import (
     enable_indicator_cache,
 )
 from unittest import mock
-import os
-import pytest
-import re
 
 
 @pytest.fixture()

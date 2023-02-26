@@ -15,13 +15,13 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import numpy as np
+import pandas as pd
+import pytest
 from collections import deque
 from decimal import Decimal
 from pybroker.common import FeeMode
 from pybroker.portfolio import Portfolio
-import numpy as np
-import pandas as pd
-import pytest
 
 SYMBOL_1 = "SPY"
 SYMBOL_2 = "AAPL"

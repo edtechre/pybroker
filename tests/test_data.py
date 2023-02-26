@@ -15,18 +15,18 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from .fixtures import *  # noqa: F401
-from datetime import datetime
-from pybroker.cache import DataSourceCacheKey
-from pybroker.common import to_seconds
-from pybroker.data import Alpaca, AlpacaCrypto, DataSourceCacheMixin, YFinance
-from unittest import mock
 import joblib
 import os
 import pandas as pd
 import pytest
 import re
 import yfinance
+from .fixtures import *  # noqa: F401
+from datetime import datetime
+from pybroker.cache import DataSourceCacheKey
+from pybroker.common import to_seconds
+from pybroker.data import Alpaca, AlpacaCrypto, DataSourceCacheMixin, YFinance
+from unittest import mock
 
 API_KEY = "api_key"
 API_SECRET = "api_secret"

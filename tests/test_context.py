@@ -15,6 +15,9 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import numpy as np
+import pytest
+import re
 from .fixtures import *
 from collections import deque
 from decimal import Decimal
@@ -27,9 +30,6 @@ from pybroker.context import (
     set_pos_size_ctx_data,
 )
 from pybroker.portfolio import Order, Portfolio, Position, Trade
-import numpy as np
-import pytest
-import re
 
 
 @pytest.fixture()

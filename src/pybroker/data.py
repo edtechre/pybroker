@@ -15,6 +15,11 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import alpaca_trade_api as tradeapi
+import itertools
+import numpy as np
+import pandas as pd
+import yfinance
 from .cache import DataSourceCacheKey
 from .common import (
     DataCol,
@@ -27,11 +32,6 @@ from .scope import StaticScope
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Final, Iterable, Optional, Union
-import alpaca_trade_api as tradeapi
-import itertools
-import numpy as np
-import pandas as pd
-import yfinance
 
 
 class DataSourceCacheMixin:

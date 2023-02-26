@@ -15,14 +15,14 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from pybroker.cache import CacheDateFields
-from .fixtures import *  # noqa: F401
-from unittest.mock import Mock
-from pybroker.common import ModelSymbol, TrainedModel, to_datetime
-from pybroker.model import ModelLoader, ModelsMixin, ModelTrainer, model
 import pandas as pd
 import pytest
 import re
+from .fixtures import *  # noqa: F401
+from unittest.mock import Mock
+from pybroker.cache import CacheDateFields
+from pybroker.common import ModelSymbol, TrainedModel, to_datetime
+from pybroker.model import ModelLoader, ModelsMixin, ModelTrainer, model
 
 TF_SECONDS = 60
 BETWEEN_TIME = ("10:00", "15:30")

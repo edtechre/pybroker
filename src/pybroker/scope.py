@@ -17,6 +17,8 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import numpy as np
+import pandas as pd
 from .common import (
     BarData,
     DataCol,
@@ -29,8 +31,6 @@ from collections import defaultdict
 from diskcache import Cache
 from numpy.typing import NDArray
 from typing import Collection, Iterable, Mapping, Optional, Union
-import numpy as np
-import pandas as pd
 
 
 class StaticScope:

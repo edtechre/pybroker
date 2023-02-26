@@ -15,6 +15,9 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import dataclasses
+import numpy as np
+import pandas as pd
 from .cache import CacheDateFields
 from .common import (
     BarData,
@@ -65,9 +68,6 @@ from typing import (
     Sequence,
     Union,
 )
-import dataclasses
-import numpy as np
-import pandas as pd
 
 
 def _decorate_execution_fn(fn: Callable[[ExecContext], None]) -> Callable:

@@ -15,6 +15,8 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import functools
+import pandas as pd
 from .cache import CacheDateFields, ModelCacheKey
 from .common import (
     DataCol,
@@ -27,8 +29,6 @@ from .scope import StaticScope
 from dataclasses import asdict
 from numpy.typing import NDArray
 from typing import Any, Callable, Collection, Iterable, Mapping, Optional
-import functools
-import pandas as pd
 
 
 class ModelSource:

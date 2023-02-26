@@ -15,9 +15,9 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import logging
 from .fixtures import *  # noqa: F401
 from pybroker.log import Logger
-import logging
 
 
 class TestLogger:

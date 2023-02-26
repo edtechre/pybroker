@@ -15,16 +15,16 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import numpy as np
+import pandas as pd
+import os
+import re
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 from enum import Enum
 from joblib import Parallel
 from numpy.typing import NDArray
 from typing import Any, Callable, Final, NamedTuple, Optional, Union
-import numpy as np
-import pandas as pd
-import os
-import re
 
 _tf_pattern: Final = re.compile(r"(\d+)([A-Za-z]+)")
 _tf_abbr: Final = {

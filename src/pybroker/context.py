@@ -16,7 +16,8 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from dataclasses import dataclass
+import numpy as np
+import pandas as pd
 from .common import (
     BarData,
     DataCol,
@@ -34,6 +35,7 @@ from .scope import (
     PredictionScope,
     StaticScope,
 )
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from numpy.typing import NDArray
@@ -47,8 +49,6 @@ from typing import (
     Optional,
     Union,
 )
-import numpy as np
-import pandas as pd
 
 
 class BaseContext:

@@ -17,15 +17,15 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import math
+import numpy as np
+import pandas as pd
 from .common import DataCol, FeeMode, to_decimal
 from .scope import StaticScope
 from collections import deque
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Iterable, Literal, NamedTuple, Optional, Union
-import math
-import numpy as np
-import pandas as pd
 
 
 @dataclass

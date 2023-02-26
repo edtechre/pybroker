@@ -15,10 +15,10 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from pybroker.vect import lowv, highv, sumv, cross, returnv
 import numpy as np
 import pytest
 import re
+from pybroker.vect import cross, highv, lowv, returnv, sumv
 
 
 @pytest.mark.parametrize(

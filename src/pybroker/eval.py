@@ -15,6 +15,8 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import numpy as np
+import pandas as pd
 from .scope import StaticScope
 from .vect import highv
 from collections import deque
@@ -22,8 +24,6 @@ from dataclasses import dataclass, field
 from numba import njit
 from numpy.typing import NDArray
 from typing import Callable, NamedTuple, Optional, Union
-import numpy as np
-import pandas as pd
 
 
 @njit

@@ -15,6 +15,12 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import joblib
+import numpy as np
+import os
+import pandas as pd
+import pytest
+import re
 from .fixtures import *
 from collections import deque
 from datetime import datetime
@@ -39,12 +45,6 @@ from pybroker.strategy import (
     WalkforwardMixin,
 )
 from unittest.mock import MagicMock, Mock
-import joblib
-import numpy as np
-import os
-import pandas as pd
-import pytest
-import re
 
 
 @pytest.fixture(params=[200, 202])

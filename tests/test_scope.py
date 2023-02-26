@@ -15,6 +15,10 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import numpy as np
+import pandas as pd
+import pytest
+import re
 from .fixtures import *
 from pybroker.indicator import IndicatorSymbol
 from pybroker.model import model
@@ -27,10 +31,6 @@ from pybroker.scope import (
     unregister_columns,
 )
 from unittest.mock import Mock
-import numpy as np
-import pandas as pd
-import pytest
-import re
 
 
 @pytest.fixture(params=[10, None])

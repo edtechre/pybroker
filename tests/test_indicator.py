@@ -15,6 +15,9 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import numpy as np
+import pandas as pd
+import pytest
 from pybroker.cache import CacheDateFields
 from .fixtures import *  # noqa: F401
 from pybroker.common import BarData, DataCol, IndicatorSymbol, to_datetime
@@ -29,9 +32,6 @@ from pybroker.indicator import (
     _to_bar_data,
 )
 from pybroker.vect import lowv
-import numpy as np
-import pandas as pd
-import pytest
 
 TF_SECONDS = 60
 BETWEEN_TIME = ("10:00", "15:30")

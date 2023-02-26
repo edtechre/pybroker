@@ -15,9 +15,12 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import numpy as np
+import pandas as pd
+import pytest
+import re
 from datetime import datetime
 from decimal import Decimal
-
 from joblib import Parallel
 from pybroker.common import (
     BarData,
@@ -29,10 +32,6 @@ from pybroker.common import (
     to_seconds,
     verify_data_source_columns,
 )
-import numpy as np
-import pandas as pd
-import pytest
-import re
 
 
 def test_bar_data_get_custom_data():

@@ -15,14 +15,14 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from .common import Day, IndicatorSymbol, ModelSymbol, to_datetime
-from decimal import Decimal
-from progressbar import ProgressBar
-from typing import Iterable, Optional, Sequence, Sized, Union
 import datetime
 import logging
 import numpy as np
 import time
+from .common import Day, IndicatorSymbol, ModelSymbol, to_datetime
+from decimal import Decimal
+from progressbar import ProgressBar
+from typing import Iterable, Optional, Sequence, Sized, Union
 
 
 class Logger:

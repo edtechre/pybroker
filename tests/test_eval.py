@@ -15,6 +15,13 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import joblib
+import math
+import numpy as np
+import os
+import pandas as pd
+import pytest
+import re
 from pybroker.eval import (
     EvalMetrics,
     EvaluateMixin,
@@ -39,13 +46,6 @@ from pybroker.eval import (
     winning_losing_trades,
 )
 from typing import get_type_hints
-import joblib
-import math
-import numpy as np
-import os
-import pandas as pd
-import pytest
-import re
 
 np.random.seed(42)
 

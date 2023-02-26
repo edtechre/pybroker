@@ -15,9 +15,9 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import numpy as np
 from numba import njit
 from numpy.typing import NDArray
-import numpy as np
 
 
 @njit

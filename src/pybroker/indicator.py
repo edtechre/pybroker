@@ -15,6 +15,11 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import functools
+import itertools
+import numpy as np
+import operator as op
+import pandas as pd
 from .cache import CacheDateFields, IndicatorCacheKey
 from .common import BarData, DataCol, IndicatorSymbol, default_parallel
 from .eval import iqr, relative_entropy
@@ -22,7 +27,6 @@ from .scope import StaticScope
 from .vect import highv, lowv, returnv
 from collections import defaultdict
 from dataclasses import asdict
-import itertools
 from joblib import delayed
 from numpy.typing import NDArray
 from typing import (
@@ -34,10 +38,6 @@ from typing import (
     Optional,
     Union,
 )
-import functools
-import numpy as np
-import operator as op
-import pandas as pd
 
 
 def _to_bar_data(df: pd.DataFrame) -> BarData:
@@ -308,6 +308,7 @@ class IndicatorsMixin:
             )
         else:
             scope.logger.debug_compute_indicators(is_parallel=True)
+
             with default_parallel() as parallel:
                 return parallel(
                     delayed(fns[ind_name])(**args_fn(ind_name, sym))

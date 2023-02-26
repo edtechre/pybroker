@@ -15,6 +15,11 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import joblib
+import numpy as np
+import os
+import pandas as pd
+import pytest
 from pybroker.cache import (
     clear_data_source_cache,
     clear_indicator_cache,
@@ -36,11 +41,6 @@ from pybroker.scope import (
     StaticScope,
 )
 from pybroker.vect import highv, lowv, sumv
-import joblib
-import numpy as np
-import os
-import pandas as pd
-import pytest
 
 MODEL_NAME = "fake_model"
 
