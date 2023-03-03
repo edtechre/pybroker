@@ -19,7 +19,7 @@ your strategy’s performance.
 - The option to train and backtest models using [Walkforward Analysis](https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis), which simulates how the strategy would perform during actual trading.
 - More reliable trading metrics that use randomized [bootstrapping](https://en.wikipedia.org/wiki/Bootstrapping_(statistics)) to provide more accurate results.
 - Caching of downloaded data, indicators, and models to speed up your development process.
-- Parallelized computations that enable top-notch performance.
+- Parallelized computations that enable faster performance.
 
 With PyBroker, you'll have all the tools you need to create winning trading
 strategies backed by data and machine learning. Start using PyBroker today and
