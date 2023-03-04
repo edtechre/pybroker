@@ -1189,7 +1189,7 @@ class Strategy(
                 disable_parallel=disable_parallel,
             )
             train_only = all(map(lambda e: e.fn is None, self._executions))
-            test_results = self._run_walkfoward(
+            test_results = self._run_walkforward(
                 df=df,
                 indicator_data=indicator_data,
                 tf_seconds=tf_seconds,
@@ -1230,7 +1230,7 @@ class Strategy(
             self._data_source, AlpacaCrypto
         )
 
-    def _run_walkfoward(
+    def _run_walkforward(
         self,
         df: pd.DataFrame,
         indicator_data: dict[IndicatorSymbol, pd.Series],
