@@ -882,7 +882,6 @@ class Strategy(
     ):
         if isinstance(data_source, pd.DataFrame):
             verify_data_source_columns(data_source)
-            return
         elif not isinstance(data_source, DataSource):
             raise TypeError(f"Invalid data_source type: {type(data_source)}")
 
