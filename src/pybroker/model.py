@@ -307,8 +307,7 @@ class ModelsMixin:
                 continue
             model_name, sym = model_sym
             source = scope.get_model_source(model_name)
-            source_type = type(source)
-            if source_type == ModelTrainer:
+            if isinstance(source, ModelTrainer):
                 sym_train_data = self._slice_by_symbol(sym, train_data)
                 sym_test_data = self._slice_by_symbol(sym, test_data)
                 for ind_name in source.indicators:
@@ -324,11 +323,11 @@ class ModelsMixin:
                 scope.logger.info_train_model_start(model_sym)
                 model = source(sym, sym_train_data, sym_test_data)
                 scope.logger.info_train_model_completed(model_sym)
-            elif source_type == ModelLoader:
+            elif isinstance(source, ModelLoader):
                 model = source(sym)
                 scope.logger.info_loaded_model(model_sym)
             else:
-                raise TypeError(f"Invalid ModelSource type: {source_type}")
+                raise TypeError(f"Invalid ModelSource type: {type(source)}")
             models[model_sym] = TrainedModel(
                 model_name, model, source._predict_fn
             )
