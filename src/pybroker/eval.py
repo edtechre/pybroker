@@ -23,7 +23,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from numba import njit
 from numpy.typing import NDArray
-from typing import Callable, NamedTuple, Optional, Union
+from typing import Callable, NamedTuple, Optional
 
 
 @njit
@@ -212,7 +212,7 @@ def log_profit_factor(changes: NDArray[np.float_]) -> np.floating:
 
 
 @njit
-def sharpe_ratio(changes: NDArray[np.float_]) -> Union[float, np.floating]:
+def sharpe_ratio(changes: NDArray[np.float_]) -> np.floating:
     """Computes the
     `Sharpe Ratio <https://en.wikipedia.org/wiki/Sharpe_ratio>`_.
 
@@ -220,10 +220,10 @@ def sharpe_ratio(changes: NDArray[np.float_]) -> Union[float, np.floating]:
         changes: Array of differences between each bar and the previous bar.
     """
     if not len(changes):
-        return 0.0
+        return np.float32(0)
     std = np.std(changes)
     if std == 0:
-        return 0.0
+        return np.float32(0)
     return np.mean(changes) / std
 
 
