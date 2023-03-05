@@ -31,6 +31,7 @@ from pybroker.common import (
     to_decimal,
     to_seconds,
     verify_data_source_columns,
+    verify_date_range,
 )
 
 
@@ -204,6 +205,14 @@ def test_verify_data_source_columns():
     )
     verify_data_source_columns(df)
     assert True
+
+
+def test_verify_date_range_when_invalid_then_error():
+    with pytest.raises(
+        ValueError,
+        match=r"start_date (.*) must be on or before end_date (.*)\.",
+    ):
+        verify_date_range("2020-05-01", "2020-04-01")
 
 
 def test_verify_data_source_columns_when_missing_then_error():

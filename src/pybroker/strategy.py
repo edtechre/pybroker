@@ -32,6 +32,7 @@ from .common import (
     to_decimal,
     to_seconds,
     verify_data_source_columns,
+    verify_date_range,
 )
 from .config import StrategyConfig
 from .context import (
@@ -835,7 +836,7 @@ class Strategy(
         self._data_source = data_source
         self._start_date = to_datetime(start_date)
         self._end_date = to_datetime(end_date)
-        self._verify_date_range(self._start_date, self._end_date)
+        verify_date_range(self._start_date, self._end_date)
         if config is not None:
             self._verify_config(config)
             self._config = config
@@ -869,13 +870,6 @@ class Strategy(
             raise ValueError("bootstrap_samples must be greater than 0.")
         if config.bootstrap_sample_size <= 0:
             raise ValueError("bootstrap_sample_size must be greater than 0.")
-
-    def _verify_date_range(self, start_date: datetime, end_date: datetime):
-        if start_date > end_date:
-            raise ValueError(
-                f"start_date ({start_date}) must be on or before end_date "
-                f"({end_date})."
-            )
 
     def _verify_data_source(
         self, data_source: Union[DataSource, pd.DataFrame]
@@ -1164,7 +1158,7 @@ class Strategy(
                     f"{self._end_date}."
                 )
             if start_dt is not None and end_dt is not None:
-                self._verify_date_range(start_dt, end_dt)
+                verify_date_range(start_dt, end_dt)
             self._logger.walkforward_start(start_dt, end_dt)
             df = self._fetch_data(timeframe)
             day_ids = self._to_day_ids(days)

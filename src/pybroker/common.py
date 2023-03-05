@@ -315,6 +315,15 @@ def verify_data_source_columns(df: pd.DataFrame):
         raise ValueError(f"DataFrame is missing required columns: {missing!r}")
 
 
+def verify_date_range(start_date: datetime, end_date: datetime):
+    """Verifies date range bounds."""
+    if start_date > end_date:
+        raise ValueError(
+            f"start_date ({start_date}) must be on or before end_date "
+            f"({end_date})."
+        )
+
+
 def default_parallel() -> Parallel:
     """Returns a :class:`joblib.Parallel` instance with ``n_jobs`` equal to
     the number of CPUs on the host machine.

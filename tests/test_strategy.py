@@ -135,7 +135,7 @@ class TestWalkforwardMixin:
             (10, 2, 11, 0.5),
         ],
     )
-    def test_walkfoward_split_when_invalid_params_then_error(
+    def test_walkforward_split_when_invalid_params_then_error(
         self, dates, dates_length, windows, lookahead, train_size
     ):
         df = self._data_frame(dates, dates_length)
@@ -1233,7 +1233,7 @@ class TestStrategy:
                 "2020-02-20",
                 None,
                 None,
-                r"start_date (.*) must be before end_date (.*)\.",
+                r"start_date (.*) must be on or before end_date (.*)\.",
             ),
             (
                 "2020-03-01",
@@ -1268,7 +1268,7 @@ class TestStrategy:
                 "2020-09-30",
                 "2020-05-01",
                 "2020-04-01",
-                r"start_date (.*) must be before end_date (.*)\.",
+                r"start_date (.*) must be on or before end_date (.*)\.",
             ),
         ],
     )

@@ -27,6 +27,7 @@ from .common import (
     to_datetime,
     to_seconds,
     verify_data_source_columns,
+    verify_date_range,
 )
 from .scope import StaticScope
 from abc import ABC, abstractmethod
@@ -194,6 +195,7 @@ class DataSource(ABC, DataSourceCacheMixin):
         """
         start_date = to_datetime(start_date)
         end_date = to_datetime(end_date)
+        verify_date_range(start_date, end_date)
         if type(symbols) == str and not symbols:
             raise ValueError("Symbols cannot be empty.")
         unique_syms = (
