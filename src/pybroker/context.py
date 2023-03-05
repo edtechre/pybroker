@@ -229,8 +229,9 @@ class BaseContext:
             Number of shares given ``target_size`` and share ``price``.
         """
         return int(
-            (self._portfolio.equity * to_decimal(target_size))
-            // to_decimal(price)
+            self._portfolio.equity
+            * to_decimal(target_size)
+            / to_decimal(price)
         )
 
     def model(self, name: str, symbol: str) -> Any:
