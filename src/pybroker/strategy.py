@@ -873,7 +873,7 @@ class Strategy(
     def _verify_date_range(self, start_date: datetime, end_date: datetime):
         if start_date > end_date:
             raise ValueError(
-                f"start_date ({start_date}) must be before end_date "
+                f"start_date ({start_date}) must be on or before end_date "
                 f"({end_date})."
             )
 
