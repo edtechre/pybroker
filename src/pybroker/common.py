@@ -196,17 +196,16 @@ def to_datetime(
     date: Union[str, datetime, np.datetime64, pd.Timestamp]
 ) -> datetime:
     """Converts ``date`` to :class:`datetime`."""
-    date_type = type(date)
-    if date_type == pd.Timestamp:
+    if isinstance(date, pd.Timestamp):
         return date.to_pydatetime()  # type: ignore[union-attr]
-    elif date_type == datetime:
+    elif isinstance(date, datetime):
         return date  # type: ignore[return-value]
-    elif date_type == str:
+    elif isinstance(date, str):
         return pd.to_datetime(date).to_pydatetime()
-    elif date_type == np.datetime64:
+    elif isinstance(date, np.datetime64):
         return pd.Timestamp(date).to_pydatetime()
     else:
-        raise TypeError(f"Unsupported date type: {date_type}")
+        raise TypeError(f"Unsupported date type: {type(date)}")
 
 
 def to_decimal(value: Union[int, float, Decimal]) -> Decimal:
