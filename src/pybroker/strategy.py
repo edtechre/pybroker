@@ -600,17 +600,7 @@ class BacktestMixin:
         if price_type == float or price_type == int or price_type == Decimal:
             return to_decimal(price)  # type: ignore[arg-type]
         if callable(price):
-            scope = StaticScope.instance()
-            default_col_data = col_scope.fetch_dict(
-                symbol, scope.default_data_cols, end_index
-            )
-            custom_col_data = col_scope.fetch_dict(
-                symbol, scope.custom_data_cols, end_index
-            )
-            bar_data = BarData(
-                **default_col_data,  # type: ignore[arg-type]
-                **custom_col_data,  # type: ignore[arg-type]
-            )
+            bar_data = col_scope.bar_data_from_data_columns(symbol, end_index)
             return to_decimal(price(bar_data))
         raise ValueError(f"Unknown price: {price_type}")
 
