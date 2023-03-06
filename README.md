@@ -98,9 +98,19 @@ snippets:
    result = strategy.walkforward(timeframe='1m', windows=5, train_size=0.5)
 ```
 
+## User Guide
+
+- [Getting Started with Data Sources](https://www.pybroker.com/en/latest/notebooks/1.%20Getting%20Started%20with%20Data%20Sources.html)
+- [Backtesting a Strategy](https://www.pybroker.com/en/latest/notebooks/2.%20Backtesting%20a%20Strategy.html)
+- [Evaluating with Bootstrap Metrics](https://www.pybroker.com/en/latest/notebooks/3.%20Evaluating%20with%20Bootstrap%20Metrics.html)
+- [Ranking and Position Sizing](https://www.pybroker.com/en/latest/notebooks/4.%20Ranking%20and%20Position%20Sizing.html)
+- [Writing Indicators](https://www.pybroker.com/en/latest/notebooks/5.%20Writing%20Indicators.html)
+- [Training a Model](https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html)
+- [Creating a Custom Data Source](https://www.pybroker.com/en/latest/notebooks/7.%20Creating%20a%20Custom%20Data%20Source.html)
+
 ## Online Documentation
 
-To learn how to use PyBroker, [**head over to the online documentation.**](http://www.pybroker.com)
+[The full reference documentation is hosted at **www.pybroker.com**.](https://www.pybroker.com)
 
 ## Contact
 
