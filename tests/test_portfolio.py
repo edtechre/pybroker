@@ -395,7 +395,6 @@ def test_buy_when_existing_short_and_not_enough_cash():
     short_order = portfolio.sell(
         DATE_1, SYMBOL_1, SHARES_1, entry_price, entry_limit
     )
-    cash_after_short = Decimal(100) + entry_price * SHARES_1
     portfolio.incr_bars()
     buy_order = portfolio.buy(
         DATE_2, SYMBOL_1, SHARES_1, exit_price, exit_limit
@@ -419,7 +418,7 @@ def test_buy_when_existing_short_and_not_enough_cash():
         type="buy",
         limit_price=exit_limit,
         fill_price=exit_price,
-        shares=cash_after_short // exit_price,
+        shares=expected_shares,
         fees=0,
     )
     assert_portfolio(
