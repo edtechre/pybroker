@@ -452,7 +452,8 @@ class Portfolio:
         pnl = Decimal()
         if symbol not in self.short_positions:
             return _OrderResult(Decimal(), shares)
-        rem_shares = self._clamp_shares(fill_price, shares)
+        shares = self._clamp_shares(fill_price, shares)
+        rem_shares = shares
         if rem_shares <= 0:
             return _OrderResult(Decimal(), shares)
         pos = self.short_positions[symbol]
