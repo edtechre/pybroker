@@ -1432,11 +1432,10 @@ class Strategy(
             bootstrap_sample_size=self._config.bootstrap_sample_size,
             bootstrap_samples=self._config.bootstrap_samples,
         )
-        metrics = [
-            (name, value)
-            for name, value in dataclasses.asdict(eval_result.metrics).items()
-        ]
-        metrics_df = pd.DataFrame(metrics, columns=["name", "value"])
+        metrics_df = pd.DataFrame(
+            dataclasses.asdict(eval_result.metrics).items(),
+            columns=["name", "value"],
+        )
         self._logger.walkforward_completed()
         return TestResult(
             start_date=start_date,
