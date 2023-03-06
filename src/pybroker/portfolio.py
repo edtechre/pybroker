@@ -17,7 +17,6 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import math
 import numpy as np
 import pandas as pd
 from .common import DataCol, FeeMode, to_decimal
@@ -392,7 +391,7 @@ class Portfolio:
         max_shares = (
             Decimal(self.cash / fill_price)
             if self._enable_fractional_shares
-            else Decimal(math.floor(self.cash / fill_price))
+            else Decimal(self.cash // fill_price)
         )
         return min(shares, max_shares)
 
