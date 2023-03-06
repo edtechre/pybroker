@@ -45,6 +45,9 @@ PyBroker
       <a href="https://github.com/edtechre/pybroker/">
          <img src="https://github.com/edtechre/pybroker/actions/workflows/main.yml/badge.svg?event=push"
             alt="Package status">
+      </a> &nbsp;
+      <a href="https://github.com/edtechre/pybroker/">
+         <img src="https://img.shields.io/github/stars/edtechre/pybroker?style=social" alt="Github stars">
       </a>
    </embed>
 
