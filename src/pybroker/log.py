@@ -22,7 +22,7 @@ import time
 from .common import Day, IndicatorSymbol, ModelSymbol, to_datetime
 from decimal import Decimal
 from progressbar import ProgressBar
-from typing import Iterable, Optional, Sequence, Sized, Union
+from typing import Iterable, Optional, Sequence, Sized
 
 
 class Logger:
@@ -278,7 +278,7 @@ class Logger:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: Union[int, float, Decimal],
+        shares: Decimal,
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
@@ -317,7 +317,7 @@ class Logger:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: Union[int, float, Decimal],
+        shares: Decimal,
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
@@ -334,7 +334,7 @@ class Logger:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: Union[int, float, Decimal],
+        shares: Decimal,
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
@@ -351,7 +351,7 @@ class Logger:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: Union[int, float, Decimal],
+        shares: Decimal,
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
@@ -368,7 +368,7 @@ class Logger:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: Union[int, float, Decimal],
+        shares: Decimal,
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
@@ -385,7 +385,7 @@ class Logger:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: Union[int, float, Decimal],
+        shares: Decimal,
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
@@ -469,7 +469,7 @@ class Logger:
         self,
         date: np.datetime64,
         symbol: str,
-        shares: Union[int, float, Decimal],
+        shares: Decimal,
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
