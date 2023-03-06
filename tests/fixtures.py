@@ -152,14 +152,21 @@ def model_source(scope, data_source_df, indicators, request):
     )
 
 
-@pytest.fixture(params=[True, False])
-def trained_models(model_source, symbols, data_source_df, request):
-    trained_models = {}
-    for i, sym in enumerate(symbols):
-        model_sym = ModelSymbol(MODEL_NAME, sym)
-        preds = np.full(
-            data_source_df[data_source_df["symbol"] == sym].shape[0], i
+@pytest.fixture()
+def preds(symbols, data_source_df):
+    return {
+        sym: np.random.random(
+            data_source_df[data_source_df["symbol"] == sym].shape[0]
         )
+        for sym in symbols
+    }
+
+
+@pytest.fixture(params=[True, False])
+def trained_models(model_source, preds, symbols, data_source_df, request):
+    trained_models = {}
+    for sym in symbols:
+        model_sym = ModelSymbol(MODEL_NAME, sym)
         if request.param:
 
             def predict_fn(preds_array):
@@ -169,11 +176,13 @@ def trained_models(model_source, symbols, data_source_df, request):
                 return _
 
             trained_models[model_sym] = TrainedModel(
-                MODEL_NAME, FakeModel(sym, None), predict_fn=predict_fn(preds)
+                MODEL_NAME,
+                FakeModel(sym, None),
+                predict_fn=predict_fn(preds[sym]),
             )
         else:
             trained_models[model_sym] = TrainedModel(
-                MODEL_NAME, FakeModel(sym, preds), predict_fn=None
+                MODEL_NAME, FakeModel(sym, preds[sym]), predict_fn=None
             )
     return trained_models
 

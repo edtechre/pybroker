@@ -30,7 +30,7 @@ from .log import Logger
 from collections import defaultdict
 from diskcache import Cache
 from numpy.typing import NDArray
-from typing import Collection, Iterable, Mapping, Optional, Union
+from typing import Collection, Iterable, Mapping, Optional, Sequence, Union
 
 
 class StaticScope:
@@ -308,13 +308,13 @@ class IndicatorScope:
             :class:`pybroker.common.IndicatorSymbol` pairs to ``pandas.Series``
             of :class:`pybroker.indicator.Indicator` values.
         filter_dates: Filters :class:`pybroker.indicator.Indicator` data on
-            :class:`Iterable` of dates.
+            :class:`Sequence` of dates.
     """
 
     def __init__(
         self,
         indicator_data: Mapping[IndicatorSymbol, pd.Series],
-        filter_dates: Iterable[np.datetime64],
+        filter_dates: Sequence[np.datetime64],
     ):
         self._indicator_data = indicator_data
         self._filter_dates = filter_dates

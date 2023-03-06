@@ -215,8 +215,10 @@ class TestIndicatorScope:
     def test_fetch(self, ind_scope, symbol, ind_data, ind_name, end_index):
         result = ind_scope.fetch(symbol, ind_name, end_index)
         assert isinstance(result, np.ndarray)
-        assert len(result) == len(
-            ind_data[IndicatorSymbol(ind_name, symbol)][:end_index]
+        assert np.array_equal(
+            result,
+            ind_data[IndicatorSymbol(ind_name, symbol)].values[:end_index],
+            equal_nan=True,
         )
 
     def test_fetch_when_cached(
@@ -225,8 +227,10 @@ class TestIndicatorScope:
         ind_scope.fetch(symbol, ind_name, end_index)
         result = ind_scope.fetch(symbol, ind_name, end_index)
         assert isinstance(result, np.ndarray)
-        assert len(result) == len(
-            ind_data[IndicatorSymbol(ind_name, symbol)][:end_index]
+        assert np.array_equal(
+            result,
+            ind_data[IndicatorSymbol(ind_name, symbol)].values[:end_index],
+            equal_nan=True,
         )
 
     @pytest.mark.parametrize("sym, name", [("FOO", "hhv"), ("SPY", "foo")])
@@ -317,21 +321,41 @@ class TestModelInputScope:
 
 class TestPredictionScope:
     def test_fetch(
-        self, pred_scope, trained_model, symbol, data_source_df, end_index
+        self,
+        pred_scope,
+        preds,
+        trained_model,
+        symbol,
+        data_source_df,
+        end_index,
     ):
-        preds = pred_scope.fetch(symbol, trained_model.name, end_index)
-        assert isinstance(preds, np.ndarray)
+        values = pred_scope.fetch(symbol, trained_model.name, end_index)
+        assert isinstance(values, np.ndarray)
+        expected = (
+            preds[symbol] if end_index is None else preds[symbol][:end_index]
+        )
+        assert np.array_equal(values, expected, equal_nan=True)
         df = data_source_df[data_source_df["symbol"] == symbol]
-        assert len(preds) == df.shape[0] if end_index is None else end_index
+        assert len(values) == df.shape[0] if end_index is None else end_index
 
     def test_fetch_when_cached(
-        self, pred_scope, trained_model, symbol, data_source_df, end_index
+        self,
+        pred_scope,
+        preds,
+        trained_model,
+        symbol,
+        data_source_df,
+        end_index,
     ):
         pred_scope.fetch(symbol, trained_model.name, end_index)
-        preds = pred_scope.fetch(symbol, trained_model.name, end_index)
-        assert isinstance(preds, np.ndarray)
+        values = pred_scope.fetch(symbol, trained_model.name, end_index)
+        assert isinstance(values, np.ndarray)
+        expected = (
+            preds[symbol] if end_index is None else preds[symbol][:end_index]
+        )
+        assert np.array_equal(values, expected, equal_nan=True)
         df = data_source_df[data_source_df["symbol"] == symbol]
-        assert len(preds) == df.shape[0] if end_index is None else end_index
+        assert len(values) == df.shape[0] if end_index is None else end_index
 
     @pytest.mark.parametrize(
         "sym, name, expected_msg",
