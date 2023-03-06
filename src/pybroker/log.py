@@ -291,6 +291,28 @@ class Logger:
         )
         self._debug(f"Placing buy order:\n{order}")
 
+    def debug_buy_shares_exceed_cash(
+        self,
+        date: np.datetime64,
+        symbol: str,
+        shares: Decimal,
+        fill_price: Decimal,
+        limit_price: Optional[Decimal],
+        cash: Decimal,
+        clamped_shares: Decimal,
+    ):
+        order = self._format_order(
+            date=date,
+            symbol=symbol,
+            shares=shares,
+            fill_price=fill_price,
+            limit_price=limit_price,
+        )
+        self._debug(
+            f"Buy order amount exceeds available cash={cash}:\n{order}\n"
+            f"Setting buy_shares={clamped_shares}."
+        )
+
     def debug_filled_buy_order(
         self,
         date: np.datetime64,

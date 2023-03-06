@@ -427,8 +427,10 @@ class Portfolio:
             return None
         if shares == 0:
             return None
-        covered = self._cover(date, symbol, shares, fill_price)
-        bought_shares = self._buy(date, symbol, covered.rem_shares, fill_price)
+        covered = self._cover(date, symbol, shares, fill_price, limit_price)
+        bought_shares = self._buy(
+            date, symbol, covered.rem_shares, fill_price, limit_price
+        )
         if not covered.filled_shares and not bought_shares:
             return None
         order = self._add_order(
@@ -447,11 +449,23 @@ class Portfolio:
         symbol: str,
         shares: Decimal,
         fill_price: Decimal,
+        limit_price: Optional[Decimal],
     ) -> _OrderResult:
         pnl = Decimal()
         if symbol not in self.short_positions:
             return _OrderResult(Decimal(), shares)
-        shares = self._clamp_shares(fill_price, shares)
+        clamped_shares = self._clamp_shares(fill_price, shares)
+        if clamped_shares < shares:
+            self._logger.debug_buy_shares_exceed_cash(
+                date=date,
+                symbol=symbol,
+                shares=shares,
+                fill_price=fill_price,
+                limit_price=limit_price,
+                cash=self.cash,
+                clamped_shares=clamped_shares,
+            )
+            shares = clamped_shares
         rem_shares = shares
         if rem_shares <= 0:
             return _OrderResult(Decimal(), shares)
@@ -524,8 +538,20 @@ class Portfolio:
         symbol: str,
         shares: Decimal,
         fill_price: Decimal,
+        limit_price: Optional[Decimal],
     ) -> Decimal:
-        shares = self._clamp_shares(fill_price, shares)
+        clamped_shares = self._clamp_shares(fill_price, shares)
+        if clamped_shares < shares:
+            self._logger.debug_buy_shares_exceed_cash(
+                date=date,
+                symbol=symbol,
+                shares=shares,
+                fill_price=fill_price,
+                limit_price=limit_price,
+                cash=self.cash,
+                clamped_shares=clamped_shares,
+            )
+            shares = clamped_shares
         if shares <= 0:
             return Decimal()
         if (
