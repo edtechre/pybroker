@@ -369,3 +369,19 @@ class TestPredictionScope:
     ):
         with pytest.raises(ValueError, match=re.escape(expected_msg)):
             pred_scope.fetch(sym, name)
+
+    def test_fetch_when_predict_not_defined_then_error(self, input_scope):
+        model = TrainedModel(name=MODEL_NAME, instance={}, predict_fn=None)
+        pred_scope = PredictionScope(
+            models={ModelSymbol(MODEL_NAME, "SPY"): model},
+            input_scope=input_scope,
+        )
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                f"Model instance trained for {MODEL_NAME!r} does not define a "
+                "predict function. Please pass a predict_fn to "
+                "pybroker.model()."
+            ),
+        ):
+            pred_scope.fetch("SPY", MODEL_NAME)

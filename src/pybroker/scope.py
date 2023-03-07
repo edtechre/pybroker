@@ -442,7 +442,15 @@ class PredictionScope:
         if trained_model.predict_fn is not None:
             pred = trained_model.predict_fn(trained_model.instance, input_)
         else:
-            pred = trained_model.instance.predict(input_)
+            predict_fn = getattr(trained_model.instance, "predict", None)
+            if predict_fn is not None and callable(predict_fn):
+                pred = trained_model.instance.predict(input_)
+            else:
+                raise ValueError(
+                    f"Model instance trained for {model_sym.model_name!r} "
+                    "does not define a predict function. Please pass a "
+                    "predict_fn to pybroker.model()."
+                )
         if len(pred.shape) > 1:
             pred = np.squeeze(pred)
         self._sym_preds[model_sym] = pred
