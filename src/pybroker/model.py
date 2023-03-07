@@ -40,12 +40,14 @@ class ModelSource:
         indicator_names: :class:`Iterable` of names of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
-        input_data_fn: :class:`Callable` for preprocessing input data passed to
-            the model when making predictions. If set, ``input_data_fn`` will
-            be called with a :class:`pandas.DataFrame` containing all test
-            data.
-        predict_fn: :class:`Callable` that overrides calling the model's
-            default ``predict`` function.
+        input_data_fn: :class:`Callable[[DataFrame], DataFrame]` for
+            preprocessing input data passed to the model when making
+            predictions. If set, ``input_data_fn`` will be called with a
+            :class:`pandas.DataFrame` containing all test data.
+        predict_fn: :class:`Callable[[Model, DataFrame], ndarray]` that
+            overrides calling the model's default ``predict`` function. If set,
+            ``predict_fn`` will be called with the trained model and a
+            :class:`pandas.DataFrame` containing all test data.
         kwargs: ``dict`` of additional kwargs.
     """
 
@@ -92,12 +94,14 @@ class ModelLoader(ModelSource):
         indicator_names: :class:`Iterable` of names of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
-        input_data_fn: :class:`Callable` for preprocessing input data passed to
-            the model when making predictions. If set, ``input_data_fn`` will
-            be called with a :class:`pandas.DataFrame` containing all test
-            data.
-        predict_fn: :class:`Callable` that overrides calling the model's
-            default ``predict`` function.
+        input_data_fn: :class:`Callable[[DataFrame], DataFrame]` for
+            preprocessing input data passed to the model when making
+            predictions. If set, ``input_data_fn`` will be called with a
+            :class:`pandas.DataFrame` containing all test data.
+        predict_fn: :class:`Callable[[Model, DataFrame], ndarray]` that
+            overrides calling the model's default ``predict`` function. If set,
+            ``predict_fn`` will be called with the trained model and a
+            :class:`pandas.DataFrame` containing all test data.
         kwargs: ``dict`` of kwargs to pass to ``load_fn``.
     """
 
@@ -144,12 +148,14 @@ class ModelTrainer(ModelSource):
         indicator_names: :class:`Iterable` of names of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
-        input_data_fn: :class:`Callable` for preprocessing input data passed to
-            the model when making predictions. If set, ``input_data_fn`` will
-            be called with a :class:`pandas.DataFrame` containing all test
-            data.
-        predict_fn: :class:`Callable` that overrides calling the model's
-            default ``predict`` function.
+        input_data_fn: :class:`Callable[[DataFrame], DataFrame]` for
+            preprocessing input data passed to the model when making
+            predictions. If set, ``input_data_fn`` will be called with a
+            :class:`pandas.DataFrame` containing all test data.
+        predict_fn: :class:`Callable[[Model, DataFrame], ndarray]` that
+            overrides calling the model's default ``predict`` function. If set,
+            ``predict_fn`` will be called with the trained model and a
+            :class:`pandas.DataFrame` containing all test data.
         kwargs: ``dict`` of kwargs to pass to ``train_fn``.
     """
 
