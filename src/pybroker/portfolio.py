@@ -743,9 +743,9 @@ class Portfolio:
         total_margin = Decimal()
         for sym in self.symbols:
             index = (sym, date)
-            if index not in df.index:
-                continue
-            close = to_decimal(df.loc[index][DataCol.CLOSE.value])
+            close = None
+            if index in df.index:
+                close = to_decimal(df.loc[index][DataCol.CLOSE.value])
             pos_long_shares = Decimal()
             pos_short_shares = Decimal()
             pos_equity = Decimal()
@@ -754,44 +754,49 @@ class Portfolio:
             pos_pnl = Decimal()
             if sym in self.long_positions:
                 pos = self.long_positions[sym]
-                pos.equity = pos.shares * close
-                pos.market_value = pos.equity
-                pos.close = close
-                pos.pnl = _calculate_pnl(close, pos.entries, "long")
-                pos_long_shares += pos.shares
-                pos_equity += pos.equity
-                pos_market_value += pos.market_value
-                pos_pnl += pos.pnl
+                if close is not None:
+                    pos.equity = pos.shares * close
+                    pos.market_value = pos.equity
+                    pos.close = close
+                    pos.pnl = _calculate_pnl(close, pos.entries, "long")
+                    pos_long_shares += pos.shares
+                    pos_equity += pos.equity
+                    pos_market_value += pos.market_value
+                    pos_pnl += pos.pnl
                 total_equity += pos.equity
                 total_market_value += pos.equity
             if sym in self.short_positions:
                 pos = self.short_positions[sym]
-                pos.close = close
-                pos.pnl = _calculate_pnl(close, pos.entries, "short")
-                pos.market_value = pos.pnl
-                pos.margin = close * pos.shares
-                pos_short_shares += pos.shares
-                pos_market_value += pos.pnl
-                pos_pnl += pos.pnl
-                pos_margin += pos.margin
+                if close is not None:
+                    pos.close = close
+                    pos.pnl = _calculate_pnl(close, pos.entries, "short")
+                    pos.market_value = pos.pnl
+                    pos.margin = close * pos.shares
+                    pos_short_shares += pos.shares
+                    pos_market_value += pos.pnl
+                    pos_pnl += pos.pnl
+                    pos_margin += pos.margin
                 total_market_value += pos.market_value
                 total_margin += pos.margin
-            self.position_bars.append(
-                PositionBar(
-                    symbol=sym,
-                    date=date,
-                    long_shares=pos_long_shares,
-                    short_shares=pos_short_shares,
-                    close=close,
-                    equity=pos_equity,
-                    market_value=pos_market_value,
-                    margin=pos_margin,
-                    unrealized_pnl=pos_pnl,
+            if close is not None:
+                self.position_bars.append(
+                    PositionBar(
+                        symbol=sym,
+                        date=date,
+                        long_shares=pos_long_shares,
+                        short_shares=pos_short_shares,
+                        close=close,
+                        equity=pos_equity,
+                        market_value=pos_market_value,
+                        margin=pos_margin,
+                        unrealized_pnl=pos_pnl,
+                    )
                 )
-            )
+
         self.equity = total_equity
         self.market_value = total_market_value
         self.margin = total_margin
+
         self.bars.append(
             PortfolioBar(
                 date=date,
