@@ -34,9 +34,9 @@ PyBroker
          <img src="https://img.shields.io/badge/pypi-v1.0.18-brightgreen.svg"
             alt="PyPI">
       </a> &nbsp;
-      <a href="https://opensource.org/licenses/LGPL-3.0">
-        <img src="https://img.shields.io/badge/license-LGPLv3-brightgreen.svg"
-            alt="LGPL v3">
+      <a href="https://www.pybroker.com/en/latest/license.html">
+        <img src="https://img.shields.io/badge/license-Apache%202.0%20Clause-green"
+            alt="Apache 2.0 with Commons Clause">
       </a> &nbsp;
       <a href="https://www.pybroker.com/en/latest/?badge=latest">
          <img src="https://readthedocs.org/projects/pybroker/badge/?version=latest"
