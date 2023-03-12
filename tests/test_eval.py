@@ -455,6 +455,12 @@ class TestEvaluateMixin:
         assert metrics.initial_market_value == 500000
         assert metrics.end_market_value == 693111.87
         assert metrics.total_pnl == 165740.2
+        assert (
+            metrics.unrealized_pnl
+            == metrics.end_market_value
+            - metrics.initial_market_value
+            - metrics.total_pnl
+        )
         assert metrics.total_return_pct == 33.14804
         assert metrics.total_profit == 403511.07999999996
         assert metrics.total_loss == -237770.88

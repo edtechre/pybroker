@@ -614,6 +614,7 @@ class EvalMetrics:
         end_market_value: Ending market value of the
             :class:`pybroker.portfolio.Portfolio`.
         total_pnl: Total realized profit and loss (PnL).
+        unrealized_pnl: Total unrealized profit and loss (PnL).
         total_return_pct: Total realized return measured in percentage.
         total_profit: Total realized profit.
         total_loss: Total realized loss.
@@ -657,6 +658,7 @@ class EvalMetrics:
     initial_market_value: float = field(default=0)
     end_market_value: float = field(default=0)
     total_pnl: float = field(default=0)
+    unrealized_pnl: float = field(default=0)
     total_return_pct: float = field(default=0)
     total_profit: float = field(default=0)
     total_loss: float = field(default=0)
@@ -851,6 +853,7 @@ class EvaluateMixin:
         total_profit = 0.0
         total_loss = 0.0
         total_pnl = 0.0
+        unrealized_pnl = 0.0
         max_wins = 0
         max_losses = 0
         if len(pnls):
@@ -876,6 +879,7 @@ class EvaluateMixin:
         total_return_pct = (
             (total_pnl + market_values[0]) / market_values[0] - 1
         ) * 100
+        unrealized_pnl = market_values[-1] - market_values[0] - total_pnl
         return EvalMetrics(
             trade_count=len(pnls),
             initial_market_value=market_values[0],
@@ -904,6 +908,7 @@ class EvaluateMixin:
             total_profit=total_profit,
             total_loss=total_loss,
             total_pnl=total_pnl,
+            unrealized_pnl=unrealized_pnl,
             total_return_pct=total_return_pct,
             total_fees=total_fees,
             sharpe=sharpe,
