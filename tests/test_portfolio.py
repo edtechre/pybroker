@@ -1591,22 +1591,23 @@ def test_cover_when_zero_shares():
 
 def test_capture_bar():
     portfolio = Portfolio(CASH)
+    close_1 = 102
+    close_2 = 105
+    df = pd.DataFrame(
+        [[SYMBOL_1, DATE_1, close_1], [SYMBOL_2, DATE_2, close_2]],
+        columns=["symbol", "date", "close"],
+    )
+    df = df.set_index(["symbol", "date"])
     buy_order_1 = portfolio.buy(
         DATE_1, SYMBOL_1, SHARES_1, FILL_PRICE_1, LIMIT_PRICE_1
     )
     buy_order_2 = portfolio.buy(
-        DATE_2, SYMBOL_1, SHARES_2, FILL_PRICE_2, LIMIT_PRICE_2
+        DATE_1, SYMBOL_1, SHARES_2, FILL_PRICE_2, LIMIT_PRICE_2
     )
+    portfolio.capture_bar(DATE_1, df)
     sell_order = portfolio.sell(
         DATE_2, SYMBOL_2, SHARES_2, FILL_PRICE_3, LIMIT_PRICE_3
     )
-    close_1 = 102
-    close_2 = 105
-    df = pd.DataFrame(
-        [[SYMBOL_1, DATE_2, close_1], [SYMBOL_2, DATE_2, close_2]],
-        columns=["symbol", "date", "close"],
-    )
-    df = df.set_index(["symbol", "date"])
     portfolio.capture_bar(DATE_2, df)
     assert buy_order_1 is not None
     assert buy_order_2 is not None
@@ -1625,37 +1626,48 @@ def test_capture_bar():
     )
     assert portfolio.margin == close_2 * SHARES_2
     assert len(portfolio.position_bars) == 2
-    pos_bars = sorted(portfolio.position_bars, key=lambda x: x.symbol)
-    pos_bar_1, pos_bar_2 = pos_bars[0], pos_bars[1]
-    assert pos_bar_1.symbol == SYMBOL_2
-    assert pos_bar_1.date == DATE_2
-    assert pos_bar_1.long_shares == 0
-    assert pos_bar_1.short_shares == SHARES_2
-    assert pos_bar_1.close == close_2
-    assert pos_bar_1.equity == 0
-    assert pos_bar_1.market_value == (FILL_PRICE_3 - close_2) * SHARES_2
-    assert pos_bar_1.margin == close_2 * SHARES_2
-    assert pos_bar_1.unrealized_pnl == (FILL_PRICE_3 - close_2) * SHARES_2
-    assert pos_bar_2.symbol == SYMBOL_1
+    pos_bar_1, pos_bar_2 = portfolio.position_bars
+    assert pos_bar_1.symbol == SYMBOL_1
+    assert pos_bar_1.date == DATE_1
+    assert pos_bar_1.long_shares == SHARES_1 + SHARES_2
+    assert pos_bar_1.short_shares == 0
+    assert pos_bar_1.close == close_1
+    assert pos_bar_1.equity == (SHARES_1 + SHARES_2) * close_1
+    assert pos_bar_1.market_value == pos_bar_1.equity
+    assert pos_bar_1.margin == 0
+    assert (
+        pos_bar_1.unrealized_pnl
+        == close_1 * (SHARES_1 + SHARES_2)
+        - FILL_PRICE_1 * SHARES_1
+        - FILL_PRICE_2 * SHARES_2
+    )
+    assert pos_bar_2.symbol == SYMBOL_2
     assert pos_bar_2.date == DATE_2
-    assert pos_bar_2.long_shares == SHARES_1 + SHARES_2
-    assert pos_bar_2.short_shares == 0
-    assert pos_bar_2.close == close_1
-    assert pos_bar_2.equity == (SHARES_1 + SHARES_2) * close_1
-    assert pos_bar_2.market_value == pos_bar_2.equity
-    assert pos_bar_2.margin == 0
-    assert pos_bar_2.unrealized_pnl == close_1 * (SHARES_1 + SHARES_2) - (
-        FILL_PRICE_1 * SHARES_1
-    ) - (FILL_PRICE_2 * SHARES_2)
-    assert len(portfolio.bars) == 1
-    bar = portfolio.bars[0]
-    assert bar.date == DATE_2
-    assert bar.cash == portfolio.cash
-    assert bar.equity == portfolio.equity
-    assert bar.margin == portfolio.margin
-    assert bar.market_value == portfolio.market_value
-    assert bar.pnl == portfolio.market_value - CASH
-    assert bar.fees == 0
+    assert pos_bar_2.long_shares == 0
+    assert pos_bar_2.short_shares == SHARES_2
+    assert pos_bar_2.close == close_2
+    assert pos_bar_2.equity == 0
+    assert pos_bar_2.market_value == (FILL_PRICE_3 - close_2) * SHARES_2
+    assert pos_bar_2.margin == close_2 * SHARES_2
+    assert pos_bar_2.unrealized_pnl == (FILL_PRICE_3 - close_2) * SHARES_2
+    assert len(portfolio.bars) == 2
+    bar_1, bar_2 = portfolio.bars
+    assert bar_1.date == DATE_1
+    assert bar_1.cash == CASH - (FILL_PRICE_1 * SHARES_1) - (
+        FILL_PRICE_2 * SHARES_2
+    )
+    assert bar_1.equity == bar_1.cash + close_1 * (SHARES_1 + SHARES_2)
+    assert bar_1.margin == 0
+    assert bar_1.market_value == bar_1.equity
+    assert bar_1.pnl == bar_1.market_value - CASH
+    assert bar_1.fees == 0
+    assert bar_2.date == DATE_2
+    assert bar_2.cash == portfolio.cash
+    assert bar_2.equity == portfolio.equity
+    assert bar_2.margin == portfolio.margin
+    assert bar_2.market_value == portfolio.market_value
+    assert bar_2.pnl == portfolio.market_value - CASH
+    assert bar_2.fees == 0
 
 
 def test_incr_ids():
