@@ -1557,7 +1557,6 @@ class TestStrategy:
                     margin=Decimal(),
                     market_value=Decimal(100_000),
                     pnl=Decimal(1000),
-                    unrealized_pnl=Decimal(100),
                     fees=Decimal(),
                 ),
             )

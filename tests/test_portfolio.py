@@ -1654,11 +1654,7 @@ def test_capture_bar():
     assert bar.equity == portfolio.equity
     assert bar.margin == portfolio.margin
     assert bar.market_value == portfolio.market_value
-    assert bar.pnl == 0
-    assert (
-        bar.unrealized_pnl
-        == pos_bar_1.unrealized_pnl + pos_bar_2.unrealized_pnl
-    )
+    assert bar.pnl == portfolio.market_value - CASH
     assert bar.fees == 0
 
 

@@ -145,8 +145,7 @@ class PortfolioBar(NamedTuple):
         equity: Amount of equity in :class:`.Portfolio`.
         margin: Amount of margin in :class:`.Portfolio`.
         market_value: Market value of :class:`.Portfolio`.
-        pnl: Realized profit and loss (PnL) of :class:`.Portfolio`.
-        unrealized_pnl: Unrealized profit and loss (PnL) of
+        pnl: Realized + unrealized profit and loss (PnL) of
             :class:`.Portfolio`.
         fees: Brokerage fees.
     """
@@ -157,7 +156,6 @@ class PortfolioBar(NamedTuple):
     margin: Decimal
     market_value: Decimal
     pnl: Decimal
-    unrealized_pnl: Decimal
     fees: Decimal
 
 
@@ -260,6 +258,7 @@ class Portfolio:
         max_short_positions: Optional[int] = None,
     ):
         self.cash: Decimal = to_decimal(cash)
+        self._initial_market_value = self.cash
         self._fee_mode = fee_mode
         self._fee_amount: Optional[Decimal] = (
             None if fee_amount is None else to_decimal(fee_amount)
@@ -741,7 +740,6 @@ class Portfolio:
         """
         total_equity = self.cash
         total_market_value = total_equity
-        total_pnl = Decimal()
         total_margin = Decimal()
         for sym in self.symbols:
             index = (sym, date)
@@ -766,7 +764,6 @@ class Portfolio:
                 pos_pnl += pos.pnl
                 total_equity += pos.equity
                 total_market_value += pos.equity
-                total_pnl += pos.pnl
             if sym in self.short_positions:
                 pos = self.short_positions[sym]
                 pos.close = close
@@ -778,7 +775,6 @@ class Portfolio:
                 pos_pnl += pos.pnl
                 pos_margin += pos.margin
                 total_market_value += pos.market_value
-                total_pnl += pos.pnl
                 total_margin += pos.margin
             self.position_bars.append(
                 PositionBar(
@@ -803,8 +799,7 @@ class Portfolio:
                 equity=self.equity,
                 market_value=self.market_value,
                 margin=self.margin,
-                pnl=self.pnl,
-                unrealized_pnl=total_pnl,
+                pnl=self.market_value - self._initial_market_value,
                 fees=self.fees,
             )
         )
