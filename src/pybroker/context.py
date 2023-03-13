@@ -888,7 +888,7 @@ def set_exec_ctx_data(
     ctx._curr_date = date
     ctx._end_index = ctx._sym_end_index[symbol]
     ctx._dt = None
-    ctx._foreign = {}
+    ctx._foreign.clear()
     ctx.buy_fill_price = PriceType.MIDDLE
     ctx.buy_shares = None
     ctx.buy_limit_price = None
