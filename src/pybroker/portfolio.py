@@ -450,7 +450,6 @@ class Portfolio:
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ) -> _OrderResult:
-        pnl = Decimal()
         if symbol not in self.short_positions:
             return _OrderResult(Decimal(), shares)
         clamped_shares = self._clamp_shares(fill_price, shares)
@@ -471,65 +470,51 @@ class Portfolio:
         pos = self.short_positions[symbol]
         while pos.entries:
             entry = pos.entries[0]
-            return_pct = ((entry.price / fill_price) - 1) * 100
             if rem_shares >= entry.shares:
-                order_amount = entry.shares * fill_price
-                entry_amount = entry.shares * entry.price
-                entry_pnl = entry_amount - order_amount
-                pnl += entry_pnl
-                self.cash -= order_amount
                 rem_shares -= entry.shares
-                pos.shares -= entry.shares
+                self._exit_short(date, pos, entry, entry.shares, fill_price)
                 pos.entries.popleft()
-                pnl_per_bar = (
-                    entry_pnl if not entry.bars else entry_pnl / entry.bars
-                )
-                self._add_trade(
-                    type=entry.type,
-                    symbol=symbol,
-                    entry_date=entry.date,
-                    exit_date=date,
-                    entry_price=entry.price,
-                    exit_price=fill_price,
-                    shares=entry.shares,
-                    pnl=entry_pnl,
-                    return_pct=return_pct,
-                    agg_pnl=self.pnl + pnl,
-                    bars=entry.bars,
-                    pnl_per_bar=pnl_per_bar,
-                )
             else:
-                order_amount = rem_shares * fill_price
-                entry_pnl = (rem_shares * entry.price) - order_amount
-                pnl += entry_pnl
-                self.cash -= order_amount
-                entry.shares -= rem_shares
-                pos.shares -= rem_shares
-                pnl_per_bar = (
-                    entry_pnl if not entry.bars else entry_pnl / entry.bars
-                )
-                self._add_trade(
-                    type=entry.type,
-                    symbol=symbol,
-                    entry_date=entry.date,
-                    exit_date=date,
-                    entry_price=entry.price,
-                    exit_price=fill_price,
-                    shares=rem_shares,
-                    pnl=entry_pnl,
-                    return_pct=return_pct,
-                    agg_pnl=self.pnl + pnl,
-                    bars=entry.bars,
-                    pnl_per_bar=pnl_per_bar,
-                )
+                self._exit_short(date, pos, entry, rem_shares, fill_price)
                 rem_shares = Decimal()
                 break
-        self.pnl += pnl
         if not pos.entries:
             del self.short_positions[symbol]
             if symbol not in self.long_positions:
                 self.symbols.remove(symbol)
         return _OrderResult(shares - rem_shares, rem_shares)
+
+    def _exit_short(
+        self,
+        date: np.datetime64,
+        pos: Position,
+        entry: Entry,
+        shares: Decimal,
+        fill_price: Decimal,
+    ):
+        order_amount = shares * fill_price
+        entry_amount = shares * entry.price
+        entry_pnl = entry_amount - order_amount
+        self.pnl += entry_pnl
+        self.cash -= order_amount
+        pos.shares -= shares
+        entry.shares -= shares
+        pnl_per_bar = entry_pnl if not entry.bars else entry_pnl / entry.bars
+        return_pct = ((entry.price / fill_price) - 1) * 100
+        self._add_trade(
+            type=entry.type,
+            symbol=entry.symbol,
+            entry_date=entry.date,
+            exit_date=date,
+            entry_price=entry.price,
+            exit_price=fill_price,
+            shares=shares,
+            pnl=entry_pnl,
+            return_pct=return_pct,
+            agg_pnl=self.pnl,
+            bars=entry.bars,
+            pnl_per_bar=pnl_per_bar,
+        )
 
     def _buy(
         self,
@@ -631,72 +616,57 @@ class Portfolio:
         shares: Decimal,
         fill_price: Decimal,
     ) -> _OrderResult:
-        pnl = Decimal()
         if symbol not in self.long_positions:
             return _OrderResult(Decimal(), shares)
         rem_shares = shares
         pos = self.long_positions[symbol]
         while pos.entries:
             entry = pos.entries[0]
-            return_pct = ((fill_price / entry.price) - 1) * 100
             if rem_shares >= entry.shares:
-                order_amount = entry.shares * fill_price
-                entry_amount = entry.shares * entry.price
-                entry_pnl = order_amount - entry_amount
-                pnl += entry_pnl
-                self.cash += order_amount
                 rem_shares -= entry.shares
-                pos.shares -= entry.shares
+                self._exit_long(date, pos, entry, entry.shares, fill_price)
                 pos.entries.popleft()
-                pnl_per_bar = (
-                    entry_pnl if not entry.bars else entry_pnl / entry.bars
-                )
-                self._add_trade(
-                    type=entry.type,
-                    symbol=symbol,
-                    entry_date=entry.date,
-                    exit_date=date,
-                    entry_price=entry.price,
-                    exit_price=fill_price,
-                    shares=entry.shares,
-                    pnl=entry_pnl,
-                    return_pct=return_pct,
-                    agg_pnl=self.pnl + pnl,
-                    bars=entry.bars,
-                    pnl_per_bar=pnl_per_bar,
-                )
             else:
-                order_amount = rem_shares * fill_price
-                entry_pnl = order_amount - (rem_shares * entry.price)
-                pnl += entry_pnl
-                self.cash += order_amount
-                entry.shares -= rem_shares
-                pos.shares -= rem_shares
-                pnl_per_bar = (
-                    entry_pnl if not entry.bars else entry_pnl / entry.bars
-                )
-                self._add_trade(
-                    type=entry.type,
-                    symbol=symbol,
-                    entry_date=entry.date,
-                    exit_date=date,
-                    entry_price=entry.price,
-                    exit_price=fill_price,
-                    shares=rem_shares,
-                    pnl=entry_pnl,
-                    return_pct=return_pct,
-                    agg_pnl=self.pnl + pnl,
-                    bars=entry.bars,
-                    pnl_per_bar=pnl_per_bar,
-                )
+                self._exit_long(date, pos, entry, rem_shares, fill_price)
                 rem_shares = Decimal()
                 break
-        self.pnl += pnl
         if not pos.entries:
             del self.long_positions[symbol]
             if symbol not in self.short_positions:
                 self.symbols.remove(symbol)
         return _OrderResult(shares - rem_shares, rem_shares)
+
+    def _exit_long(
+        self,
+        date: np.datetime64,
+        pos: Position,
+        entry: Entry,
+        shares: Decimal,
+        fill_price: Decimal,
+    ):
+        order_amount = shares * fill_price
+        entry_amount = shares * entry.price
+        entry_pnl = order_amount - entry_amount
+        self.pnl += entry_pnl
+        self.cash += order_amount
+        pos.shares -= shares
+        entry.shares -= shares
+        pnl_per_bar = entry_pnl if not entry.bars else entry_pnl / entry.bars
+        return_pct = ((fill_price / entry.price) - 1) * 100
+        self._add_trade(
+            type=entry.type,
+            symbol=entry.symbol,
+            entry_date=entry.date,
+            exit_date=date,
+            entry_price=entry.price,
+            exit_price=fill_price,
+            shares=shares,
+            pnl=entry_pnl,
+            return_pct=return_pct,
+            agg_pnl=self.pnl,
+            bars=entry.bars,
+            pnl_per_bar=pnl_per_bar,
+        )
 
     def _short(
         self,
