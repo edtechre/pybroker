@@ -1185,19 +1185,27 @@ class TestStrategy:
             if not ctx.long_pos():
                 ctx.buy_shares = 100
 
+        data_source_df = data_source_df[
+            data_source_df["date"] <= to_datetime(END_DATE)
+        ]
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.add_execution(exec_fn, ["SPY", "AAPL"])
+        strategy.add_execution(exec_fn, ["AAPL", "SPY"])
         result = strategy.walkforward(windows=3, calc_bootstrap=False)
         dates = set()
         for _, test_idx in strategy.walkforward_split(
             data_source_df, windows=3, lookahead=1, train_size=0.5
         ):
             df = data_source_df.loc[test_idx]
+            df = df[df["symbol"].isin(["AAPL", "SPY"])]
             dates.update(df["date"].values)
         assert result.start_date == to_datetime(START_DATE)
         assert result.end_date == to_datetime(END_DATE)
-        assert len(result.portfolio) == len(dates)
-        assert len(result.positions) == 2 * len(dates) - 2
+        dates_list = list(dates)
+        dates_list.sort()
+        assert np.array_equal(result.portfolio.index, dates_list)
+        assert np.array_equal(
+            result.positions.index.get_level_values(1).unique(), dates_list[1:]
+        )
         assert len(result.orders) == 2
         assert not len(result.trades)
 
