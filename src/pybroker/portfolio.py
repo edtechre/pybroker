@@ -17,6 +17,7 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import itertools
 import numpy as np
 import pandas as pd
 from .common import DataCol, FeeMode, to_decimal
@@ -803,9 +804,8 @@ class Portfolio:
 
     def incr_bars(self):
         """Increments the number of bars held by every trade entry."""
-        for pos in self.long_positions.values():
-            for entry in pos.entries:
-                entry.bars += 1
-        for pos in self.short_positions.values():
+        for pos in itertools.chain(
+            self.long_positions.values(), self.short_positions.values()
+        ):
             for entry in pos.entries:
                 entry.bars += 1
