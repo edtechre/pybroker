@@ -1222,6 +1222,7 @@ class TestStrategy:
         dates_list = list(dates)
         dates_list.sort()
         assert np.array_equal(result.portfolio.index, dates_list)
+        assert len(result.positions) == 2 * len(dates) - 2
         assert np.array_equal(
             result.positions.index.get_level_values(1).unique(), dates_list[1:]
         )
