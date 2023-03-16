@@ -66,7 +66,6 @@ from typing import (
     Mapping,
     NamedTuple,
     Optional,
-    Sequence,
     Union,
 )
 
@@ -1172,7 +1171,16 @@ class Strategy(
                 disable_parallel=disable_parallel,
             )
             train_only = all(map(lambda e: e.fn is None, self._executions))
-            test_results = self._run_walkforward(
+            portfolio = Portfolio(
+                self._config.initial_cash,
+                self._config.fee_mode,
+                self._config.fee_amount,
+                self._fractional_shares_enabled(),
+                self._config.max_long_positions,
+                self._config.max_short_positions,
+            )
+            self._run_walkforward(
+                portfolio=portfolio,
                 df=df,
                 indicator_data=indicator_data,
                 tf_seconds=tf_seconds,
@@ -1188,7 +1196,7 @@ class Strategy(
                 self._logger.walkforward_completed()
                 return None
             return self._to_test_result(
-                start_dt, end_dt, test_results, calc_bootstrap
+                start_dt, end_dt, portfolio, calc_bootstrap
             )
         finally:
             scope.unfreeze_data_cols()
@@ -1215,6 +1223,7 @@ class Strategy(
 
     def _run_walkforward(
         self,
+        portfolio: Portfolio,
         df: pd.DataFrame,
         indicator_data: dict[IndicatorSymbol, pd.Series],
         tf_seconds: int,
@@ -1225,22 +1234,13 @@ class Strategy(
         train_size: float,
         shuffle: bool,
         train_only: bool,
-    ) -> deque[BacktestResult]:
+    ):
         sessions: dict[ExecSymbol, dict] = {
             ExecSymbol(execution.id, sym): {}
             for execution in self._executions
             if execution.fn is not None
             for sym in execution.symbols
         }
-        portfolio = Portfolio(
-            self._config.initial_cash,
-            self._config.fee_mode,
-            self._config.fee_amount,
-            self._fractional_shares_enabled(),
-            self._config.max_long_positions,
-            self._config.max_short_positions,
-        )
-        backtest_results: deque[BacktestResult] = deque()
         for train_idx, test_idx in self.walkforward_split(
             df=df,
             windows=windows,
@@ -1275,7 +1275,7 @@ class Strategy(
                     ),
                 )
             if not train_only and not test_data.empty:
-                backtest_result = self.backtest_executions(
+                self.backtest_executions(
                     executions=self._executions,
                     sessions=sessions,
                     models=models,
@@ -1289,8 +1289,6 @@ class Strategy(
                     pos_size_handler=self._pos_size_handler,
                     enable_fractional_shares=self._fractional_shares_enabled(),
                 )
-                backtest_results.append(backtest_result)
-        return backtest_results
 
     def _filter_dates(
         self,
@@ -1365,20 +1363,11 @@ class Strategy(
         self,
         start_date: datetime,
         end_date: datetime,
-        backtest_results: Sequence[BacktestResult],
+        portfolio: Portfolio,
         calc_bootstrap: bool,
     ) -> TestResult:
-        portfolio_bars: deque[PortfolioBar] = deque()
-        pos_bars: deque[PositionBar] = deque()
-        orders: deque[Order] = deque()
-        trades: deque[Trade] = deque()
-        for result in backtest_results:
-            portfolio_bars.extend(result.portfolio_bars)
-            pos_bars.extend(result.position_bars)
-            orders.extend(result.orders)
-            trades.extend(result.trades)
         pos_df = pd.DataFrame.from_records(
-            pos_bars, columns=PositionBar._fields
+            portfolio.position_bars, columns=PositionBar._fields
         )
         for col in (
             "close",
@@ -1390,7 +1379,7 @@ class Strategy(
             pos_df[col] = quantize(pos_df, col)
         pos_df.set_index(["symbol", "date"], inplace=True)
         portfolio_df = pd.DataFrame.from_records(
-            portfolio_bars, columns=PortfolioBar._fields, index="date"
+            portfolio.bars, columns=PortfolioBar._fields, index="date"
         )
         for col in (
             "cash",
@@ -1402,12 +1391,12 @@ class Strategy(
         ):
             portfolio_df[col] = quantize(portfolio_df, col)
         orders_df = pd.DataFrame.from_records(
-            orders, columns=Order._fields, index="id"
+            portfolio.orders, columns=Order._fields, index="id"
         )
         for col in ("limit_price", "fill_price", "fees"):
             orders_df[col] = quantize(orders_df, col)
         trades_df = pd.DataFrame.from_records(
-            trades, columns=Trade._fields, index="id"
+            portfolio.trades, columns=Trade._fields, index="id"
         )
         trades_df["bars"] = trades_df["bars"].astype(int)
         for col in (

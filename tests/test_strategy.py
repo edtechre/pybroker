@@ -37,7 +37,6 @@ from pybroker.portfolio import (
 )
 from pybroker.strategy import (
     BacktestMixin,
-    BacktestResult,
     Execution,
     ExecSymbol,
     Strategy,
@@ -1548,7 +1547,8 @@ class TestStrategy:
         expected_long_shares,
         expected_short_shares,
     ):
-        portfolio_bars = deque(
+        portfolio = Portfolio(100_000)
+        portfolio.bars = deque(
             (
                 PortfolioBar(
                     date=np.datetime64(START_DATE),
@@ -1561,7 +1561,7 @@ class TestStrategy:
                 ),
             )
         )
-        position_bars = deque(
+        portfolio.position_bars = deque(
             (
                 PositionBar(
                     symbol="SPY",
@@ -1576,7 +1576,7 @@ class TestStrategy:
                 ),
             )
         )
-        orders = deque(
+        portfolio.orders = deque(
             (
                 Order(
                     id=1,
@@ -1590,7 +1590,7 @@ class TestStrategy:
                 ),
             )
         )
-        trades = deque(
+        portfolio.trades = deque(
             (
                 Trade(
                     id=1,
@@ -1609,9 +1609,6 @@ class TestStrategy:
                 ),
             )
         )
-        backtest_result = BacktestResult(
-            START_DATE, END_DATE, portfolio_bars, position_bars, orders, trades
-        )
         config = StrategyConfig(
             enable_fractional_shares=enable_fractional_shares
         )
@@ -1622,7 +1619,7 @@ class TestStrategy:
             config,
         )
         result = strategy._to_test_result(
-            START_DATE, END_DATE, (backtest_result,), calc_bootstrap=False
+            START_DATE, END_DATE, portfolio, calc_bootstrap=False
         )
         assert np.issubdtype(
             result.positions["long_shares"].dtype, expected_shares_type
@@ -1646,15 +1643,12 @@ class TestStrategy:
         assert result.trades["shares"].values[0] == expected_long_shares
 
     def test_to_test_result_when_empty(self, data_source_df):
+        portfolio = Portfolio(100_000)
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
         result = strategy._to_test_result(
             START_DATE,
             END_DATE,
-            (
-                BacktestResult(
-                    START_DATE, END_DATE, deque(), deque(), deque(), deque()
-                ),
-            ),
+            portfolio,
             calc_bootstrap=False,
         )
         assert result.portfolio.empty
