@@ -206,6 +206,7 @@ class TestBacktestMixin:
             max_long_positions=None,
             max_short_positions=None,
             pos_size_handler=pos_size_handler,
+            exit_dates={},
         )
         buy_df = data_source_df[data_source_df["symbol"] == "SPY"]
         buy_dates = buy_df["date"].unique()[1:]
@@ -260,6 +261,7 @@ class TestBacktestMixin:
             max_long_positions=None,
             max_short_positions=None,
             pos_size_handler=None,
+            exit_dates={},
         )
         buy_df = data_source_df[data_source_df["symbol"] == "SPY"]
         buy_dates = buy_df["date"].unique()[2:]
@@ -302,6 +304,7 @@ class TestBacktestMixin:
             max_long_positions=None,
             max_short_positions=None,
             pos_size_handler=None,
+            exit_dates={},
         )
         sell_df = data_source_df[data_source_df["symbol"] == "AAPL"]
         sell_dates = sell_df["date"].unique()[2:]
@@ -359,6 +362,7 @@ class TestBacktestMixin:
             max_long_positions=None,
             max_short_positions=None,
             pos_size_handler=None,
+            exit_dates={},
         )
         df = data_source_df[data_source_df["symbol"] == "SPY"]
         buy_dates = df["date"].unique()[1:]
@@ -427,6 +431,7 @@ class TestBacktestMixin:
             max_long_positions=None,
             max_short_positions=None,
             pos_size_handler=None,
+            exit_dates={},
         )
         df = data_source_df[data_source_df["symbol"] == "AAPL"]
         sell_dates = df["date"].unique()[1:]
@@ -483,6 +488,7 @@ class TestBacktestMixin:
                 max_long_positions=None,
                 max_short_positions=None,
                 pos_size_handler=None,
+                exit_dates={},
             )
 
     def test_backtest_executions_when_invalid_sell_hold_bars_then_error(
@@ -516,6 +522,7 @@ class TestBacktestMixin:
                 max_long_positions=None,
                 max_short_positions=None,
                 pos_size_handler=None,
+                exit_dates={},
             )
 
     def test_backtest_executions_when_no_fn(self, data_source_df):
@@ -541,6 +548,7 @@ class TestBacktestMixin:
             max_long_positions=None,
             max_short_positions=None,
             pos_size_handler=None,
+            exit_dates={},
         )
         assert len(portfolio.bars) == len(data_source_df["date"].unique())
         assert not len(portfolio.position_bars)
@@ -573,6 +581,7 @@ class TestBacktestMixin:
             max_long_positions=None,
             max_short_positions=None,
             pos_size_handler=None,
+            exit_dates={},
         )
         assert len(portfolio.bars) == len(data_source_df["date"].unique())
         assert not len(portfolio.position_bars)
@@ -607,6 +616,7 @@ class TestBacktestMixin:
             max_long_positions=None,
             max_short_positions=None,
             pos_size_handler=None,
+            exit_dates={},
         )
 
         assert len(portfolio.bars) == len(data_source_df["date"].unique())
@@ -642,6 +652,7 @@ class TestBacktestMixin:
             max_long_positions=None,
             max_short_positions=None,
             pos_size_handler=None,
+            exit_dates={},
         )
         assert len(portfolio.bars)
         assert not len(portfolio.position_bars)
@@ -679,6 +690,7 @@ class TestBacktestMixin:
             max_long_positions=1,
             max_short_positions=None,
             pos_size_handler=None,
+            exit_dates={},
         )
         df = data_source_df[data_source_df["symbol"].isin(["AAPL", "SPY"])]
         buy_dates = sorted(df["date"].values)[2:]
@@ -729,6 +741,7 @@ class TestBacktestMixin:
             max_long_positions=None,
             max_short_positions=1,
             pos_size_handler=None,
+            exit_dates={},
         )
         df = data_source_df[data_source_df["symbol"].isin(["AAPL", "SPY"])]
         sell_dates = sorted(df["date"].values)[2:]
@@ -753,7 +766,7 @@ class TestBacktestMixin:
         [
             (50, 50),
             (Decimal(111.1), Decimal(111.1)),
-            (lambda _: 60, 60),
+            (lambda _symbol, _bar_data: 60, 60),
             (PriceType.OPEN, 200),
             (PriceType.HIGH, 400),
             (PriceType.LOW, 100),
@@ -804,6 +817,7 @@ class TestBacktestMixin:
             max_long_positions=None,
             max_short_positions=None,
             pos_size_handler=None,
+            exit_dates={},
         )
         buy_dates = dates[1:]
         assert len(mock_portfolio.buy.call_args_list) == len(buy_dates)
@@ -844,6 +858,7 @@ class TestBacktestMixin:
                 max_long_positions=None,
                 max_short_positions=None,
                 pos_size_handler=None,
+                exit_dates={},
             )
 
     def test_backtest_executions_when_buy_limit_and_no_shares_then_error(
@@ -879,6 +894,7 @@ class TestBacktestMixin:
                 max_long_positions=1,
                 max_short_positions=None,
                 pos_size_handler=None,
+                exit_dates={},
             )
 
     def test_backtest_executions_when_sell_limit_and_no_shares_then_error(
@@ -914,6 +930,7 @@ class TestBacktestMixin:
                 max_long_positions=1,
                 max_short_positions=None,
                 pos_size_handler=None,
+                exit_dates={},
             )
 
     def test_backtest_executions_when_buy_order_not_filled(
@@ -945,6 +962,7 @@ class TestBacktestMixin:
             max_long_positions=1,
             max_short_positions=None,
             pos_size_handler=None,
+            exit_dates={},
         )
         assert not len(portfolio.orders)
 
@@ -978,6 +996,7 @@ class TestBacktestMixin:
             max_long_positions=1,
             max_short_positions=None,
             pos_size_handler=None,
+            exit_dates={},
         )
         assert not len(portfolio.orders)
 
@@ -1656,3 +1675,61 @@ class TestStrategy:
         assert result.positions.empty
         assert result.orders.empty
         assert result.trades.empty
+
+    def test_backtest_when_exit_long_on_last_bar(self, data_source_df):
+        def buy_exec_fn(ctx):
+            if not ctx.long_pos():
+                ctx.buy_shares = 100
+                ctx.buy_fill_price = 150
+
+        def sell_fill_price(_symbol, _bar_data):
+            return 199.99
+
+        config = StrategyConfig(
+            exit_on_last_bar=True, exit_sell_fill_price=sell_fill_price
+        )
+        strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+        strategy.add_execution(buy_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        dates = data_source_df[data_source_df["symbol"] == "SPY"][
+            "date"
+        ].unique()
+        dates = dates[dates <= np.datetime64(END_DATE)]
+        assert len(result.trades) == 1
+        trade = result.trades.iloc[0]
+        assert trade["type"] == "long"
+        assert trade["symbol"] == "SPY"
+        assert trade["entry_date"] == dates[1]
+        assert trade["exit_date"] == dates[-1]
+        assert trade["entry"] == 150
+        assert trade["exit"] == 199.99
+        assert trade["shares"] == 100
+
+    def test_backtest_when_exit_short_on_last_bar(self, data_source_df):
+        def sell_exec_fn(ctx):
+            if not ctx.short_pos():
+                ctx.sell_shares = 100
+                ctx.sell_fill_price = 200
+
+        def buy_fill_price(_symbol, _bar_data):
+            return 99.99
+
+        config = StrategyConfig(
+            exit_on_last_bar=True, exit_cover_fill_price=buy_fill_price
+        )
+        strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+        strategy.add_execution(sell_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        dates = data_source_df[data_source_df["symbol"] == "SPY"][
+            "date"
+        ].unique()
+        dates = dates[dates <= np.datetime64(END_DATE)]
+        assert len(result.trades) == 1
+        trade = result.trades.iloc[0]
+        assert trade["type"] == "short"
+        assert trade["symbol"] == "SPY"
+        assert trade["entry_date"] == dates[1]
+        assert trade["exit_date"] == dates[-1]
+        assert trade["entry"] == 200
+        assert trade["exit"] == 99.99
+        assert trade["shares"] == 100

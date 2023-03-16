@@ -144,6 +144,13 @@ class BacktestMixin:
         max_long_positions: Optional[int],
         max_short_positions: Optional[int],
         pos_size_handler: Optional[Callable[[PosSizeContext], None]],
+        exit_dates: Mapping[str, np.datetime64],
+        exit_buy_fill_price: Union[
+            PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
+        ] = PriceType.MIDDLE,
+        exit_sell_fill_price: Union[
+            PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
+        ] = PriceType.MIDDLE,
         enable_fractional_shares: bool = False,
     ):
         r"""Backtests a ``set`` of :class:`.Execution`\ s that implement
@@ -171,6 +178,11 @@ class BacktestMixin:
                 held at a time. If ``None``, then unlimited.
             pos_size_handler: :class:`Callable` that sets position sizes when
                 placing orders for buy and sell signals.
+            exit_dates: :class:`Mapping` of symbols to exit dates.
+            exit_buy_fill_price: Fill price for covering an open short position
+                for ``exit_dates``.
+            exit_sell_fill_price: Fill price for selling an open long position
+                for ``exit_dates``.
             enable_fractional_shares: Whether to enable trading fractional
                 shares.
 
@@ -179,7 +191,6 @@ class BacktestMixin:
         """
         test_dates = test_data[DataCol.DATE.value].unique()
         test_dates.sort()
-        sym_exec_dates: dict[str, frozenset] = {}
         exec_symbols = tuple(
             ExecSymbol(exec.id, sym)
             for sym in test_data[DataCol.SYMBOL.value].unique()
@@ -235,6 +246,7 @@ class BacktestMixin:
         logger.backtest_executions_start(test_dates)
         buy_results: deque[ExecResult] = deque()
         sell_results: deque[ExecResult] = deque()
+        exit_syms: deque[str] = deque()
         for i, date in enumerate(test_dates):
             for sym in test_symbols:
                 if date not in sym_exec_dates[sym]:
@@ -285,6 +297,8 @@ class BacktestMixin:
             for exec_symbol in exec_symbols:
                 if date not in sym_exec_dates[exec_symbol.symbol]:
                     continue
+                if exit_dates and date == exit_dates[exec_symbol.symbol]:
+                    exit_syms.append(exec_symbol.symbol)
                 result = exec_fns[exec_symbol.exec_id](
                     exec_ctx, sessions[exec_symbol], exec_symbol.symbol, date
                 )
@@ -310,9 +324,58 @@ class BacktestMixin:
                     sched=sell_sched,
                     col_scope=col_scope,
                 )
+            while exit_syms:
+                self._exit_position(
+                    portfolio=portfolio,
+                    date=date,
+                    symbol=exit_syms.popleft(),
+                    exit_buy_fill_price=exit_buy_fill_price,
+                    exit_sell_fill_price=exit_sell_fill_price,
+                    df=test_data,
+                    col_scope=col_scope,
+                    sym_end_index=sym_end_index,
+                )
             portfolio.incr_bars()
             if i % 10 == 0 or i == len(test_dates) - 1:
                 logger.backtest_executions_loading(i + 1)
+
+    def _exit_position(
+        self,
+        portfolio: Portfolio,
+        date: np.datetime64,
+        symbol: str,
+        exit_buy_fill_price: Union[
+            PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
+        ],
+        exit_sell_fill_price: Union[
+            PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
+        ],
+        df: pd.DataFrame,
+        col_scope: ColumnScope,
+        sym_end_index: Mapping[str, int],
+    ):
+        buy_fill_price = self._get_price(
+            symbol,
+            date,
+            exit_buy_fill_price,
+            df,
+            col_scope,
+            sym_end_index[symbol],
+        )
+        sell_fill_price = self._get_price(
+            symbol,
+            date,
+            exit_sell_fill_price,
+            df,
+            col_scope,
+            sym_end_index[symbol],
+        )
+        portfolio.exit_position(
+            date,
+            symbol,
+            buy_fill_price=buy_fill_price,
+            sell_fill_price=sell_fill_price,
+        )
 
     def _set_pos_sizes(
         self,
@@ -535,7 +598,7 @@ class BacktestMixin:
             int,
             Decimal,
             PriceType,
-            Callable[[BarData], Union[int, float, Decimal]],
+            Callable[[str, BarData], Union[int, float, Decimal]],
         ],
         df: pd.DataFrame,
         col_scope: ColumnScope,
@@ -566,7 +629,7 @@ class BacktestMixin:
             return to_decimal(price)  # type: ignore[arg-type]
         if callable(price):
             bar_data = col_scope.bar_data_from_data_columns(symbol, end_index)
-            return to_decimal(price(bar_data))
+            return to_decimal(price(symbol, bar_data))
         raise ValueError(f"Unknown price: {price_type}")
 
 
@@ -1207,6 +1270,15 @@ class Strategy(
             if execution.fn is not None
             for sym in execution.symbols
         }
+        exit_dates: dict[str, np.datetime64] = {}
+        if self._config.exit_on_last_bar:
+            exec_symbols = frozenset(
+                sym for exec in self._executions for sym in exec.symbols
+            )
+            for sym in exec_symbols:
+                exit_dates[sym] = df[df[DataCol.SYMBOL.value] == sym][
+                    DataCol.DATE.value
+                ].values[-1]
         for train_idx, test_idx in self.walkforward_split(
             df=df,
             windows=windows,
@@ -1253,7 +1325,10 @@ class Strategy(
                     max_long_positions=self._config.max_long_positions,
                     max_short_positions=self._config.max_short_positions,
                     pos_size_handler=self._pos_size_handler,
+                    exit_dates=exit_dates,
                     enable_fractional_shares=self._fractional_shares_enabled(),
+                    exit_buy_fill_price=self._config.exit_cover_fill_price,
+                    exit_sell_fill_price=self._config.exit_sell_fill_price,
                 )
 
     def _filter_dates(
