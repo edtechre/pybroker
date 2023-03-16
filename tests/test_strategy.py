@@ -25,7 +25,7 @@ from .fixtures import *
 from collections import deque
 from datetime import datetime
 from decimal import Decimal
-from pybroker.common import DataCol, PriceType
+from pybroker.common import DataCol, PriceType, to_datetime
 from pybroker.config import StrategyConfig
 from pybroker.data import DataSource
 from pybroker.portfolio import (
@@ -194,7 +194,7 @@ class TestBacktestMixin:
         execs = {buy_exec, sell_exec}
         mock_portfolio = Mock()
         mixin = BacktestMixin()
-        result = mixin.backtest_executions(
+        mixin.backtest_executions(
             executions=execs,
             sessions=self._sessions(execs),
             models={},
@@ -207,11 +207,6 @@ class TestBacktestMixin:
             max_short_positions=None,
             pos_size_handler=pos_size_handler,
         )
-        assert result.start_date == data_source_df["date"].iloc[0]
-        assert result.end_date == data_source_df["date"].iloc[-1]
-        assert result.orders is not None
-        assert result.portfolio_bars is not None
-        assert result.position_bars is not None
         buy_df = data_source_df[data_source_df["symbol"] == "SPY"]
         buy_dates = buy_df["date"].unique()[1:]
         assert len(mock_portfolio.buy.call_args_list) == len(buy_dates)
@@ -253,7 +248,7 @@ class TestBacktestMixin:
         execs = {buy_exec}
         mock_portfolio = Mock()
         mixin = BacktestMixin()
-        result = mixin.backtest_executions(
+        mixin.backtest_executions(
             executions=execs,
             sessions=self._sessions(execs),
             models={},
@@ -266,11 +261,6 @@ class TestBacktestMixin:
             max_short_positions=None,
             pos_size_handler=None,
         )
-        assert result.start_date == data_source_df["date"].iloc[0]
-        assert result.end_date == data_source_df["date"].iloc[-1]
-        assert result.orders is not None
-        assert result.portfolio_bars is not None
-        assert result.position_bars is not None
         buy_df = data_source_df[data_source_df["symbol"] == "SPY"]
         buy_dates = buy_df["date"].unique()[2:]
         assert len(mock_portfolio.buy.call_args_list) == len(buy_dates)
@@ -300,7 +290,7 @@ class TestBacktestMixin:
         execs = {sell_exec}
         mock_portfolio = Mock()
         mixin = BacktestMixin()
-        result = mixin.backtest_executions(
+        mixin.backtest_executions(
             executions=execs,
             sessions=self._sessions(execs),
             models={},
@@ -313,11 +303,6 @@ class TestBacktestMixin:
             max_short_positions=None,
             pos_size_handler=None,
         )
-        assert result.start_date == data_source_df["date"].iloc[0]
-        assert result.end_date == data_source_df["date"].iloc[-1]
-        assert result.orders is not None
-        assert result.portfolio_bars is not None
-        assert result.position_bars is not None
         sell_df = data_source_df[data_source_df["symbol"] == "AAPL"]
         sell_dates = sell_df["date"].unique()[2:]
         assert len(mock_portfolio.sell.call_args_list) == len(sell_dates)
@@ -362,7 +347,7 @@ class TestBacktestMixin:
 
         mock_portfolio.buy = MagicMock(side_effect=buy_fn)
         mixin = BacktestMixin()
-        result = mixin.backtest_executions(
+        mixin.backtest_executions(
             executions=execs,
             sessions=self._sessions(execs),
             models={},
@@ -375,8 +360,6 @@ class TestBacktestMixin:
             max_short_positions=None,
             pos_size_handler=None,
         )
-        assert result.start_date == data_source_df["date"].iloc[0]
-        assert result.end_date == data_source_df["date"].iloc[-1]
         df = data_source_df[data_source_df["symbol"] == "SPY"]
         buy_dates = df["date"].unique()[1:]
         assert len(mock_portfolio.buy.call_args_list) == len(buy_dates)
@@ -432,7 +415,7 @@ class TestBacktestMixin:
 
         mock_portfolio.sell = MagicMock(side_effect=sell_fn)
         mixin = BacktestMixin()
-        result = mixin.backtest_executions(
+        mixin.backtest_executions(
             executions=execs,
             sessions=self._sessions(execs),
             models={},
@@ -445,8 +428,6 @@ class TestBacktestMixin:
             max_short_positions=None,
             pos_size_handler=None,
         )
-        assert result.start_date == data_source_df["date"].iloc[0]
-        assert result.end_date == data_source_df["date"].iloc[-1]
         df = data_source_df[data_source_df["symbol"] == "AAPL"]
         sell_dates = df["date"].unique()[1:]
         assert len(mock_portfolio.sell.call_args_list) == len(sell_dates)
@@ -546,25 +527,25 @@ class TestBacktestMixin:
             indicator_names=frozenset(),
         )
         execs = {exec}
+        portfolio = Portfolio(100_000)
         mixin = BacktestMixin()
-        result = mixin.backtest_executions(
+        mixin.backtest_executions(
             executions=execs,
             sessions=self._sessions(execs),
             models={},
             indicator_data={},
             test_data=data_source_df,
-            portfolio=Portfolio(100_000),
+            portfolio=portfolio,
             buy_delay=1,
             sell_delay=1,
             max_long_positions=None,
             max_short_positions=None,
             pos_size_handler=None,
         )
-        assert result.start_date == data_source_df["date"].iloc[0]
-        assert result.end_date == data_source_df["date"].iloc[-1]
-        assert len(result.portfolio_bars)
-        assert not len(result.position_bars)
-        assert not len(result.orders)
+        assert len(portfolio.bars) == len(data_source_df["date"].unique())
+        assert not len(portfolio.position_bars)
+        assert not len(portfolio.orders)
+        assert not len(portfolio.trades)
 
     def test_backtest_executions_when_empty_symbols(self, data_source_df):
         def buy_exec_fn(ctx):
@@ -578,25 +559,25 @@ class TestBacktestMixin:
             indicator_names=frozenset(),
         )
         execs = {exec}
+        portfolio = Portfolio(100_000)
         mixin = BacktestMixin()
-        result = mixin.backtest_executions(
+        mixin.backtest_executions(
             executions=execs,
             sessions=self._sessions(execs),
             models={},
             indicator_data={},
             test_data=data_source_df[data_source_df["symbol"] != "AAPL"],
-            portfolio=Portfolio(100_000),
+            portfolio=portfolio,
             buy_delay=1,
             sell_delay=1,
             max_long_positions=None,
             max_short_positions=None,
             pos_size_handler=None,
         )
-        assert result.start_date == data_source_df["date"].iloc[0]
-        assert result.end_date == data_source_df["date"].iloc[-1]
-        assert len(result.portfolio_bars)
-        assert not len(result.position_bars)
-        assert not len(result.orders)
+        assert len(portfolio.bars) == len(data_source_df["date"].unique())
+        assert not len(portfolio.position_bars)
+        assert not len(portfolio.orders)
+        assert not len(portfolio.trades)
 
     def test_backtest_executions_when_buy_delay_after_period(
         self, data_source_df
@@ -612,25 +593,26 @@ class TestBacktestMixin:
             indicator_names=frozenset(),
         )
         execs = {exec}
+        portfolio = Portfolio(100_000)
         mixin = BacktestMixin()
-        result = mixin.backtest_executions(
+        mixin.backtest_executions(
             executions=execs,
             sessions=self._sessions(execs),
             models={},
             indicator_data={},
             test_data=data_source_df,
-            portfolio=Portfolio(100_000),
+            portfolio=portfolio,
             buy_delay=1000,
             sell_delay=1,
             max_long_positions=None,
             max_short_positions=None,
             pos_size_handler=None,
         )
-        assert result.start_date == data_source_df["date"].iloc[0]
-        assert result.end_date == data_source_df["date"].iloc[-1]
-        assert len(result.portfolio_bars)
-        assert not len(result.position_bars)
-        assert not len(result.orders)
+
+        assert len(portfolio.bars) == len(data_source_df["date"].unique())
+        assert not len(portfolio.position_bars)
+        assert not len(portfolio.orders)
+        assert not len(portfolio.trades)
 
     def test_backtest_executions_when_sell_delay_after_period(
         self, data_source_df
@@ -646,25 +628,25 @@ class TestBacktestMixin:
             indicator_names=frozenset(),
         )
         execs = {exec}
+        portfolio = Portfolio(100_000)
         mixin = BacktestMixin()
-        result = mixin.backtest_executions(
+        mixin.backtest_executions(
             executions=execs,
             sessions=self._sessions(execs),
             models={},
             indicator_data={},
             test_data=data_source_df,
-            portfolio=Portfolio(100_000),
+            portfolio=portfolio,
             buy_delay=1,
             sell_delay=1000,
             max_long_positions=None,
             max_short_positions=None,
             pos_size_handler=None,
         )
-        assert result.start_date == data_source_df["date"].iloc[0]
-        assert result.end_date == data_source_df["date"].iloc[-1]
-        assert len(result.portfolio_bars)
-        assert not len(result.position_bars)
-        assert not len(result.orders)
+        assert len(portfolio.bars)
+        assert not len(portfolio.position_bars)
+        assert not len(portfolio.orders)
+        assert not len(portfolio.trades)
 
     def test_backtest_executions_when_buy_score(self, data_source_df):
         def buy_exec_fn(ctx):
@@ -685,7 +667,7 @@ class TestBacktestMixin:
         execs = {exec}
         mock_portfolio = Mock()
         mixin = BacktestMixin()
-        result = mixin.backtest_executions(
+        mixin.backtest_executions(
             executions=execs,
             sessions=self._sessions(execs),
             models={},
@@ -698,8 +680,6 @@ class TestBacktestMixin:
             max_short_positions=None,
             pos_size_handler=None,
         )
-        assert result.start_date == data_source_df["date"].iloc[0]
-        assert result.end_date == data_source_df["date"].iloc[-1]
         df = data_source_df[data_source_df["symbol"].isin(["AAPL", "SPY"])]
         buy_dates = sorted(df["date"].values)[2:]
         assert len(mock_portfolio.buy.call_args_list) == len(buy_dates)
@@ -737,7 +717,7 @@ class TestBacktestMixin:
         execs = {exec}
         mock_portfolio = Mock()
         mixin = BacktestMixin()
-        result = mixin.backtest_executions(
+        mixin.backtest_executions(
             executions=execs,
             sessions=self._sessions(execs),
             models={},
@@ -750,8 +730,6 @@ class TestBacktestMixin:
             max_short_positions=1,
             pos_size_handler=None,
         )
-        assert result.start_date == data_source_df["date"].iloc[0]
-        assert result.end_date == data_source_df["date"].iloc[-1]
         df = data_source_df[data_source_df["symbol"].isin(["AAPL", "SPY"])]
         sell_dates = sorted(df["date"].values)[2:]
         assert len(mock_portfolio.sell.call_args_list) == len(sell_dates)
@@ -814,7 +792,7 @@ class TestBacktestMixin:
         execs = {exec}
         mock_portfolio = Mock()
         mixin = BacktestMixin()
-        result = mixin.backtest_executions(
+        mixin.backtest_executions(
             executions=execs,
             sessions=self._sessions(execs),
             models={},
@@ -827,8 +805,6 @@ class TestBacktestMixin:
             max_short_positions=None,
             pos_size_handler=None,
         )
-        assert result.start_date == dates[0]
-        assert result.end_date == dates[-1]
         buy_dates = dates[1:]
         assert len(mock_portfolio.buy.call_args_list) == len(buy_dates)
         for i, date in enumerate(buy_dates):
@@ -955,21 +931,22 @@ class TestBacktestMixin:
             indicator_names=frozenset(),
         )
         execs = {exec}
+        portfolio = Portfolio(1)
         mixin = BacktestMixin()
-        result = mixin.backtest_executions(
+        mixin.backtest_executions(
             executions=execs,
             sessions=self._sessions(execs),
             models={},
             indicator_data={},
             test_data=data_source_df,
-            portfolio=Portfolio(1),
+            portfolio=portfolio,
             buy_delay=1,
             sell_delay=1,
             max_long_positions=1,
             max_short_positions=None,
             pos_size_handler=None,
         )
-        assert not len(result.orders)
+        assert not len(portfolio.orders)
 
     def test_backtest_executions_when_sell_order_not_filled(
         self, data_source_df
@@ -987,21 +964,22 @@ class TestBacktestMixin:
             indicator_names=frozenset(),
         )
         execs = {exec}
+        portfolio = Portfolio(1)
         mixin = BacktestMixin()
-        result = mixin.backtest_executions(
+        mixin.backtest_executions(
             executions=execs,
             sessions=self._sessions(execs),
             models={},
             indicator_data={},
             test_data=data_source_df,
-            portfolio=Portfolio(1),
+            portfolio=portfolio,
             buy_delay=1,
             sell_delay=1,
             max_long_positions=1,
             max_short_positions=None,
             pos_size_handler=None,
         )
-        assert not len(result.orders)
+        assert not len(portfolio.orders)
 
     def _sessions(self, execs):
         return {
@@ -1187,17 +1165,11 @@ class TestStrategy:
                 START_DATE, "%Y-%m-%d"
             )
         else:
-            assert (
-                result.start_date
-                == pd.to_datetime(date_range[0]).to_pydatetime()
-            )
+            assert result.start_date == pd.to_datetime(date_range[0])
         if date_range[1] is None:
             assert result.end_date == datetime.strptime(END_DATE, "%Y-%m-%d")
         else:
-            assert (
-                result.end_date
-                == pd.to_datetime(date_range[1]).to_pydatetime()
-            )
+            assert result.end_date == pd.to_datetime(date_range[1])
         assert isinstance(result.portfolio, pd.DataFrame)
         assert not result.portfolio.empty
         assert isinstance(result.positions, pd.DataFrame)
@@ -1207,6 +1179,27 @@ class TestStrategy:
             assert not result.bootstrap.drawdown_conf.empty
         else:
             assert result.bootstrap is None
+
+    def test_walkforward_results(self, data_source_df):
+        def exec_fn(ctx):
+            if not ctx.long_pos():
+                ctx.buy_shares = 100
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn, ["SPY", "AAPL"])
+        result = strategy.walkforward(windows=3, calc_bootstrap=False)
+        dates = set()
+        for _, test_idx in strategy.walkforward_split(
+            data_source_df, windows=3, lookahead=1, train_size=0.5
+        ):
+            df = data_source_df.loc[test_idx]
+            dates.update(df["date"].values)
+        assert result.start_date == to_datetime(START_DATE)
+        assert result.end_date == to_datetime(END_DATE)
+        assert len(result.portfolio) == len(dates)
+        assert len(result.positions) == 2 * len(dates) - 2
+        assert len(result.orders) == 2
+        assert not len(result.trades)
 
     def test_walkforward_when_no_executions_then_error(self, data_source_df):
         strategy = Strategy(data_source_df, START_DATE, END_DATE)

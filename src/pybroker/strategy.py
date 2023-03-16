@@ -128,32 +128,6 @@ class Execution(NamedTuple):
     indicator_names: frozenset[str]
 
 
-class BacktestResult(NamedTuple):
-    r"""Result data from backtesting a :class:`.Strategy`.
-
-    Attributes:
-        start_date: Starting date of backtest.
-        end_date: Ending date of backtest.
-        portfolio_bars: ``deque`` of
-            :class:`pybroker.portfolio.PortfolioBar`\ s containing
-            :class:`pybroker.portfolio.Portfolio` data for every bar executed.
-        position_bars: ``deque`` of :class:`pybroker.portfolio.PositionBar`\ s
-            containing :class:`pybroker.portfolio.Position` data for every bar
-            executed.
-        orders: :class:`pybroker.portfolio.Order`\ s that were filled during
-            the backtest.
-        trades: :class:`pybroker.portfolio.Trade`\ s that were placed during
-            the backtest.
-    """
-
-    start_date: datetime
-    end_date: datetime
-    portfolio_bars: deque[PortfolioBar]
-    position_bars: deque[PositionBar]
-    orders: deque[Order]
-    trades: deque[Trade]
-
-
 class BacktestMixin:
     """Mixin implementing backtesting functionality."""
 
@@ -171,7 +145,7 @@ class BacktestMixin:
         max_short_positions: Optional[int],
         pos_size_handler: Optional[Callable[[PosSizeContext], None]],
         enable_fractional_shares: bool = False,
-    ) -> BacktestResult:
+    ):
         r"""Backtests a ``set`` of :class:`.Execution`\ s that implement
         trading logic.
 
@@ -339,14 +313,6 @@ class BacktestMixin:
             portfolio.incr_bars()
             if i % 10 == 0 or i == len(test_dates) - 1:
                 logger.backtest_executions_loading(i + 1)
-        return BacktestResult(
-            start_date=to_datetime(test_dates[0]),
-            end_date=to_datetime(test_dates[-1]),
-            portfolio_bars=portfolio.bars,
-            position_bars=portfolio.position_bars,
-            orders=portfolio.orders,
-            trades=portfolio.trades,
-        )
 
     def _set_pos_sizes(
         self,
