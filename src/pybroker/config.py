@@ -15,9 +15,10 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from .common import FeeMode
+from .common import BarData, FeeMode, PriceType
 from dataclasses import dataclass, field
-from typing import Optional
+from decimal import Decimal
+from typing import Callable, Optional, Union
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,15 @@ class StrategyConfig:
             Defaults to ``10_000``.
         bootstrap_sample_size: Size of each random sample used to compute
             bootstrap metrics. Defaults to ``1_000``.
+        exit_on_last_bar: Whether to automatically exit any open positions
+            on the last bar of data available for a symbol. Defaults to
+            ``False``.
+        exit_cover_fill_price: Fill price for covering an open short position
+            when :attr:`.exit_on_last_bar` is ``True``. Defaults to
+            :attr:`pybroker.common.PriceType.MIDDLE`.
+        exit_sell_fill_price: Fill price for selling an open long position when
+            :attr:`.exit_on_last_bar` is ``True``. Defaults to
+            :attr:`pybroker.common.PriceType.MIDDLE`.
     """
 
     initial_cash: float = field(default=100_000)
@@ -64,3 +74,10 @@ class StrategyConfig:
     sell_delay: int = field(default=1)
     bootstrap_samples: int = field(default=10_000)
     bootstrap_sample_size: int = field(default=1_000)
+    exit_on_last_bar: bool = field(default=False)
+    exit_cover_fill_price: Union[
+        PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
+    ] = field(default=PriceType.MIDDLE)
+    exit_sell_fill_price: Union[
+        PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
+    ] = field(default=PriceType.MIDDLE)

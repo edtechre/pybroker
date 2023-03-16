@@ -7,4 +7,5 @@ pybroker.config module
    :show-inheritance:
    :exclude-members: initial_cash, max_long_positions, max_short_positions,
       buy_delay, sell_delay, bootstrap_samples, bootstrap_sample_size,
-      fee_mode, fee_amount, enable_fractional_shares
+      fee_mode, fee_amount, enable_fractional_shares, exit_on_last_bar,
+      exit_cover_fill_price, exit_sell_fill_price

@@ -701,6 +701,28 @@ class Portfolio:
         )
         return shares
 
+    def exit_position(
+        self,
+        date: np.datetime64,
+        symbol: str,
+        buy_fill_price: Decimal,
+        sell_fill_price: Decimal,
+    ):
+        if symbol in self.long_positions:
+            self.sell(
+                date=date,
+                symbol=symbol,
+                shares=self.long_positions[symbol].shares,
+                fill_price=sell_fill_price,
+            )
+        if symbol in self.short_positions:
+            self.buy(
+                date=date,
+                symbol=symbol,
+                shares=self.short_positions[symbol].shares,
+                fill_price=buy_fill_price,
+            )
+
     def capture_bar(self, date: np.datetime64, df: pd.DataFrame):
         """Captures portfolio state of the current bar.
 

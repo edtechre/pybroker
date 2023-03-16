@@ -330,14 +330,14 @@ class ExecResult:
         float,
         Decimal,
         PriceType,
-        Callable[[BarData], Union[int, float, Decimal]],
+        Callable[[str, BarData], Union[int, float, Decimal]],
     ]
     sell_fill_price: Union[
         int,
         float,
         Decimal,
         PriceType,
-        Callable[[BarData], Union[int, float, Decimal]],
+        Callable[[str, BarData], Union[int, float, Decimal]],
     ]
     score: Optional[float]
     hold_bars: Optional[int]
@@ -551,7 +551,7 @@ class ExecContext(BaseContext):
             float,
             Decimal,
             PriceType,
-            Callable[[BarData], Union[int, float, Decimal]],
+            Callable[[str, BarData], Union[int, float, Decimal]],
         ] = PriceType.MIDDLE
         self.buy_shares: Optional[Union[int, float, Decimal]] = None
         self.buy_limit_price: Optional[Union[int, float, Decimal]] = None
@@ -560,7 +560,7 @@ class ExecContext(BaseContext):
             float,
             Decimal,
             PriceType,
-            Callable[[BarData], Union[int, float, Decimal]],
+            Callable[[str, BarData], Union[int, float, Decimal]],
         ] = PriceType.MIDDLE
         self.sell_shares: Optional[Union[int, float, Decimal]] = None
         self.sell_limit_price: Optional[Union[int, float, Decimal]] = None

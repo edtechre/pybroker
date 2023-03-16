@@ -1589,6 +1589,84 @@ def test_cover_when_zero_shares():
     assert not len(portfolio.trades)
 
 
+def test_exit_position():
+    portfolio = Portfolio(CASH)
+    portfolio.buy(DATE_1, SYMBOL_1, SHARES_1, FILL_PRICE_1, LIMIT_PRICE_1)
+    portfolio.sell(DATE_1, SYMBOL_2, SHARES_2, FILL_PRICE_3, LIMIT_PRICE_3)
+    assert len(portfolio.long_positions) == 1
+    assert SYMBOL_1 in portfolio.long_positions
+    assert len(portfolio.short_positions) == 1
+    assert SYMBOL_2 in portfolio.short_positions
+    portfolio.incr_bars()
+    portfolio.exit_position(
+        DATE_2, SYMBOL_1, buy_fill_price=0, sell_fill_price=FILL_PRICE_2
+    )
+    assert not portfolio.long_positions
+    assert len(portfolio.short_positions) == 1
+    assert SYMBOL_2 in portfolio.short_positions
+    assert len(portfolio.trades) == 1
+    long_pnl = (FILL_PRICE_2 - FILL_PRICE_1) * SHARES_1
+    assert_trade(
+        trade=portfolio.trades[0],
+        type="long",
+        symbol=SYMBOL_1,
+        entry_date=DATE_1,
+        exit_date=DATE_2,
+        entry=FILL_PRICE_1,
+        exit=FILL_PRICE_2,
+        shares=SHARES_1,
+        pnl=long_pnl,
+        return_pct=(FILL_PRICE_2 / FILL_PRICE_1 - 1) * 100,
+        bars=1,
+        pnl_per_bar=long_pnl,
+        agg_pnl=long_pnl,
+    )
+    assert len(portfolio.orders) == 3
+    assert_order(
+        order=portfolio.orders[-1],
+        date=DATE_2,
+        symbol=SYMBOL_1,
+        type="sell",
+        limit_price=None,
+        fill_price=FILL_PRICE_2,
+        shares=SHARES_1,
+        fees=0,
+    )
+    portfolio.exit_position(
+        DATE_2, SYMBOL_2, buy_fill_price=FILL_PRICE_4, sell_fill_price=0
+    )
+    assert not portfolio.long_positions
+    assert not portfolio.short_positions
+    assert len(portfolio.trades) == 2
+    short_pnl = (FILL_PRICE_3 - FILL_PRICE_4) * SHARES_2
+    assert_trade(
+        trade=portfolio.trades[-1],
+        type="short",
+        symbol=SYMBOL_2,
+        entry_date=DATE_1,
+        exit_date=DATE_2,
+        entry=FILL_PRICE_3,
+        exit=FILL_PRICE_4,
+        shares=SHARES_2,
+        pnl=short_pnl,
+        return_pct=(FILL_PRICE_3 / FILL_PRICE_4 - 1) * 100,
+        bars=1,
+        pnl_per_bar=short_pnl,
+        agg_pnl=short_pnl + long_pnl,
+    )
+    assert len(portfolio.orders) == 4
+    assert_order(
+        order=portfolio.orders[-1],
+        date=DATE_2,
+        symbol=SYMBOL_2,
+        type="buy",
+        limit_price=None,
+        fill_price=FILL_PRICE_4,
+        shares=SHARES_2,
+        fees=0,
+    )
+
+
 def test_capture_bar():
     portfolio = Portfolio(CASH)
     close_1 = 102
