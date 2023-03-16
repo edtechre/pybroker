@@ -1264,21 +1264,17 @@ class Strategy(
         shuffle: bool,
         train_only: bool,
     ):
-        sessions: dict[ExecSymbol, dict] = {
-            ExecSymbol(execution.id, sym): {}
-            for execution in self._executions
-            if execution.fn is not None
-            for sym in execution.symbols
-        }
+        sessions: dict[ExecSymbol, dict] = {}
         exit_dates: dict[str, np.datetime64] = {}
-        if self._config.exit_on_last_bar:
-            exec_symbols = frozenset(
-                sym for exec in self._executions for sym in exec.symbols
-            )
-            for sym in exec_symbols:
-                exit_dates[sym] = df[df[DataCol.SYMBOL.value] == sym][
-                    DataCol.DATE.value
-                ].values[-1]
+        for exec in self._executions:
+            if exec.fn is None:
+                continue
+            for sym in exec.symbols:
+                sessions[ExecSymbol(exec.id, sym)] = {}
+                if self._config.exit_on_last_bar:
+                    exit_dates[sym] = df[df[DataCol.SYMBOL.value] == sym][
+                        DataCol.DATE.value
+                    ].values[-1]
         for train_idx, test_idx in self.walkforward_split(
             df=df,
             windows=windows,
