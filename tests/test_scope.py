@@ -20,9 +20,12 @@ import pandas as pd
 import pytest
 import re
 from .fixtures import *
+from decimal import Decimal
+from pybroker.common import PriceType
 from pybroker.indicator import IndicatorSymbol
 from pybroker.model import model
 from pybroker.scope import (
+    PriceScope,
     enable_logging,
     enable_progress_bar,
     disable_logging,
@@ -385,3 +388,38 @@ class TestPredictionScope:
             ),
         ):
             pred_scope.fetch("SPY", MODEL_NAME)
+
+
+class TestPriceScope:
+    @pytest.mark.parametrize(
+        "price, expected_price",
+        [
+            (50, 50),
+            (111.1, Decimal("111.1")),
+            (lambda _symbol, _bar_data: 60, 60),
+            (PriceType.OPEN, 200),
+            (PriceType.HIGH, 400),
+            (PriceType.LOW, 100),
+            (PriceType.CLOSE, 300),
+            (PriceType.MIDDLE, round((100 + (400 - 100) / 2.0), 2)),
+            (PriceType.AVERAGE, round((200 + 100 + 400 + 300) / 4.0, 2)),
+        ],
+    )
+    def test_fetch(self, price, expected_price):
+        df = pd.DataFrame(
+            {
+                "date": [
+                    np.datetime64("2020-02-03"),
+                    np.datetime64("2020-02-04"),
+                    np.datetime64("2020-02-05"),
+                ],
+                "symbol": ["SPY"] * 3,
+                "open": [100, 200, 300],
+                "high": [500, 400, 500],
+                "low": [200, 100, 200],
+                "close": [250, 300, 400],
+            }
+        )
+        col_scope = ColumnScope(df.set_index(["symbol", "date"]))
+        price_scope = PriceScope(col_scope, {"SPY": 2})
+        assert price_scope.fetch("SPY", price) == expected_price

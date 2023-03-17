@@ -24,13 +24,24 @@ from .common import (
     DataCol,
     IndicatorSymbol,
     ModelSymbol,
+    PriceType,
     TrainedModel,
+    to_decimal,
 )
 from .log import Logger
 from collections import defaultdict
+from decimal import Decimal
 from diskcache import Cache
 from numpy.typing import NDArray
-from typing import Collection, Iterable, Mapping, Optional, Sequence, Union
+from typing import (
+    Callable,
+    Collection,
+    Iterable,
+    Mapping,
+    Optional,
+    Sequence,
+    Union,
+)
 
 
 class StaticScope:
@@ -455,3 +466,109 @@ class PredictionScope:
             pred = np.squeeze(pred)
         self._sym_preds[model_sym] = pred
         return pred[:end_index]
+
+
+class PriceScope:
+    """Retrieves most recent prices."""
+
+    def __init__(
+        self,
+        col_scope: ColumnScope,
+        sym_end_index: Mapping[str, int],
+    ):
+        self._col_scope = col_scope
+        self._sym_end_index = sym_end_index
+
+    def fetch(
+        self,
+        symbol: str,
+        price: Union[
+            float,
+            int,
+            Decimal,
+            PriceType,
+            Callable[[str, BarData], Union[int, float, Decimal]],
+        ],
+    ) -> Decimal:
+        end_index = self._sym_end_index[symbol]
+        price_type = type(price)
+        if price_type == PriceType:
+            if price == PriceType.OPEN:
+                open_ = self._col_scope.fetch(
+                    symbol, DataCol.OPEN.value, end_index
+                )
+                if open_ is None:
+                    raise ValueError("Open price not found.")
+                return to_decimal(open_[-1])
+            elif price == PriceType.HIGH:
+                high = self._col_scope.fetch(
+                    symbol, DataCol.HIGH.value, end_index
+                )
+                if high is None:
+                    raise ValueError("High price not found.")
+                return to_decimal(high[-1])
+            elif price == PriceType.LOW:
+                low = self._col_scope.fetch(
+                    symbol, DataCol.LOW.value, end_index
+                )
+                if low is None:
+                    raise ValueError("Low price not found.")
+                return to_decimal(low[-1])
+            elif price == PriceType.CLOSE:
+                close = self._col_scope.fetch(
+                    symbol, DataCol.CLOSE.value, end_index
+                )
+                if close is None:
+                    raise ValueError("Close price not found.")
+                return to_decimal(close[-1])
+            elif price == PriceType.MIDDLE:
+                low = self._col_scope.fetch(
+                    symbol, DataCol.LOW.value, end_index
+                )
+                if low is None:
+                    raise ValueError("Low price not found.")
+                high = self._col_scope.fetch(
+                    symbol, DataCol.HIGH.value, end_index
+                )
+                if high is None:
+                    raise ValueError("High price not found.")
+                return to_decimal(
+                    round((low[-1] + (high[-1] - low[-1]) / 2.0), 2)
+                )
+            elif price == PriceType.AVERAGE:
+                open_ = self._col_scope.fetch(
+                    symbol, DataCol.OPEN.value, end_index
+                )
+                if open_ is None:
+                    raise ValueError("Open price not found.")
+                high = self._col_scope.fetch(
+                    symbol, DataCol.HIGH.value, end_index
+                )
+                if high is None:
+                    raise ValueError("High price not found.")
+                low = self._col_scope.fetch(
+                    symbol, DataCol.LOW.value, end_index
+                )
+                if low is None:
+                    raise ValueError("Low price not found.")
+                close = self._col_scope.fetch(
+                    symbol, DataCol.CLOSE.value, end_index
+                )
+                if close is None:
+                    raise ValueError("Close price not found.")
+                return to_decimal(
+                    round(
+                        (open_[-1] + low[-1] + high[-1] + close[-1]) / 4.0, 2
+                    )
+                )
+            else:
+                raise ValueError(f"Unknown price: {price_type}")
+        elif price_type == float or price_type == int or price_type == Decimal:
+            return to_decimal(price)  # type: ignore[arg-type]
+        elif callable(price):
+            bar_data = self._col_scope.bar_data_from_data_columns(
+                symbol, self._sym_end_index[symbol]
+            )
+            return to_decimal(price(symbol, bar_data))
+        else:
+            raise ValueError(f"Unknown price: {price_type}")

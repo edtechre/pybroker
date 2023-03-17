@@ -52,6 +52,7 @@ from .scope import (
     IndicatorScope,
     ModelInputScope,
     PredictionScope,
+    PriceScope,
     StaticScope,
 )
 from collections import defaultdict, deque
@@ -213,6 +214,7 @@ class BacktestMixin:
         sell_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
         sym_end_index: dict[str, int] = defaultdict(int)
         col_scope = ColumnScope(test_data)
+        price_scope = PriceScope(col_scope, sym_end_index)
         ind_scope = IndicatorScope(indicator_data, test_dates)
         input_scope = ModelInputScope(col_scope, ind_scope)
         pred_scope = PredictionScope(models, input_scope)
@@ -274,8 +276,8 @@ class BacktestMixin:
             if is_sell_sched:
                 self._place_sell_orders(
                     date=date,
-                    df=test_data,
                     col_scope=col_scope,
+                    price_scope=price_scope,
                     sym_end_index=sym_end_index,
                     sell_sched=sell_sched,
                     buy_sched=buy_sched,
@@ -285,8 +287,8 @@ class BacktestMixin:
             if is_buy_sched:
                 self._place_buy_orders(
                     date=date,
-                    df=test_data,
                     col_scope=col_scope,
+                    price_scope=price_scope,
                     sym_end_index=sym_end_index,
                     buy_sched=buy_sched,
                     sell_sched=sell_sched,
@@ -331,9 +333,7 @@ class BacktestMixin:
                     symbol=exit_syms.popleft(),
                     exit_buy_fill_price=exit_buy_fill_price,
                     exit_sell_fill_price=exit_sell_fill_price,
-                    df=test_data,
-                    col_scope=col_scope,
-                    sym_end_index=sym_end_index,
+                    price_scope=price_scope,
                 )
             portfolio.incr_bars()
             if i % 10 == 0 or i == len(test_dates) - 1:
@@ -350,26 +350,10 @@ class BacktestMixin:
         exit_sell_fill_price: Union[
             PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
         ],
-        df: pd.DataFrame,
-        col_scope: ColumnScope,
-        sym_end_index: Mapping[str, int],
+        price_scope: PriceScope,
     ):
-        buy_fill_price = self._get_price(
-            symbol,
-            date,
-            exit_buy_fill_price,
-            df,
-            col_scope,
-            sym_end_index[symbol],
-        )
-        sell_fill_price = self._get_price(
-            symbol,
-            date,
-            exit_sell_fill_price,
-            df,
-            col_scope,
-            sym_end_index[symbol],
-        )
+        buy_fill_price = price_scope.fetch(symbol, exit_buy_fill_price)
+        sell_fill_price = price_scope.fetch(symbol, exit_sell_fill_price)
         portfolio.exit_position(
             date,
             symbol,
@@ -434,7 +418,7 @@ class BacktestMixin:
     def _place_buy_orders(
         self,
         date: np.datetime64,
-        df: pd.DataFrame,
+        price_scope: PriceScope,
         col_scope: ColumnScope,
         sym_end_index: Mapping[str, int],
         buy_sched: dict[np.datetime64, list[ExecResult]],
@@ -449,13 +433,8 @@ class BacktestMixin:
             buy_shares = self._get_shares(
                 result.buy_shares, enable_fractional_shares
             )
-            fill_price = self._get_price(
-                symbol=result.symbol,
-                date=date,
-                price=result.buy_fill_price,
-                df=df,
-                col_scope=col_scope,
-                end_index=sym_end_index[result.symbol],
+            fill_price = price_scope.fetch(
+                result.symbol, result.buy_fill_price
             )
             order = portfolio.buy(
                 date=date,
@@ -508,7 +487,7 @@ class BacktestMixin:
     def _place_sell_orders(
         self,
         date: np.datetime64,
-        df: pd.DataFrame,
+        price_scope: PriceScope,
         col_scope: ColumnScope,
         sym_end_index: Mapping[str, int],
         sell_sched: dict[np.datetime64, list[ExecResult]],
@@ -523,13 +502,8 @@ class BacktestMixin:
             sell_shares = self._get_shares(
                 result.sell_shares, enable_fractional_shares
             )
-            fill_price = self._get_price(
-                symbol=result.symbol,
-                date=date,
-                price=result.sell_fill_price,
-                df=df,
-                col_scope=col_scope,
-                end_index=sym_end_index[result.symbol],
+            fill_price = price_scope.fetch(
+                result.symbol, result.sell_fill_price
             )
             order = portfolio.sell(
                 date=date,
@@ -588,49 +562,6 @@ class BacktestMixin:
             return to_decimal(shares)
         else:
             return to_decimal(int(shares))
-
-    def _get_price(
-        self,
-        symbol: str,
-        date: np.datetime64,
-        price: Union[
-            float,
-            int,
-            Decimal,
-            PriceType,
-            Callable[[str, BarData], Union[int, float, Decimal]],
-        ],
-        df: pd.DataFrame,
-        col_scope: ColumnScope,
-        end_index: int,
-    ) -> Decimal:
-        price_type = type(price)
-        if price_type == PriceType:
-            row = df.loc[(symbol, date)]
-            if price == PriceType.OPEN:
-                return to_decimal(row[DataCol.OPEN.value])
-            elif price == PriceType.HIGH:
-                return to_decimal(row[DataCol.HIGH.value])
-            elif price == PriceType.LOW:
-                return to_decimal(row[DataCol.LOW.value])
-            elif price == PriceType.CLOSE:
-                return to_decimal(row[DataCol.CLOSE.value])
-            elif price == PriceType.MIDDLE:
-                low = row[DataCol.LOW.value]
-                high = row[DataCol.HIGH.value]
-                return to_decimal(round((low + (high - low) / 2.0), 2))
-            elif price == PriceType.AVERAGE:
-                open_ = row[DataCol.OPEN.value]
-                high = row[DataCol.HIGH.value]
-                low = row[DataCol.LOW.value]
-                close = row[DataCol.CLOSE.value]
-                return to_decimal(round((open_ + low + high + close) / 4.0, 2))
-        if price_type == float or price_type == int or price_type == Decimal:
-            return to_decimal(price)  # type: ignore[arg-type]
-        if callable(price):
-            bar_data = col_scope.bar_data_from_data_columns(symbol, end_index)
-            return to_decimal(price(symbol, bar_data))
-        raise ValueError(f"Unknown price: {price_type}")
 
 
 class WalkforwardWindow(NamedTuple):
