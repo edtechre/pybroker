@@ -18,6 +18,11 @@
          font-size: 3em;
       }
    </style>
+   <script>
+      document.addEventListener("DOMContentLoaded", function() {
+         SphinxRtdTheme.Navigation.enable(true);
+      });
+   </script>
 
 ================
 PyBroker
