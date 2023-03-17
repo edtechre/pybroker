@@ -1208,9 +1208,11 @@ class Strategy(
             for sym in exec.symbols:
                 sessions[ExecSymbol(exec.id, sym)] = {}
                 if self._config.exit_on_last_bar:
-                    exit_dates[sym] = df[df[DataCol.SYMBOL.value] == sym][
+                    sym_dates = df[df[DataCol.SYMBOL.value] == sym][
                         DataCol.DATE.value
-                    ].values[-1]
+                    ].values
+                    sym_dates.sort()
+                    exit_dates[sym] = sym_dates[-1]
         for train_idx, test_idx in self.walkforward_split(
             df=df,
             windows=windows,
