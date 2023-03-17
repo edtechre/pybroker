@@ -1734,3 +1734,21 @@ class TestStrategy:
         assert trade["entry"] == 200
         assert trade["exit"] == 99.99
         assert trade["shares"] == 100
+
+    def test_backtest_when_buy_shares_and_sell_shares_then_error(
+        self, data_source_df
+    ):
+        def exec_fn(ctx):
+            ctx.buy_shares = 100
+            ctx.sell_shares = 100
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn, ["AAPL", "SPY"])
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "For each symbol, only one of buy_shares or sell_shares can be"
+                " set per bar."
+            ),
+        ):
+            strategy.backtest()

@@ -77,6 +77,11 @@ def _decorate_execution_fn(fn: Callable[[ExecContext], None]) -> Callable:
     ):
         set_exec_ctx_data(ctx, session, symbol, date)
         fn(ctx)
+        if ctx.buy_shares is not None and ctx.sell_shares is not None:
+            raise ValueError(
+                "For each symbol, only one of buy_shares or sell_shares can be"
+                " set per bar."
+            )
         if ctx.buy_limit_price is not None and ctx.buy_shares is None:
             raise ValueError(
                 "buy_shares must be set when buy_limit_price is set."
