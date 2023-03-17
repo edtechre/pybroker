@@ -1211,8 +1211,9 @@ class Strategy(
                     sym_dates = df[df[DataCol.SYMBOL.value] == sym][
                         DataCol.DATE.value
                     ].values
-                    sym_dates.sort()
-                    exit_dates[sym] = sym_dates[-1]
+                    if len(sym_dates):
+                        sym_dates.sort()
+                        exit_dates[sym] = sym_dates[-1]
         for train_idx, test_idx in self.walkforward_split(
             df=df,
             windows=windows,
