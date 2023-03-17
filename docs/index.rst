@@ -19,8 +19,10 @@
       }
    </style>
    <script>
-      document.addEventListener("DOMContentLoaded", function() {
-         SphinxRtdTheme.Navigation.enable(true);
+      window.addEventListener("load", function() {
+         jQuery(function() {
+            SphinxRtdTheme.Navigation.enable(true);
+         });
       });
    </script>
 
