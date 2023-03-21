@@ -51,6 +51,7 @@ from .scope import (
     ColumnScope,
     IndicatorScope,
     ModelInputScope,
+    PendingOrderScope,
     PredictionScope,
     PriceScope,
     StaticScope,
@@ -64,6 +65,7 @@ from typing import (
     Callable,
     Iterable,
     Iterator,
+    Literal,
     Mapping,
     NamedTuple,
     Optional,
@@ -223,12 +225,14 @@ class BacktestMixin:
         ind_scope = IndicatorScope(indicator_data, test_dates)
         input_scope = ModelInputScope(col_scope, ind_scope)
         pred_scope = PredictionScope(models, input_scope)
+        pending_order_scope = PendingOrderScope()
         exec_ctx = ExecContext(
             portfolio=portfolio,
             col_scope=col_scope,
             ind_scope=ind_scope,
             input_scope=input_scope,
             pred_scope=pred_scope,
+            pending_order_scope=pending_order_scope,
             models=models,
             sym_end_index=sym_end_index,
         )
@@ -244,6 +248,7 @@ class BacktestMixin:
                 ind_scope=ind_scope,
                 input_scope=input_scope,
                 pred_scope=pred_scope,
+                pending_order_scope=pending_order_scope,
                 models=models,
                 sym_end_index=sym_end_index,
                 max_long_positions=max_long_positions,
@@ -283,6 +288,7 @@ class BacktestMixin:
                     date=date,
                     col_scope=col_scope,
                     price_scope=price_scope,
+                    pending_order_scope=pending_order_scope,
                     sym_end_index=sym_end_index,
                     sell_sched=sell_sched,
                     buy_sched=buy_sched,
@@ -294,6 +300,7 @@ class BacktestMixin:
                     date=date,
                     col_scope=col_scope,
                     price_scope=price_scope,
+                    pending_order_scope=pending_order_scope,
                     sym_end_index=sym_end_index,
                     buy_sched=buy_sched,
                     sell_sched=sell_sched,
@@ -318,18 +325,22 @@ class BacktestMixin:
             while buy_results:
                 self._schedule_order(
                     result=buy_results.popleft(),
+                    created=date,
                     sym_end_index=sym_end_index,
                     delay=buy_delay,
                     sched=buy_sched,
                     col_scope=col_scope,
+                    pending_order_scope=pending_order_scope,
                 )
             while sell_results:
                 self._schedule_order(
                     result=sell_results.popleft(),
+                    created=date,
                     sym_end_index=sym_end_index,
                     delay=sell_delay,
                     sched=sell_sched,
                     col_scope=col_scope,
+                    pending_order_scope=pending_order_scope,
                 )
             while exit_syms:
                 self._exit_position(
@@ -384,17 +395,19 @@ class BacktestMixin:
                 if id >= (len(buy_results) + len(sell_results)):
                     raise ValueError(f"Invalid ExecSignal id: {id}")
                 if id < len(buy_results):
-                    buy_results[id].buy_shares = shares
+                    buy_results[id].buy_shares = to_decimal(shares)
                 else:
-                    sell_results[id - len(buy_results)].sell_shares = shares
+                    sell_results[
+                        id - len(buy_results)
+                    ].sell_shares = to_decimal(shares)
             elif buy_results is not None:
                 if id >= len(buy_results):
                     raise ValueError(f"Invalid ExecSignal id: {id}")
-                buy_results[id].buy_shares = shares
+                buy_results[id].buy_shares = to_decimal(shares)
             elif sell_results is not None:
                 if id >= len(sell_results):
                     raise ValueError(f"Invalid ExecSignal id: {id}")
-                sell_results[id].sell_shares = shares
+                sell_results[id].sell_shares = to_decimal(shares)
             else:
                 raise ValueError(
                     "buy_results and sell_results cannot both be None."
@@ -403,10 +416,12 @@ class BacktestMixin:
     def _schedule_order(
         self,
         result: ExecResult,
+        created: np.datetime64,
         sym_end_index: Mapping[str, int],
         delay: int,
         sched: Mapping[np.datetime64, list[ExecResult]],
         col_scope: ColumnScope,
+        pending_order_scope: PendingOrderScope,
     ):
         date_loc = sym_end_index[result.symbol] - 1
         dates = col_scope.fetch(result.symbol, DataCol.DATE.value)
@@ -415,6 +430,28 @@ class BacktestMixin:
         logger = StaticScope.instance().logger
         if date_loc + delay < len(dates):
             date = dates[date_loc + delay]
+            order_type: Literal["buy", "sell"]
+            if result.buy_shares is not None:
+                order_type = "buy"
+                shares = result.buy_shares
+                limit_price = result.buy_limit_price
+                fill_price = result.buy_fill_price
+            elif result.sell_shares is not None:
+                order_type = "sell"
+                shares = result.sell_shares
+                limit_price = result.sell_limit_price
+                fill_price = result.sell_fill_price
+            else:
+                raise ValueError("buy_shares or sell_shares needs to be set.")
+            result.pending_order_id = pending_order_scope.add(
+                type=order_type,
+                symbol=result.symbol,
+                created=created,
+                exec_date=date,
+                shares=shares,
+                limit_price=limit_price,
+                fill_price=fill_price,
+            )
             sched[date].append(result)
             logger.debug_schedule_order(date, result)
         else:
@@ -425,6 +462,7 @@ class BacktestMixin:
         date: np.datetime64,
         price_scope: PriceScope,
         col_scope: ColumnScope,
+        pending_order_scope: PendingOrderScope,
         sym_end_index: Mapping[str, int],
         buy_sched: dict[np.datetime64, list[ExecResult]],
         sell_sched: dict[np.datetime64, list[ExecResult]],
@@ -435,6 +473,12 @@ class BacktestMixin:
         for result in buy_results:
             if result.buy_shares is None:
                 continue
+            if (
+                result.pending_order_id is None
+                or not pending_order_scope.contains(result.pending_order_id)
+            ):
+                continue
+            pending_order_scope.remove(result.pending_order_id)
             buy_shares = self._get_shares(
                 result.buy_shares, enable_fractional_shares
             )
@@ -482,10 +526,12 @@ class BacktestMixin:
                     )
                     self._schedule_order(
                         result=sell_result,
+                        created=date,
                         sym_end_index=sym_end_index,
                         delay=result.hold_bars,
                         sched=sell_sched,
                         col_scope=col_scope,
+                        pending_order_scope=pending_order_scope,
                     )
         del buy_sched[date]
 
@@ -494,6 +540,7 @@ class BacktestMixin:
         date: np.datetime64,
         price_scope: PriceScope,
         col_scope: ColumnScope,
+        pending_order_scope: PendingOrderScope,
         sym_end_index: Mapping[str, int],
         sell_sched: dict[np.datetime64, list[ExecResult]],
         buy_sched: dict[np.datetime64, list[ExecResult]],
@@ -504,6 +551,12 @@ class BacktestMixin:
         for result in sell_results:
             if result.sell_shares is None:
                 continue
+            if (
+                result.pending_order_id is None
+                or not pending_order_scope.contains(result.pending_order_id)
+            ):
+                continue
+            pending_order_scope.remove(result.pending_order_id)
             sell_shares = self._get_shares(
                 result.sell_shares, enable_fractional_shares
             )
@@ -551,10 +604,12 @@ class BacktestMixin:
                     )
                     self._schedule_order(
                         result=buy_result,
+                        created=date,
                         sym_end_index=sym_end_index,
                         delay=result.hold_bars,
                         sched=buy_sched,
                         col_scope=col_scope,
+                        pending_order_scope=pending_order_scope,
                     )
         del sell_sched[date]
 

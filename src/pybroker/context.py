@@ -32,10 +32,12 @@ from .scope import (
     ColumnScope,
     IndicatorScope,
     ModelInputScope,
+    PendingOrder,
+    PendingOrderScope,
     PredictionScope,
     StaticScope,
 )
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from numpy.typing import NDArray
@@ -61,6 +63,7 @@ class BaseContext:
         ind_scope: IndicatorScope,
         input_scope: ModelInputScope,
         pred_scope: PredictionScope,
+        pending_order_scope: PendingOrderScope,
         models: Mapping[ModelSymbol, TrainedModel],
         sym_end_index: Mapping[str, int],
     ):
@@ -71,6 +74,7 @@ class BaseContext:
         self._pred_scope = pred_scope
         self._models = models
         self._sym_end_index = sym_end_index
+        self._pending_order_scope = pending_order_scope
 
     @property
     def total_equity(self) -> Decimal:
@@ -107,6 +111,12 @@ class BaseContext:
         have been placed and filled.
         """
         for order in self._portfolio.orders:
+            yield order
+
+    def pending_orders(
+        self, symbol: Optional[str] = None
+    ) -> Iterator[PendingOrder]:
+        for order in self._pending_order_scope.orders(symbol):
             yield order
 
     def trades(self) -> Iterator[Trade]:
@@ -321,6 +331,8 @@ class ExecResult:
         sell_shares: Number of shares to sell of ``symbol``.
         sell_limit_price: Limit price used for a sell (short) order of
             ``symbol``.
+        pending_order_id: ID of :class:`pybroker.scope.PendingOrder` that was
+            created.
     """
 
     symbol: str
@@ -341,10 +353,11 @@ class ExecResult:
     ]
     score: Optional[float]
     hold_bars: Optional[int]
-    buy_shares: Optional[Union[int, float, Decimal]]
+    buy_shares: Optional[Decimal]
     buy_limit_price: Optional[Decimal]
-    sell_shares: Optional[Union[int, float, Decimal]]
+    sell_shares: Optional[Decimal]
     sell_limit_price: Optional[Decimal]
+    pending_order_id: Optional[int] = field(default=None)
 
 
 class ExecSignal(NamedTuple):
@@ -382,6 +395,7 @@ class PosSizeContext(BaseContext):
         ind_scope: IndicatorScope,
         input_scope: ModelInputScope,
         pred_scope: PredictionScope,
+        pending_order_scope: PendingOrderScope,
         models: Mapping[ModelSymbol, TrainedModel],
         sym_end_index: Mapping[str, int],
         max_long_positions: Optional[int],
@@ -393,6 +407,7 @@ class PosSizeContext(BaseContext):
             ind_scope=ind_scope,
             input_scope=input_scope,
             pred_scope=pred_scope,
+            pending_order_scope=pending_order_scope,
             models=models,
             sym_end_index=sym_end_index,
         )
@@ -527,6 +542,7 @@ class ExecContext(BaseContext):
         ind_scope: IndicatorScope,
         input_scope: ModelInputScope,
         pred_scope: PredictionScope,
+        pending_order_scope: PendingOrderScope,
         models: Mapping[ModelSymbol, TrainedModel],
         sym_end_index: Mapping[str, int],
     ):
@@ -536,6 +552,7 @@ class ExecContext(BaseContext):
             ind_scope=ind_scope,
             input_scope=input_scope,
             pred_scope=pred_scope,
+            pending_order_scope=pending_order_scope,
             models=models,
             sym_end_index=sym_end_index,
         )
@@ -826,7 +843,15 @@ class ExecContext(BaseContext):
         price = self.close[-1] if price is None else price
         return super().calc_target_shares(target_size, price)
 
-    def _get_symbol(self, symbol: Optional[str]) -> str:
+    def cancel_pending_order(self, order_id: int) -> bool:
+        """Cancels a :class:`pybroker.scope.PendingOrder` with ``order_id``."""
+        return self._pending_order_scope.remove(order_id)
+
+    def cancel_all_pending_orders(self, symbol: Optional[str] = None):
+        r"""Cancels all :class:`pybroker.scope.PendingOrder`\ s."""
+        self._pending_order_scope.remove_all(symbol)
+
+    def _get_symbol(self, symbol: Optional[str] = None) -> str:
         if symbol is not None:
             return symbol
         if self.symbol is None:
@@ -841,6 +866,11 @@ class ExecContext(BaseContext):
             raise ValueError("curr_date is not set.")
         if self.symbol is None:
             raise ValueError("symbol is not set.")
+        buy_shares = (
+            to_decimal(self.buy_shares)
+            if self.buy_shares is not None
+            else None
+        )
         buy_limit_price = (
             to_decimal(self.buy_limit_price)
             if self.buy_limit_price is not None
@@ -851,6 +881,11 @@ class ExecContext(BaseContext):
             if self.sell_limit_price is not None
             else None
         )
+        sell_shares = (
+            to_decimal(self.sell_shares)
+            if self.sell_shares is not None
+            else None
+        )
         return ExecResult(
             symbol=self.symbol,
             date=self._curr_date,
@@ -858,9 +893,9 @@ class ExecContext(BaseContext):
             sell_fill_price=self.sell_fill_price,
             score=self.score,
             hold_bars=self.hold_bars,
-            buy_shares=self.buy_shares,
+            buy_shares=buy_shares,
             buy_limit_price=buy_limit_price,
-            sell_shares=self.sell_shares,
+            sell_shares=sell_shares,
             sell_limit_price=sell_limit_price,
         )
 

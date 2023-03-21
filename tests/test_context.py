@@ -113,6 +113,7 @@ def ctx(
     ind_scope,
     input_scope,
     pred_scope,
+    pending_order_scope,
     portfolio,
     trained_models,
     sym_end_index,
@@ -126,6 +127,7 @@ def ctx(
         ind_scope=ind_scope,
         input_scope=input_scope,
         pred_scope=pred_scope,
+        pending_order_scope=pending_order_scope,
         models=trained_models,
         sym_end_index=sym_end_index,
     )
@@ -139,6 +141,7 @@ def ctx_with_pos(
     ind_scope,
     input_scope,
     pred_scope,
+    pending_order_scope,
     portfolio,
     trained_models,
     sym_end_index,
@@ -159,6 +162,7 @@ def ctx_with_pos(
         ind_scope=ind_scope,
         input_scope=input_scope,
         pred_scope=pred_scope,
+        pending_order_scope=pending_order_scope,
         models=trained_models,
         sym_end_index=sym_end_index,
     )
@@ -172,6 +176,7 @@ def ctx_with_orders(
     ind_scope,
     input_scope,
     pred_scope,
+    pending_order_scope,
     portfolio,
     trained_models,
     sym_end_index,
@@ -189,6 +194,7 @@ def ctx_with_orders(
         ind_scope=ind_scope,
         input_scope=input_scope,
         pred_scope=pred_scope,
+        pending_order_scope=pending_order_scope,
         models=trained_models,
         sym_end_index=sym_end_index,
     )
@@ -497,6 +503,7 @@ def test_set_pos_ctx_data(
     ind_scope,
     input_scope,
     pred_scope,
+    pending_order_scope,
     trained_models,
     sym_end_index,
 ):
@@ -546,6 +553,7 @@ def test_set_pos_ctx_data(
         ind_scope,
         input_scope,
         pred_scope,
+        pending_order_scope,
         trained_models,
         sym_end_index,
         max_long_positions=1,
@@ -582,3 +590,19 @@ def test_set_pos_ctx_data(
     assert all_signals[1].score == sell_signals[0].score
     assert all_signals[1].type == sell_signals[0].type
     assert all_signals[1].bar_data is not None
+
+
+def test_cancel_pending_order(ctx, pending_orders):
+    ctx.cancel_pending_order(pending_orders[0].id)
+    orders = tuple(ctx.pending_orders())
+    assert orders == tuple([pending_orders[1]])
+
+
+def test_cancel_all_pending_orders(ctx):
+    ctx.cancel_all_pending_orders()
+    assert not tuple(ctx.pending_orders())
+
+
+def test_pending_orders(ctx, pending_orders):
+    assert tuple(ctx.pending_orders()) == pending_orders
+    assert tuple(ctx.pending_orders("AAPL")) == tuple([pending_orders[1]])

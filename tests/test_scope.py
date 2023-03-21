@@ -423,3 +423,37 @@ class TestPriceScope:
         col_scope = ColumnScope(df.set_index(["symbol", "date"]))
         price_scope = PriceScope(col_scope, {"SPY": 2})
         assert price_scope.fetch("SPY", price) == expected_price
+
+
+class TestPendingOrderScope:
+    def test_remove(self, pending_orders, pending_order_scope):
+        pending_order_scope.remove(pending_orders[0].id)
+        orders = tuple(pending_order_scope.orders())
+        assert len(orders) == 1
+        assert orders[0] == pending_orders[1]
+        assert not pending_order_scope.contains(1)
+        assert pending_order_scope.contains(2)
+
+    def test_remove_all(self, pending_order_scope):
+        pending_order_scope.remove_all()
+        assert not tuple(pending_order_scope.orders())
+        assert not pending_order_scope.contains(1)
+        assert not pending_order_scope.contains(2)
+
+    def test_remove_all_when_symbol(self, pending_orders, pending_order_scope):
+        pending_order_scope.remove_all("AAPL")
+        orders = tuple(pending_order_scope.orders())
+        assert len(orders) == 1
+        assert orders[0] == pending_orders[0]
+        assert not pending_order_scope.contains(2)
+        assert pending_order_scope.contains(1)
+
+    def test_contains(self, pending_order_scope):
+        assert pending_order_scope.contains(1)
+        assert not pending_order_scope.contains(3)
+
+    def test_orders(self, pending_orders, pending_order_scope):
+        assert tuple(pending_order_scope.orders()) == pending_orders
+        assert tuple(pending_order_scope.orders("SPY")) == tuple(
+            [pending_orders[0]]
+        )

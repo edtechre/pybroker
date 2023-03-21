@@ -37,7 +37,9 @@ from typing import (
     Callable,
     Collection,
     Iterable,
+    Literal,
     Mapping,
+    NamedTuple,
     Optional,
     Sequence,
     Union,
@@ -572,3 +574,124 @@ class PriceScope:
             return to_decimal(price(symbol, bar_data))
         else:
             raise ValueError(f"Unknown price: {price_type}")
+
+
+class PendingOrder(NamedTuple):
+    """Holds data for a pending order.
+
+    Attributes:
+        id: Unique ID.
+        type: Type of order, either ``buy`` or ``sell``.
+        symbol: Ticker symbol of the order.
+        created: Date the order was created.
+        exec_date: Date the order will be executed.
+        shares: Number of shares to be bought or sold.
+        limit_price: Limit price to use for the order.
+        fill_price: Price that the order will be filled at.
+    """
+
+    id: int
+    type: Literal["buy", "sell"]
+    symbol: str
+    created: np.datetime64
+    exec_date: np.datetime64
+    shares: Decimal
+    limit_price: Optional[Decimal]
+    fill_price: Union[
+        int,
+        float,
+        Decimal,
+        PriceType,
+        Callable[[str, BarData], Union[int, float, Decimal]],
+    ]
+
+
+class PendingOrderScope:
+    r"""Stores :class:`.PendingOrder`\ s"""
+
+    _order_id: int = 0
+
+    def __init__(self):
+        self._orders: dict[int, PendingOrder] = {}
+        self._sym_orders: dict[str, set[PendingOrder]] = defaultdict(set)
+
+    def contains(self, order_id: int) -> bool:
+        """Returns whether a :class:`.PendingOrder` exists with
+        ``order_id``.
+        """
+        return order_id in self._orders
+
+    def add(
+        self,
+        type: Literal["buy", "sell"],
+        symbol: str,
+        created: np.datetime64,
+        exec_date: np.datetime64,
+        shares: Decimal,
+        limit_price: Optional[Decimal],
+        fill_price: Union[
+            int,
+            float,
+            Decimal,
+            PriceType,
+            Callable[[str, BarData], Union[int, float, Decimal]],
+        ],
+    ) -> int:
+        """Creates a :class:`.PendingOrder`.
+
+        Args:
+            type: Type of order, either ``buy`` or ``sell``.
+            symbol: Ticker symbol of the order.
+            created: Date the order was created.
+            exec_date: Date the order will be executed.
+            shares: Number of shares to be bought or sold.
+            limit_price: Limit price to use for the order.
+            fill_price: Price that the order will be filled at.
+
+        Returns:
+            ID of the :class:`.PendingOrder`.
+        """
+        self._order_id += 1
+        order = PendingOrder(
+            id=self._order_id,
+            type=type,
+            symbol=symbol,
+            created=created,
+            exec_date=exec_date,
+            shares=shares,
+            limit_price=limit_price,
+            fill_price=fill_price,
+        )
+        self._orders[self._order_id] = order
+        self._sym_orders[symbol].add(order)
+        return order.id
+
+    def remove(self, order_id: int) -> bool:
+        """Removes a :class:`.PendingOrder` with ``order_id```."""
+        if order_id in self._orders:
+            order = self._orders[order_id]
+            del self._orders[order_id]
+            if order.symbol in self._sym_orders:
+                self._sym_orders[order.symbol].remove(order)
+            return True
+        return False
+
+    def remove_all(self, symbol: Optional[str] = None):
+        r"""Removes all :class:`.PendingOrder`\ s."""
+        if symbol is None:
+            cancel_ids = tuple(self._orders.keys())
+            for order_id in cancel_ids:
+                self.remove(order_id)
+        elif symbol in self._sym_orders:
+            cancel_ids = tuple(order.id for order in self._sym_orders[symbol])
+            for order_id in cancel_ids:
+                self.remove(order_id)
+
+    def orders(self, symbol: Optional[str] = None) -> Iterable[PendingOrder]:
+        r"""Returns an :class:`Iterable` of :class:`.PendingOrder`\ s."""
+        if symbol is None:
+            return self._orders.values()
+        else:
+            if symbol not in self._sym_orders:
+                return []
+            return self._sym_orders[symbol]

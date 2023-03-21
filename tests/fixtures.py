@@ -20,6 +20,7 @@ import numpy as np
 import os
 import pandas as pd
 import pytest
+from decimal import Decimal
 from pybroker.cache import (
     clear_data_source_cache,
     clear_indicator_cache,
@@ -31,12 +32,15 @@ from pybroker.cache import (
     enable_model_cache,
     enable_indicator_cache,
 )
+from pybroker.common import PriceType
 from pybroker.indicator import IndicatorSymbol, indicator
 from pybroker.model import ModelSymbol, TrainedModel, model
 from pybroker.scope import (
     ColumnScope,
     IndicatorScope,
     ModelInputScope,
+    PendingOrder,
+    PendingOrderScope,
     PredictionScope,
     StaticScope,
 )
@@ -210,6 +214,48 @@ def input_scope(col_scope, ind_scope):
 @pytest.fixture()
 def pred_scope(trained_models, input_scope):
     return PredictionScope(trained_models, input_scope)
+
+
+@pytest.fixture()
+def pending_orders():
+    return (
+        PendingOrder(
+            id=1,
+            type="buy",
+            symbol="SPY",
+            created=np.datetime64("2020-01-05"),
+            exec_date=np.datetime64("2020-01-10"),
+            shares=Decimal(100),
+            limit_price=None,
+            fill_price=PriceType.MIDDLE,
+        ),
+        PendingOrder(
+            id=2,
+            type="sell",
+            symbol="AAPL",
+            created=np.datetime64("2020-01-06"),
+            exec_date=np.datetime64("2020-01-08"),
+            shares=Decimal(200),
+            limit_price=Decimal(99),
+            fill_price=PriceType.AVERAGE,
+        ),
+    )
+
+
+@pytest.fixture()
+def pending_order_scope(pending_orders):
+    scope = PendingOrderScope()
+    for order in pending_orders:
+        scope.add(
+            type=order.type,
+            symbol=order.symbol,
+            created=order.created,
+            exec_date=order.exec_date,
+            shares=order.shares,
+            limit_price=order.limit_price,
+            fill_price=order.fill_price,
+        )
+    return scope
 
 
 @pytest.fixture()

@@ -35,6 +35,7 @@ from pybroker.portfolio import (
     PositionBar,
     Trade,
 )
+from pybroker.scope import PendingOrder
 from pybroker.strategy import (
     BacktestMixin,
     Execution,
@@ -1752,3 +1753,89 @@ class TestStrategy:
             ),
         ):
             strategy.backtest()
+
+    def test_backtest_pending_orders(self, data_source_df):
+        buy_delay = 2
+        dates = data_source_df[data_source_df["symbol"] == "SPY"][
+            "date"
+        ].unique()
+        dates = dates[dates <= np.datetime64(END_DATE)]
+
+        def buy_exec_fn(ctx):
+            if ctx.bars == 1:
+                ctx.buy_shares = 100
+            elif ctx.bars == 2:
+                orders = tuple(ctx.pending_orders())
+                assert len(orders) == 1
+                assert orders[0] == PendingOrder(
+                    id=1,
+                    type="buy",
+                    symbol="SPY",
+                    created=ctx.date[0],
+                    exec_date=dates[buy_delay],
+                    shares=100,
+                    limit_price=None,
+                    fill_price=PriceType.MIDDLE,
+                )
+            else:
+                assert not tuple(ctx.pending_orders())
+
+        config = StrategyConfig(buy_delay=buy_delay)
+        strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+        strategy.add_execution(buy_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        assert len(result.orders) == 1
+        order = result.orders.iloc[0]
+        assert order["type"] == "buy"
+        assert order["symbol"] == "SPY"
+        assert order["date"] == dates[2]
+        assert np.isnan(order["limit_price"])
+        assert order["shares"] == 100
+
+    def test_backtest_when_pending_orders_canceled(self, data_source_df):
+        dates = data_source_df[data_source_df["symbol"] == "SPY"][
+            "date"
+        ].unique()
+        dates = dates[dates <= np.datetime64(END_DATE)]
+        buy_delay = 10
+        sell_delay = 5
+
+        def exec_fn(ctx):
+            if ctx.bars == 1:
+                ctx.buy_shares = 100
+                ctx.buy_limit_price = 99
+            elif ctx.bars == 2:
+                ctx.sell_shares = 200
+                ctx.sell_limit_price = 100
+            elif ctx.bars == 3:
+                orders = tuple(ctx.pending_orders())
+                assert len(orders) == 2
+                assert orders[0] == PendingOrder(
+                    id=1,
+                    type="buy",
+                    symbol="SPY",
+                    created=ctx.date[0],
+                    exec_date=dates[buy_delay],
+                    shares=100,
+                    limit_price=99,
+                    fill_price=PriceType.MIDDLE,
+                )
+                assert orders[1] == PendingOrder(
+                    id=2,
+                    type="sell",
+                    symbol="SPY",
+                    created=ctx.date[1],
+                    exec_date=dates[1 + sell_delay],
+                    shares=200,
+                    limit_price=100,
+                    fill_price=PriceType.MIDDLE,
+                )
+                ctx.cancel_all_pending_orders()
+            else:
+                assert not tuple(ctx.pending_orders())
+
+        config = StrategyConfig(buy_delay=buy_delay, sell_delay=sell_delay)
+        strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+        strategy.add_execution(exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        assert not len(result.orders)

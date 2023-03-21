@@ -5,3 +5,5 @@ pybroker.scope module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: id, type, symbol, created, exec_date, shares, limit_price,
+      fill_price
