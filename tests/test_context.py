@@ -603,6 +603,11 @@ def test_cancel_all_pending_orders(ctx):
     assert not tuple(ctx.pending_orders())
 
 
+def test_cancel_all_pending_orders_when_symbol(ctx, pending_orders):
+    ctx.cancel_all_pending_orders("SPY")
+    assert tuple(ctx.pending_orders()) == tuple([pending_orders[1]])
+
+
 def test_pending_orders(ctx, pending_orders):
     assert tuple(ctx.pending_orders()) == pending_orders
     assert tuple(ctx.pending_orders("AAPL")) == tuple([pending_orders[1]])
