@@ -18,13 +18,6 @@
          font-size: 3em;
       }
    </style>
-   <script>
-      window.addEventListener("load", function() {
-         jQuery(function() {
-            SphinxRtdTheme.Navigation.enable(true);
-         });
-      });
-   </script>
 
 ================
 PyBroker

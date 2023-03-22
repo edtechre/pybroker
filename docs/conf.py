@@ -23,6 +23,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
+    "sphinxcontrib.jquery",
 ]
 
 autodoc_default_options = {
