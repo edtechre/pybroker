@@ -489,11 +489,31 @@ def test_set_exec_ctx_data(ctx, symbols, sym_end_index):
     sym = symbols[-1]
     session = {"a": 1, "b": 2}
     date = np.datetime64("2020-01-01")
+    ctx._end_index = 1000
+    ctx._foreign = {"SPY": np.random.rand(100)}
+    ctx.buy_fill_price = PriceType.AVERAGE
+    ctx.buy_shares = 100
+    ctx.buy_limit_price = 99
+    ctx.sell_fill_price = PriceType.CLOSE
+    ctx.sell_shares = 200
+    ctx.sell_limit_price = 80
+    ctx.hold_bars = 5
+    ctx.score = 45.5
     set_exec_ctx_data(ctx, session, sym, date)
     assert ctx.session == session
     assert ctx.symbol == sym
     assert ctx.dt == to_datetime(date)
     assert ctx.bars == sym_end_index[sym]
+    assert not ctx._foreign
+    assert ctx._end_index == sym_end_index[sym]
+    assert ctx.buy_fill_price == PriceType.MIDDLE
+    assert ctx.buy_shares is None
+    assert ctx.buy_limit_price is None
+    assert ctx.sell_fill_price == PriceType.MIDDLE
+    assert ctx.sell_shares is None
+    assert ctx.sell_limit_price is None
+    assert ctx.hold_bars is None
+    assert ctx.score is None
 
 
 def test_set_pos_ctx_data(
