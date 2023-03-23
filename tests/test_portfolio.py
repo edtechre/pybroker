@@ -1966,7 +1966,7 @@ def test_trigger_long_trailing_stop(percent, points, expected_fill_price):
             [SYMBOL_1, DATE_3, 290, 295],
             [SYMBOL_1, DATE_4, 200, 200],
         ],
-        columns=["symbol", "date", "low", "close"],
+        columns=["symbol", "date", "low", "high"],
     )
     df = df.set_index(["symbol", "date"])
     sym_end_index = {SYMBOL_1: 2}
@@ -2328,7 +2328,7 @@ def test_trigger_short_trailing_stop(percent, points, expected_fill_price):
             [SYMBOL_1, DATE_3, 215, 210],
             [SYMBOL_1, DATE_4, 400, 400],
         ],
-        columns=["symbol", "date", "high", "close"],
+        columns=["symbol", "date", "high", "low"],
     )
     df = df.set_index(["symbol", "date"])
     sym_end_index = {SYMBOL_1: 2}

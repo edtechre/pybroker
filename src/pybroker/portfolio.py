@@ -1097,14 +1097,16 @@ class Portfolio:
         fill_price = self._trigger_profit_or_loss_stop(stop, price_scope)
         if fill_price is not None:
             return fill_price
-        close = price_scope.fetch(stop.symbol, PriceType.CLOSE)
-        amount = self._get_stop_amount(stop, close)
         if stop.pos_type == "long":
+            high = price_scope.fetch(stop.symbol, PriceType.HIGH)
+            amount = self._get_stop_amount(stop, high)
             self._stop_data[stop.id].value = max(
-                close - amount, self._stop_data[stop.id].value
+                high - amount, self._stop_data[stop.id].value
             )
         else:
+            low = price_scope.fetch(stop.symbol, PriceType.LOW)
+            amount = self._get_stop_amount(stop, low)
             self._stop_data[stop.id].value = min(
-                close + amount, self._stop_data[stop.id].value
+                low + amount, self._stop_data[stop.id].value
             )
         return None
