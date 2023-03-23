@@ -44,7 +44,7 @@ from pybroker.strategy import (
     TestResult,
     WalkforwardMixin,
 )
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 
 @pytest.fixture(params=[200, 202])
@@ -319,144 +319,6 @@ class TestBacktestMixin:
                 str(sell_df[sell_df["date"] == date]["close"].values[0])
             )
             assert kwargs["limit_price"] == 50.5
-
-    def test_backtest_executions_when_buy_hold_bars(self, data_source_df):
-        def buy_exec_fn(ctx):
-            ctx.buy_fill_price = PriceType.CLOSE
-            ctx.sell_fill_price = PriceType.OPEN
-            ctx.buy_shares = 200
-            ctx.hold_bars = 2
-
-        buy_exec = Execution(
-            id=1,
-            symbols=frozenset(["SPY"]),
-            fn=buy_exec_fn,
-            model_names=frozenset(),
-            indicator_names=frozenset(),
-        )
-        execs = {buy_exec}
-        mock_portfolio = Mock()
-
-        def buy_fn(date, symbol, shares, fill_price, limit_price):
-            return Order(
-                id=1,
-                symbol=symbol,
-                type="buy",
-                date=date,
-                shares=shares,
-                fill_price=fill_price,
-                limit_price=limit_price,
-                fees=0,
-            )
-
-        mock_portfolio.buy = MagicMock(side_effect=buy_fn)
-        mixin = BacktestMixin()
-        mixin.backtest_executions(
-            executions=execs,
-            sessions=self._sessions(execs),
-            models={},
-            indicator_data={},
-            test_data=data_source_df,
-            portfolio=mock_portfolio,
-            buy_delay=1,
-            sell_delay=1,
-            max_long_positions=None,
-            max_short_positions=None,
-            pos_size_handler=None,
-            exit_dates={},
-        )
-        df = data_source_df[data_source_df["symbol"] == "SPY"]
-        buy_dates = df["date"].unique()[1:]
-        assert len(mock_portfolio.buy.call_args_list) == len(buy_dates)
-        for i, date in enumerate(buy_dates):
-            _, kwargs = mock_portfolio.buy.call_args_list[i]
-            assert kwargs["date"] == date
-            assert kwargs["symbol"] == "SPY"
-            assert kwargs["shares"] == 200
-            assert kwargs["fill_price"] == Decimal(
-                str(df[df["date"] == date]["close"].values[0])
-            )
-            assert kwargs["limit_price"] is None
-        sell_dates = df["date"].unique()[3:]
-        assert len(mock_portfolio.sell.call_args_list) == len(sell_dates)
-        for i, date in enumerate(sell_dates):
-            _, kwargs = mock_portfolio.sell.call_args_list[i]
-            assert kwargs["date"] == date
-            assert kwargs["symbol"] == "SPY"
-            assert kwargs["shares"] == 200
-            assert kwargs["fill_price"] == Decimal(
-                str(df[df["date"] == date]["open"].values[0])
-            )
-            assert kwargs["limit_price"] is None
-
-    def test_backtest_executions_when_sell_hold_bars(self, data_source_df):
-        def sell_exec_fn(ctx):
-            ctx.sell_fill_price = PriceType.OPEN
-            ctx.buy_fill_price = PriceType.CLOSE
-            ctx.sell_shares = 100
-            ctx.hold_bars = 1
-
-        sell_exec = Execution(
-            id=1,
-            symbols=frozenset(["AAPL"]),
-            fn=sell_exec_fn,
-            model_names=frozenset(),
-            indicator_names=frozenset(),
-        )
-        execs = {sell_exec}
-        mock_portfolio = Mock()
-
-        def sell_fn(date, symbol, shares, fill_price, limit_price):
-            return Order(
-                id=1,
-                symbol=symbol,
-                type="sell",
-                date=date,
-                shares=shares,
-                fill_price=fill_price,
-                limit_price=limit_price,
-                fees=0,
-            )
-
-        mock_portfolio.sell = MagicMock(side_effect=sell_fn)
-        mixin = BacktestMixin()
-        mixin.backtest_executions(
-            executions=execs,
-            sessions=self._sessions(execs),
-            models={},
-            indicator_data={},
-            test_data=data_source_df,
-            portfolio=mock_portfolio,
-            buy_delay=1,
-            sell_delay=1,
-            max_long_positions=None,
-            max_short_positions=None,
-            pos_size_handler=None,
-            exit_dates={},
-        )
-        df = data_source_df[data_source_df["symbol"] == "AAPL"]
-        sell_dates = df["date"].unique()[1:]
-        assert len(mock_portfolio.sell.call_args_list) == len(sell_dates)
-        for i, date in enumerate(sell_dates):
-            _, kwargs = mock_portfolio.sell.call_args_list[i]
-            assert kwargs["date"] == date
-            assert kwargs["symbol"] == "AAPL"
-            assert kwargs["shares"] == 100
-            assert kwargs["fill_price"] == Decimal(
-                str(df[df["date"] == date]["open"].values[0])
-            )
-            assert kwargs["limit_price"] is None
-        buy_dates = df["date"].unique()[2:]
-        assert len(mock_portfolio.buy.call_args_list) == len(buy_dates)
-        for i, date in enumerate(buy_dates):
-            _, kwargs = mock_portfolio.buy.call_args_list[i]
-            assert kwargs["date"] == date
-            assert kwargs["symbol"] == "AAPL"
-            assert kwargs["shares"] == 100
-            assert kwargs["fill_price"] == Decimal(
-                str(df[df["date"] == date]["close"].values[0])
-            )
-            assert kwargs["limit_price"] is None
 
     def test_backtest_executions_when_invalid_buy_hold_bars_then_error(
         self, data_source_df
@@ -1628,6 +1490,7 @@ class TestStrategy:
                     agg_pnl=Decimal(1000),
                     bars=2,
                     pnl_per_bar=Decimal(500),
+                    stop=None,
                 ),
             )
         )
@@ -1839,3 +1702,210 @@ class TestStrategy:
         strategy.add_execution(exec_fn, "SPY")
         result = strategy.backtest(calc_bootstrap=False)
         assert not len(result.orders)
+
+    def test_backtest_when_buy_hold_bars(self, data_source_df):
+        def buy_exec_fn(ctx):
+            ctx.buy_fill_price = PriceType.CLOSE
+            ctx.sell_fill_price = PriceType.OPEN
+            ctx.buy_shares = 100
+            ctx.hold_bars = 2
+
+        df = data_source_df[data_source_df["symbol"] == "SPY"]
+        dates = df["date"].unique()
+        dates = dates[dates <= np.datetime64(END_DATE)]
+        buy_dates = dates[1:]
+        sell_dates = dates[3:]
+        config = StrategyConfig(initial_cash=500_000)
+        strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+        strategy.add_execution(buy_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        orders = result.orders
+        buy_orders = orders[orders["type"] == "buy"]
+        assert len(buy_orders) == len(buy_dates)
+        for buy_date in buy_dates:
+            row = buy_orders[buy_orders["date"] == buy_date]
+            assert row["symbol"].item() == "SPY"
+            assert row["shares"].item() == 100
+            assert np.isnan(row["limit_price"].item())
+            assert row["fill_price"].item() == round(
+                df[df["date"] == buy_date]["close"].item(), 2
+            )
+            assert row["fees"].item() == 0
+        sell_orders = orders[orders["type"] == "sell"]
+        assert len(sell_orders) == len(sell_dates)
+        for sell_date in sell_dates:
+            row = sell_orders[sell_orders["date"] == sell_date]
+            assert row["symbol"].item() == "SPY"
+            assert row["shares"].item() == 100
+            assert np.isnan(row["limit_price"].item())
+            assert row["fill_price"].item() == round(
+                df[df["date"] == sell_date]["open"].item(), 2
+            )
+            assert row["fees"].item() == 0
+        assert (result.trades["stop"] == "bar").all()
+
+    def test_backtest_when_sell_hold_bars(self, data_source_df):
+        def sell_exec_fn(ctx):
+            ctx.sell_fill_price = PriceType.OPEN
+            ctx.buy_fill_price = PriceType.CLOSE
+            ctx.sell_shares = 100
+            ctx.hold_bars = 1
+
+        df = data_source_df[data_source_df["symbol"] == "SPY"]
+        dates = df["date"].unique()
+        dates = dates[dates <= np.datetime64(END_DATE)]
+        buy_dates = dates[2:]
+        sell_dates = dates[1:]
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(sell_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        orders = result.orders
+        sell_orders = orders[orders["type"] == "sell"]
+        assert len(sell_orders) == len(sell_dates)
+        for sell_date in sell_dates:
+            row = sell_orders[sell_orders["date"] == sell_date]
+            assert row["symbol"].item() == "SPY"
+            assert row["shares"].item() == 100
+            assert np.isnan(row["limit_price"].item())
+            assert row["fill_price"].item() == round(
+                df[df["date"] == sell_date]["open"].item(), 2
+            )
+            assert row["fees"].item() == 0
+        buy_orders = orders[orders["type"] == "buy"]
+        assert len(buy_orders) == len(buy_dates)
+        for buy_date in buy_dates:
+            row = buy_orders[buy_orders["date"] == buy_date]
+            assert row["symbol"].item() == "SPY"
+            assert row["shares"].item() == 100
+            assert np.isnan(row["limit_price"].item())
+            assert row["fill_price"].item() == round(
+                df[df["date"] == buy_date]["close"].item(), 2
+            )
+            assert row["fees"].item() == 0
+        assert len(result.trades) == len(buy_orders)
+        assert (result.trades["stop"] == "bar").all()
+
+    def test_backtest_when_stop_loss(self, data_source_df):
+        def exec_fn(ctx):
+            if ctx.bars == 1:
+                ctx.buy_shares = 100
+                ctx.stop_loss = 10
+
+        df = data_source_df[data_source_df["symbol"] == "SPY"]
+        dates = df["date"].unique()
+        dates = dates[dates <= np.datetime64(END_DATE)]
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        assert len(result.trades) == 1
+        trade = result.trades.iloc[0]
+        assert trade["type"] == "long"
+        assert trade["symbol"] == "SPY"
+        assert trade["entry_date"] == dates[1]
+        assert trade["exit"] == trade["entry"] - 10
+        assert trade["shares"] == 100
+        assert trade["pnl"] == -1000
+        assert trade["agg_pnl"] == -1000
+        assert trade["pnl_per_bar"] == round(-1000 / trade["bars"], 2)
+        assert trade["stop"] == "loss"
+        assert len(result.orders) == 2
+        buy_order = result.orders.iloc[0]
+        assert buy_order["type"] == "buy"
+        assert buy_order["symbol"] == "SPY"
+        assert buy_order["date"] == dates[1]
+        assert buy_order["shares"] == 100
+        assert np.isnan(buy_order["limit_price"])
+        assert buy_order["fees"] == 0
+        sell_order = result.orders.iloc[1]
+        assert sell_order["type"] == "sell"
+        assert sell_order["symbol"] == "SPY"
+        assert sell_order["shares"] == 100
+        assert np.isnan(sell_order["limit_price"])
+        assert sell_order["fees"] == 0
+
+    def test_backtest_when_sell_before_stop_loss(self, data_source_df):
+        def exec_fn(ctx):
+            if ctx.bars == 1:
+                ctx.buy_shares = 100
+                ctx.stop_loss = 10
+            elif ctx.bars == 10:
+                ctx.sell_all_shares()
+
+        df = data_source_df[data_source_df["symbol"] == "SPY"]
+        dates = df["date"].unique()
+        dates = dates[dates <= np.datetime64(END_DATE)]
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        assert len(result.trades) == 1
+        trade = result.trades.iloc[0]
+        assert trade["type"] == "long"
+        assert trade["symbol"] == "SPY"
+        assert trade["entry_date"] == dates[1]
+        assert trade["exit_date"] == dates[10]
+        assert trade["shares"] == 100
+        assert trade["stop"] is None
+        assert len(result.orders) == 2
+        buy_order = result.orders.iloc[0]
+        assert buy_order["type"] == "buy"
+        assert buy_order["symbol"] == "SPY"
+        assert buy_order["date"] == dates[1]
+        assert buy_order["shares"] == 100
+        assert np.isnan(buy_order["limit_price"])
+        assert buy_order["fees"] == 0
+        sell_order = result.orders.iloc[1]
+        assert sell_order["type"] == "sell"
+        assert sell_order["symbol"] == "SPY"
+        assert sell_order["date"] == dates[10]
+        assert sell_order["shares"] == 100
+        assert np.isnan(sell_order["limit_price"])
+        assert sell_order["fees"] == 0
+
+    def test_backtest_when_cancel_stop(self, data_source_df):
+        def exec_fn(ctx):
+            if ctx.bars == 1:
+                ctx.buy_shares = 100
+                ctx.stop_loss = 10
+            elif ctx.bars == 10:
+                ctx.cancel_stop(stop_id=1)
+
+        df = data_source_df[data_source_df["symbol"] == "SPY"]
+        dates = df["date"].unique()
+        dates = dates[dates <= np.datetime64(END_DATE)]
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        assert not len(result.trades)
+        assert len(result.orders) == 1
+        buy_order = result.orders.iloc[0]
+        assert buy_order["type"] == "buy"
+        assert buy_order["symbol"] == "SPY"
+        assert buy_order["date"] == dates[1]
+        assert buy_order["shares"] == 100
+        assert np.isnan(buy_order["limit_price"])
+        assert buy_order["fees"] == 0
+
+    def test_backtest_when_cancel_stops(self, data_source_df):
+        def exec_fn(ctx):
+            if ctx.bars == 1:
+                ctx.buy_shares = 100
+                ctx.stop_loss = 10
+                ctx.stop_trailing = 10
+            elif ctx.bars == 10:
+                ctx.cancel_stops("SPY")
+
+        df = data_source_df[data_source_df["symbol"] == "SPY"]
+        dates = df["date"].unique()
+        dates = dates[dates <= np.datetime64(END_DATE)]
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        assert not len(result.trades)
+        assert len(result.orders) == 1
+        buy_order = result.orders.iloc[0]
+        assert buy_order["type"] == "buy"
+        assert buy_order["symbol"] == "SPY"
+        assert buy_order["date"] == dates[1]
+        assert buy_order["shares"] == 100
+        assert np.isnan(buy_order["limit_price"])
+        assert buy_order["fees"] == 0

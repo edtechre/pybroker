@@ -21,7 +21,7 @@ import re
 from .fixtures import *
 from collections import deque
 from decimal import Decimal
-from pybroker.common import PriceType, to_datetime
+from pybroker.common import PriceType, StopType, to_datetime
 from pybroker.context import (
     ExecContext,
     ExecResult,
@@ -29,7 +29,7 @@ from pybroker.context import (
     set_exec_ctx_data,
     set_pos_size_ctx_data,
 )
-from pybroker.portfolio import Order, Portfolio, Position, Trade
+from pybroker.portfolio import Order, Portfolio, Position, Stop, Trade
 
 
 @pytest.fixture()
@@ -104,6 +104,7 @@ def trades(dates, symbols):
         agg_pnl=Decimal(100),
         bars=1,
         pnl_per_bar=Decimal(100),
+        stop=None,
     )
 
 
@@ -466,7 +467,108 @@ def test_to_result(ctx, symbol, date):
         sell_limit_price=Decimal("110.11"),
         hold_bars=2,
         score=7,
+        long_stops=frozenset(
+            [
+                Stop(
+                    id=1,
+                    symbol=symbol,
+                    stop_type=StopType.BAR,
+                    pos_type="long",
+                    percent=None,
+                    points=None,
+                    bars=2,
+                    fill_price=PriceType.HIGH,
+                    limit_price=None,
+                )
+            ]
+        ),
+        short_stops=None,
     )
+
+
+@pytest.mark.parametrize("pos_type", ["long", "short"])
+@pytest.mark.parametrize(
+    "stop_attr, expected_stop_type",
+    [
+        ("stop_loss", StopType.LOSS),
+        ("stop_loss_pct", StopType.LOSS),
+        ("stop_profit", StopType.PROFIT),
+        ("stop_profit_pct", StopType.PROFIT),
+        ("stop_trailing", StopType.TRAILING),
+        ("stop_trailing_pct", StopType.TRAILING),
+    ],
+)
+def test_to_result_when_stop(
+    ctx, symbol, date, pos_type, stop_attr, expected_stop_type
+):
+    stop_limit = 200
+    stop_amount = 20
+    percent = None
+    points = None
+    if stop_attr.endswith("_pct"):
+        percent = stop_amount
+    else:
+        points = stop_amount
+    expected_stops = frozenset(
+        [
+            Stop(
+                id=1,
+                symbol=symbol,
+                stop_type=expected_stop_type,
+                pos_type=pos_type,
+                percent=percent,
+                points=points,
+                bars=None,
+                fill_price=None,
+                limit_price=stop_limit,
+            )
+        ]
+    )
+    buy_shares = None
+    sell_shares = None
+    long_stops = None
+    short_stops = None
+    if pos_type == "long":
+        buy_shares = 100
+        long_stops = expected_stops
+    else:
+        sell_shares = 100
+        short_stops = expected_stops
+    ctx.buy_shares = buy_shares
+    ctx.sell_shares = sell_shares
+    setattr(ctx, stop_attr, stop_amount)
+    setattr(ctx, f"{stop_attr.replace('_pct', '')}_limit", stop_limit)
+    result = ctx.to_result()
+    assert result == ExecResult(
+        symbol=symbol,
+        date=date,
+        buy_fill_price=PriceType.MIDDLE,
+        buy_shares=buy_shares,
+        buy_limit_price=None,
+        sell_fill_price=PriceType.MIDDLE,
+        sell_shares=sell_shares,
+        sell_limit_price=None,
+        hold_bars=None,
+        score=None,
+        long_stops=long_stops,
+        short_stops=short_stops,
+    )
+
+
+@pytest.mark.parametrize(
+    "stop_attr", ["stop_loss", "stop_profit", "stop_trailing"]
+)
+def test_to_result_when_stop_pct_and_points_then_error(ctx, stop_attr):
+    ctx.buy_shares = 100
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            f"Only one of {stop_attr} or {stop_attr}_pct can be set."
+        ),
+    ):
+        setattr(ctx, stop_attr, 20)
+        setattr(ctx, f"{stop_attr}_pct", 20)
+        ctx.to_result()
 
 
 def test_orders(ctx_with_orders, orders):
@@ -499,6 +601,15 @@ def test_set_exec_ctx_data(ctx, symbols, sym_end_index):
     ctx.sell_limit_price = 80
     ctx.hold_bars = 5
     ctx.score = 45.5
+    ctx.stop_loss = 10
+    ctx.stop_loss_pct = 20
+    ctx.stop_loss_limit = 99
+    ctx.stop_profit = 20
+    ctx.stop_profit_pct = 30
+    ctx.stop_profit_limit = 99.99
+    ctx.stop_trailing = 100
+    ctx.stop_trailing_pct = 15
+    ctx.stop_trailing_limit = 80.8
     set_exec_ctx_data(ctx, session, sym, date)
     assert ctx.session == session
     assert ctx.symbol == sym
@@ -514,6 +625,15 @@ def test_set_exec_ctx_data(ctx, symbols, sym_end_index):
     assert ctx.sell_limit_price is None
     assert ctx.hold_bars is None
     assert ctx.score is None
+    assert ctx.stop_loss is None
+    assert ctx.stop_loss_pct is None
+    assert ctx.stop_loss_limit is None
+    assert ctx.stop_profit is None
+    assert ctx.stop_profit_pct is None
+    assert ctx.stop_profit_limit is None
+    assert ctx.stop_trailing is None
+    assert ctx.stop_trailing_pct is None
+    assert ctx.stop_trailing_limit is None
 
 
 def test_set_pos_ctx_data(
@@ -539,6 +659,8 @@ def test_set_pos_ctx_data(
             sell_limit_price=None,
             hold_bars=None,
             score=1,
+            long_stops=None,
+            short_stops=None,
         ),
         ExecResult(
             symbol="AAPL",
@@ -551,6 +673,8 @@ def test_set_pos_ctx_data(
             sell_limit_price=None,
             hold_bars=None,
             score=2,
+            long_stops=None,
+            short_stops=None,
         ),
     ]
     sell_results = [
@@ -565,6 +689,8 @@ def test_set_pos_ctx_data(
             sell_limit_price=80,
             hold_bars=None,
             score=1,
+            long_stops=None,
+            short_stops=None,
         ),
     ]
     ctx = PosSizeContext(
