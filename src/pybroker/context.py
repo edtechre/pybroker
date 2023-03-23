@@ -886,7 +886,9 @@ class ExecContext(BaseContext):
         return self._pending_order_scope.remove(order_id)
 
     def cancel_all_pending_orders(self, symbol: Optional[str] = None):
-        r"""Cancels all :class:`pybroker.scope.PendingOrder`\ s."""
+        r"""Cancels all :class:`pybroker.scope.PendingOrder`\ s for ``symbol``.
+        When ``symbol`` is ``None``, all pending orders are canceled.
+        """
         self._pending_order_scope.remove_all(symbol)
 
     def cancel_stop(self, stop_id: int) -> bool:
