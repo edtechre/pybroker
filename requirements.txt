@@ -1,4 +1,4 @@
-alpaca-trade-api>=2.3.0
+alpaca-py>=0.7.2
 black>=22.10.0
 diskcache>=5.4.0
 flake8>=5.0.4
