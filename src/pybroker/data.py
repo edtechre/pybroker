@@ -64,6 +64,7 @@ class DataSourceCacheMixin:
                 - ``"h"``/``"hour"``: hours
                 - ``"d"``/``"day"``: days
                 - ``"w"``/``"week"``: weeks
+                - ``"mo"``/``"month"``: months
 
                 An example timeframe string is ``1h 30m``.
             start_date: Starting date of the cached data (inclusive).
@@ -129,6 +130,7 @@ class DataSourceCacheMixin:
                 - ``"h"``/``"hour"``: hours
                 - ``"d"``/``"day"``: days
                 - ``"w"``/``"week"``: weeks
+                - ``"mo"``/``"month"``: months
 
                 An example timeframe string would be ``1h 30m``.
             start_date: Starting date of the data to cache (inclusive).
@@ -190,6 +192,7 @@ class DataSource(ABC, DataSourceCacheMixin):
                 - ``"h"``/``"hour"``: hours
                 - ``"d"``/``"day"``: days
                 - ``"w"``/``"week"``: weeks
+                - ``"mo"``/``"month"``: months
 
                 An example timeframe string is ``1h 30m``.
 
@@ -268,6 +271,7 @@ class DataSource(ABC, DataSourceCacheMixin):
                 - ``"h"``/``"hour"``: hours
                 - ``"d"``/``"day"``: days
                 - ``"w"``/``"week"``: weeks
+                - ``"mo"``/``"month"``: months
 
                 An example timeframe string is ``1h 30m``.
 
