@@ -286,27 +286,22 @@ class BacktestMixin:
             if is_sell_sched:
                 self._place_sell_orders(
                     date=date,
-                    col_scope=col_scope,
                     price_scope=price_scope,
                     pending_order_scope=pending_order_scope,
-                    sym_end_index=sym_end_index,
                     sell_sched=sell_sched,
-                    buy_sched=buy_sched,
                     portfolio=portfolio,
                     enable_fractional_shares=enable_fractional_shares,
                 )
             if is_buy_sched:
                 self._place_buy_orders(
                     date=date,
-                    col_scope=col_scope,
                     price_scope=price_scope,
                     pending_order_scope=pending_order_scope,
-                    sym_end_index=sym_end_index,
                     buy_sched=buy_sched,
-                    sell_sched=sell_sched,
                     portfolio=portfolio,
                     enable_fractional_shares=enable_fractional_shares,
                 )
+            portfolio.check_stops(date, price_scope)
             portfolio.capture_bar(date, test_data)
             for exec_symbol in exec_symbols:
                 if date not in sym_exec_dates[exec_symbol.symbol]:
@@ -461,11 +456,8 @@ class BacktestMixin:
         self,
         date: np.datetime64,
         price_scope: PriceScope,
-        col_scope: ColumnScope,
         pending_order_scope: PendingOrderScope,
-        sym_end_index: Mapping[str, int],
         buy_sched: dict[np.datetime64, list[ExecResult]],
-        sell_sched: dict[np.datetime64, list[ExecResult]],
         portfolio: Portfolio,
         enable_fractional_shares: bool,
     ):
@@ -491,6 +483,7 @@ class BacktestMixin:
                 shares=buy_shares,
                 fill_price=fill_price,
                 limit_price=result.buy_limit_price,
+                stops=result.long_stops,
             )
             logger = StaticScope.instance().logger
             if order is None:
@@ -509,41 +502,14 @@ class BacktestMixin:
                     fill_price=fill_price,
                     limit_price=result.buy_limit_price,
                 )
-                if result.hold_bars is not None:
-                    if result.hold_bars <= 0:
-                        raise ValueError("hold_bars must be greater than 0.")
-                    sell_result = ExecResult(
-                        symbol=result.symbol,
-                        date=result.date,
-                        buy_fill_price=result.buy_fill_price,
-                        sell_shares=order.shares,
-                        sell_fill_price=result.sell_fill_price,
-                        sell_limit_price=result.sell_limit_price,
-                        score=result.score,
-                        hold_bars=None,
-                        buy_shares=None,
-                        buy_limit_price=None,
-                    )
-                    self._schedule_order(
-                        result=sell_result,
-                        created=date,
-                        sym_end_index=sym_end_index,
-                        delay=result.hold_bars,
-                        sched=sell_sched,
-                        col_scope=col_scope,
-                        pending_order_scope=pending_order_scope,
-                    )
         del buy_sched[date]
 
     def _place_sell_orders(
         self,
         date: np.datetime64,
         price_scope: PriceScope,
-        col_scope: ColumnScope,
         pending_order_scope: PendingOrderScope,
-        sym_end_index: Mapping[str, int],
         sell_sched: dict[np.datetime64, list[ExecResult]],
-        buy_sched: dict[np.datetime64, list[ExecResult]],
         portfolio: Portfolio,
         enable_fractional_shares: bool,
     ):
@@ -569,6 +535,7 @@ class BacktestMixin:
                 shares=sell_shares,
                 fill_price=fill_price,
                 limit_price=result.sell_limit_price,
+                stops=result.short_stops,
             )
             logger = StaticScope.instance().logger
             if order is None:
@@ -587,30 +554,6 @@ class BacktestMixin:
                     fill_price=fill_price,
                     limit_price=result.sell_limit_price,
                 )
-                if result.hold_bars is not None:
-                    if result.hold_bars <= 0:
-                        raise ValueError("hold_bars must be greater than 0.")
-                    buy_result = ExecResult(
-                        symbol=result.symbol,
-                        date=result.date,
-                        sell_fill_price=result.sell_fill_price,
-                        buy_shares=order.shares,
-                        buy_fill_price=result.buy_fill_price,
-                        buy_limit_price=result.buy_limit_price,
-                        score=result.score,
-                        hold_bars=None,
-                        sell_shares=None,
-                        sell_limit_price=None,
-                    )
-                    self._schedule_order(
-                        result=buy_result,
-                        created=date,
-                        sym_end_index=sym_end_index,
-                        delay=result.hold_bars,
-                        sched=buy_sched,
-                        col_scope=col_scope,
-                        pending_order_scope=pending_order_scope,
-                    )
         del sell_sched[date]
 
     def _get_shares(

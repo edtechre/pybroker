@@ -135,6 +135,15 @@ class PriceType(Enum):
     AVERAGE = "average"
 
 
+class StopType(Enum):
+    """Stop types."""
+
+    BAR = "bar"
+    LOSS = "loss"
+    PROFIT = "profit"
+    TRAILING = "trailing"
+
+
 class FeeMode(Enum):
     """Brokerage fee mode to use for backtesting.
 
