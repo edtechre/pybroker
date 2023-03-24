@@ -138,7 +138,7 @@ class PriceType(Enum):
 
 class StopType(Enum):
     """Stop types.
-    
+
     Attributes:
         BAR: Stop that triggers after n bars.
         LOSS: Stop loss.
