@@ -671,7 +671,10 @@ class PendingOrderScope:
         if order_id in self._orders:
             order = self._orders[order_id]
             del self._orders[order_id]
-            if order.symbol in self._sym_orders:
+            if (
+                order.symbol in self._sym_orders
+                and order in self._sym_orders[order.symbol]
+            ):
                 self._sym_orders[order.symbol].remove(order)
             return True
         return False
