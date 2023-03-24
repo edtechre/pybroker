@@ -44,8 +44,7 @@ ALPACA_COLS = [
     "volume",
     "vwap",
 ]
-ALPACA_CRYPTO_COLS = ALPACA_COLS + ["exchange", "trade_count"]
-EXCHANGE = "CBSE"
+ALPACA_CRYPTO_COLS = ALPACA_COLS + ["trade_count"]
 
 
 @pytest.fixture()
@@ -63,9 +62,7 @@ def alpaca_crypto_df():
         os.path.join(os.path.dirname(__file__), "testdata/daily_1.joblib")
     )
     df["date"] = df["date"].dt.tz_localize("US/Eastern")
-    return df.assign(vwap=1, trade_count=1, exchange=EXCHANGE)[
-        ALPACA_CRYPTO_COLS
-    ]
+    return df.assign(vwap=1, trade_count=1)[ALPACA_CRYPTO_COLS]
 
 
 @pytest.fixture()
@@ -109,8 +106,18 @@ def mock_cache(scope):
 
 @pytest.fixture()
 def mock_alpaca():
-    with mock.patch("alpaca_trade_api.REST") as rest:
-        yield rest
+    with mock.patch(
+        "alpaca.data.historical.stock.StockHistoricalDataClient"
+    ) as client:
+        yield client
+
+
+@pytest.fixture()
+def mock_alpaca_crypto():
+    with mock.patch(
+        "alpaca.data.historical.crypto.CryptoHistoricalDataClient"
+    ) as client:
+        yield client
 
 
 class TestDataSourceCacheMixin:
@@ -219,9 +226,7 @@ class TestDataSourceCacheMixin:
 class TestAlpaca:
     def test_init(self, mock_alpaca):
         Alpaca(API_KEY, API_SECRET)
-        mock_alpaca.assert_called_once_with(
-            API_KEY, API_SECRET, api_version=API_VERSION
-        )
+        mock_alpaca.assert_called_once_with(API_KEY, API_SECRET)
 
     @pytest.mark.usefixtures("setup_ds_cache", "mock_alpaca")
     def test_query_when_empty_cache(self, alpaca_df, bars_df, symbols):
@@ -229,7 +234,7 @@ class TestAlpaca:
         mock_bars = mock.Mock()
         mock_bars.df = bars_df
         with mock.patch.object(
-            alpaca._api, "get_bars", return_value=mock_bars
+            alpaca._api, "get_stock_bars", return_value=mock_bars
         ):
             df = alpaca.query(symbols, START_DATE, END_DATE, TIMEFRAME)
             df = (
@@ -254,7 +259,7 @@ class TestAlpaca:
         mock_bars = mock.Mock()
         mock_bars.df = bars_df[bars_df["symbol"].isin(symbols[:-1])]
         with mock.patch.object(
-            alpaca._api, "get_bars", return_value=mock_bars
+            alpaca._api, "get_stock_bars", return_value=mock_bars
         ):
             df = alpaca.query(symbols, START_DATE, END_DATE, TIMEFRAME)
             df = (
@@ -280,7 +285,7 @@ class TestAlpaca:
         mock_bars = mock.Mock()
         mock_bars.df = bars_df[bars_df["symbol"].isin(symbols[:-1])]
         with mock.patch.object(
-            alpaca._api, "get_bars", return_value=mock_bars
+            alpaca._api, "get_stock_bars", return_value=mock_bars
         ):
             df = alpaca.query(symbols, START_DATE, END_DATE, TIMEFRAME)
             assert not df.empty
@@ -303,7 +308,7 @@ class TestAlpaca:
         mock_bars = mock.Mock()
         mock_bars.df = bars_df
         with mock.patch.object(
-            alpaca._api, "get_bars", return_value=mock_bars
+            alpaca._api, "get_stock_bars", return_value=mock_bars
         ):
             alpaca.query(symbols, START_DATE, END_DATE, TIMEFRAME)
             df = alpaca.query(symbols, START_DATE, END_DATE, TIMEFRAME)
@@ -341,7 +346,7 @@ class TestAlpaca:
         mock_bars = mock.Mock()
         mock_bars.df = pd.DataFrame(columns=columns)
         with mock.patch.object(
-            alpaca._api, "get_bars", return_value=mock_bars
+            alpaca._api, "get_stock_bars", return_value=mock_bars
         ):
             df = alpaca.query(symbols, START_DATE, END_DATE, TIMEFRAME)
             assert df.empty
@@ -367,17 +372,32 @@ class TestAlpaca:
         ):
             alpaca.query(empty_symbols, START_DATE, END_DATE, TIMEFRAME)
 
+    @pytest.mark.parametrize("timeframe", ["1mo 2d", "30s"])
+    def test_query_when_invalid_timeframe_then_error(self, symbols, timeframe):
+        alpaca = Alpaca(API_KEY, API_SECRET)
+        with pytest.raises(
+            ValueError,
+            match=re.escape(f"Invalid Alpaca timeframe: {timeframe}"),
+        ):
+            alpaca.query(symbols, START_DATE, END_DATE, timeframe)
+
+    def test_query_when_null_timeframe_then_error(self, symbols):
+        alpaca = Alpaca(API_KEY, API_SECRET)
+        with pytest.raises(
+            ValueError,
+            match=re.escape("Timeframe needs to be specified for Alpaca."),
+        ):
+            alpaca.query(symbols, START_DATE, END_DATE, timeframe=None)
+
 
 class TestAlpacaCrypto:
-    def test_init(self, mock_alpaca):
-        AlpacaCrypto(API_KEY, API_SECRET, EXCHANGE)
-        mock_alpaca.assert_called_once_with(
-            API_KEY, API_SECRET, api_version=API_VERSION
-        )
+    def test_init(self, mock_alpaca_crypto):
+        AlpacaCrypto(API_KEY, API_SECRET)
+        mock_alpaca_crypto.assert_called_once_with(API_KEY, API_SECRET)
 
     @pytest.mark.usefixtures("setup_ds_cache", "mock_alpaca")
     def test_query(self, alpaca_crypto_df, crypto_bars_df, symbols):
-        crypto = AlpacaCrypto(API_KEY, API_SECRET, EXCHANGE)
+        crypto = AlpacaCrypto(API_KEY, API_SECRET)
         mock_bars = mock.Mock()
         mock_bars.df = crypto_bars_df
         with mock.patch.object(
@@ -390,8 +410,7 @@ class TestAlpacaCrypto:
                 .sort_index(axis=1)
             )
             expected = (
-                alpaca_crypto_df.drop(columns=["exchange"])
-                .sort_values(["symbol", "date"])
+                alpaca_crypto_df.sort_values(["symbol", "date"])
                 .reset_index(drop=True)
                 .sort_index(axis=1)
             )
@@ -416,7 +435,7 @@ class TestAlpacaCrypto:
     )
     @pytest.mark.usefixtures("setup_ds_cache", "mock_alpaca")
     def test_query_when_empty_result(self, symbols, columns):
-        crypto = AlpacaCrypto(API_KEY, API_SECRET, EXCHANGE)
+        crypto = AlpacaCrypto(API_KEY, API_SECRET)
         mock_bars = mock.Mock()
         mock_bars.df = pd.DataFrame(columns=columns)
         with mock.patch.object(
@@ -437,6 +456,23 @@ class TestAlpacaCrypto:
                     "trade_count",
                 )
             )
+
+    @pytest.mark.parametrize("timeframe", ["1mo 2d", "30s"])
+    def test_query_when_invalid_timeframe_then_error(self, symbols, timeframe):
+        crypto = AlpacaCrypto(API_KEY, API_SECRET)
+        with pytest.raises(
+            ValueError,
+            match=re.escape(f"Invalid Alpaca timeframe: {timeframe}"),
+        ):
+            crypto.query(symbols, START_DATE, END_DATE, timeframe)
+
+    def test_query_when_null_timeframe_then_error(self, symbols):
+        crypto = Alpaca(API_KEY, API_SECRET)
+        with pytest.raises(
+            ValueError,
+            match=re.escape("Timeframe needs to be specified for Alpaca."),
+        ):
+            crypto.query(symbols, START_DATE, END_DATE, timeframe=None)
 
 
 class TestYFinance:

@@ -33,6 +33,7 @@ _tf_abbr: Final = {
     "h": "hour",
     "d": "day",
     "w": "week",
+    "mo": "month",
 }
 _CENTS: Final = Decimal(".01")
 
@@ -135,6 +136,22 @@ class PriceType(Enum):
     AVERAGE = "average"
 
 
+class StopType(Enum):
+    """Stop types.
+
+    Attributes:
+        BAR: Stop that triggers after n bars.
+        LOSS: Stop loss.
+        PROFIT: Take profit.
+        TRAILING: Trailing stop loss.
+    """
+
+    BAR = "bar"
+    LOSS = "loss"
+    PROFIT = "profit"
+    TRAILING = "trailing"
+
+
 class FeeMode(Enum):
     """Brokerage fee mode to use for backtesting.
 
@@ -226,6 +243,7 @@ def parse_timeframe(timeframe: str) -> list[tuple[int, str]]:
     - ``"h"``/``"hour"``: hours
     - ``"d"``/``"day"``: days
     - ``"w"``/``"week"``: weeks
+    - ``"mo"``/``"month"``: months
 
     An example timeframe string is ``1h 30m``.
 
@@ -261,6 +279,7 @@ def to_seconds(timeframe: Optional[str]) -> int:
     - ``"h"``/``"hour"``: hours
     - ``"d"``/``"day"``: days
     - ``"w"``/``"week"``: weeks
+    - ``"mo"``/``"month"``: months
 
     An example timeframe string is ``1h 30m``.
 

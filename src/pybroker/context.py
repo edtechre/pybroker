@@ -23,11 +23,12 @@ from .common import (
     DataCol,
     ModelSymbol,
     PriceType,
+    StopType,
     to_datetime,
     to_decimal,
 )
 from .model import TrainedModel
-from .portfolio import Order, Portfolio, Position, Trade
+from .portfolio import Entry, Order, Portfolio, Position, Stop, Trade
 from .scope import (
     ColumnScope,
     IndicatorScope,
@@ -37,6 +38,7 @@ from .scope import (
     PredictionScope,
     StaticScope,
 )
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
@@ -307,7 +309,7 @@ class BaseContext:
 
 @dataclass
 class ExecResult:
-    """Holds data that was set during the execution of a
+    r"""Holds data that was set during the execution of a
     :class:`pybroker.strategy.Strategy`.
 
     Attributes:
@@ -331,6 +333,8 @@ class ExecResult:
         sell_shares: Number of shares to sell of ``symbol``.
         sell_limit_price: Limit price used for a sell (short) order of
             ``symbol``.
+        long_stops: Stops for long :class:`pybroker.portfolio.Entry`\ s.
+        short_stops: Stops for short :class:`pybroker.portfolio.Entry`\ s.
         pending_order_id: ID of :class:`pybroker.scope.PendingOrder` that was
             created.
     """
@@ -357,6 +361,8 @@ class ExecResult:
     buy_limit_price: Optional[Decimal]
     sell_shares: Optional[Decimal]
     sell_limit_price: Optional[Decimal]
+    long_stops: Optional[frozenset[Stop]]
+    short_stops: Optional[frozenset[Stop]]
     pending_order_id: Optional[int] = field(default=None)
 
 
@@ -533,7 +539,29 @@ class ExecContext(BaseContext):
             ``score``.
         session: ``dict`` used to store custom data that persists for each
             bar during the :class:`pybroker.strategy.Strategy`\ 's execution.
+        stop_loss: Sets stop loss on a new :class:`pybroker.portfolio.Entry`,
+            where value is measured in points from entry price.
+        stop_loss_pct: Sets stop loss on a new
+            :class:`pybroker.portfolio.Entry`, where value is measured in
+            percentage from entry price.
+        stop_loss_limit: Limit price to use for the stop loss.
+        stop_profit: Sets profit stop on a new
+            :class:`pybroker.portfolio.Entry`, where value is measured in
+            points from entry price.
+        stop_profit_pct: Sets profit stop on a new
+            :class:`pybroker.portfolio.Entry`, where value is measured in
+            percentage from entry price.
+        stop_profit_limit: Limit price to use for the profit stop.
+        stop_trailing: Sets a trailing stop loss on a new
+            :class:`pybroker.portfolio.Entry`, where value is measured in
+            points from entry price.
+        stop_trailing_pct: Sets a trailing stop loss on a new
+            :class:`pybroker.portfolio.Entry`, where value is measured in
+            percentage from entry price.
+        stop_trailing_limit: Limit price to use for the trailing stop loss.
     """
+
+    _stop_id: int = 0
 
     def __init__(
         self,
@@ -584,6 +612,16 @@ class ExecContext(BaseContext):
         self.hold_bars: Optional[int] = None
         self.score: Optional[float] = None
         self.session: Optional[dict] = None
+
+        self.stop_loss: Optional[Union[int, float, Decimal]] = None
+        self.stop_loss_pct: Optional[Union[int, float, Decimal]] = None
+        self.stop_loss_limit: Optional[Union[int, float, Decimal]] = None
+        self.stop_profit: Optional[Union[int, float, Decimal]] = None
+        self.stop_profit_pct: Optional[Union[int, float, Decimal]] = None
+        self.stop_profit_limit: Optional[Union[int, float, Decimal]] = None
+        self.stop_trailing: Optional[Union[int, float, Decimal]] = None
+        self.stop_trailing_pct: Optional[Union[int, float, Decimal]] = None
+        self.stop_trailing_limit: Optional[Union[int, float, Decimal]] = None
 
     def _verify_symbol(self):
         if self.symbol is None:
@@ -848,8 +886,28 @@ class ExecContext(BaseContext):
         return self._pending_order_scope.remove(order_id)
 
     def cancel_all_pending_orders(self, symbol: Optional[str] = None):
-        r"""Cancels all :class:`pybroker.scope.PendingOrder`\ s."""
+        r"""Cancels all :class:`pybroker.scope.PendingOrder`\ s for ``symbol``.
+        When ``symbol`` is ``None``, all pending orders are canceled.
+        """
         self._pending_order_scope.remove_all(symbol)
+
+    def cancel_stop(self, stop_id: int) -> bool:
+        """Cancels a :class:`pybroker.portfolio.Stop` with ``stop_id``."""
+        return self._portfolio.remove_stop(stop_id)
+
+    def cancel_stops(
+        self,
+        val: Union[str, Position, Entry],
+        stop_type: Optional[StopType] = None,
+    ):
+        r"""Cancels :class:`pybroker.portfolio.Stop`\ s.
+
+        Args:
+            val: Ticker symbol, :class:`pybroker.portfolio.Position`, or
+                :class:`pybroker.portfolio.Entry` for which to cancel stops.
+            stop_type: :class:`pybroker.common.StopType`.
+        """
+        self._portfolio.remove_stops(val, stop_type)
 
     def _get_symbol(self, symbol: Optional[str] = None) -> str:
         if symbol is not None:
@@ -857,6 +915,176 @@ class ExecContext(BaseContext):
         if self.symbol is None:
             raise ValueError("symbol is not set.")
         return self.symbol
+
+    def _create_stop(
+        self,
+        stop_type: StopType,
+        pos_type: Literal["long", "short"],
+        points: Optional[Union[int, float, Decimal]],
+        percent: Optional[Union[int, float, Decimal]],
+        bars: Optional[int],
+        fill_price: Optional[
+            Union[
+                int,
+                float,
+                Decimal,
+                PriceType,
+                Callable[[str, BarData], Union[int, float, Decimal]],
+            ]
+        ],
+        limit_price: Optional[Union[int, float, Decimal]],
+    ):
+        percent_dec, points_dec, limit_price_dec = None, None, None
+        if stop_type != StopType.BAR:
+            if percent is None and points is None:
+                raise ValueError("Percent or points must be set.")
+            if percent is not None:
+                percent_dec = to_decimal(percent)
+            elif points is not None:
+                points_dec = to_decimal(points)
+        if limit_price is not None:
+            limit_price_dec = to_decimal(limit_price)
+        self._stop_id += 1
+        return Stop(
+            id=self._stop_id,
+            symbol=self._get_symbol(),
+            stop_type=stop_type,
+            pos_type=pos_type,
+            percent=percent_dec,
+            points=points_dec,
+            bars=bars,
+            fill_price=fill_price,
+            limit_price=limit_price_dec,
+        )
+
+    def _get_stops(
+        self,
+    ) -> tuple[Optional[frozenset[Stop]], Optional[frozenset[Stop]]]:
+        pos_type: Optional[Literal["long", "short"]] = None
+        if self.buy_shares is not None:
+            pos_type = "long"
+        elif self.sell_shares is not None:
+            pos_type = "short"
+        if pos_type is None:
+            return None, None
+        stops: deque[Stop] = deque()
+        if self.hold_bars is not None:
+            if self.hold_bars <= 0:
+                raise ValueError("hold_bars must be greater than 0.")
+            if pos_type == "long":
+                fill_price = (
+                    self.sell_fill_price
+                    if self.sell_fill_price is not None
+                    else PriceType.MIDDLE
+                )
+            else:
+                fill_price = (
+                    self.buy_fill_price
+                    if self.buy_fill_price is not None
+                    else PriceType.MIDDLE
+                )
+            stops.append(
+                self._create_stop(
+                    stop_type=StopType.BAR,
+                    points=None,
+                    percent=None,
+                    bars=self.hold_bars,
+                    pos_type=pos_type,
+                    fill_price=fill_price,
+                    limit_price=None,
+                )
+            )
+        if self.stop_loss is not None and self.stop_loss_pct is not None:
+            raise ValueError(
+                "Only one of stop_loss or stop_loss_pct can be set."
+            )
+        if self.stop_loss is not None:
+            stops.append(
+                self._create_stop(
+                    stop_type=StopType.LOSS,
+                    points=self.stop_loss,
+                    percent=None,
+                    bars=None,
+                    pos_type=pos_type,
+                    fill_price=None,
+                    limit_price=self.stop_loss_limit,
+                )
+            )
+        elif self.stop_loss_pct is not None:
+            stops.append(
+                self._create_stop(
+                    stop_type=StopType.LOSS,
+                    points=None,
+                    percent=self.stop_loss_pct,
+                    bars=None,
+                    pos_type=pos_type,
+                    fill_price=None,
+                    limit_price=self.stop_loss_limit,
+                )
+            )
+        if self.stop_profit is not None and self.stop_profit_pct is not None:
+            raise ValueError(
+                "Only one of stop_profit or stop_profit_pct can be set."
+            )
+        if self.stop_profit is not None:
+            stops.append(
+                self._create_stop(
+                    stop_type=StopType.PROFIT,
+                    points=self.stop_profit,
+                    percent=None,
+                    bars=None,
+                    pos_type=pos_type,
+                    fill_price=None,
+                    limit_price=self.stop_profit_limit,
+                )
+            )
+        elif self.stop_profit_pct is not None:
+            stops.append(
+                self._create_stop(
+                    stop_type=StopType.PROFIT,
+                    points=None,
+                    percent=self.stop_profit_pct,
+                    bars=None,
+                    pos_type=pos_type,
+                    fill_price=None,
+                    limit_price=self.stop_profit_limit,
+                )
+            )
+        if (
+            self.stop_trailing is not None
+            and self.stop_trailing_pct is not None
+        ):
+            raise ValueError(
+                "Only one of stop_trailing or stop_trailing_pct can be set."
+            )
+        if self.stop_trailing is not None:
+            stops.append(
+                self._create_stop(
+                    stop_type=StopType.TRAILING,
+                    points=self.stop_trailing,
+                    percent=None,
+                    bars=None,
+                    pos_type=pos_type,
+                    fill_price=None,
+                    limit_price=self.stop_trailing_limit,
+                )
+            )
+        elif self.stop_trailing_pct is not None:
+            stops.append(
+                self._create_stop(
+                    stop_type=StopType.TRAILING,
+                    points=None,
+                    percent=self.stop_trailing_pct,
+                    bars=None,
+                    pos_type=pos_type,
+                    fill_price=None,
+                    limit_price=self.stop_trailing_limit,
+                )
+            )
+        if pos_type == "long":
+            return frozenset(stops), None
+        else:
+            return None, frozenset(stops)
 
     def to_result(self) -> ExecResult:
         """Creates an :class:`.ExecResult` from the data set on
@@ -886,6 +1114,7 @@ class ExecContext(BaseContext):
             if self.sell_shares is not None
             else None
         )
+        long_stops, short_stops = self._get_stops()
         return ExecResult(
             symbol=self.symbol,
             date=self._curr_date,
@@ -897,6 +1126,8 @@ class ExecContext(BaseContext):
             buy_limit_price=buy_limit_price,
             sell_shares=sell_shares,
             sell_limit_price=sell_limit_price,
+            long_stops=long_stops,
+            short_stops=short_stops,
         )
 
     def __getattr__(self, attr):
@@ -932,3 +1163,12 @@ def set_exec_ctx_data(
     ctx.sell_limit_price = None
     ctx.hold_bars = None
     ctx.score = None
+    ctx.stop_loss = None
+    ctx.stop_loss_pct = None
+    ctx.stop_loss_limit = None
+    ctx.stop_profit = None
+    ctx.stop_profit_pct = None
+    ctx.stop_profit_limit = None
+    ctx.stop_trailing = None
+    ctx.stop_trailing_pct = None
+    ctx.stop_trailing_limit = None

@@ -15,7 +15,8 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import alpaca_trade_api as tradeapi
+import alpaca.data.historical.stock as alpaca_stock
+import alpaca.data.historical.crypto as alpaca_crypto
 import itertools
 import numpy as np
 import pandas as pd
@@ -31,6 +32,8 @@ from .common import (
 )
 from .scope import StaticScope
 from abc import ABC, abstractmethod
+from alpaca.data.requests import CryptoBarsRequest, StockBarsRequest
+from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
 from datetime import datetime
 from typing import Final, Iterable, Optional, Union
 
@@ -61,6 +64,7 @@ class DataSourceCacheMixin:
                 - ``"h"``/``"hour"``: hours
                 - ``"d"``/``"day"``: days
                 - ``"w"``/``"week"``: weeks
+                - ``"mo"``/``"month"``: months
 
                 An example timeframe string is ``1h 30m``.
             start_date: Starting date of the cached data (inclusive).
@@ -126,6 +130,7 @@ class DataSourceCacheMixin:
                 - ``"h"``/``"hour"``: hours
                 - ``"d"``/``"day"``: days
                 - ``"w"``/``"week"``: weeks
+                - ``"mo"``/``"month"``: months
 
                 An example timeframe string would be ``1h 30m``.
             start_date: Starting date of the data to cache (inclusive).
@@ -187,6 +192,7 @@ class DataSource(ABC, DataSourceCacheMixin):
                 - ``"h"``/``"hour"``: hours
                 - ``"d"``/``"day"``: days
                 - ``"w"``/``"week"``: weeks
+                - ``"mo"``/``"month"``: months
 
                 An example timeframe string is ``1h 30m``.
 
@@ -265,6 +271,7 @@ class DataSource(ABC, DataSourceCacheMixin):
                 - ``"h"``/``"hour"``: hours
                 - ``"d"``/``"day"``: days
                 - ``"w"``/``"week"``: weeks
+                - ``"mo"``/``"month"``: months
 
                 An example timeframe string is ``1h 30m``.
 
@@ -280,30 +287,68 @@ class DataSource(ABC, DataSourceCacheMixin):
         )
 
 
+def _parse_alpaca_timeframe(
+    timeframe: Optional[str],
+) -> tuple[int, TimeFrameUnit]:
+    if timeframe is None:
+        raise ValueError("Timeframe needs to be specified for Alpaca.")
+    parts = parse_timeframe(timeframe)
+    if len(parts) != 1:
+        raise ValueError(f"Invalid Alpaca timeframe: {timeframe}")
+    tf = parts[0]
+    if tf[1] == "min":
+        unit = TimeFrameUnit.Minute
+    elif tf[1] == "hour":
+        unit = TimeFrameUnit.Hour
+    elif tf[1] == "day":
+        unit = TimeFrameUnit.Day
+    elif tf[1] == "week":
+        unit = TimeFrameUnit.Week
+    elif tf[1] == "month":
+        unit = TimeFrame.Month
+    else:
+        raise ValueError(f"Invalid Alpaca timeframe: {timeframe}")
+    return tf[0], unit
+
+
 class Alpaca(DataSource):
     """Retrieves stock data from `Alpaca <https://alpaca.markets/>`_."""
 
-    __NY: Final = "America/New_York"
     __EST: Final = "US/Eastern"
-    __API_VERSION: Final = "v2"
 
     def __init__(self, api_key: str, api_secret: str):
         super().__init__()
-        self._api = tradeapi.REST(
-            api_key, api_secret, api_version=self.__API_VERSION
-        )
+        self._api = alpaca_stock.StockHistoricalDataClient(api_key, api_secret)
+
+    def query(
+        self,
+        symbols: Union[str, Iterable[str]],
+        start_date: Union[str, datetime],
+        end_date: Union[str, datetime],
+        timeframe: Optional[str] = "1d",
+    ) -> pd.DataFrame:
+        _parse_alpaca_timeframe(timeframe)
+        return super().query(symbols, start_date, end_date, timeframe)
 
     def _fetch_data(
         self,
         symbols: frozenset[str],
-        start_date: Union[str, datetime],
-        end_date: Union[str, datetime],
+        start_date: datetime,
+        end_date: datetime,
         timeframe: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
-        start = pd.Timestamp(start_date, tz=self.__NY).isoformat()
-        end = pd.Timestamp(end_date, tz=self.__NY).isoformat()
-        df = self._api.get_bars(symbols, timeframe, start, end).df
+        amount, unit = _parse_alpaca_timeframe(timeframe)
+        request = StockBarsRequest(
+            symbol_or_symbols=list(symbols),
+            start=start_date,
+            end=end_date,
+            timeframe=TimeFrame(amount, unit),
+            limit=None,
+            adjustment=None,
+            feed=None,
+        )
+        df = self._api.get_stock_bars(request).df  # type: ignore[union-attr]
         if df.columns.empty:
             return pd.DataFrame(
                 columns=[
@@ -335,7 +380,6 @@ class AlpacaCrypto(DataSource):
     Args:
         api_key: Alpaca API key.
         api_secret: Alpaca API secret.
-        exchange: Cryptocurrency exchange to use for data.
     """
 
     TRADE_COUNT: Final = "trade_count"
@@ -351,34 +395,46 @@ class AlpacaCrypto(DataSource):
         TRADE_COUNT,
     )
 
-    __NY: Final = "America/New_York"
     __EST: Final = "US/Eastern"
-    __API_VERSION: Final = "v2"
 
-    def __init__(self, api_key: str, api_secret: str, exchange: str):
+    def __init__(self, api_key: str, api_secret: str):
         super().__init__()
         self._scope.register_custom_cols(self.TRADE_COUNT)
-        self._api = tradeapi.REST(
-            api_key, api_secret, api_version=self.__API_VERSION
+        self._api = alpaca_crypto.CryptoHistoricalDataClient(
+            api_key, api_secret
         )
-        self.exchange = exchange
+
+    def query(
+        self,
+        symbols: Union[str, Iterable[str]],
+        start_date: Union[str, datetime],
+        end_date: Union[str, datetime],
+        timeframe: Optional[str] = "1d",
+    ) -> pd.DataFrame:
+        _parse_alpaca_timeframe(timeframe)
+        return super().query(symbols, start_date, end_date, timeframe)
 
     def _fetch_data(
         self,
         symbols: frozenset[str],
-        start_date: Union[str, datetime],
-        end_date: Union[str, datetime],
+        start_date: datetime,
+        end_date: datetime,
         timeframe: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
-        start = pd.Timestamp(start_date, tz=self.__NY).isoformat()
-        end = pd.Timestamp(end_date, tz=self.__NY).isoformat()
-        df = self._api.get_crypto_bars(symbols, timeframe, start, end).df
+        amount, unit = _parse_alpaca_timeframe(timeframe)
+        request = CryptoBarsRequest(
+            symbol_or_symbols=list(symbols),
+            start=start_date,
+            end=end_date,
+            timeframe=TimeFrame(amount, unit),
+            limit=None,
+        )
+        df = self._api.get_crypto_bars(request).df  # type: ignore[union-attr]
         if df.columns.empty:
             return pd.DataFrame(columns=self.COLUMNS)
         if df.empty:
             return df
-        df = df[df["exchange"] == self.exchange]
         df = df.reset_index()
         df.rename(columns={"timestamp": DataCol.DATE.value}, inplace=True)
         df = df[[col for col in self.COLUMNS]]
