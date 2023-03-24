@@ -36,7 +36,18 @@ from typing import (
 
 
 class Stop(NamedTuple):
-    """Contains information about a stop set on :class:`.Entry`."""
+    """Contains information about a stop set on :class:`.Entry`.
+    
+    Attributes:
+        id: Unique identifier.
+        symbol: Symbol of the stop.
+        pos_type: Type of  :class:`.Position`, either ``long`` or ``short``.
+        percent: Percent from entry price.
+        points: Cash amount from entry price.
+        bars: Number of bars after which to trigger the stop.
+        fill_price: Price that the stop will be filled at.
+        limit_price: Limit price to use for the stop.
+    """
 
     id: int
     symbol: str
