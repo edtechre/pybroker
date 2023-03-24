@@ -1928,3 +1928,16 @@ class TestStrategy:
         strategy.set_pos_size_handler(pos_size_handler)
         result = strategy.backtest(calc_bootstrap=False)
         assert not len(result.orders)
+
+    def test_backtest_when_no_stops(self, data_source_df):
+        def exec_fn(ctx):
+            if ctx.bars == 1:
+                ctx.buy_shares = 100
+            elif ctx.bars > 30:
+                ctx.sell_all_shares()
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        assert len(result.trades) == 1
+        assert result.trades.iloc[0]["stop"] is None
