@@ -2805,6 +2805,9 @@ def test_remove_stops_when_symbol(stop_type):
     portfolio.incr_bars()
     portfolio.check_stops(DATE_2, price_scope)
     assert len(portfolio.long_positions) == 1
+    pos = portfolio.long_positions[SYMBOL_1]
+    assert len(pos.entries) == 1
+    assert not pos.entries[0].stops
     assert portfolio.symbols == set([SYMBOL_1])
     assert not len(portfolio.trades)
 
@@ -2846,6 +2849,9 @@ def test_remove_stops_when_position(stop_type):
     portfolio.incr_bars()
     portfolio.check_stops(DATE_2, price_scope)
     assert len(portfolio.long_positions) == 1
+    pos = portfolio.long_positions[SYMBOL_1]
+    assert len(pos.entries) == 1
+    assert not pos.entries[0].stops
     assert portfolio.symbols == set([SYMBOL_1])
     assert not len(portfolio.trades)
 
@@ -2889,6 +2895,9 @@ def test_remove_stops_when_entry(stop_type):
     portfolio.incr_bars()
     portfolio.check_stops(DATE_2, price_scope)
     assert len(portfolio.long_positions) == 1
+    pos = portfolio.long_positions[SYMBOL_1]
+    assert len(pos.entries) == 1
+    assert not pos.entries[0].stops
     assert portfolio.symbols == set([SYMBOL_1])
     assert not len(portfolio.trades)
 
