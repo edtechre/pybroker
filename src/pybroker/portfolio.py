@@ -37,7 +37,7 @@ from typing import (
 
 class Stop(NamedTuple):
     """Contains information about a stop set on :class:`.Entry`.
-    
+
     Attributes:
         id: Unique identifier.
         symbol: Symbol of the stop.
@@ -947,7 +947,8 @@ class Portfolio:
         if stop_id in self._stop_data:
             stop_data = self._stop_data[stop_id]
             del self._stop_data[stop_id]
-            stop_data.entry.stops.remove(stop_data.stop)
+            if stop_data.stop in stop_data.entry.stops:
+                stop_data.entry.stops.remove(stop_data.stop)
             return True
         return False
 
