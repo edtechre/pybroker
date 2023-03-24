@@ -457,3 +457,4 @@ class TestPendingOrderScope:
         assert tuple(pending_order_scope.orders("SPY")) == tuple(
             [pending_orders[0]]
         )
+        assert not tuple(pending_order_scope.orders("FOO"))
