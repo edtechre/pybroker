@@ -1909,3 +1909,22 @@ class TestStrategy:
         assert buy_order["shares"] == 100
         assert np.isnan(buy_order["limit_price"])
         assert buy_order["fees"] == 0
+
+    def test_backtest_when_pos_size_handler_zero_shares(self, data_source_df):
+        def buy_exec_fn(ctx):
+            ctx.buy_shares = 100
+
+        def sell_exec_fn(ctx):
+            ctx.sell_shares = 100
+
+        def pos_size_handler(ctx):
+            signals = tuple(ctx.signals())
+            ctx.set_shares(signals[0], shares=0)
+            ctx.set_shares(signals[1], shares=0)
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(buy_exec_fn, "SPY")
+        strategy.add_execution(sell_exec_fn, "AAPL")
+        strategy.set_pos_size_handler(pos_size_handler)
+        result = strategy.backtest(calc_bootstrap=False)
+        assert not len(result.orders)
