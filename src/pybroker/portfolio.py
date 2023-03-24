@@ -115,6 +115,7 @@ class Position:
         pnl: Unrealized profit and loss (PnL).
         entries: ``deque`` of position :class:`.Entry`\ s sorted in ascending
             chronological order.
+        bars: Current number of bars since entry.
     """
     symbol: str
     shares: Decimal
@@ -125,6 +126,7 @@ class Position:
     margin: Decimal = field(default_factory=Decimal)
     pnl: Decimal = field(default_factory=Decimal)
     entries: deque[Entry] = field(default_factory=deque)
+    bars: int = field(default=0)
 
 
 class Trade(NamedTuple):
@@ -939,6 +941,7 @@ class Portfolio:
         for pos in itertools.chain(
             self.long_positions.values(), self.short_positions.values()
         ):
+            pos.bars += 1
             for entry in pos.entries:
                 entry.bars += 1
 

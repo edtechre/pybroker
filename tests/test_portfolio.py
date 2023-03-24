@@ -2914,3 +2914,24 @@ def test_incr_ids():
     )
     assert sell_order.id == 2
     assert portfolio.trades[0].id == 1
+
+
+def test_incr_bars():
+    portfolio = Portfolio(CASH)
+    portfolio.buy(DATE_1, SYMBOL_1, SHARES_1, FILL_PRICE_1)
+    portfolio.incr_bars()
+    portfolio.buy(DATE_2, SYMBOL_1, SHARES_2, FILL_PRICE_2)
+    portfolio.sell(DATE_2, SYMBOL_2, SHARES_1, FILL_PRICE_3)
+    portfolio.incr_bars()
+    portfolio.incr_bars()
+    assert len(portfolio.long_positions) == 1
+    assert len(portfolio.short_positions) == 1
+    long_pos = portfolio.long_positions[SYMBOL_1]
+    assert long_pos.bars == 3
+    assert len(long_pos.entries) == 2
+    assert long_pos.entries[0].bars == 3
+    assert long_pos.entries[1].bars == 2
+    short_pos = portfolio.short_positions[SYMBOL_2]
+    assert short_pos.bars == 2
+    assert len(short_pos.entries) == 1
+    assert short_pos.entries[0].bars == 2
