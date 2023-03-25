@@ -2760,7 +2760,7 @@ def test_remove_stop():
         limit_price=None,
         stops=stops,
     )
-    portfolio.remove_stop(1)
+    assert portfolio.remove_stop(1)
     portfolio.incr_bars()
     portfolio.check_stops(DATE_2, price_scope)
     assert len(portfolio.long_positions) == 1

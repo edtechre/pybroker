@@ -1867,7 +1867,7 @@ class TestStrategy:
                 ctx.buy_shares = 100
                 ctx.stop_loss = 10
             elif ctx.bars == 10:
-                ctx.cancel_stop(stop_id=1)
+                assert ctx.cancel_stop(stop_id=1)
 
         df = data_source_df[data_source_df["symbol"] == "SPY"]
         dates = df["date"].unique()

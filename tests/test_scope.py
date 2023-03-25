@@ -427,7 +427,7 @@ class TestPriceScope:
 
 class TestPendingOrderScope:
     def test_remove(self, pending_orders, pending_order_scope):
-        pending_order_scope.remove(pending_orders[0].id)
+        assert pending_order_scope.remove(pending_orders[0].id)
         orders = tuple(pending_order_scope.orders())
         assert len(orders) == 1
         assert orders[0] == pending_orders[1]

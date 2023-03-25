@@ -739,7 +739,7 @@ def test_set_pos_ctx_data(
 
 
 def test_cancel_pending_order(ctx, pending_orders):
-    ctx.cancel_pending_order(pending_orders[0].id)
+    assert ctx.cancel_pending_order(pending_orders[0].id)
     orders = tuple(ctx.pending_orders())
     assert orders == tuple([pending_orders[1]])
 
