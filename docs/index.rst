@@ -19,7 +19,6 @@
       }
       .shields a {
          margin-right: 0.5em;
-         margin-bottom: 0.25em;
       }
    </style>
 
