@@ -17,6 +17,10 @@
          font-weight: 900;
          font-size: 3em;
       }
+      .shields a {
+         margin-right: 0.5em;
+         margin-bottom: 0.25em;
+      }
    </style>
 
 ================
@@ -24,24 +28,24 @@ PyBroker
 ================
 
 .. raw:: html
-
-   <embed>
+   
+   <section class="shields">
       <a href="https://www.python.org/">
          <img src="https://img.shields.io/badge/python-v3-brightgreen.svg"
             alt="python">
-      </a> &nbsp;
+      </a>
       <a href="https://pypi.org/project/lib-pybroker/">
          <img src="https://img.shields.io/badge/pypi-v1.1.0-brightgreen.svg"
             alt="PyPI">
-      </a> &nbsp;
+      </a>
       <a href="https://www.pybroker.com/en/latest/license.html">
-        <img src="https://img.shields.io/badge/license-Apache%202.0%20Clause-green"
+      <img src="https://img.shields.io/badge/license-Apache%202.0%20Clause-green"
             alt="Apache 2.0 with Commons Clause">
-      </a> &nbsp;
+      </a>
       <a href="https://www.pybroker.com/en/latest/?badge=latest">
          <img src="https://readthedocs.org/projects/pybroker/badge/?version=latest"
             alt="Documentation Status">
-      </a> &nbsp;
+      </a>
       <a href="https://github.com/edtechre/pybroker/">
          <img src="https://github.com/edtechre/pybroker/actions/workflows/main.yml/badge.svg?event=push"
             alt="Package status">
@@ -49,11 +53,12 @@ PyBroker
       <br>
       <a href="https://github.com/edtechre/pybroker/">
          <img src="https://img.shields.io/github/stars/edtechre/pybroker?style=social" alt="Github stars">
-      </a> &nbsp;
+      </a>
       <a href="https://twitter.com/intent/follow?screen_name=libpybroker">
          <img src="https://img.shields.io/twitter/follow/libpybroker?style=social">
       </a>
-   </embed>
+   </section>
+  
 
 Algorithmic Trading in Python with Machine Learning
 ===================================================
