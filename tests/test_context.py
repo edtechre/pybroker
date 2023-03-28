@@ -693,6 +693,7 @@ def test_set_pos_ctx_data(
             short_stops=None,
         ),
     ]
+    sessions = {"SPY": {}, "AAPL": {}, "TSLA": {"foo": 1}}
     ctx = PosSizeContext(
         portfolio,
         col_scope,
@@ -701,11 +702,13 @@ def test_set_pos_ctx_data(
         pred_scope,
         pending_order_scope,
         trained_models,
+        sessions,
         sym_end_index,
         max_long_positions=1,
         max_short_positions=None,
     )
     set_pos_size_ctx_data(ctx, buy_results, sell_results)
+    assert ctx.sessions == sessions
     buy_signals = list(ctx.signals("buy"))
     assert len(buy_signals) == 1
     assert buy_signals[0].id == 0

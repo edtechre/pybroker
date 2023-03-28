@@ -22,7 +22,7 @@ import pandas as pd
 import pytest
 import re
 from .fixtures import *
-from collections import deque
+from collections import defaultdict, deque
 from datetime import datetime
 from decimal import Decimal
 from pybroker.common import DataCol, PriceType, to_datetime
@@ -39,7 +39,6 @@ from pybroker.scope import PendingOrder
 from pybroker.strategy import (
     BacktestMixin,
     Execution,
-    ExecSymbol,
     Strategy,
     TestResult,
     WalkforwardMixin,
@@ -154,6 +153,8 @@ def pos_size_handler(ctx):
     signals = tuple(ctx.signals())
     ctx.set_shares(signals[0], shares=1000)
     ctx.set_shares(signals[1], shares=2000)
+    assert type(ctx.sessions["SPY"]) == dict
+    assert type(ctx.sessions["AAPL"]) == dict
 
 
 class TestBacktestMixin:
@@ -197,7 +198,7 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
-            sessions=self._sessions(execs),
+            sessions=defaultdict(dict),
             models={},
             indicator_data={},
             test_data=data_source_df,
@@ -252,7 +253,7 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
-            sessions=self._sessions(execs),
+            sessions=defaultdict(dict),
             models={},
             indicator_data={},
             test_data=data_source_df,
@@ -295,7 +296,7 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
-            sessions=self._sessions(execs),
+            sessions=defaultdict(dict),
             models={},
             indicator_data={},
             test_data=data_source_df,
@@ -341,7 +342,7 @@ class TestBacktestMixin:
         ):
             mixin.backtest_executions(
                 executions=execs,
-                sessions=self._sessions(execs),
+                sessions=defaultdict(dict),
                 models={},
                 indicator_data={},
                 test_data=data_source_df,
@@ -375,7 +376,7 @@ class TestBacktestMixin:
         ):
             mixin.backtest_executions(
                 executions=execs,
-                sessions=self._sessions(execs),
+                sessions=defaultdict(dict),
                 models={},
                 indicator_data={},
                 test_data=data_source_df,
@@ -401,7 +402,7 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
-            sessions=self._sessions(execs),
+            sessions=defaultdict(dict),
             models={},
             indicator_data={},
             test_data=data_source_df,
@@ -434,7 +435,7 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
-            sessions=self._sessions(execs),
+            sessions=defaultdict(dict),
             models={},
             indicator_data={},
             test_data=data_source_df[data_source_df["symbol"] != "AAPL"],
@@ -469,7 +470,7 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
-            sessions=self._sessions(execs),
+            sessions=defaultdict(dict),
             models={},
             indicator_data={},
             test_data=data_source_df,
@@ -505,7 +506,7 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
-            sessions=self._sessions(execs),
+            sessions=defaultdict(dict),
             models={},
             indicator_data={},
             test_data=data_source_df,
@@ -543,7 +544,7 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
-            sessions=self._sessions(execs),
+            sessions=defaultdict(dict),
             models={},
             indicator_data={},
             test_data=data_source_df,
@@ -594,7 +595,7 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
-            sessions=self._sessions(execs),
+            sessions=defaultdict(dict),
             models={},
             indicator_data={},
             test_data=data_source_df,
@@ -670,7 +671,7 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
-            sessions=self._sessions(execs),
+            sessions=defaultdict(dict),
             models={},
             indicator_data={},
             test_data=df,
@@ -711,7 +712,7 @@ class TestBacktestMixin:
         with pytest.raises(ValueError, match=r"Unknown price: .*"):
             mixin.backtest_executions(
                 executions=execs,
-                sessions=self._sessions(execs),
+                sessions=defaultdict(dict),
                 models={},
                 indicator_data={},
                 test_data=data_source_df,
@@ -747,7 +748,7 @@ class TestBacktestMixin:
         ):
             mixin.backtest_executions(
                 executions=execs,
-                sessions=self._sessions(execs),
+                sessions=defaultdict(dict),
                 models={},
                 indicator_data={},
                 test_data=data_source_df,
@@ -783,7 +784,7 @@ class TestBacktestMixin:
         ):
             mixin.backtest_executions(
                 executions=execs,
-                sessions=self._sessions(execs),
+                sessions=defaultdict(dict),
                 models={},
                 indicator_data={},
                 test_data=data_source_df,
@@ -815,7 +816,7 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
-            sessions=self._sessions(execs),
+            sessions=defaultdict(dict),
             models={},
             indicator_data={},
             test_data=data_source_df,
@@ -849,7 +850,7 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
-            sessions=self._sessions(execs),
+            sessions=defaultdict(dict),
             models={},
             indicator_data={},
             test_data=data_source_df,
@@ -862,13 +863,6 @@ class TestBacktestMixin:
             exit_dates={},
         )
         assert not len(portfolio.orders)
-
-    def _sessions(self, execs):
-        return {
-            ExecSymbol(exec.id, sym): {}
-            for exec in execs
-            for sym in exec.symbols
-        }
 
 
 @pytest.fixture()

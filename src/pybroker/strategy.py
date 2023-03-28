@@ -23,7 +23,6 @@ from .common import (
     BarData,
     DataCol,
     Day,
-    ExecSymbol,
     IndicatorSymbol,
     ModelSymbol,
     PriceType,
@@ -136,13 +135,18 @@ class Execution(NamedTuple):
     indicator_names: frozenset[str]
 
 
+class _SymExecFn(NamedTuple):
+    sym: str
+    fn: Callable
+
+
 class BacktestMixin:
     """Mixin implementing backtesting functionality."""
 
     def backtest_executions(
         self,
         executions: set[Execution],
-        sessions: Mapping[ExecSymbol, Mapping],
+        sessions: Mapping[str, Mapping],
         models: Mapping[ModelSymbol, TrainedModel],
         indicator_data: Mapping[IndicatorSymbol, pd.Series],
         test_data: pd.DataFrame,
@@ -166,9 +170,9 @@ class BacktestMixin:
 
         Args:
             executions: :class:`.Execution`\ s to run.
-            sessions: :class:`Mapping` of :class:`pybroker.common.ExecSymbol`
-                pairs to :class:`Mapping` of custom data that persists for
-                every bar during the :class:`.Execution`.
+            sessions: :class:`Mapping` of symbols to :class:`Mapping` of custom
+                data that persists for every bar during the
+                :class:`.Execution`.
             models: :class:`Mapping` of :class:`pybroker.common.ModelSymbol`
                 pairs to :class:`pybroker.common.TrainedModel`\ s.
             indicator_data: :class:`Mapping` of
@@ -199,8 +203,8 @@ class BacktestMixin:
         """
         test_dates = test_data[DataCol.DATE.value].unique()
         test_dates.sort()
-        exec_symbols = tuple(
-            ExecSymbol(exec.id, sym)
+        exec_fns = tuple(
+            _SymExecFn(sym, _decorate_execution_fn(exec.fn))
             for sym in test_data[DataCol.SYMBOL.value].unique()
             for exec in executions
             if exec.fn is not None and sym in exec.symbols
@@ -210,9 +214,7 @@ class BacktestMixin:
             .set_index([DataCol.SYMBOL.value, DataCol.DATE.value])
             .sort_index()
         )
-        test_symbols = frozenset(
-            exec_symbol.symbol for exec_symbol in exec_symbols
-        )
+        test_symbols = frozenset(exec_fn.sym for exec_fn in exec_fns)
         sym_exec_dates = {
             sym: frozenset(test_data.loc[pd.IndexSlice[sym, :]].index.values)
             for sym in test_symbols
@@ -236,11 +238,6 @@ class BacktestMixin:
             models=models,
             sym_end_index=sym_end_index,
         )
-        exec_fns = {
-            exec.id: _decorate_execution_fn(exec.fn)
-            for exec in executions
-            if exec.fn is not None
-        }
         if pos_size_handler is not None:
             pos_ctx = PosSizeContext(
                 portfolio=portfolio,
@@ -250,6 +247,7 @@ class BacktestMixin:
                 pred_scope=pred_scope,
                 pending_order_scope=pending_order_scope,
                 models=models,
+                sessions=sessions,
                 sym_end_index=sym_end_index,
                 max_long_positions=max_long_positions,
                 max_short_positions=max_short_positions,
@@ -303,13 +301,16 @@ class BacktestMixin:
                 )
             portfolio.check_stops(date, price_scope)
             portfolio.capture_bar(date, test_data)
-            for exec_symbol in exec_symbols:
-                if date not in sym_exec_dates[exec_symbol.symbol]:
+            for exec_fn in exec_fns:
+                if date not in sym_exec_dates[exec_fn.sym]:
                     continue
-                if exit_dates and date == exit_dates[exec_symbol.symbol]:
-                    exit_syms.append(exec_symbol.symbol)
-                result = exec_fns[exec_symbol.exec_id](
-                    exec_ctx, sessions[exec_symbol], exec_symbol.symbol, date
+                if exit_dates and date == exit_dates[exec_fn.sym]:
+                    exit_syms.append(exec_fn.sym)
+                result = exec_fn.fn(
+                    exec_ctx,
+                    sessions[exec_fn.sym],
+                    exec_fn.sym,
+                    date,
                 )
                 if result is None:
                     continue
@@ -1200,13 +1201,12 @@ class Strategy(
         shuffle: bool,
         train_only: bool,
     ):
-        sessions: dict[ExecSymbol, dict] = {}
+        sessions: dict[str, dict] = defaultdict(dict)
         exit_dates: dict[str, np.datetime64] = {}
         for exec in self._executions:
             if exec.fn is None:
                 continue
             for sym in exec.symbols:
-                sessions[ExecSymbol(exec.id, sym)] = {}
                 if self._config.exit_on_last_bar:
                     sym_dates = df[df[DataCol.SYMBOL.value] == sym][
                         DataCol.DATE.value

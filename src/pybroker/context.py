@@ -392,6 +392,9 @@ class PosSizeContext(BaseContext):
     r"""Holds data for a position size handler set with
     :meth:`pybroker.Strategy.set_pos_size_handler`. Used to set position sizes
     when placing orders from buy and sell signals.
+
+    Attributes:
+        sessions: ``dict`` used to store custom data for all symbols.
     """
 
     def __init__(
@@ -403,6 +406,7 @@ class PosSizeContext(BaseContext):
         pred_scope: PredictionScope,
         pending_order_scope: PendingOrderScope,
         models: Mapping[ModelSymbol, TrainedModel],
+        sessions: Mapping[str, Mapping],
         sym_end_index: Mapping[str, int],
         max_long_positions: Optional[int],
         max_short_positions: Optional[int],
@@ -417,6 +421,7 @@ class PosSizeContext(BaseContext):
             models=models,
             sym_end_index=sym_end_index,
         )
+        self.sessions = sessions
         self._signal_shares: dict[int, Union[int, float, Decimal]] = {}
         self._buy_results: Optional[list[ExecResult]] = None
         self._sell_results: Optional[list[ExecResult]] = None

@@ -77,18 +77,6 @@ class TrainedModel(NamedTuple):
     predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]]
 
 
-class ExecSymbol(NamedTuple):
-    """:class:`pybroker.strategy.Execution`/symbol identifier.
-
-    Attributes:
-        exec_id: ID of :class:`.Execution`.
-        symbol: Ticker symbol.
-    """
-
-    exec_id: int
-    symbol: str
-
-
 class DataCol(Enum):
     """Default data column names."""
 
