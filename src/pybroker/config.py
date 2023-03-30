@@ -62,6 +62,9 @@ class StrategyConfig:
         exit_sell_fill_price: Fill price for selling an open long position when
             :attr:`.exit_on_last_bar` is ``True``. Defaults to
             :attr:`pybroker.common.PriceType.MIDDLE`.
+        sharpe_length: Number of observations used to annualize the Sharpe
+            Ratio. For example, a value of ``252`` would be used to annualize
+            daily returns.
     """
 
     initial_cash: float = field(default=100_000)
@@ -81,3 +84,4 @@ class StrategyConfig:
     exit_sell_fill_price: Union[
         PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
     ] = field(default=PriceType.MIDDLE)
+    sharpe_length: Optional[float] = field(default=None)

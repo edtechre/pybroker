@@ -416,6 +416,13 @@ def test_r_squared(values, expected_r2):
 
 class TestEvaluateMixin:
     @pytest.mark.parametrize(
+        "sharpe_length, expected_sharpe",
+        [
+            (None, 0.01710828175162464),
+            (252, 0.01710828175162464 * np.sqrt(252)),
+        ],
+    )
+    @pytest.mark.parametrize(
         "bootstrap_sample_size, bootstrap_samples", [(10, 100), (100_000, 100)]
     )
     def test_evaluate(
@@ -425,6 +432,8 @@ class TestEvaluateMixin:
         portfolio_df,
         trades_df,
         calc_bootstrap,
+        sharpe_length,
+        expected_sharpe,
     ):
         mixin = EvaluateMixin()
         result = mixin.evaluate(
@@ -433,6 +442,7 @@ class TestEvaluateMixin:
             calc_bootstrap,
             bootstrap_sample_size=bootstrap_sample_size,
             bootstrap_samples=bootstrap_samples,
+            sharpe_length=sharpe_length,
         )
         assert result.metrics is not None
         if not calc_bootstrap:
@@ -485,7 +495,7 @@ class TestEvaluateMixin:
         assert metrics.largest_loss_bars == 3
         assert metrics.max_wins == 7
         assert metrics.max_losses == 7
-        assert metrics.sharpe == 0.01710828175162464
+        assert metrics.sharpe == expected_sharpe
         assert metrics.profit_factor == 1.0759385033768167
         assert metrics.ulcer_index == 1.898347959437099
         assert metrics.upi == 0.01844528848501509
@@ -501,6 +511,7 @@ class TestEvaluateMixin:
             calc_bootstrap,
             bootstrap_sample_size=10,
             bootstrap_samples=100,
+            sharpe_length=None,
         )
         assert result.metrics is not None
         for field in get_type_hints(EvalMetrics):
@@ -517,6 +528,7 @@ class TestEvaluateMixin:
             calc_bootstrap,
             bootstrap_sample_size=10,
             bootstrap_samples=100,
+            sharpe_length=None,
         )
         assert result.metrics is not None
         for field in get_type_hints(EvalMetrics):
@@ -531,6 +543,7 @@ class TestEvaluateMixin:
             calc_bootstrap,
             bootstrap_sample_size=10,
             bootstrap_samples=100,
+            sharpe_length=None,
         )
         metrics = result.metrics
         assert metrics is not None

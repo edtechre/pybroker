@@ -212,19 +212,27 @@ def log_profit_factor(changes: NDArray[np.float_]) -> np.floating:
 
 
 @njit
-def sharpe_ratio(changes: NDArray[np.float_]) -> np.floating:
+def sharpe_ratio(
+    changes: NDArray[np.float_], obs: Optional[float] = None
+) -> np.floating:
     """Computes the
     `Sharpe Ratio <https://en.wikipedia.org/wiki/Sharpe_ratio>`_.
 
     Args:
         changes: Array of differences between each bar and the previous bar.
+        obs: Number of observations used to annualize the Sharpe Ratio. For
+            example, a value of ``252`` would be used to annualize daily
+            returns.
     """
     if not len(changes):
         return np.float32(0)
     std = np.std(changes)
     if std == 0:
         return np.float32(0)
-    return np.mean(changes) / std
+    sr = np.mean(changes) / std
+    if obs is not None:
+        sr *= np.sqrt(obs)
+    return sr
 
 
 def conf_profit_factor(
@@ -730,6 +738,7 @@ class EvaluateMixin:
         calc_bootstrap: bool,
         bootstrap_sample_size: int,
         bootstrap_samples: int,
+        sharpe_length: Optional[float],
     ) -> EvalResult:
         """Computes evaluation metrics.
 
@@ -740,6 +749,9 @@ class EvaluateMixin:
             calc_bootstrap: ``True`` to calculate randomized bootstrap metrics.
             bootstrap_sample_size: Size of each random bootstrap sample.
             bootstrap_samples: Number of random bootstrap samples to use.
+            sharpe_length: Number of observations used to annualize the Sharpe
+                Ratio. For example, a value of ``252`` would be used to
+                annualize daily returns.
 
         Returns:
             :class:`.EvalResult` containing evaluation metrics.
@@ -779,6 +791,7 @@ class EvaluateMixin:
             largest_win_num_bars=largest_win_bars,
             largest_loss_num_bars=largest_loss_bars,
             fees=fees,
+            sharpe_length=sharpe_length,
         )
         logger = StaticScope.instance().logger
         if not calc_bootstrap:
@@ -791,7 +804,10 @@ class EvaluateMixin:
             samples=bootstrap_samples, sample_size=bootstrap_sample_size
         )
         conf_intervals = self._calc_conf_intervals(
-            bar_changes, bootstrap_sample_size, bootstrap_samples
+            bar_changes,
+            bootstrap_sample_size,
+            bootstrap_samples,
+            sharpe_length,
         )
         dd_conf = self._calc_drawdown_conf(
             bar_changes,
@@ -825,11 +841,12 @@ class EvaluateMixin:
         largest_win_num_bars: int,
         largest_loss_num_bars: int,
         fees: NDArray[np.float_],
+        sharpe_length: Optional[float],
     ) -> EvalMetrics:
         total_fees = fees[-1] if len(fees) else 0
         max_dd = max_drawdown(bar_changes)
         max_dd_pct = max_drawdown_percent(bar_returns)
-        sharpe = sharpe_ratio(bar_changes)
+        sharpe = sharpe_ratio(bar_changes, sharpe_length)
         pf = profit_factor(bar_changes)
         r2 = r_squared(market_values)
         ui = ulcer_index(market_values)
@@ -924,19 +941,35 @@ class EvaluateMixin:
         changes: NDArray[np.float_],
         sample_size: int,
         samples: int,
+        sharpe_length: Optional[float],
     ) -> pd.DataFrame:
         pf_conf = self._to_conf_intervals(
             "Log Profit Factor",
             conf_profit_factor(changes, sample_size, samples),
         )
-        sharpe_conf = self._to_conf_intervals(
-            "Sharpe Ratio", conf_sharpe_ratio(changes, sample_size, samples)
-        )
+        sharpe_intervals = conf_sharpe_ratio(changes, sample_size, samples)
+        if sharpe_length is not None:
+            sharpe_intervals = self._scale_conf_intervals(
+                sharpe_intervals, np.sqrt(sharpe_length)
+            )
+        sharpe_conf = self._to_conf_intervals("Sharpe Ratio", sharpe_intervals)
         df = pd.DataFrame.from_records(
             pf_conf + sharpe_conf, columns=ConfInterval._fields
         )
         df.set_index(["name", "conf"], inplace=True)
         return df
+
+    def _scale_conf_intervals(
+        self, intervals: BootConfIntervals, factor: float
+    ):
+        return BootConfIntervals(
+            low_2p5=intervals.low_2p5 * factor,
+            high_2p5=intervals.high_2p5 * factor,
+            low_5=intervals.low_5 * factor,
+            high_5=intervals.high_5 * factor,
+            low_10=intervals.low_10 * factor,
+            high_10=intervals.high_10 * factor,
+        )
 
     def _to_conf_intervals(
         self, name: str, conf: BootConfIntervals
