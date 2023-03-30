@@ -84,4 +84,4 @@ class StrategyConfig:
     exit_sell_fill_price: Union[
         PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
     ] = field(default=PriceType.MIDDLE)
-    sharpe_length: Optional[float] = field(default=None)
+    sharpe_length: Optional[int] = field(default=None)

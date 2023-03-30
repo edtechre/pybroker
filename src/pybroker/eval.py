@@ -213,7 +213,7 @@ def log_profit_factor(changes: NDArray[np.float_]) -> np.floating:
 
 @njit
 def sharpe_ratio(
-    changes: NDArray[np.float_], obs: Optional[float] = None
+    changes: NDArray[np.float_], obs: Optional[int] = None
 ) -> np.floating:
     """Computes the
     `Sharpe Ratio <https://en.wikipedia.org/wiki/Sharpe_ratio>`_.
@@ -738,7 +738,7 @@ class EvaluateMixin:
         calc_bootstrap: bool,
         bootstrap_sample_size: int,
         bootstrap_samples: int,
-        sharpe_length: Optional[float],
+        sharpe_length: Optional[int],
     ) -> EvalResult:
         """Computes evaluation metrics.
 
@@ -841,7 +841,7 @@ class EvaluateMixin:
         largest_win_num_bars: int,
         largest_loss_num_bars: int,
         fees: NDArray[np.float_],
-        sharpe_length: Optional[float],
+        sharpe_length: Optional[int],
     ) -> EvalMetrics:
         total_fees = fees[-1] if len(fees) else 0
         max_dd = max_drawdown(bar_changes)
@@ -941,7 +941,7 @@ class EvaluateMixin:
         changes: NDArray[np.float_],
         sample_size: int,
         samples: int,
-        sharpe_length: Optional[float],
+        sharpe_length: Optional[int],
     ) -> pd.DataFrame:
         pf_intervals = conf_profit_factor(changes, sample_size, samples)
         pf_conf = self._to_conf_intervals(
