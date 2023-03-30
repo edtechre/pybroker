@@ -45,7 +45,7 @@ PyBroker
          <img src="https://readthedocs.org/projects/pybroker/badge/?version=latest"
             alt="Documentation Status">
       </a>
-      <a href="https://github.com/edtechre/pybroker/">
+      <a href="https://github.com/edtechre/pybroker/actions">
          <img src="https://github.com/edtechre/pybroker/actions/workflows/main.yml/badge.svg?event=push"
             alt="Package status">
       </a>
