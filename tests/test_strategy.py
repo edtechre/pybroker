@@ -27,6 +27,7 @@ from datetime import datetime
 from decimal import Decimal
 from pybroker.common import DataCol, PriceType, to_datetime
 from pybroker.config import StrategyConfig
+from pybroker.context import ExecContext
 from pybroker.data import DataSource
 from pybroker.portfolio import (
     Order,
@@ -198,6 +199,8 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
+            before_exec_fn=None,
+            after_exec_fn=None,
             sessions=defaultdict(dict),
             models={},
             indicator_data={},
@@ -253,6 +256,8 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
+            before_exec_fn=None,
+            after_exec_fn=None,
             sessions=defaultdict(dict),
             models={},
             indicator_data={},
@@ -296,6 +301,8 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
+            before_exec_fn=None,
+            after_exec_fn=None,
             sessions=defaultdict(dict),
             models={},
             indicator_data={},
@@ -342,6 +349,8 @@ class TestBacktestMixin:
         ):
             mixin.backtest_executions(
                 executions=execs,
+                before_exec_fn=None,
+                after_exec_fn=None,
                 sessions=defaultdict(dict),
                 models={},
                 indicator_data={},
@@ -376,6 +385,8 @@ class TestBacktestMixin:
         ):
             mixin.backtest_executions(
                 executions=execs,
+                before_exec_fn=None,
+                after_exec_fn=None,
                 sessions=defaultdict(dict),
                 models={},
                 indicator_data={},
@@ -402,6 +413,8 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
+            before_exec_fn=None,
+            after_exec_fn=None,
             sessions=defaultdict(dict),
             models={},
             indicator_data={},
@@ -435,6 +448,8 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
+            before_exec_fn=None,
+            after_exec_fn=None,
             sessions=defaultdict(dict),
             models={},
             indicator_data={},
@@ -470,6 +485,8 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
+            before_exec_fn=None,
+            after_exec_fn=None,
             sessions=defaultdict(dict),
             models={},
             indicator_data={},
@@ -506,6 +523,8 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
+            before_exec_fn=None,
+            after_exec_fn=None,
             sessions=defaultdict(dict),
             models={},
             indicator_data={},
@@ -544,6 +563,8 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
+            before_exec_fn=None,
+            after_exec_fn=None,
             sessions=defaultdict(dict),
             models={},
             indicator_data={},
@@ -595,6 +616,8 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
+            before_exec_fn=None,
+            after_exec_fn=None,
             sessions=defaultdict(dict),
             models={},
             indicator_data={},
@@ -671,6 +694,8 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
+            before_exec_fn=None,
+            after_exec_fn=None,
             sessions=defaultdict(dict),
             models={},
             indicator_data={},
@@ -712,6 +737,8 @@ class TestBacktestMixin:
         with pytest.raises(ValueError, match=r"Unknown price: .*"):
             mixin.backtest_executions(
                 executions=execs,
+                before_exec_fn=None,
+                after_exec_fn=None,
                 sessions=defaultdict(dict),
                 models={},
                 indicator_data={},
@@ -748,6 +775,8 @@ class TestBacktestMixin:
         ):
             mixin.backtest_executions(
                 executions=execs,
+                before_exec_fn=None,
+                after_exec_fn=None,
                 sessions=defaultdict(dict),
                 models={},
                 indicator_data={},
@@ -784,6 +813,8 @@ class TestBacktestMixin:
         ):
             mixin.backtest_executions(
                 executions=execs,
+                before_exec_fn=None,
+                after_exec_fn=None,
                 sessions=defaultdict(dict),
                 models={},
                 indicator_data={},
@@ -816,6 +847,8 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
+            before_exec_fn=None,
+            after_exec_fn=None,
             sessions=defaultdict(dict),
             models={},
             indicator_data={},
@@ -850,6 +883,8 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         mixin.backtest_executions(
             executions=execs,
+            before_exec_fn=None,
+            after_exec_fn=None,
             sessions=defaultdict(dict),
             models={},
             indicator_data={},
@@ -1935,3 +1970,108 @@ class TestStrategy:
         result = strategy.backtest(calc_bootstrap=False)
         assert len(result.trades) == 1
         assert result.trades.iloc[0]["stop"] is None
+
+    def test_backtest_when_before_exec(self, data_source_df):
+        def before_exec_fn(ctxs):
+            assert len(ctxs) == 2
+            assert type(ctxs["SPY"]) == ExecContext
+            assert type(ctxs["AAPL"]) == ExecContext
+            ctxs["SPY"].session["foo"] = "bar"
+
+        def exec_fn(ctx):
+            if ctx.symbol == "AAPL" and not ctx.long_pos():
+                ctx.buy_shares = 200
+            if ctx.symbol == "SPY":
+                assert ctx.session["foo"] == "bar"
+
+        df = data_source_df[data_source_df["symbol"] == "AAPL"]
+        dates = df["date"].unique()
+        dates = dates[dates <= np.datetime64(END_DATE)]
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn, ["SPY", "AAPL"])
+        strategy.set_before_exec(before_exec_fn)
+        result = strategy.backtest(calc_bootstrap=False)
+        assert len(result.orders) == 1
+        buy_order = result.orders.iloc[0]
+        assert buy_order["type"] == "buy"
+        assert buy_order["symbol"] == "AAPL"
+        assert buy_order["date"] == dates[1]
+        assert buy_order["shares"] == 200
+        assert np.isnan(buy_order["limit_price"])
+        assert buy_order["fees"] == 0
+
+    def test_backtest_when_before_exec_and_no_executions(self, data_source_df):
+        def before_exec_fn(ctxs):
+            assert len(ctxs) == 2
+            assert type(ctxs["SPY"]) == ExecContext
+            assert type(ctxs["AAPL"]) == ExecContext
+            if not ctxs["AAPL"].long_pos():
+                ctxs["AAPL"].buy_shares = 200
+
+        df = data_source_df[data_source_df["symbol"] == "AAPL"]
+        dates = df["date"].unique()
+        dates = dates[dates <= np.datetime64(END_DATE)]
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(None, ["SPY", "AAPL"])
+        strategy.set_before_exec(before_exec_fn)
+        result = strategy.backtest(calc_bootstrap=False)
+        assert len(result.orders) == 1
+        buy_order = result.orders.iloc[0]
+        assert buy_order["type"] == "buy"
+        assert buy_order["symbol"] == "AAPL"
+        assert buy_order["date"] == dates[1]
+        assert buy_order["shares"] == 200
+        assert np.isnan(buy_order["limit_price"])
+        assert buy_order["fees"] == 0
+
+    def test_backtest_when_after_exec(self, data_source_df):
+        def after_exec_fn(ctxs):
+            assert len(ctxs) == 2
+            assert type(ctxs["SPY"]) == ExecContext
+            assert type(ctxs["AAPL"]) == ExecContext
+            if not ctxs["AAPL"].long_pos():
+                ctxs["AAPL"].buy_shares = 300
+
+        def exec_fn(ctx):
+            if ctx.symbol == "AAPL" and not ctx.long_pos():
+                ctx.buy_shares = 200
+
+        df = data_source_df[data_source_df["symbol"] == "AAPL"]
+        dates = df["date"].unique()
+        dates = dates[dates <= np.datetime64(END_DATE)]
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn, ["SPY", "AAPL"])
+        strategy.set_after_exec(after_exec_fn)
+        result = strategy.backtest(calc_bootstrap=False)
+        assert len(result.orders) == 1
+        buy_order = result.orders.iloc[0]
+        assert buy_order["type"] == "buy"
+        assert buy_order["symbol"] == "AAPL"
+        assert buy_order["date"] == dates[1]
+        assert buy_order["shares"] == 300
+        assert np.isnan(buy_order["limit_price"])
+        assert buy_order["fees"] == 0
+
+    def test_backtest_when_after_exec_and_no_executions(self, data_source_df):
+        def after_exec_fn(ctxs):
+            assert len(ctxs) == 2
+            assert type(ctxs["SPY"]) == ExecContext
+            assert type(ctxs["AAPL"]) == ExecContext
+            if not ctxs["AAPL"].long_pos():
+                ctxs["AAPL"].buy_shares = 200
+
+        df = data_source_df[data_source_df["symbol"] == "AAPL"]
+        dates = df["date"].unique()
+        dates = dates[dates <= np.datetime64(END_DATE)]
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(None, ["SPY", "AAPL"])
+        strategy.set_after_exec(after_exec_fn)
+        result = strategy.backtest(calc_bootstrap=False)
+        assert len(result.orders) == 1
+        buy_order = result.orders.iloc[0]
+        assert buy_order["type"] == "buy"
+        assert buy_order["symbol"] == "AAPL"
+        assert buy_order["date"] == dates[1]
+        assert buy_order["shares"] == 200
+        assert np.isnan(buy_order["limit_price"])
+        assert buy_order["fees"] == 0

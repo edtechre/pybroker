@@ -570,6 +570,7 @@ class ExecContext(BaseContext):
 
     def __init__(
         self,
+        symbol: str,
         portfolio: Portfolio,
         col_scope: ColumnScope,
         ind_scope: IndicatorScope,
@@ -578,6 +579,7 @@ class ExecContext(BaseContext):
         pending_order_scope: PendingOrderScope,
         models: Mapping[ModelSymbol, TrainedModel],
         sym_end_index: Mapping[str, int],
+        session: Mapping,
     ):
         super().__init__(
             portfolio=portfolio,
@@ -590,12 +592,11 @@ class ExecContext(BaseContext):
             sym_end_index=sym_end_index,
         )
         self._scope = StaticScope.instance()
-        self._end_index: Optional[int] = None
         self._curr_date: Optional[np.datetime64] = None
         self._dt: Optional[datetime] = None
         self._foreign: dict[str, pd.DataFrame] = {}
 
-        self.symbol: Optional[str] = None
+        self.symbol: str = symbol
         self.buy_fill_price: Union[
             int,
             float,
@@ -616,7 +617,7 @@ class ExecContext(BaseContext):
         self.sell_limit_price: Optional[Union[int, float, Decimal]] = None
         self.hold_bars: Optional[int] = None
         self.score: Optional[float] = None
-        self.session: Optional[dict] = None
+        self.session = session
 
         self.stop_loss: Optional[Union[int, float, Decimal]] = None
         self.stop_loss_pct: Optional[Union[int, float, Decimal]] = None
@@ -635,9 +636,7 @@ class ExecContext(BaseContext):
     @property
     def bars(self) -> int:
         """Number of bars of data that have completed."""
-        if not self._end_index:
-            return 0
-        return self._end_index
+        return self._sym_end_index[self.symbol]
 
     @property
     def dt(self) -> datetime:
@@ -655,7 +654,7 @@ class ExecContext(BaseContext):
         return self._col_scope.fetch(  # type: ignore[return-value]
             self.symbol,  # type: ignore[arg-type]
             DataCol.DATE.value,
-            self._end_index,
+            self._sym_end_index[self.symbol],
         )
 
     @property
@@ -665,7 +664,7 @@ class ExecContext(BaseContext):
         return self._col_scope.fetch(  # type: ignore[return-value]
             self.symbol,  # type: ignore[arg-type]
             DataCol.OPEN.value,
-            self._end_index,
+            self._sym_end_index[self.symbol],
         )
 
     @property
@@ -675,7 +674,7 @@ class ExecContext(BaseContext):
         return self._col_scope.fetch(  # type: ignore[return-value]
             self.symbol,  # type: ignore[arg-type]
             DataCol.HIGH.value,
-            self._end_index,
+            self._sym_end_index[self.symbol],
         )
 
     @property
@@ -685,7 +684,7 @@ class ExecContext(BaseContext):
         return self._col_scope.fetch(  # type: ignore[return-value]
             self.symbol,  # type: ignore[arg-type]
             DataCol.LOW.value,
-            self._end_index,
+            self._sym_end_index[self.symbol],
         )
 
     @property
@@ -695,7 +694,7 @@ class ExecContext(BaseContext):
         return self._col_scope.fetch(  # type: ignore[return-value]
             self.symbol,  # type: ignore[arg-type]
             DataCol.CLOSE.value,
-            self._end_index,
+            self._sym_end_index[self.symbol],
         )
 
     @property
@@ -705,7 +704,7 @@ class ExecContext(BaseContext):
         return self._col_scope.fetch(  # type: ignore[return-value]
             self.symbol,  # type: ignore[arg-type]
             DataCol.VOLUME.value,
-            self._end_index,
+            self._sym_end_index[self.symbol],
         )
 
     @property
@@ -715,7 +714,7 @@ class ExecContext(BaseContext):
         return self._col_scope.fetch(  # type: ignore[return-value]
             self.symbol,  # type: ignore[arg-type]
             DataCol.VWAP.value,
-            self._end_index,
+            self._sym_end_index[self.symbol],
         )
 
     def sell_all_shares(self):
@@ -1139,25 +1138,20 @@ class ExecContext(BaseContext):
         if attr in self._scope.custom_data_cols:
             if self.symbol is None:
                 raise ValueError("symbol is not set.")
-            return self._col_scope.fetch(self.symbol, attr, self._end_index)
+            return self._col_scope.fetch(
+                self.symbol, attr, self._sym_end_index[self.symbol]
+            )
         raise AttributeError(f"Attribute {attr!r} not found.")
 
 
-def set_exec_ctx_data(
-    ctx: ExecContext, session: dict, symbol: str, date: np.datetime64
-):
+def set_exec_ctx_data(ctx: ExecContext, date: np.datetime64):
     """Sets data on an :class:`.ExecContext` instance.
 
     Args:
         ctx: :class:`.ExecContext`.
-        session: Custom session data.
-        symbol: Ticker symbol.
         date: Current bar's date.
     """
-    ctx.session = session
-    ctx.symbol = symbol
     ctx._curr_date = date
-    ctx._end_index = ctx._sym_end_index[symbol]
     ctx._dt = None
     ctx._foreign.clear()
     ctx.buy_fill_price = PriceType.MIDDLE

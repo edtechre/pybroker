@@ -72,33 +72,6 @@ from typing import (
 )
 
 
-def _decorate_execution_fn(fn: Callable[[ExecContext], None]) -> Callable:
-    def decorated_execution_fn(
-        ctx: ExecContext, session: dict, symbol: str, date: np.datetime64
-    ):
-        set_exec_ctx_data(ctx, session, symbol, date)
-        fn(ctx)
-        if ctx.buy_shares is not None and ctx.sell_shares is not None:
-            raise ValueError(
-                "For each symbol, only one of buy_shares or sell_shares can be"
-                " set per bar."
-            )
-        if ctx.buy_limit_price is not None and ctx.buy_shares is None:
-            raise ValueError(
-                "buy_shares must be set when buy_limit_price is set."
-            )
-        if ctx.sell_limit_price is not None and ctx.sell_shares is None:
-            raise ValueError(
-                "sell_shares must be set when sell_limit_price is set."
-            )
-        if not ctx.buy_shares and not ctx.sell_shares:
-            return
-        result = ctx.to_result()
-        return result
-
-    return decorated_execution_fn
-
-
 def _between(
     df: pd.DataFrame, start_date: datetime, end_date: datetime
 ) -> pd.DataFrame:
@@ -135,17 +108,14 @@ class Execution(NamedTuple):
     indicator_names: frozenset[str]
 
 
-class _SymExecFn(NamedTuple):
-    sym: str
-    fn: Callable
-
-
 class BacktestMixin:
     """Mixin implementing backtesting functionality."""
 
     def backtest_executions(
         self,
         executions: set[Execution],
+        before_exec_fn: Optional[Callable[[Mapping[str, ExecContext]], None]],
+        after_exec_fn: Optional[Callable[[Mapping[str, ExecContext]], None]],
         sessions: Mapping[str, Mapping],
         models: Mapping[ModelSymbol, TrainedModel],
         indicator_data: Mapping[IndicatorSymbol, pd.Series],
@@ -203,24 +173,12 @@ class BacktestMixin:
         """
         test_dates = test_data[DataCol.DATE.value].unique()
         test_dates.sort()
-        exec_fns = tuple(
-            _SymExecFn(sym, _decorate_execution_fn(exec.fn))
-            for sym in test_data[DataCol.SYMBOL.value].unique()
-            for exec in executions
-            if exec.fn is not None and sym in exec.symbols
-        )
+        test_syms = test_data[DataCol.SYMBOL.value].unique()
         test_data = (
             test_data.reset_index(drop=True)
             .set_index([DataCol.SYMBOL.value, DataCol.DATE.value])
             .sort_index()
         )
-        test_symbols = frozenset(exec_fn.sym for exec_fn in exec_fns)
-        sym_exec_dates = {
-            sym: frozenset(test_data.loc[pd.IndexSlice[sym, :]].index.values)
-            for sym in test_symbols
-        }
-        buy_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
-        sell_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
         sym_end_index: dict[str, int] = defaultdict(int)
         col_scope = ColumnScope(test_data)
         price_scope = PriceScope(col_scope, sym_end_index)
@@ -228,16 +186,32 @@ class BacktestMixin:
         input_scope = ModelInputScope(col_scope, ind_scope)
         pred_scope = PredictionScope(models, input_scope)
         pending_order_scope = PendingOrderScope()
-        exec_ctx = ExecContext(
-            portfolio=portfolio,
-            col_scope=col_scope,
-            ind_scope=ind_scope,
-            input_scope=input_scope,
-            pred_scope=pred_scope,
-            pending_order_scope=pending_order_scope,
-            models=models,
-            sym_end_index=sym_end_index,
-        )
+        exec_ctxs: dict[str, ExecContext] = {}
+        exec_fns: dict[str, Callable[[ExecContext], None]] = {}
+        for sym in test_syms:
+            for exec in executions:
+                if sym not in exec.symbols:
+                    continue
+                exec_ctxs[sym] = ExecContext(
+                    symbol=sym,
+                    portfolio=portfolio,
+                    col_scope=col_scope,
+                    ind_scope=ind_scope,
+                    input_scope=input_scope,
+                    pred_scope=pred_scope,
+                    pending_order_scope=pending_order_scope,
+                    models=models,
+                    sym_end_index=sym_end_index,
+                    session=sessions[sym],
+                )
+                if exec.fn is not None:
+                    exec_fns[sym] = exec.fn
+        sym_exec_dates = {
+            sym: frozenset(test_data.loc[pd.IndexSlice[sym, :]].index.values)
+            for sym in exec_ctxs.keys()
+        }
+        buy_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
+        sell_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
         if pos_size_handler is not None:
             pos_ctx = PosSizeContext(
                 portfolio=portfolio,
@@ -257,11 +231,21 @@ class BacktestMixin:
         buy_results: deque[ExecResult] = deque()
         sell_results: deque[ExecResult] = deque()
         exit_syms: deque[str] = deque()
+        active_ctxs: dict[str, ExecContext] = {}
         for i, date in enumerate(test_dates):
-            for sym in test_symbols:
+            active_ctxs.clear()
+            for sym, ctx in exec_ctxs.items():
                 if date not in sym_exec_dates[sym]:
                     continue
+                active_ctxs[sym] = ctx
                 sym_end_index[sym] += 1
+                set_exec_ctx_data(ctx, date)
+                if (
+                    exit_dates
+                    and sym in exit_dates
+                    and date == exit_dates[sym]
+                ):
+                    exit_syms.append(sym)
             is_buy_sched = date in buy_sched
             is_sell_sched = date in sell_sched
             if is_buy_sched and (
@@ -301,17 +285,15 @@ class BacktestMixin:
                 )
             portfolio.check_stops(date, price_scope)
             portfolio.capture_bar(date, test_data)
-            for exec_fn in exec_fns:
-                if date not in sym_exec_dates[exec_fn.sym]:
-                    continue
-                if exit_dates and date == exit_dates[exec_fn.sym]:
-                    exit_syms.append(exec_fn.sym)
-                result = exec_fn.fn(
-                    exec_ctx,
-                    sessions[exec_fn.sym],
-                    exec_fn.sym,
-                    date,
-                )
+            if before_exec_fn is not None:
+                before_exec_fn(active_ctxs)
+            for sym, ctx in active_ctxs.items():
+                if sym in exec_fns:
+                    exec_fns[sym](ctx)
+            if after_exec_fn is not None:
+                after_exec_fn(active_ctxs)
+            for ctx in active_ctxs.values():
+                result = self._to_result(ctx)
                 if result is None:
                     continue
                 if result.buy_shares is not None:
@@ -350,6 +332,24 @@ class BacktestMixin:
             portfolio.incr_bars()
             if i % 10 == 0 or i == len(test_dates) - 1:
                 logger.backtest_executions_loading(i + 1)
+
+    def _to_result(self, ctx: ExecContext) -> Optional[ExecResult]:
+        if ctx.buy_shares is not None and ctx.sell_shares is not None:
+            raise ValueError(
+                "For each symbol, only one of buy_shares or sell_shares can be"
+                " set per bar."
+            )
+        if ctx.buy_limit_price is not None and ctx.buy_shares is None:
+            raise ValueError(
+                "buy_shares must be set when buy_limit_price is set."
+            )
+        if ctx.sell_limit_price is not None and ctx.sell_shares is None:
+            raise ValueError(
+                "sell_shares must be set when sell_limit_price is set."
+            )
+        if not ctx.buy_shares and not ctx.sell_shares:
+            return None
+        return ctx.to_result()
 
     def _exit_position(
         self,
@@ -796,6 +796,12 @@ class Strategy(
         else:
             self._config = StrategyConfig()
         self._executions: set[Execution] = set()
+        self._before_exec_fn: Optional[
+            Callable[[Mapping[str, ExecContext]], None]
+        ] = None
+        self._after_exec_fn: Optional[
+            Callable[[Mapping[str, ExecContext]], None]
+        ] = None
         self._pos_size_handler: Optional[
             Callable[[PosSizeContext], None]
         ] = None
@@ -922,6 +928,30 @@ class Strategy(
                 indicator_names=ind_names,
             )
         )
+
+    def set_before_exec(
+        self, fn: Optional[Callable[[Mapping[str, ExecContext]], None]]
+    ):
+        r""":class:`Callable[[Mapping[str, ExecContext]]` that runs before all
+        execution functions.
+
+        Args:
+            fn: :class:`Callable` that takes a :class:`Mapping` of all ticker
+                symbols to :class:`ExecContext`\ s.
+        """
+        self._before_exec_fn = fn
+
+    def set_after_exec(
+        self, fn: Optional[Callable[[Mapping[str, ExecContext]], None]]
+    ):
+        r""":class:`Callable[[Mapping[str, ExecContext]]` that runs after all
+        execution functions.
+
+        Args:
+            fn: :class:`Callable` that takes a :class:`Mapping` of all ticker
+                symbols to :class:`ExecContext`\ s.
+        """
+        self._after_exec_fn = fn
 
     def clear_executions(self):
         """Clears executions that were added with :meth:`.add_execution`."""
@@ -1136,7 +1166,11 @@ class Strategy(
                 ),
                 disable_parallel=disable_parallel,
             )
-            train_only = all(map(lambda e: e.fn is None, self._executions))
+            train_only = (
+                self._before_exec_fn is None
+                and self._after_exec_fn is None
+                and all(map(lambda e: e.fn is None, self._executions))
+            )
             portfolio = Portfolio(
                 self._config.initial_cash,
                 self._config.fee_mode,
@@ -1203,11 +1237,9 @@ class Strategy(
     ):
         sessions: dict[str, dict] = defaultdict(dict)
         exit_dates: dict[str, np.datetime64] = {}
-        for exec in self._executions:
-            if exec.fn is None:
-                continue
-            for sym in exec.symbols:
-                if self._config.exit_on_last_bar:
+        if self._config.exit_on_last_bar:
+            for exec in self._executions:
+                for sym in exec.symbols:
                     sym_dates = df[df[DataCol.SYMBOL.value] == sym][
                         DataCol.DATE.value
                     ].values
@@ -1250,6 +1282,8 @@ class Strategy(
             if not train_only and not test_data.empty:
                 self.backtest_executions(
                     executions=self._executions,
+                    before_exec_fn=self._before_exec_fn,
+                    after_exec_fn=self._after_exec_fn,
                     sessions=sessions,
                     models=models,
                     indicator_data=indicator_data,

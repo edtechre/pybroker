@@ -123,6 +123,7 @@ def ctx(
     date,
 ):
     ctx = ExecContext(
+        symbol=symbol,
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
@@ -131,8 +132,9 @@ def ctx(
         pending_order_scope=pending_order_scope,
         models=trained_models,
         sym_end_index=sym_end_index,
+        session=session,
     )
-    set_exec_ctx_data(ctx, session, symbol, date)
+    set_exec_ctx_data(ctx, date)
     return ctx
 
 
@@ -158,6 +160,7 @@ def ctx_with_pos(
         sym: Position(sym, 100, "short") for sym in symbols
     }
     ctx = ExecContext(
+        symbol=symbol,
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
@@ -166,8 +169,9 @@ def ctx_with_pos(
         pending_order_scope=pending_order_scope,
         models=trained_models,
         sym_end_index=sym_end_index,
+        session=session,
     )
-    set_exec_ctx_data(ctx, session, symbol, date)
+    set_exec_ctx_data(ctx, date)
     return ctx
 
 
@@ -190,6 +194,7 @@ def ctx_with_orders(
     portfolio.orders = deque(orders)
     portfolio.trades = deque(trades)
     ctx = ExecContext(
+        symbol=symbol,
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
@@ -198,8 +203,9 @@ def ctx_with_orders(
         pending_order_scope=pending_order_scope,
         models=trained_models,
         sym_end_index=sym_end_index,
+        session=session,
     )
-    set_exec_ctx_data(ctx, session, symbol, date)
+    set_exec_ctx_data(ctx, date)
     return ctx
 
 
@@ -588,10 +594,7 @@ def test_trades_when_empty(ctx):
 
 
 def test_set_exec_ctx_data(ctx, symbols, sym_end_index):
-    sym = symbols[-1]
-    session = {"a": 1, "b": 2}
     date = np.datetime64("2020-01-01")
-    ctx._end_index = 1000
     ctx._foreign = {"SPY": np.random.rand(100)}
     ctx.buy_fill_price = PriceType.AVERAGE
     ctx.buy_shares = 100
@@ -610,13 +613,10 @@ def test_set_exec_ctx_data(ctx, symbols, sym_end_index):
     ctx.stop_trailing = 100
     ctx.stop_trailing_pct = 15
     ctx.stop_trailing_limit = 80.8
-    set_exec_ctx_data(ctx, session, sym, date)
-    assert ctx.session == session
-    assert ctx.symbol == sym
+    set_exec_ctx_data(ctx, date)
     assert ctx.dt == to_datetime(date)
-    assert ctx.bars == sym_end_index[sym]
+    assert ctx.bars == sym_end_index[ctx.symbol]
     assert not ctx._foreign
-    assert ctx._end_index == sym_end_index[sym]
     assert ctx.buy_fill_price == PriceType.MIDDLE
     assert ctx.buy_shares is None
     assert ctx.buy_limit_price is None
