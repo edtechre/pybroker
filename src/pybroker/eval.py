@@ -943,33 +943,35 @@ class EvaluateMixin:
         samples: int,
         sharpe_length: Optional[float],
     ) -> pd.DataFrame:
+        pf_intervals = conf_profit_factor(changes, sample_size, samples)
         pf_conf = self._to_conf_intervals(
-            "Log Profit Factor",
-            conf_profit_factor(changes, sample_size, samples),
+            "Profit Factor",
+            BootConfIntervals(
+                low_2p5=np.exp(pf_intervals.low_2p5),
+                high_2p5=np.exp(pf_intervals.high_2p5),
+                low_5=np.exp(pf_intervals.low_5),
+                high_5=np.exp(pf_intervals.high_5),
+                low_10=np.exp(pf_intervals.low_10),
+                high_10=np.exp(pf_intervals.high_10),
+            ),
         )
-        sharpe_intervals = conf_sharpe_ratio(changes, sample_size, samples)
+        sr_intervals = conf_sharpe_ratio(changes, sample_size, samples)
         if sharpe_length is not None:
-            sharpe_intervals = self._scale_conf_intervals(
-                sharpe_intervals, np.sqrt(sharpe_length)
+            factor = np.sqrt(sharpe_length)
+            sr_intervals = BootConfIntervals(
+                low_2p5=sr_intervals.low_2p5 * factor,
+                high_2p5=sr_intervals.high_2p5 * factor,
+                low_5=sr_intervals.low_5 * factor,
+                high_5=sr_intervals.high_5 * factor,
+                low_10=sr_intervals.low_10 * factor,
+                high_10=sr_intervals.high_10 * factor,
             )
-        sharpe_conf = self._to_conf_intervals("Sharpe Ratio", sharpe_intervals)
+        sharpe_conf = self._to_conf_intervals("Sharpe Ratio", sr_intervals)
         df = pd.DataFrame.from_records(
             pf_conf + sharpe_conf, columns=ConfInterval._fields
         )
         df.set_index(["name", "conf"], inplace=True)
         return df
-
-    def _scale_conf_intervals(
-        self, intervals: BootConfIntervals, factor: float
-    ):
-        return BootConfIntervals(
-            low_2p5=intervals.low_2p5 * factor,
-            high_2p5=intervals.high_2p5 * factor,
-            low_5=intervals.low_5 * factor,
-            high_5=intervals.high_5 * factor,
-            low_10=intervals.low_10 * factor,
-            high_10=intervals.high_10 * factor,
-        )
 
     def _to_conf_intervals(
         self, name: str, conf: BootConfIntervals

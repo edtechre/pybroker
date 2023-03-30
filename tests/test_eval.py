@@ -452,7 +452,7 @@ class TestEvaluateMixin:
         ci = result.bootstrap.conf_intervals
         assert ci.columns.tolist() == ["lower", "upper"]
         names = ci.index.get_level_values(0).unique().tolist()
-        assert names == ["Log Profit Factor", "Sharpe Ratio"]
+        assert names == ["Profit Factor", "Sharpe Ratio"]
         for name in names:
             df = ci[ci.index.get_level_values(0) == name]
             confs = df.index.get_level_values(1).tolist()
