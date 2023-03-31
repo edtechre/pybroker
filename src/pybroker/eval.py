@@ -644,8 +644,10 @@ class EvalMetrics:
         avg_loss_pct: Average loss per trade, measured in percentage.
         avg_losing_trade_bars: Average number of bars per losing trade.
         largest_win: Largest profit of a trade, measured in cash.
+        largest_win_pct: Largest profit of a trade, measured in percentage
         largest_win_bars: Number of bars in the largest winning trade.
         largest_loss: Largest loss of a trade, measured in cash.
+        largest_loss_pct: Largest loss of a trade, measured in percentage.
         largest_loss_bars: Number of bars in the largest losing trade.
         max_wins: Maximum number of consecutive winning trades.
         max_losses: Maximum number of consecutive losing trades.
@@ -687,8 +689,10 @@ class EvalMetrics:
     avg_loss_pct: float = field(default=0)
     avg_losing_trade_bars: float = field(default=0)
     largest_win: float = field(default=0)
+    largest_win_pct: float = field(default=0)
     largest_win_bars: int = field(default=0)
     largest_loss: float = field(default=0)
+    largest_loss_pct: float = field(default=0)
     largest_loss_bars: int = field(default=0)
     max_wins: int = field(default=0)
     max_losses: int = field(default=0)
@@ -772,10 +776,16 @@ class EvaluateMixin:
         winning_bars = trades_df[trades_df["pnl"] > 0]["bars"].to_numpy()
         losing_bars = trades_df[trades_df["pnl"] < 0]["bars"].to_numpy()
         largest_win = trades_df[trades_df["pnl"] == trades_df["pnl"].max()]
+        largest_win_pct = (
+            0 if largest_win.empty else largest_win["return_pct"].values[0]
+        )
         largest_win_bars = (
             0 if largest_win.empty else largest_win["bars"].values[0]
         )
         largest_loss = trades_df[trades_df["pnl"] == trades_df["pnl"].min()]
+        largest_loss_pct = (
+            0 if largest_loss.empty else largest_loss["return_pct"].values[0]
+        )
         largest_loss_bars = (
             0 if largest_loss.empty else largest_loss["bars"].values[0]
         )
@@ -789,7 +799,9 @@ class EvaluateMixin:
             winning_bars=winning_bars,
             losing_bars=losing_bars,
             largest_win_num_bars=largest_win_bars,
+            largest_win_pct=largest_win_pct,
             largest_loss_num_bars=largest_loss_bars,
+            largest_loss_pct=largest_loss_pct,
             fees=fees,
             sharpe_length=sharpe_length,
         )
@@ -839,7 +851,9 @@ class EvaluateMixin:
         winning_bars: NDArray[np.int_],
         losing_bars: NDArray[np.int_],
         largest_win_num_bars: int,
+        largest_win_pct: float,
         largest_loss_num_bars: int,
+        largest_loss_pct: float,
         fees: NDArray[np.float_],
         sharpe_length: Optional[int],
     ) -> EvalMetrics:
@@ -904,8 +918,10 @@ class EvaluateMixin:
             max_drawdown=max_dd,
             max_drawdown_pct=max_dd_pct,
             largest_win=largest_win,
+            largest_win_pct=largest_win_pct,
             largest_win_bars=largest_win_num_bars,
             largest_loss=largest_loss,
+            largest_loss_pct=largest_loss_pct,
             largest_loss_bars=largest_loss_num_bars,
             max_wins=max_wins,
             max_losses=max_losses,

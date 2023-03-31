@@ -490,8 +490,10 @@ class TestEvaluateMixin:
         assert metrics.avg_loss_pct == -2.9235326086956523
         assert metrics.avg_losing_trade_bars == 2.358695652173913
         assert metrics.largest_win == 21069.63
+        assert metrics.largest_win_pct == 14.49
         assert metrics.largest_win_bars == 3
         assert metrics.largest_loss == -11487.43
+        assert metrics.largest_loss_pct == -6.49
         assert metrics.largest_loss_bars == 3
         assert metrics.max_wins == 7
         assert metrics.max_losses == 7
@@ -547,19 +549,32 @@ class TestEvaluateMixin:
         )
         metrics = result.metrics
         assert metrics is not None
-        assert metrics.trade_count == 0
+        assert metrics.total_pnl == 0
+        assert metrics.total_return_pct == 0
         assert metrics.total_profit == 0
         assert metrics.total_loss == 0
         assert metrics.win_rate == 0
         assert metrics.loss_rate == 0
+        assert metrics.winning_trades == 0
+        assert metrics.losing_trades == 0
+        assert metrics.avg_pnl == 0
+        assert metrics.avg_return_pct == 0
+        assert metrics.avg_trade_bars == 0
         assert metrics.avg_profit == 0
         assert metrics.avg_profit_pct == 0
+        assert metrics.avg_winning_trade_bars == 0
         assert metrics.avg_loss == 0
         assert metrics.avg_loss_pct == 0
+        assert metrics.avg_losing_trade_bars == 0
         assert metrics.largest_win == 0
+        assert metrics.largest_win_pct == 0
+        assert metrics.largest_win_bars == 0
         assert metrics.largest_loss == 0
+        assert metrics.largest_loss_pct == 0
+        assert metrics.largest_loss_bars == 0
         assert metrics.max_wins == 0
         assert metrics.max_losses == 0
+        assert metrics.total_fees == 0
         if calc_bootstrap:
             assert result.bootstrap is not None
         else:
