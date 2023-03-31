@@ -396,6 +396,7 @@ class TestPriceScope:
         [
             (50, 50),
             (111.1, Decimal("111.1")),
+            (np.float32(99.98), Decimal("99.98")),
             (lambda _symbol, _bar_data: 60, 60),
             (PriceType.OPEN, 200),
             (PriceType.HIGH, 400),

@@ -344,6 +344,7 @@ class ExecResult:
     buy_fill_price: Union[
         int,
         float,
+        np.floating,
         Decimal,
         PriceType,
         Callable[[str, BarData], Union[int, float, Decimal]],
@@ -351,6 +352,7 @@ class ExecResult:
     sell_fill_price: Union[
         int,
         float,
+        np.floating,
         Decimal,
         PriceType,
         Callable[[str, BarData], Union[int, float, Decimal]],
@@ -600,6 +602,7 @@ class ExecContext(BaseContext):
         self.buy_fill_price: Union[
             int,
             float,
+            np.floating,
             Decimal,
             PriceType,
             Callable[[str, BarData], Union[int, float, Decimal]],
@@ -609,6 +612,7 @@ class ExecContext(BaseContext):
         self.sell_fill_price: Union[
             int,
             float,
+            np.floating,
             Decimal,
             PriceType,
             Callable[[str, BarData], Union[int, float, Decimal]],
@@ -931,6 +935,7 @@ class ExecContext(BaseContext):
             Union[
                 int,
                 float,
+                np.floating,
                 Decimal,
                 PriceType,
                 Callable[[str, BarData], Union[int, float, Decimal]],

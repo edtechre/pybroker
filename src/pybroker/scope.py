@@ -485,8 +485,9 @@ class PriceScope:
         self,
         symbol: str,
         price: Union[
-            float,
             int,
+            float,
+            np.floating,
             Decimal,
             PriceType,
             Callable[[str, BarData], Union[int, float, Decimal]],
@@ -565,7 +566,12 @@ class PriceScope:
                 )
             else:
                 raise ValueError(f"Unknown price: {price_type}")
-        elif price_type == float or price_type == int or price_type == Decimal:
+        elif (
+            price_type == float
+            or price_type == int
+            or isinstance(price, Decimal)
+            or isinstance(price, np.floating)
+        ):
             return to_decimal(price)  # type: ignore[arg-type]
         elif callable(price):
             bar_data = self._col_scope.bar_data_from_data_columns(
@@ -600,6 +606,7 @@ class PendingOrder(NamedTuple):
     fill_price: Union[
         int,
         float,
+        np.floating,
         Decimal,
         PriceType,
         Callable[[str, BarData], Union[int, float, Decimal]],
@@ -632,6 +639,7 @@ class PendingOrderScope:
         fill_price: Union[
             int,
             float,
+            np.floating,
             Decimal,
             PriceType,
             Callable[[str, BarData], Union[int, float, Decimal]],

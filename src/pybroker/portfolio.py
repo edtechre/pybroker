@@ -60,6 +60,7 @@ class Stop(NamedTuple):
         Union[
             int,
             float,
+            np.floating,
             Decimal,
             PriceType,
             Callable[[str, BarData], Union[int, float, Decimal]],
