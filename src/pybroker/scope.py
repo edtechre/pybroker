@@ -569,8 +569,8 @@ class PriceScope:
         elif (
             price_type == float
             or price_type == int
-            or isinstance(price, Decimal)
             or isinstance(price, np.floating)
+            or isinstance(price, Decimal)
         ):
             return to_decimal(price)  # type: ignore[arg-type]
         elif callable(price):
