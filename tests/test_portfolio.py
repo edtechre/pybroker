@@ -2902,6 +2902,18 @@ def test_remove_stops_when_entry(stop_type):
     assert not len(portfolio.trades)
 
 
+def test_win_lose_rate():
+    portfolio = Portfolio(CASH)
+    portfolio.buy(DATE_1, SYMBOL_1, SHARES_1, FILL_PRICE_1, LIMIT_PRICE_1)
+    portfolio.buy(DATE_1, SYMBOL_2, SHARES_1, FILL_PRICE_3, limit_price=None)
+    portfolio.incr_bars()
+    portfolio.sell(DATE_2, SYMBOL_1, SHARES_1, FILL_PRICE_2, limit_price=None)
+    portfolio.sell(DATE_2, SYMBOL_2, SHARES_1, FILL_PRICE_2, LIMIT_PRICE_1)
+    assert len(portfolio.trades) == 2
+    assert portfolio.win_rate == Decimal("0.5")
+    assert portfolio.lose_rate == Decimal("0.5")
+
+
 def test_incr_ids():
     portfolio = Portfolio(CASH)
     buy_order = portfolio.buy(

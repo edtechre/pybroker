@@ -108,6 +108,16 @@ class BaseContext:
         """
         return self._portfolio.market_value
 
+    @property
+    def win_rate(self) -> Decimal:
+        """Running win rate of trades."""
+        return self._portfolio.win_rate
+
+    @property
+    def lose_rate(self) -> Decimal:
+        """Running lose rate of trades."""
+        return self._portfolio.lose_rate
+
     def orders(self) -> Iterator[Order]:
         r""":class:`Iterator` of all :class:`pybroker.portfolio.Order`\ s that
         have been placed and filled.

@@ -193,6 +193,8 @@ def ctx_with_orders(
 ):
     portfolio.orders = deque(orders)
     portfolio.trades = deque(trades)
+    portfolio.win_rate = 1
+    portfolio.lose_rate = 0
     ctx = ExecContext(
         symbol=symbol,
         portfolio=portfolio,
@@ -211,6 +213,14 @@ def ctx_with_orders(
 
 def test_dt(ctx, date):
     assert ctx.dt == to_datetime(date)
+
+
+def test_win_rate(ctx_with_orders):
+    assert ctx_with_orders.win_rate == 1
+
+
+def test_lose_rate(ctx_with_orders):
+    assert ctx_with_orders.lose_rate == 0
 
 
 @pytest.mark.parametrize(
