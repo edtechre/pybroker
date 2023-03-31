@@ -447,20 +447,25 @@ class TestEvaluateMixin:
         assert result.metrics is not None
         if not calc_bootstrap:
             assert result.bootstrap is None
-            return
-        assert result.bootstrap is not None
-        ci = result.bootstrap.conf_intervals
-        assert ci.columns.tolist() == ["lower", "upper"]
-        names = ci.index.get_level_values(0).unique().tolist()
-        assert names == ["Profit Factor", "Sharpe Ratio"]
-        for name in names:
-            df = ci[ci.index.get_level_values(0) == name]
-            confs = df.index.get_level_values(1).tolist()
-            assert confs == ["97.5%", "95%", "90%"]
-        dd = result.bootstrap.drawdown_conf
-        assert dd.columns.tolist() == ["amount", "percent"]
-        conf = dd.index.get_level_values(0).tolist()
-        assert conf == ["99.9%", "99%", "95%", "90%"]
+        else:
+            assert result.bootstrap is not None
+            assert result.bootstrap.conf_intervals is not None
+            assert result.bootstrap.drawdown_conf is not None
+            assert result.bootstrap.profit_factor is not None
+            assert result.bootstrap.sharpe is not None
+            assert result.bootstrap.drawdown is not None
+            ci = result.bootstrap.conf_intervals
+            assert ci.columns.tolist() == ["lower", "upper"]
+            names = ci.index.get_level_values(0).unique().tolist()
+            assert names == ["Profit Factor", "Sharpe Ratio"]
+            for name in names:
+                df = ci[ci.index.get_level_values(0) == name]
+                confs = df.index.get_level_values(1).tolist()
+                assert confs == ["97.5%", "95%", "90%"]
+            dd = result.bootstrap.drawdown_conf
+            assert dd.columns.tolist() == ["amount", "percent"]
+            conf = dd.index.get_level_values(0).tolist()
+            assert conf == ["99.9%", "99%", "95%", "90%"]
         metrics = result.metrics
         assert metrics.initial_market_value == 500000
         assert metrics.end_market_value == 693111.87
@@ -577,5 +582,10 @@ class TestEvaluateMixin:
         assert metrics.total_fees == 0
         if calc_bootstrap:
             assert result.bootstrap is not None
+            assert result.bootstrap.conf_intervals is not None
+            assert result.bootstrap.drawdown_conf is not None
+            assert result.bootstrap.profit_factor is not None
+            assert result.bootstrap.sharpe is not None
+            assert result.bootstrap.drawdown is not None
         else:
             assert result.bootstrap is None

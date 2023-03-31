@@ -238,15 +238,34 @@ def sharpe_ratio(
 def conf_profit_factor(
     x: NDArray[np.float_], n: int, n_boot: int
 ) -> BootConfIntervals:
-    """Computes confidence intervals for :func:`.log_profit_factor`."""
-    return bca_boot_conf(x, n, n_boot, log_profit_factor)
+    """Computes confidence intervals for :func:`.profit_factor`."""
+    intervals = bca_boot_conf(x, n, n_boot, log_profit_factor)
+    return BootConfIntervals(
+        low_2p5=np.exp(intervals.low_2p5),
+        high_2p5=np.exp(intervals.high_2p5),
+        low_5=np.exp(intervals.low_5),
+        high_5=np.exp(intervals.high_5),
+        low_10=np.exp(intervals.low_10),
+        high_10=np.exp(intervals.high_10),
+    )
 
 
 def conf_sharpe_ratio(
-    x: NDArray[np.float_], n: int, n_boot: int
+    x: NDArray[np.float_], n: int, n_boot: int, obs: Optional[int] = None
 ) -> BootConfIntervals:
     """Computes confidence intervals for :func:`.sharpe_ratio`."""
-    return bca_boot_conf(x, n, n_boot, sharpe_ratio)
+    intervals = bca_boot_conf(x, n, n_boot, sharpe_ratio)
+    if obs is not None:
+        factor = np.sqrt(obs)
+        intervals = BootConfIntervals(
+            low_2p5=intervals.low_2p5 * factor,
+            high_2p5=intervals.high_2p5 * factor,
+            low_5=intervals.low_5 * factor,
+            high_5=intervals.high_5 * factor,
+            low_10=intervals.low_10 * factor,
+            high_10=intervals.high_10 * factor,
+        )
+    return intervals
 
 
 @njit
@@ -323,14 +342,14 @@ class DrawdownMetrics(NamedTuple):
     """Contains drawdown metrics.
 
     Attributes:
-        drawdown_confs: Upper bounds of confidence intervals for maximum
+        confs: Upper bounds of confidence intervals for maximum
             drawdown, measured in cash.
-        drawdown_pct_confs: Upper bounds of confidence intervals for maximum
+        pct_confs: Upper bounds of confidence intervals for maximum
             drawdown, measured in percentage.
     """
 
-    drawdown_confs: DrawdownConfs
-    drawdown_pct_confs: DrawdownConfs
+    confs: DrawdownConfs
+    pct_confs: DrawdownConfs
 
 
 @njit
@@ -605,10 +624,16 @@ class BootstrapResult(NamedTuple):
             intervals for :func:`.log_profit_factor` and :func:`.sharpe_ratio`.
         drawdown_conf: :class:`pandas.DataFrame` containing upper bounds of
             confidence intervals for maximum drawdown.
+        profit_factor: Contains profit factor confidence intervals.
+        sharpe: Contains Sharpe Ratio confidence intervals.
+        drawdown: Contains drawdown confidence intervals.
     """
 
     conf_intervals: pd.DataFrame
     drawdown_conf: pd.DataFrame
+    profit_factor: BootConfIntervals
+    sharpe: BootConfIntervals
+    drawdown: DrawdownMetrics
 
 
 @dataclass(frozen=True)
@@ -732,6 +757,17 @@ class EvalResult(NamedTuple):
     bootstrap: Optional[BootstrapResult]
 
 
+class _ConfsResult(NamedTuple):
+    df: pd.DataFrame
+    profit_factor: BootConfIntervals
+    sharpe: BootConfIntervals
+
+
+class _DrawdownResult(NamedTuple):
+    df: pd.DataFrame
+    metrics: DrawdownMetrics
+
+
 class EvaluateMixin:
     """Mixin for computing evaluation metrics."""
 
@@ -815,19 +851,25 @@ class EvaluateMixin:
         logger.calc_bootstrap_metrics_start(
             samples=bootstrap_samples, sample_size=bootstrap_sample_size
         )
-        conf_intervals = self._calc_conf_intervals(
+        confs_result = self._calc_conf_intervals(
             bar_changes,
             bootstrap_sample_size,
             bootstrap_samples,
             sharpe_length,
         )
-        dd_conf = self._calc_drawdown_conf(
+        dd_result = self._calc_drawdown_conf(
             bar_changes,
             bar_returns,
             bootstrap_sample_size,
             bootstrap_samples,
         )
-        bootstrap = BootstrapResult(conf_intervals, dd_conf)
+        bootstrap = BootstrapResult(
+            conf_intervals=confs_result.df,
+            drawdown_conf=dd_result.df,
+            profit_factor=confs_result.profit_factor,
+            sharpe=confs_result.sharpe,
+            drawdown=dd_result.metrics,
+        )
         logger.calc_bootstrap_metrics_completed()
         return EvalResult(metrics, bootstrap)
 
@@ -958,36 +1000,20 @@ class EvaluateMixin:
         sample_size: int,
         samples: int,
         sharpe_length: Optional[int],
-    ) -> pd.DataFrame:
+    ) -> _ConfsResult:
         pf_intervals = conf_profit_factor(changes, sample_size, samples)
-        pf_conf = self._to_conf_intervals(
-            "Profit Factor",
-            BootConfIntervals(
-                low_2p5=np.exp(pf_intervals.low_2p5),
-                high_2p5=np.exp(pf_intervals.high_2p5),
-                low_5=np.exp(pf_intervals.low_5),
-                high_5=np.exp(pf_intervals.high_5),
-                low_10=np.exp(pf_intervals.low_10),
-                high_10=np.exp(pf_intervals.high_10),
-            ),
+        pf_conf = self._to_conf_intervals("Profit Factor", pf_intervals)
+        sr_intervals = conf_sharpe_ratio(
+            changes, sample_size, samples, sharpe_length
         )
-        sr_intervals = conf_sharpe_ratio(changes, sample_size, samples)
-        if sharpe_length is not None:
-            factor = np.sqrt(sharpe_length)
-            sr_intervals = BootConfIntervals(
-                low_2p5=sr_intervals.low_2p5 * factor,
-                high_2p5=sr_intervals.high_2p5 * factor,
-                low_5=sr_intervals.low_5 * factor,
-                high_5=sr_intervals.high_5 * factor,
-                low_10=sr_intervals.low_10 * factor,
-                high_10=sr_intervals.high_10 * factor,
-            )
         sharpe_conf = self._to_conf_intervals("Sharpe Ratio", sr_intervals)
         df = pd.DataFrame.from_records(
             pf_conf + sharpe_conf, columns=ConfInterval._fields
         )
         df.set_index(["name", "conf"], inplace=True)
-        return df
+        return _ConfsResult(
+            df=df, profit_factor=pf_intervals, sharpe=sr_intervals
+        )
 
     def _to_conf_intervals(
         self, name: str, conf: BootConfIntervals
@@ -1006,13 +1032,11 @@ class EvaluateMixin:
         returns: NDArray[np.float_],
         sample_size: int,
         samples: int,
-    ) -> pd.DataFrame:
-        dd_conf, dd_pct_conf = drawdown_conf(
-            changes, returns, sample_size, samples
-        )
+    ) -> _DrawdownResult:
+        metrics = drawdown_conf(changes, returns, sample_size, samples)
         df = pd.DataFrame(
-            zip(("99.9%", "99%", "95%", "90%"), dd_conf, dd_pct_conf),
+            zip(("99.9%", "99%", "95%", "90%"), *metrics),
             columns=("conf", "amount", "percent"),
         )
         df.set_index("conf", inplace=True)
-        return df
+        return _DrawdownResult(df=df, metrics=metrics)
