@@ -114,9 +114,9 @@ class BaseContext:
         return self._portfolio.win_rate
 
     @property
-    def lose_rate(self) -> Decimal:
-        """Running lose rate of trades."""
-        return self._portfolio.lose_rate
+    def loss_rate(self) -> Decimal:
+        """Running loss rate of trades."""
+        return self._portfolio.loss_rate
 
     def orders(self) -> Iterator[Order]:
         r""":class:`Iterator` of all :class:`pybroker.portfolio.Order`\ s that

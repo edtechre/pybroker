@@ -298,7 +298,7 @@ class Portfolio:
         position_bars: ``deque`` of snapshots of :class:`.Position` states on
             every bar, sorted in ascending chronological order.
         win_rate: Running win rate of trades.
-        lose_rate: Running lose rate of trades.
+        loss_rate: Running loss rate of trades.
     """
 
     _order_id: int = 0
@@ -336,7 +336,7 @@ class Portfolio:
         self.bars: deque[PortfolioBar] = deque()
         self.position_bars: deque[PositionBar] = deque()
         self.win_rate: Decimal = Decimal()
-        self.lose_rate: Decimal = Decimal()
+        self.loss_rate: Decimal = Decimal()
         self._wins: Decimal = Decimal()
         self._logger = StaticScope.instance().logger
         self._stop_data: dict[int, _StopData] = {}
@@ -451,7 +451,7 @@ class Portfolio:
         if pnl > 0:
             self._wins += 1
         self.win_rate = self._wins / len(self.trades)
-        self.lose_rate = 1 - self.win_rate
+        self.loss_rate = 1 - self.win_rate
 
     def _get_stop_amount(self, stop: Stop, price: Decimal) -> Decimal:
         if stop.percent is not None:

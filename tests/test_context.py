@@ -219,8 +219,8 @@ def test_win_rate(ctx_with_orders):
     assert ctx_with_orders.win_rate == 1
 
 
-def test_lose_rate(ctx_with_orders):
-    assert ctx_with_orders.lose_rate == 0
+def test_loss_rate(ctx_with_orders):
+    assert ctx_with_orders.loss_rate == 0
 
 
 @pytest.mark.parametrize(
