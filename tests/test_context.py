@@ -29,7 +29,7 @@ from pybroker.context import (
     set_exec_ctx_data,
     set_pos_size_ctx_data,
 )
-from pybroker.portfolio import Order, Portfolio, Position, Stop, Trade
+from pybroker.portfolio import Order, Portfolio, Position, Trade
 
 
 @pytest.fixture()
@@ -472,34 +472,27 @@ def test_to_result(ctx, symbol, date):
     ctx.hold_bars = 2
     ctx.score = 7
     result = ctx.to_result()
-    assert result == ExecResult(
-        symbol=symbol,
-        date=date,
-        buy_fill_price=PriceType.AVERAGE,
-        buy_shares=20,
-        buy_limit_price=Decimal("99.99"),
-        sell_fill_price=PriceType.HIGH,
-        sell_shares=20,
-        sell_limit_price=Decimal("110.11"),
-        hold_bars=2,
-        score=7,
-        long_stops=frozenset(
-            [
-                Stop(
-                    id=1,
-                    symbol=symbol,
-                    stop_type=StopType.BAR,
-                    pos_type="long",
-                    percent=None,
-                    points=None,
-                    bars=2,
-                    fill_price=PriceType.HIGH,
-                    limit_price=None,
-                )
-            ]
-        ),
-        short_stops=None,
-    )
+    assert result.symbol == symbol
+    assert result.date == date
+    assert result.buy_fill_price == PriceType.AVERAGE
+    assert result.buy_shares == 20
+    assert result.buy_limit_price == Decimal("99.99")
+    assert result.sell_fill_price == PriceType.HIGH
+    assert result.sell_shares == 20
+    assert result.sell_limit_price == Decimal("110.11")
+    assert result.hold_bars == 2
+    assert result.score == 7
+    assert len(result.long_stops) == 1
+    assert result.short_stops is None
+    stop = next(iter(result.long_stops))
+    assert stop.symbol == symbol
+    assert stop.stop_type == StopType.BAR
+    assert stop.pos_type == "long"
+    assert stop.percent is None
+    assert stop.points is None
+    assert stop.bars == 2
+    assert stop.fill_price == PriceType.HIGH
+    assert stop.limit_price is None
 
 
 @pytest.mark.parametrize("pos_type", ["long", "short"])
@@ -525,50 +518,45 @@ def test_to_result_when_stop(
         percent = stop_amount
     else:
         points = stop_amount
-    expected_stops = frozenset(
-        [
-            Stop(
-                id=1,
-                symbol=symbol,
-                stop_type=expected_stop_type,
-                pos_type=pos_type,
-                percent=percent,
-                points=points,
-                bars=None,
-                fill_price=None,
-                limit_price=stop_limit,
-            )
-        ]
-    )
     buy_shares = None
     sell_shares = None
-    long_stops = None
-    short_stops = None
     if pos_type == "long":
         buy_shares = 100
-        long_stops = expected_stops
     else:
         sell_shares = 100
-        short_stops = expected_stops
     ctx.buy_shares = buy_shares
     ctx.sell_shares = sell_shares
     setattr(ctx, stop_attr, stop_amount)
     setattr(ctx, f"{stop_attr.replace('_pct', '')}_limit", stop_limit)
     result = ctx.to_result()
-    assert result == ExecResult(
-        symbol=symbol,
-        date=date,
-        buy_fill_price=PriceType.MIDDLE,
-        buy_shares=buy_shares,
-        buy_limit_price=None,
-        sell_fill_price=PriceType.MIDDLE,
-        sell_shares=sell_shares,
-        sell_limit_price=None,
-        hold_bars=None,
-        score=None,
-        long_stops=long_stops,
-        short_stops=short_stops,
-    )
+    assert result.symbol == symbol
+    assert result.date == date
+    assert result.buy_fill_price == PriceType.MIDDLE
+    assert result.buy_limit_price is None
+    assert result.sell_fill_price == PriceType.MIDDLE
+    assert result.sell_limit_price is None
+    assert result.hold_bars is None
+    assert result.score is None
+    if pos_type == "long":
+        assert result.buy_shares == 100
+        assert result.sell_shares is None
+        assert len(result.long_stops) == 1
+        assert result.short_stops is None
+        stop = next(iter(result.long_stops))
+    else:
+        assert result.sell_shares == 100
+        assert result.buy_shares is None
+        assert len(result.short_stops) == 1
+        assert result.long_stops is None
+        stop = next(iter(result.short_stops))
+    assert stop.symbol == symbol
+    assert stop.stop_type == expected_stop_type
+    assert stop.pos_type == pos_type
+    assert stop.percent == percent
+    assert stop.points == points
+    assert stop.bars is None
+    assert stop.fill_price is None
+    assert stop.limit_price == stop_limit
 
 
 @pytest.mark.parametrize(

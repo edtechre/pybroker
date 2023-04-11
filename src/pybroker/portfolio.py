@@ -301,10 +301,6 @@ class Portfolio:
         loss_rate: Running loss rate of trades.
     """
 
-    _order_id: int = 0
-    _entry_id: int = 0
-    _trade_id: int = 0
-
     def __init__(
         self,
         cash: float,
@@ -340,6 +336,9 @@ class Portfolio:
         self._wins: Decimal = Decimal()
         self._logger = StaticScope.instance().logger
         self._stop_data: dict[int, _StopData] = {}
+        self._order_id: int = 0
+        self._entry_id: int = 0
+        self._trade_id: int = 0
 
     def _calculate_fees(self, fill_price: Decimal, shares: Decimal) -> Decimal:
         fees = Decimal()

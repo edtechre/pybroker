@@ -1820,13 +1820,13 @@ class TestStrategy:
                 ctx.buy_shares = 100
                 ctx.stop_loss = 10
 
-        df = data_source_df[data_source_df["symbol"] == "SPY"]
+        df = data_source_df[data_source_df["symbol"].isin(["SPY", "AAPL"])]
         dates = df["date"].unique()
         dates = dates[dates <= np.datetime64(END_DATE)]
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.add_execution(exec_fn, "SPY")
+        strategy.add_execution(exec_fn, ["SPY", "AAPL"])
         result = strategy.backtest(calc_bootstrap=False)
-        assert len(result.trades) == 1
+        assert len(result.trades) == 2
         trade = result.trades.iloc[0]
         assert trade["type"] == "long"
         assert trade["symbol"] == "SPY"
@@ -1837,7 +1837,17 @@ class TestStrategy:
         assert trade["agg_pnl"] == -1000
         assert trade["pnl_per_bar"] == round(-1000 / trade["bars"], 2)
         assert trade["stop"] == "loss"
-        assert len(result.orders) == 2
+        trade = result.trades.iloc[1]
+        assert trade["type"] == "long"
+        assert trade["symbol"] == "AAPL"
+        assert trade["entry_date"] == dates[1]
+        assert trade["exit"] == trade["entry"] - 10
+        assert trade["shares"] == 100
+        assert trade["pnl"] == -1000
+        assert trade["agg_pnl"] == -2000
+        assert trade["pnl_per_bar"] == round(-1000 / trade["bars"], 2)
+        assert trade["stop"] == "loss"
+        assert len(result.orders) == 4
         buy_order = result.orders.iloc[0]
         assert buy_order["type"] == "buy"
         assert buy_order["symbol"] == "SPY"
@@ -1845,9 +1855,22 @@ class TestStrategy:
         assert buy_order["shares"] == 100
         assert np.isnan(buy_order["limit_price"])
         assert buy_order["fees"] == 0
-        sell_order = result.orders.iloc[1]
+        buy_order = result.orders.iloc[1]
+        assert buy_order["type"] == "buy"
+        assert buy_order["symbol"] == "AAPL"
+        assert buy_order["date"] == dates[1]
+        assert buy_order["shares"] == 100
+        assert np.isnan(buy_order["limit_price"])
+        assert buy_order["fees"] == 0
+        sell_order = result.orders.iloc[2]
         assert sell_order["type"] == "sell"
         assert sell_order["symbol"] == "SPY"
+        assert sell_order["shares"] == 100
+        assert np.isnan(sell_order["limit_price"])
+        assert sell_order["fees"] == 0
+        sell_order = result.orders.iloc[3]
+        assert sell_order["type"] == "sell"
+        assert sell_order["symbol"] == "AAPL"
         assert sell_order["shares"] == 100
         assert np.isnan(sell_order["limit_price"])
         assert sell_order["fees"] == 0
@@ -1889,30 +1912,6 @@ class TestStrategy:
         assert sell_order["shares"] == 100
         assert np.isnan(sell_order["limit_price"])
         assert sell_order["fees"] == 0
-
-    def test_backtest_when_cancel_stop(self, data_source_df):
-        def exec_fn(ctx):
-            if ctx.bars == 1:
-                ctx.buy_shares = 100
-                ctx.stop_loss = 10
-            elif ctx.bars == 10:
-                assert ctx.cancel_stop(stop_id=1)
-
-        df = data_source_df[data_source_df["symbol"] == "SPY"]
-        dates = df["date"].unique()
-        dates = dates[dates <= np.datetime64(END_DATE)]
-        strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.add_execution(exec_fn, "SPY")
-        result = strategy.backtest(calc_bootstrap=False)
-        assert not len(result.trades)
-        assert len(result.orders) == 1
-        buy_order = result.orders.iloc[0]
-        assert buy_order["type"] == "buy"
-        assert buy_order["symbol"] == "SPY"
-        assert buy_order["date"] == dates[1]
-        assert buy_order["shares"] == 100
-        assert np.isnan(buy_order["limit_price"])
-        assert buy_order["fees"] == 0
 
     def test_backtest_when_cancel_stops(self, data_source_df):
         def exec_fn(ctx):

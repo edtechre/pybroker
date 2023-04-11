@@ -909,10 +909,6 @@ class ExecContext(BaseContext):
         """
         self._pending_order_scope.remove_all(symbol)
 
-    def cancel_stop(self, stop_id: int) -> bool:
-        """Cancels a :class:`pybroker.portfolio.Stop` with ``stop_id``."""
-        return self._portfolio.remove_stop(stop_id)
-
     def cancel_stops(
         self,
         val: Union[str, Position, Entry],
@@ -963,7 +959,7 @@ class ExecContext(BaseContext):
                 points_dec = to_decimal(points)
         if limit_price is not None:
             limit_price_dec = to_decimal(limit_price)
-        self._stop_id += 1
+        ExecContext._stop_id += 1
         return Stop(
             id=self._stop_id,
             symbol=self._get_symbol(),
