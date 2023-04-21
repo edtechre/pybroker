@@ -105,8 +105,10 @@ snippets:
       # Buy on a new 10 day high.
       if not ctx.long_pos() and high_10d[-1] > high_10d[-2]:
          ctx.buy_shares = 100
-         # Hold the position for 2 days.
-         ctx.hold_bars = 2
+         # Hold the position for 5 days.
+         ctx.hold_bars = 5
+         # Set a stop loss of 2%.
+         ctx.stop_loss_pct = 2
 
    strategy = Strategy(YFinance(), start_date='1/1/2022', end_date='7/1/2022')
    strategy.add_execution(
