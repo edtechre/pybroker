@@ -110,7 +110,7 @@ def test_disable_progress_bar(mock_logger):
 
 
 def test_param_when_empty():
-    assert param("foo") is None
+    assert param("bar") is None
 
 
 def test_param_when_set_and_get():
