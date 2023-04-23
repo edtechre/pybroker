@@ -34,6 +34,7 @@ from decimal import Decimal
 from diskcache import Cache
 from numpy.typing import NDArray
 from typing import (
+    Any,
     Callable,
     Collection,
     Iterable,
@@ -91,6 +92,7 @@ class StaticScope:
         )
         self.custom_data_cols = set()
         self._cols_frozen: bool = False
+        self._params: dict[str, Any] = {}
 
     def set_indicator(self, indicator):
         """Stores :class:`pybroker.indicator.Indicator` in static scope."""
@@ -172,6 +174,13 @@ class StaticScope:
         """
         self._cols_frozen = False
 
+    def param(self, name: str, value: Optional[Any] = None) -> Optional[Any]:
+        """Get or set a global parameter."""
+        if value is None:
+            return self._params.get(name, None)
+        self._params[name] = value
+        return value
+
     @classmethod
     def instance(cls) -> "StaticScope":
         """Returns singleton instance."""
@@ -208,6 +217,11 @@ def register_columns(names: Union[str, Iterable[str]], *args):
 def unregister_columns(names: Union[str, Iterable[str]], *args):
     """Unregisters ``names`` of user-defined data columns."""
     StaticScope.instance().unregister_custom_cols(names, *args)
+
+
+def param(name: str, value: Optional[Any] = None) -> Optional[Any]:
+    """Get or set a global parameter."""
+    return StaticScope.instance().param(name, value)
 
 
 class ColumnScope:

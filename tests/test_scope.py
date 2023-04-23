@@ -30,6 +30,7 @@ from pybroker.scope import (
     enable_progress_bar,
     disable_logging,
     disable_progress_bar,
+    param,
     register_columns,
     unregister_columns,
 )
@@ -106,6 +107,15 @@ def test_enable_progress_bar(mock_logger):
 def test_disable_progress_bar(mock_logger):
     disable_progress_bar()
     mock_logger.disable_progress_bar.assert_called_once()
+
+
+def test_param_when_empty():
+    assert param("foo") is None
+
+
+def test_param_when_set_and_get():
+    param("foo", 42)
+    assert param("foo") == 42
 
 
 class TestStaticScope:

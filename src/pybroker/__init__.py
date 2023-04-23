@@ -40,6 +40,7 @@ from .portfolio import Entry, Order, Position, Trade
 from .scope import (
     disable_logging,
     enable_logging,
+    param,
     register_columns,
     unregister_columns,
 )
