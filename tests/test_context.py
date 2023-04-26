@@ -22,6 +22,7 @@ from .fixtures import *
 from collections import deque
 from decimal import Decimal
 from pybroker.common import PriceType, StopType, to_datetime
+from pybroker.config import StrategyConfig
 from pybroker.context import (
     ExecContext,
     ExecResult,
@@ -124,6 +125,7 @@ def ctx(
 ):
     ctx = ExecContext(
         symbol=symbol,
+        config=StrategyConfig(max_long_positions=5),
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
@@ -161,6 +163,7 @@ def ctx_with_pos(
     }
     ctx = ExecContext(
         symbol=symbol,
+        config=StrategyConfig(max_long_positions=5),
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
@@ -197,6 +200,7 @@ def ctx_with_orders(
     portfolio.lose_rate = 0
     ctx = ExecContext(
         symbol=symbol,
+        config=StrategyConfig(max_long_positions=5),
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
@@ -209,6 +213,10 @@ def ctx_with_orders(
     )
     set_exec_ctx_data(ctx, date)
     return ctx
+
+
+def test_config(ctx):
+    assert ctx.config.max_long_positions == 5
 
 
 def test_dt(ctx, date):
@@ -693,6 +701,7 @@ def test_set_pos_ctx_data(
     ]
     sessions = {"SPY": {}, "AAPL": {}, "TSLA": {"foo": 1}}
     ctx = PosSizeContext(
+        StrategyConfig(max_long_positions=1),
         portfolio,
         col_scope,
         ind_scope,
@@ -702,8 +711,6 @@ def test_set_pos_ctx_data(
         trained_models,
         sessions,
         sym_end_index,
-        max_long_positions=1,
-        max_short_positions=None,
     )
     set_pos_size_ctx_data(ctx, buy_results, sell_results)
     assert ctx.sessions == sessions

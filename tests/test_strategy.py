@@ -198,6 +198,7 @@ class TestBacktestMixin:
         mock_portfolio = Mock()
         mixin = BacktestMixin()
         mixin.backtest_executions(
+            config=StrategyConfig(),
             executions=execs,
             before_exec_fn=None,
             after_exec_fn=None,
@@ -206,10 +207,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=mock_portfolio,
-            buy_delay=1,
-            sell_delay=1,
-            max_long_positions=None,
-            max_short_positions=None,
             pos_size_handler=pos_size_handler,
             exit_dates={},
         )
@@ -255,6 +252,7 @@ class TestBacktestMixin:
         mock_portfolio = Mock()
         mixin = BacktestMixin()
         mixin.backtest_executions(
+            config=StrategyConfig(buy_delay=2),
             executions=execs,
             before_exec_fn=None,
             after_exec_fn=None,
@@ -263,10 +261,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=mock_portfolio,
-            buy_delay=2,
-            sell_delay=1,
-            max_long_positions=None,
-            max_short_positions=None,
             pos_size_handler=None,
             exit_dates={},
         )
@@ -300,6 +294,7 @@ class TestBacktestMixin:
         mock_portfolio = Mock()
         mixin = BacktestMixin()
         mixin.backtest_executions(
+            config=StrategyConfig(sell_delay=2),
             executions=execs,
             before_exec_fn=None,
             after_exec_fn=None,
@@ -308,10 +303,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=mock_portfolio,
-            buy_delay=1,
-            sell_delay=2,
-            max_long_positions=None,
-            max_short_positions=None,
             pos_size_handler=None,
             exit_dates={},
         )
@@ -348,6 +339,7 @@ class TestBacktestMixin:
             ValueError, match=re.escape("hold_bars must be greater than 0.")
         ):
             mixin.backtest_executions(
+                config=StrategyConfig(),
                 executions=execs,
                 before_exec_fn=None,
                 after_exec_fn=None,
@@ -356,10 +348,6 @@ class TestBacktestMixin:
                 indicator_data={},
                 test_data=data_source_df,
                 portfolio=Mock(),
-                buy_delay=1,
-                sell_delay=1,
-                max_long_positions=None,
-                max_short_positions=None,
                 pos_size_handler=None,
                 exit_dates={},
             )
@@ -384,6 +372,7 @@ class TestBacktestMixin:
             ValueError, match=re.escape("hold_bars must be greater than 0.")
         ):
             mixin.backtest_executions(
+                config=StrategyConfig(),
                 executions=execs,
                 before_exec_fn=None,
                 after_exec_fn=None,
@@ -392,10 +381,6 @@ class TestBacktestMixin:
                 indicator_data={},
                 test_data=data_source_df,
                 portfolio=Mock(),
-                buy_delay=1,
-                sell_delay=1,
-                max_long_positions=None,
-                max_short_positions=None,
                 pos_size_handler=None,
                 exit_dates={},
             )
@@ -412,6 +397,7 @@ class TestBacktestMixin:
         portfolio = Portfolio(100_000)
         mixin = BacktestMixin()
         mixin.backtest_executions(
+            config=StrategyConfig(),
             executions=execs,
             before_exec_fn=None,
             after_exec_fn=None,
@@ -420,10 +406,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=portfolio,
-            buy_delay=1,
-            sell_delay=1,
-            max_long_positions=None,
-            max_short_positions=None,
             pos_size_handler=None,
             exit_dates={},
         )
@@ -447,6 +429,7 @@ class TestBacktestMixin:
         portfolio = Portfolio(100_000)
         mixin = BacktestMixin()
         mixin.backtest_executions(
+            config=StrategyConfig(),
             executions=execs,
             before_exec_fn=None,
             after_exec_fn=None,
@@ -455,10 +438,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df[data_source_df["symbol"] != "AAPL"],
             portfolio=portfolio,
-            buy_delay=1,
-            sell_delay=1,
-            max_long_positions=None,
-            max_short_positions=None,
             pos_size_handler=None,
             exit_dates={},
         )
@@ -484,6 +463,7 @@ class TestBacktestMixin:
         portfolio = Portfolio(100_000)
         mixin = BacktestMixin()
         mixin.backtest_executions(
+            config=StrategyConfig(buy_delay=1_000),
             executions=execs,
             before_exec_fn=None,
             after_exec_fn=None,
@@ -492,10 +472,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=portfolio,
-            buy_delay=1000,
-            sell_delay=1,
-            max_long_positions=None,
-            max_short_positions=None,
             pos_size_handler=None,
             exit_dates={},
         )
@@ -522,6 +498,7 @@ class TestBacktestMixin:
         portfolio = Portfolio(100_000)
         mixin = BacktestMixin()
         mixin.backtest_executions(
+            config=StrategyConfig(sell_delay=1000),
             executions=execs,
             before_exec_fn=None,
             after_exec_fn=None,
@@ -530,10 +507,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=portfolio,
-            buy_delay=1,
-            sell_delay=1000,
-            max_long_positions=None,
-            max_short_positions=None,
             pos_size_handler=None,
             exit_dates={},
         )
@@ -562,6 +535,7 @@ class TestBacktestMixin:
         mock_portfolio = Mock()
         mixin = BacktestMixin()
         mixin.backtest_executions(
+            config=StrategyConfig(max_long_positions=1),
             executions=execs,
             before_exec_fn=None,
             after_exec_fn=None,
@@ -570,10 +544,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=mock_portfolio,
-            buy_delay=1,
-            sell_delay=1,
-            max_long_positions=1,
-            max_short_positions=None,
             pos_size_handler=None,
             exit_dates={},
         )
@@ -615,6 +585,7 @@ class TestBacktestMixin:
         mock_portfolio = Mock()
         mixin = BacktestMixin()
         mixin.backtest_executions(
+            config=StrategyConfig(max_short_positions=1),
             executions=execs,
             before_exec_fn=None,
             after_exec_fn=None,
@@ -623,10 +594,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=mock_portfolio,
-            buy_delay=1,
-            sell_delay=1,
-            max_long_positions=None,
-            max_short_positions=1,
             pos_size_handler=None,
             exit_dates={},
         )
@@ -693,6 +660,7 @@ class TestBacktestMixin:
         mock_portfolio = Mock()
         mixin = BacktestMixin()
         mixin.backtest_executions(
+            config=StrategyConfig(),
             executions=execs,
             before_exec_fn=None,
             after_exec_fn=None,
@@ -701,10 +669,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=df,
             portfolio=mock_portfolio,
-            buy_delay=1,
-            sell_delay=1,
-            max_long_positions=None,
-            max_short_positions=None,
             pos_size_handler=None,
             exit_dates={},
         )
@@ -736,6 +700,7 @@ class TestBacktestMixin:
         mixin = BacktestMixin()
         with pytest.raises(ValueError, match=r"Unknown price: .*"):
             mixin.backtest_executions(
+                config=StrategyConfig(),
                 executions=execs,
                 before_exec_fn=None,
                 after_exec_fn=None,
@@ -744,10 +709,6 @@ class TestBacktestMixin:
                 indicator_data={},
                 test_data=data_source_df,
                 portfolio=Portfolio(100_000),
-                buy_delay=1,
-                sell_delay=1,
-                max_long_positions=None,
-                max_short_positions=None,
                 pos_size_handler=None,
                 exit_dates={},
             )
@@ -774,6 +735,7 @@ class TestBacktestMixin:
             ),
         ):
             mixin.backtest_executions(
+                config=StrategyConfig(),
                 executions=execs,
                 before_exec_fn=None,
                 after_exec_fn=None,
@@ -782,10 +744,6 @@ class TestBacktestMixin:
                 indicator_data={},
                 test_data=data_source_df,
                 portfolio=Portfolio(100_000),
-                buy_delay=1,
-                sell_delay=1,
-                max_long_positions=1,
-                max_short_positions=None,
                 pos_size_handler=None,
                 exit_dates={},
             )
@@ -812,6 +770,7 @@ class TestBacktestMixin:
             ),
         ):
             mixin.backtest_executions(
+                config=StrategyConfig(),
                 executions=execs,
                 before_exec_fn=None,
                 after_exec_fn=None,
@@ -820,10 +779,6 @@ class TestBacktestMixin:
                 indicator_data={},
                 test_data=data_source_df,
                 portfolio=Portfolio(100_000),
-                buy_delay=1,
-                sell_delay=1,
-                max_long_positions=1,
-                max_short_positions=None,
                 pos_size_handler=None,
                 exit_dates={},
             )
@@ -846,6 +801,7 @@ class TestBacktestMixin:
         portfolio = Portfolio(1)
         mixin = BacktestMixin()
         mixin.backtest_executions(
+            config=StrategyConfig(),
             executions=execs,
             before_exec_fn=None,
             after_exec_fn=None,
@@ -854,10 +810,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=portfolio,
-            buy_delay=1,
-            sell_delay=1,
-            max_long_positions=1,
-            max_short_positions=None,
             pos_size_handler=None,
             exit_dates={},
         )
@@ -882,6 +834,7 @@ class TestBacktestMixin:
         portfolio = Portfolio(1)
         mixin = BacktestMixin()
         mixin.backtest_executions(
+            config=StrategyConfig(),
             executions=execs,
             before_exec_fn=None,
             after_exec_fn=None,
@@ -890,10 +843,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=portfolio,
-            buy_delay=1,
-            sell_delay=1,
-            max_long_positions=1,
-            max_short_positions=None,
             pos_size_handler=None,
             exit_dates={},
         )

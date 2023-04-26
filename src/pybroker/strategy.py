@@ -113,6 +113,7 @@ class BacktestMixin:
 
     def backtest_executions(
         self,
+        config: StrategyConfig,
         executions: set[Execution],
         before_exec_fn: Optional[Callable[[Mapping[str, ExecContext]], None]],
         after_exec_fn: Optional[Callable[[Mapping[str, ExecContext]], None]],
@@ -121,24 +122,15 @@ class BacktestMixin:
         indicator_data: Mapping[IndicatorSymbol, pd.Series],
         test_data: pd.DataFrame,
         portfolio: Portfolio,
-        buy_delay: int,
-        sell_delay: int,
-        max_long_positions: Optional[int],
-        max_short_positions: Optional[int],
         pos_size_handler: Optional[Callable[[PosSizeContext], None]],
         exit_dates: Mapping[str, np.datetime64],
-        exit_buy_fill_price: Union[
-            PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
-        ] = PriceType.MIDDLE,
-        exit_sell_fill_price: Union[
-            PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
-        ] = PriceType.MIDDLE,
         enable_fractional_shares: bool = False,
     ):
         r"""Backtests a ``set`` of :class:`.Execution`\ s that implement
         trading logic.
 
         Args:
+            config: :class:`pybroker.config.StrategyConfig`.
             executions: :class:`.Execution`\ s to run.
             sessions: :class:`Mapping` of symbols to :class:`Mapping` of custom
                 data that persists for every bar during the
@@ -151,20 +143,9 @@ class BacktestMixin:
                 values.
             test_data: :class:`pandas.DataFrame` of test data.
             portfolio: :class:`pybroker.portfolio.Portfolio`.
-            buy_delay: Number of bars before placing an order for a buy signal.
-            sell_delay: Number of bars before placing an order for a sell
-                signal.
-            max_long_positions: Maximum number of long positions that can be
-                held at a time. If ``None``, then unlimited.
-            max_short_positions: Maximum number of short positions that can be
-                held at a time. If ``None``, then unlimited.
             pos_size_handler: :class:`Callable` that sets position sizes when
                 placing orders for buy and sell signals.
             exit_dates: :class:`Mapping` of symbols to exit dates.
-            exit_buy_fill_price: Fill price for covering an open short position
-                for ``exit_dates``.
-            exit_sell_fill_price: Fill price for selling an open long position
-                for ``exit_dates``.
             enable_fractional_shares: Whether to enable trading fractional
                 shares.
 
@@ -194,6 +175,7 @@ class BacktestMixin:
                     continue
                 exec_ctxs[sym] = ExecContext(
                     symbol=sym,
+                    config=config,
                     portfolio=portfolio,
                     col_scope=col_scope,
                     ind_scope=ind_scope,
@@ -214,6 +196,7 @@ class BacktestMixin:
         sell_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
         if pos_size_handler is not None:
             pos_ctx = PosSizeContext(
+                config=config,
                 portfolio=portfolio,
                 col_scope=col_scope,
                 ind_scope=ind_scope,
@@ -223,8 +206,6 @@ class BacktestMixin:
                 models=models,
                 sessions=sessions,
                 sym_end_index=sym_end_index,
-                max_long_positions=max_long_positions,
-                max_short_positions=max_short_positions,
             )
         logger = StaticScope.instance().logger
         logger.backtest_executions_start(test_dates)
@@ -249,11 +230,13 @@ class BacktestMixin:
             is_buy_sched = date in buy_sched
             is_sell_sched = date in sell_sched
             if is_buy_sched and (
-                max_long_positions is not None or pos_size_handler is not None
+                config.max_long_positions is not None
+                or pos_size_handler is not None
             ):
                 buy_sched[date].sort(key=_sort_by_score, reverse=True)
             if is_sell_sched and (
-                max_short_positions is not None or pos_size_handler is not None
+                config.max_short_positions is not None
+                or pos_size_handler is not None
             ):
                 sell_sched[date].sort(key=_sort_by_score, reverse=True)
             if pos_size_handler is not None and (
@@ -305,7 +288,7 @@ class BacktestMixin:
                     result=buy_results.popleft(),
                     created=date,
                     sym_end_index=sym_end_index,
-                    delay=buy_delay,
+                    delay=config.buy_delay,
                     sched=buy_sched,
                     col_scope=col_scope,
                     pending_order_scope=pending_order_scope,
@@ -315,7 +298,7 @@ class BacktestMixin:
                     result=sell_results.popleft(),
                     created=date,
                     sym_end_index=sym_end_index,
-                    delay=sell_delay,
+                    delay=config.sell_delay,
                     sched=sell_sched,
                     col_scope=col_scope,
                     pending_order_scope=pending_order_scope,
@@ -325,8 +308,8 @@ class BacktestMixin:
                     portfolio=portfolio,
                     date=date,
                     symbol=exit_syms.popleft(),
-                    exit_buy_fill_price=exit_buy_fill_price,
-                    exit_sell_fill_price=exit_sell_fill_price,
+                    exit_cover_fill_price=config.exit_cover_fill_price,
+                    exit_sell_fill_price=config.exit_sell_fill_price,
                     price_scope=price_scope,
                 )
             portfolio.incr_bars()
@@ -356,7 +339,7 @@ class BacktestMixin:
         portfolio: Portfolio,
         date: np.datetime64,
         symbol: str,
-        exit_buy_fill_price: Union[
+        exit_cover_fill_price: Union[
             PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
         ],
         exit_sell_fill_price: Union[
@@ -364,7 +347,7 @@ class BacktestMixin:
         ],
         price_scope: PriceScope,
     ):
-        buy_fill_price = price_scope.fetch(symbol, exit_buy_fill_price)
+        buy_fill_price = price_scope.fetch(symbol, exit_cover_fill_price)
         sell_fill_price = price_scope.fetch(symbol, exit_sell_fill_price)
         portfolio.exit_position(
             date,
@@ -1281,6 +1264,7 @@ class Strategy(
                 )
             if not train_only and not test_data.empty:
                 self.backtest_executions(
+                    config=self._config,
                     executions=self._executions,
                     before_exec_fn=self._before_exec_fn,
                     after_exec_fn=self._after_exec_fn,
@@ -1289,15 +1273,9 @@ class Strategy(
                     indicator_data=indicator_data,
                     test_data=test_data,
                     portfolio=portfolio,
-                    buy_delay=self._config.buy_delay,
-                    sell_delay=self._config.sell_delay,
-                    max_long_positions=self._config.max_long_positions,
-                    max_short_positions=self._config.max_short_positions,
                     pos_size_handler=self._pos_size_handler,
                     exit_dates=exit_dates,
                     enable_fractional_shares=self._fractional_shares_enabled(),
-                    exit_buy_fill_price=self._config.exit_cover_fill_price,
-                    exit_sell_fill_price=self._config.exit_sell_fill_price,
                 )
 
     def _filter_dates(

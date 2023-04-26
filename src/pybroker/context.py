@@ -27,6 +27,7 @@ from .common import (
     to_datetime,
     to_decimal,
 )
+from .config import StrategyConfig
 from .model import TrainedModel
 from .portfolio import Entry, Order, Portfolio, Position, Stop, Trade
 from .scope import (
@@ -56,10 +57,15 @@ from typing import (
 
 
 class BaseContext:
-    """Base context class."""
+    """Base context class.
+
+    Attributes:
+        config: :class:`pybroker.config.StrategyConfig`.
+    """
 
     def __init__(
         self,
+        config: StrategyConfig,
         portfolio: Portfolio,
         col_scope: ColumnScope,
         ind_scope: IndicatorScope,
@@ -69,6 +75,7 @@ class BaseContext:
         models: Mapping[ModelSymbol, TrainedModel],
         sym_end_index: Mapping[str, int],
     ):
+        self.config = config
         self._portfolio = portfolio
         self._col_scope = col_scope
         self._ind_scope = ind_scope
@@ -411,6 +418,7 @@ class PosSizeContext(BaseContext):
 
     def __init__(
         self,
+        config: StrategyConfig,
         portfolio: Portfolio,
         col_scope: ColumnScope,
         ind_scope: IndicatorScope,
@@ -420,10 +428,9 @@ class PosSizeContext(BaseContext):
         models: Mapping[ModelSymbol, TrainedModel],
         sessions: Mapping[str, Mapping],
         sym_end_index: Mapping[str, int],
-        max_long_positions: Optional[int],
-        max_short_positions: Optional[int],
     ):
         super().__init__(
+            config=config,
             portfolio=portfolio,
             col_scope=col_scope,
             ind_scope=ind_scope,
@@ -437,8 +444,8 @@ class PosSizeContext(BaseContext):
         self._signal_shares: dict[int, Union[int, float, Decimal]] = {}
         self._buy_results: Optional[list[ExecResult]] = None
         self._sell_results: Optional[list[ExecResult]] = None
-        self._max_long_positions = max_long_positions
-        self._max_short_positions = max_short_positions
+        self._max_long_positions = config.max_long_positions
+        self._max_short_positions = config.max_short_positions
 
     def signals(
         self, signal_type: Optional[Literal["buy", "sell"]] = None
@@ -583,6 +590,7 @@ class ExecContext(BaseContext):
     def __init__(
         self,
         symbol: str,
+        config: StrategyConfig,
         portfolio: Portfolio,
         col_scope: ColumnScope,
         ind_scope: IndicatorScope,
@@ -594,6 +602,7 @@ class ExecContext(BaseContext):
         session: Mapping,
     ):
         super().__init__(
+            config=config,
             portfolio=portfolio,
             col_scope=col_scope,
             ind_scope=ind_scope,
