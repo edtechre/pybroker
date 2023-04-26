@@ -37,6 +37,7 @@ from typing import (
     Any,
     Callable,
     Collection,
+    Final,
     Iterable,
     Literal,
     Mapping,
@@ -45,6 +46,8 @@ from typing import (
     Sequence,
     Union,
 )
+
+_EMPTY_PARAM: Final = object()
 
 
 class StaticScope:
@@ -174,9 +177,11 @@ class StaticScope:
         """
         self._cols_frozen = False
 
-    def param(self, name: str, value: Optional[Any] = None) -> Optional[Any]:
+    def param(
+        self, name: str, value: Optional[Any] = _EMPTY_PARAM
+    ) -> Optional[Any]:
         """Get or set a global parameter."""
-        if value is None:
+        if value == _EMPTY_PARAM:
             return self._params.get(name, None)
         self._params[name] = value
         return value
@@ -219,7 +224,7 @@ def unregister_columns(names: Union[str, Iterable[str]], *args):
     StaticScope.instance().unregister_custom_cols(names, *args)
 
 
-def param(name: str, value: Optional[Any] = None) -> Optional[Any]:
+def param(name: str, value: Optional[Any] = _EMPTY_PARAM) -> Optional[Any]:
     """Get or set a global parameter."""
     return StaticScope.instance().param(name, value)
 

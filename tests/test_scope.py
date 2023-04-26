@@ -113,9 +113,10 @@ def test_param_when_empty():
     assert param("bar") is None
 
 
-def test_param_when_set_and_get():
-    param("foo", 42)
-    assert param("foo") == 42
+@pytest.mark.parametrize("value", [42, None])
+def test_param_when_set_and_get(value):
+    param("foo", value)
+    assert param("foo") == value
 
 
 class TestStaticScope:
