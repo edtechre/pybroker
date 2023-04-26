@@ -1209,7 +1209,7 @@ class TestStrategy:
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
         for exec in executions_only:
             strategy.add_execution(**exec)
-        result = strategy.backtest()
+        result = strategy.backtest(calc_bootstrap=True)
         assert type(result) == TestResult
         assert result.start_date == datetime.strptime(START_DATE, "%Y-%m-%d")
         assert result.end_date == datetime.strptime(END_DATE, "%Y-%m-%d")

@@ -980,7 +980,7 @@ class Strategy(
         lookahead: int = 1,
         train_size: int = 0,
         shuffle: bool = False,
-        calc_bootstrap: bool = True,
+        calc_bootstrap: bool = False,
         disable_parallel: bool = False,
     ) -> Optional[TestResult]:
         """Backtests the trading strategy by running executions that were added
@@ -1023,7 +1023,7 @@ class Strategy(
                 Defaults to ``False``. Disabled when model caching is enabled
                 via :meth:`pybroker.cache.enable_model_cache`.
             calc_bootstrap: Whether to compute randomized bootstrap evaluation
-                metrics. Defaults to ``True``.
+                metrics. Defaults to ``False``.
             disable_parallel: If ``True``,
                 :class:`pybroker.indicator.Indicator` data is computed
                 serially. If ``False``, :class:`pybroker.indicator.Indicator`
@@ -1059,7 +1059,7 @@ class Strategy(
         days: Optional[Union[str, Day, Iterable[Union[str, Day]]]] = None,
         train_size: float = 0.5,
         shuffle: bool = False,
-        calc_bootstrap: bool = True,
+        calc_bootstrap: bool = False,
         disable_parallel: bool = False,
     ) -> Optional[TestResult]:
         """Backtests the trading strategy using `Walkforward Analysis
@@ -1108,7 +1108,7 @@ class Strategy(
                 Defaults to ``False``. Disabled when model caching is enabled
                 via :meth:`pybroker.cache.enable_model_cache`.
             calc_bootstrap: Whether to compute randomized bootstrap evaluation
-                metrics. Defaults to ``True``.
+                metrics. Defaults to ``False``.
             disable_parallel: If ``True``,
                 :class:`pybroker.indicator.Indicator` data is computed
                 serially. If ``False``, :class:`pybroker.indicator.Indicator`
