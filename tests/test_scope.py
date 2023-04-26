@@ -119,6 +119,13 @@ def test_param_when_set_and_get(value):
     assert param("foo") == value
 
 
+def test_param_when_set_to_none():
+    param("baz", 11)
+    assert param("baz") == 11
+    param("baz", None)
+    assert param("baz") is None
+
+
 class TestStaticScope:
     def test_set_and_get_indicator(self, scope, hhv_ind):
         scope.set_indicator(hhv_ind)
