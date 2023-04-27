@@ -9,3 +9,4 @@ docs/_build/
 docs/notebooks/.ipynb_checkpoints
 dist/
 src/lib_pybroker.egg-info
+.idea/
