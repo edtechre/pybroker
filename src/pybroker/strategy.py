@@ -192,6 +192,7 @@ class BacktestMixin:
             sym: frozenset(test_data.loc[pd.IndexSlice[sym, :]].index.values)
             for sym in exec_ctxs.keys()
         }
+        cover_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
         buy_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
         sell_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
         if pos_size_handler is not None:
@@ -209,6 +210,7 @@ class BacktestMixin:
             )
         logger = StaticScope.instance().logger
         logger.backtest_executions_start(test_dates)
+        cover_results: deque[ExecResult] = deque()
         buy_results: deque[ExecResult] = deque()
         sell_results: deque[ExecResult] = deque()
         exit_syms: deque[str] = deque()
@@ -227,6 +229,7 @@ class BacktestMixin:
                     and date == exit_dates[sym]
                 ):
                     exit_syms.append(sym)
+            is_cover_sched = date in cover_sched
             is_buy_sched = date in buy_sched
             is_sell_sched = date in sell_sched
             if is_buy_sched and (
@@ -247,6 +250,15 @@ class BacktestMixin:
                     pos_ctx=pos_ctx,
                     buy_results=buy_sched[date] if is_buy_sched else None,
                     sell_results=sell_sched[date] if is_sell_sched else None,
+                )
+            if is_cover_sched:
+                self._place_buy_orders(
+                    date=date,
+                    price_scope=price_scope,
+                    pending_order_scope=pending_order_scope,
+                    buy_sched=cover_sched,
+                    portfolio=portfolio,
+                    enable_fractional_shares=enable_fractional_shares,
                 )
             if is_sell_sched:
                 self._place_sell_orders(
@@ -280,9 +292,22 @@ class BacktestMixin:
                 if result is None:
                     continue
                 if result.buy_shares is not None:
-                    buy_results.append(result)
+                    if result.cover:
+                        cover_results.append(result)
+                    else:
+                        buy_results.append(result)
                 if result.sell_shares is not None:
                     sell_results.append(result)
+            while cover_results:
+                self._schedule_order(
+                    result=cover_results.popleft(),
+                    created=date,
+                    sym_end_index=sym_end_index,
+                    delay=config.buy_delay,
+                    sched=cover_sched,
+                    col_scope=col_scope,
+                    pending_order_scope=pending_order_scope,
+                )
             while buy_results:
                 self._schedule_order(
                     result=buy_results.popleft(),

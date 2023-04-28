@@ -615,6 +615,60 @@ class TestBacktestMixin:
             )
             assert kwargs["limit_price"] is None
 
+    def test_backtest_executions_when_max_short_positions_and_cover(
+        self, data_source_df
+    ):
+        def sell_exec_fn(ctx):
+            if ctx.symbol == "AAPL":
+                if ctx.bars == 1:
+                    ctx.sell_shares = 200
+                elif ctx.bars == 2:
+                    ctx.cover_all_shares()
+            else:
+                if ctx.bars == 2:
+                    ctx.sell_shares = 100
+
+        exec = Execution(
+            id=1,
+            symbols=frozenset(["AAPL", "SPY"]),
+            fn=sell_exec_fn,
+            model_names=frozenset(),
+            indicator_names=frozenset(),
+        )
+        execs = {exec}
+        portfolio = Portfolio(100_000)
+        mixin = BacktestMixin()
+        mixin.backtest_executions(
+            config=StrategyConfig(max_short_positions=1),
+            executions=execs,
+            before_exec_fn=None,
+            after_exec_fn=None,
+            sessions=defaultdict(dict),
+            models={},
+            indicator_data={},
+            test_data=data_source_df,
+            portfolio=portfolio,
+            pos_size_handler=None,
+            exit_dates={},
+        )
+        assert len(portfolio.short_positions) == 1
+        assert not portfolio.long_positions
+        assert len(portfolio.orders) == 3
+        orders = portfolio.orders
+        assert orders[0].symbol == "AAPL"
+        assert orders[0].shares == 200
+        assert orders[0].type == "sell"
+        assert orders[1].symbol == "AAPL"
+        assert orders[1].shares == 200
+        assert orders[1].type == "buy"
+        assert orders[2].symbol == "SPY"
+        assert orders[2].shares == 100
+        assert orders[2].type == "sell"
+        trades = portfolio.trades
+        assert len(trades) == 1
+        assert trades[0].symbol == "AAPL"
+        assert trades[0].type == "short"
+
     @pytest.mark.parametrize(
         "price_type, expected_fill_price",
         [

@@ -599,9 +599,25 @@ def test_trades_when_empty(ctx):
     assert not len(list(ctx.trades()))
 
 
-def test_set_exec_ctx_data(ctx, symbols, sym_end_index):
+@pytest.mark.parametrize(
+    "cover_attr, buy_attr",
+    [
+        ("cover_fill_price", "buy_fill_price"),
+        ("cover_shares", "buy_shares"),
+        ("cover_limit_price", "buy_limit_price"),
+    ],
+)
+def test_cover(ctx, cover_attr, buy_attr):
+    setattr(ctx, cover_attr, 99)
+    assert getattr(ctx, cover_attr) == 99
+    assert getattr(ctx, cover_attr) == getattr(ctx, buy_attr)
+    assert ctx._cover is True
+
+
+def test_set_exec_ctx_data(ctx, sym_end_index):
     date = np.datetime64("2020-01-01")
     ctx._foreign = {"SPY": np.random.rand(100)}
+    ctx._cover = False
     ctx.buy_fill_price = PriceType.AVERAGE
     ctx.buy_shares = 100
     ctx.buy_limit_price = 99
@@ -623,6 +639,7 @@ def test_set_exec_ctx_data(ctx, symbols, sym_end_index):
     assert ctx.dt == to_datetime(date)
     assert ctx.bars == sym_end_index[ctx.symbol]
     assert not ctx._foreign
+    assert ctx._cover is False
     assert ctx.buy_fill_price == PriceType.MIDDLE
     assert ctx.buy_shares is None
     assert ctx.buy_limit_price is None

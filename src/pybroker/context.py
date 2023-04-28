@@ -352,6 +352,9 @@ class ExecResult:
             ``symbol``.
         long_stops: Stops for long :class:`pybroker.portfolio.Entry`\ s.
         short_stops: Stops for short :class:`pybroker.portfolio.Entry`\ s.
+        cover: Whether ``buy_shares`` are used to cover a short position. If
+            ``True``, the resulting buy order will be placed before sell
+            orders.
         pending_order_id: ID of :class:`pybroker.scope.PendingOrder` that was
             created.
     """
@@ -382,6 +385,7 @@ class ExecResult:
     sell_limit_price: Optional[Decimal]
     long_stops: Optional[frozenset[Stop]]
     short_stops: Optional[frozenset[Stop]]
+    cover: bool = field(default=False)
     pending_order_id: Optional[int] = field(default=None)
 
 
@@ -652,6 +656,8 @@ class ExecContext(BaseContext):
         self.stop_trailing_pct: Optional[Union[int, float, Decimal]] = None
         self.stop_trailing_limit: Optional[Union[int, float, Decimal]] = None
 
+        self._cover: bool = False
+
     def _verify_symbol(self):
         if self.symbol is None:
             raise ValueError("symbol is not set.")
@@ -740,6 +746,63 @@ class ExecContext(BaseContext):
             self._sym_end_index[self.symbol],
         )
 
+    @property
+    def cover_fill_price(
+        self,
+    ) -> Union[
+        int,
+        float,
+        np.floating,
+        Decimal,
+        PriceType,
+        Callable[[str, BarData], Union[int, float, Decimal]],
+    ]:
+        """Alias for :attr:`.buy_fill_price`. When set, this causes the buy
+        order to be placed before any sell orders.
+        """
+        return self.buy_fill_price
+
+    @cover_fill_price.setter
+    def cover_fill_price(
+        self,
+        fill_price: Union[
+            int,
+            float,
+            np.floating,
+            Decimal,
+            PriceType,
+            Callable[[str, BarData], Union[int, float, Decimal]],
+        ],
+    ):
+        self.buy_fill_price = fill_price
+        self._cover = True
+
+    @property
+    def cover_shares(self) -> Optional[Union[int, float, Decimal]]:
+        """Alias for :attr:`.buy_shares`. When set, this causes the buy
+        order to be placed before any sell orders.
+        """
+        return self.buy_shares
+
+    @cover_shares.setter
+    def cover_shares(self, shares: Optional[Union[int, float, Decimal]]):
+        self.buy_shares = shares
+        self._cover = True
+
+    @property
+    def cover_limit_price(self) -> Optional[Union[int, float, Decimal]]:
+        """Alias for :attr:`.buy_limit_price`. When set, this causes the buy
+        order to be placed before any sell orders.
+        """
+        return self.buy_limit_price
+
+    @cover_limit_price.setter
+    def cover_limit_price(
+        self, limit_price: Optional[Union[int, float, Decimal]]
+    ):
+        self.buy_limit_price = limit_price
+        self._cover = True
+
     def sell_all_shares(self):
         """Sells all long shares of :attr:`.ExecContext.symbol`."""
         pos = self.long_pos()
@@ -752,7 +815,7 @@ class ExecContext(BaseContext):
         pos = self.short_pos()
         if pos is None:
             return
-        self.buy_shares = pos.shares
+        self.cover_shares = pos.shares
 
     def foreign(
         self, symbol: str, col: Optional[str] = None
@@ -1156,6 +1219,7 @@ class ExecContext(BaseContext):
             sell_limit_price=sell_limit_price,
             long_stops=long_stops,
             short_stops=short_stops,
+            cover=self._cover,
         )
 
     def __getattr__(self, attr):
@@ -1178,6 +1242,7 @@ def set_exec_ctx_data(ctx: ExecContext, date: np.datetime64):
     ctx._curr_date = date
     ctx._dt = None
     ctx._foreign.clear()
+    ctx._cover = False
     ctx.buy_fill_price = PriceType.MIDDLE
     ctx.buy_shares = None
     ctx.buy_limit_price = None
