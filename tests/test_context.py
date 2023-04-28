@@ -617,7 +617,7 @@ def test_cover(ctx, cover_attr, buy_attr):
 def test_set_exec_ctx_data(ctx, sym_end_index):
     date = np.datetime64("2020-01-01")
     ctx._foreign = {"SPY": np.random.rand(100)}
-    ctx._cover = False
+    ctx._cover = True
     ctx.buy_fill_price = PriceType.AVERAGE
     ctx.buy_shares = 100
     ctx.buy_limit_price = 99
