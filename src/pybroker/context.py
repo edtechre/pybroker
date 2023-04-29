@@ -243,22 +243,26 @@ class BaseContext:
         if pos_type != "short" and pos_type != "long":
             raise ValueError(f"Unknown pos_type: {pos_type!r}.")
 
-    def calc_target_shares(self, target_size: float, price: float) -> int:
-        r"""Calculates the number of shares given a ``target_size`` equity
-        allocation and share ``price``.
+    def calc_target_shares(
+        self, target_size: float, price: float, cash: Optional[float] = None
+    ) -> int:
+        r"""Calculates the number of shares given a ``target_size`` allocation
+        and share ``price``.
 
         Args:
-            target_size: Amount of :class:`pybroker.portfolio.Portfolio` equity
-                used to calculate the number of shares, where the max
-                ``target_size`` is ``1``. For example, a ``target_size`` of
-                ``0.1`` would represent 10% of equity.
+            target_size: Proportion of cash used to calculate the number of
+                shares, where the max ``target_size`` is ``1``. For example, a
+                ``target_size`` of ``0.1`` would represent 10% of cash.
             price: Share price used to calculate the number of shares.
+            cash: Cash used to calculate the number of number of shares. If
+                ``None``, then the :class:`pybroker.portfolio.Portfolio` equity
+                is used to calculate the number of shares.
 
         Returns:
             Number of shares given ``target_size`` and share ``price``.
         """
         return int(
-            self._portfolio.equity
+            (to_decimal(cash) if cash is not None else self._portfolio.equity)
             * to_decimal(target_size)
             / to_decimal(price)
         )
@@ -952,24 +956,30 @@ class ExecContext(BaseContext):
         return super().pos(symbol, "short")
 
     def calc_target_shares(
-        self, target_size: float, price: Optional[float] = None
+        self,
+        target_size: float,
+        price: Optional[float] = None,
+        cash: Optional[float] = None,
     ) -> int:
-        r"""Calculates the number of shares given a ``target_size`` equity
-        allocation and share ``price``.
+        r"""Calculates the number of shares given a ``target_size`` allocation
+        and share ``price``.
 
         Args:
-            target_size: Amount of :class:`pybroker.portfolio.Portfolio` equity
-                used to calculate the number of shares, where the max
-                ``target_size`` is ``1``. For example, a ``target_size`` of
-                ``0.1`` would result in 10% of equity.
+            target_size: Proportion of cash used to calculate the number of
+                shares, where the max ``target_size`` is ``1``. For example, a
+                ``target_size`` of ``0.1`` would represent 10% of cash.
             price: Share price used to calculate the number of shares. If
                 ``None``, the share price of the ``ExecContext``\ 's
                 :attr:`.symbol` is used.
+            cash: Cash used to calculate the number of number of shares. If
+                ``None``, then the :class:`pybroker.portfolio.Portfolio` equity
+                is used to calculate the number of shares.
+
         Returns:
             Number of shares given ``target_size`` and share ``price``.
         """
         price = self.close[-1] if price is None else price
-        return super().calc_target_shares(target_size, price)
+        return super().calc_target_shares(target_size, price, cash)
 
     def cancel_pending_order(self, order_id: int) -> bool:
         """Cancels a :class:`pybroker.scope.PendingOrder` with ``order_id``."""

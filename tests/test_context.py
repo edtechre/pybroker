@@ -470,6 +470,10 @@ def test_calc_target_shares(ctx):
     assert ctx.calc_target_shares(0.5, 33.50) == 50_000 // 33.5
 
 
+def test_calc_target_shares_with_cash(ctx):
+    assert ctx.calc_target_shares(1 / 3, 20, 10_000) == 166
+
+
 def test_to_result(ctx, symbol, date):
     ctx.buy_fill_price = PriceType.AVERAGE
     ctx.buy_shares = 20
