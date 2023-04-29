@@ -235,6 +235,78 @@ class TestBacktestMixin:
             )
             assert kwargs["limit_price"] == 50.5
 
+    def test_backtest_when_pos_size_handler_and_cover(self, data_source_df):
+        def pos_size_handler(ctx):
+            signals = tuple(ctx.signals())
+            ctx.set_shares(signals[0], shares=10)
+            ctx.set_shares(signals[1], shares=20)
+            assert type(ctx.sessions["SPY"]) == dict
+            assert type(ctx.sessions["AAPL"]) == dict
+
+        def buy_exec_fn(ctx):
+            ctx.cover_fill_price = 1
+            ctx.cover_shares = 2
+
+        def sell_exec_fn(ctx):
+            ctx.sell_fill_price = 1
+            ctx.sell_shares = 1
+
+        buy_exec = Execution(
+            id=1,
+            symbols=frozenset(["SPY"]),
+            fn=buy_exec_fn,
+            model_names=frozenset(),
+            indicator_names=frozenset(),
+        )
+        sell_exec = Execution(
+            id=2,
+            symbols=frozenset(["AAPL"]),
+            fn=sell_exec_fn,
+            model_names=frozenset(),
+            indicator_names=frozenset(),
+        )
+        execs = {buy_exec, sell_exec}
+        portfolio = Portfolio(1_000_000)
+        mixin = BacktestMixin()
+        mixin.backtest_executions(
+            config=StrategyConfig(),
+            executions=execs,
+            before_exec_fn=None,
+            after_exec_fn=None,
+            sessions=defaultdict(dict),
+            models={},
+            indicator_data={},
+            test_data=data_source_df,
+            portfolio=portfolio,
+            pos_size_handler=pos_size_handler,
+            exit_dates={},
+        )
+        buy_df = data_source_df[data_source_df["symbol"] == "SPY"]
+        buy_dates = buy_df["date"].unique()[1:]
+        sell_df = data_source_df[data_source_df["symbol"] == "AAPL"]
+        sell_dates = sell_df["date"].unique()[1:]
+        assert len(portfolio.orders) == len(buy_dates) + len(sell_dates)
+        assert len(
+            list(
+                filter(
+                    lambda o: o.type == "buy"
+                    and o.symbol == "SPY"
+                    and o.shares == 10,
+                    portfolio.orders,
+                )
+            )
+        ) == len(buy_dates)
+        assert len(
+            list(
+                filter(
+                    lambda o: o.type == "sell"
+                    and o.symbol == "AAPL"
+                    and o.shares == 20,
+                    portfolio.orders,
+                )
+            )
+        ) == len(sell_dates)
+
     def test_backtest_executions_when_buy_delay(self, data_source_df):
         def buy_exec_fn(ctx):
             ctx.buy_fill_price = PriceType.CLOSE
@@ -636,7 +708,7 @@ class TestBacktestMixin:
             indicator_names=frozenset(),
         )
         execs = {exec}
-        portfolio = Portfolio(100_000)
+        portfolio = Portfolio(100_000, max_short_positions=1)
         mixin = BacktestMixin()
         mixin.backtest_executions(
             config=StrategyConfig(max_short_positions=1),
@@ -668,6 +740,52 @@ class TestBacktestMixin:
         assert len(trades) == 1
         assert trades[0].symbol == "AAPL"
         assert trades[0].type == "short"
+
+    def test_backtest_executions_when_max_long_positions_and_cover(
+        self, data_source_df
+    ):
+        def cover_exec_fn(ctx):
+            if ctx.symbol == "AAPL":
+                ctx.score = 2
+            else:
+                ctx.score = 1
+            ctx.cover_shares = 100
+            ctx.hold_bars = 1
+
+        exec = Execution(
+            id=1,
+            symbols=frozenset(["AAPL", "SPY"]),
+            fn=cover_exec_fn,
+            model_names=frozenset(),
+            indicator_names=frozenset(),
+        )
+        execs = {exec}
+        portfolio = Portfolio(100_000, max_long_positions=1)
+        mixin = BacktestMixin()
+        mixin.backtest_executions(
+            config=StrategyConfig(max_long_positions=1),
+            executions=execs,
+            before_exec_fn=None,
+            after_exec_fn=None,
+            sessions=defaultdict(dict),
+            models={},
+            indicator_data={},
+            test_data=data_source_df,
+            portfolio=portfolio,
+            pos_size_handler=None,
+            exit_dates={},
+        )
+        dates = data_source_df["date"].unique()[1:]
+        orders = portfolio.orders
+        assert (
+            len(list(filter(lambda o: o.symbol == "AAPL", orders)))
+            == len(dates) * 2 - 1
+        )
+        trades = portfolio.trades
+        assert (
+            len(list(filter(lambda t: t.symbol == "AAPL", trades)))
+            == len(dates) - 1
+        )
 
     @pytest.mark.parametrize(
         "price_type, expected_fill_price",

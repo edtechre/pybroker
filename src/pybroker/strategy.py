@@ -232,23 +232,31 @@ class BacktestMixin:
             is_cover_sched = date in cover_sched
             is_buy_sched = date in buy_sched
             is_sell_sched = date in sell_sched
-            if is_buy_sched and (
+            if (
                 config.max_long_positions is not None
                 or pos_size_handler is not None
             ):
-                buy_sched[date].sort(key=_sort_by_score, reverse=True)
+                if is_cover_sched:
+                    cover_sched[date].sort(key=_sort_by_score, reverse=True)
+                elif is_buy_sched:
+                    buy_sched[date].sort(key=_sort_by_score, reverse=True)
             if is_sell_sched and (
                 config.max_short_positions is not None
                 or pos_size_handler is not None
             ):
                 sell_sched[date].sort(key=_sort_by_score, reverse=True)
             if pos_size_handler is not None and (
-                is_buy_sched or is_sell_sched
+                is_cover_sched or is_buy_sched or is_sell_sched
             ):
+                pos_size_buy_results = None
+                if is_cover_sched:
+                    pos_size_buy_results = cover_sched[date]
+                elif is_buy_sched:
+                    pos_size_buy_results = buy_sched[date]
                 self._set_pos_sizes(
                     pos_size_handler=pos_size_handler,
                     pos_ctx=pos_ctx,
-                    buy_results=buy_sched[date] if is_buy_sched else None,
+                    buy_results=pos_size_buy_results,
                     sell_results=sell_sched[date] if is_sell_sched else None,
                 )
             if is_cover_sched:
