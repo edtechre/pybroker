@@ -47,4 +47,4 @@ from .scope import (
 from .strategy import Strategy, TestResult
 from .vect import cross, highv, lowv, sumv
 
-__version__ = "1.1.7"
+__version__ = "1.1.8"
