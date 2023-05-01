@@ -468,6 +468,12 @@ class PredictionScope:
         if model_sym in self._sym_preds:
             return self._sym_preds[model_sym][:end_index]
         input_ = self._input_scope.fetch(symbol, name)
+        if input_.empty:
+            raise ValueError(
+                f"No input data found for model {name!r}. Consider "
+                "passing input_data_fn to pybroker#model() if custom columns "
+                "were registered."
+            )
         if model_sym not in self._models:
             raise ValueError(f"Model {name!r} not found for {symbol}.")
         trained_model = self._models[model_sym]
