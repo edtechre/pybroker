@@ -47,4 +47,8 @@ from .scope import (
 from .strategy import Strategy, TestResult
 from .vect import cross, highv, lowv, sumv
 
+# Temporary fix for regression in Numba 0.57.0
+# https://github.com/numba/numba/issues/8940
+from numba.np.unsafe import ndarray
+
 __version__ = "1.1.8"
