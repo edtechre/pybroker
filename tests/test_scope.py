@@ -409,23 +409,24 @@ class TestPredictionScope:
             pred_scope.fetch("SPY", MODEL_NAME)
 
     def test_fetch_when_input_data_empty_then_error(self, col_scope):
+        model_name = "no_input_data"
         ind_scope = IndicatorScope({}, [])
         input_scope = ModelInputScope(col_scope, ind_scope)
-        pybroker.model(MODEL_NAME, lambda sym, train, test: {})
-        model = TrainedModel(name=MODEL_NAME, instance={}, predict_fn=None)
+        pybroker.model(model_name, lambda sym, train, test: {})
+        model = TrainedModel(name=model_name, instance={}, predict_fn=None)
         pred_scope = PredictionScope(
-            models={ModelSymbol(MODEL_NAME, "SPY"): model},
+            models={ModelSymbol(model_name, "SPY"): model},
             input_scope=input_scope,
         )
         with pytest.raises(
             ValueError,
             match=re.escape(
-                f"No input data found for model {MODEL_NAME!r}. Consider "
+                f"No input data found for model {model_name!r}. Consider "
                 "passing input_data_fn to pybroker#model() if custom columns "
                 "were registered."
             ),
         ):
-            pred_scope.fetch("SPY", MODEL_NAME)
+            pred_scope.fetch("SPY", model_name)
 
 
 class TestPriceScope:
