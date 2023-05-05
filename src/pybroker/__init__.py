@@ -51,4 +51,4 @@ from .vect import cross, highv, lowv, sumv
 # https://github.com/numba/numba/issues/8940
 from numba.np.unsafe import ndarray
 
-__version__ = "1.1.8"
+__version__ = "1.1.9"
