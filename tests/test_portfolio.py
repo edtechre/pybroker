@@ -2947,3 +2947,77 @@ def test_incr_bars():
     assert short_pos.bars == 2
     assert len(short_pos.entries) == 1
     assert short_pos.entries[0].bars == 2
+
+
+def test_capture_bar_when_short_position():
+    cash = 100_000
+    fill_price = Decimal("16.72")
+    shares = 100
+    close_price = Decimal("16.7")
+    portfolio = Portfolio(cash)
+    portfolio.sell(DATE_1, SYMBOL_1, shares, fill_price)
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, close_price],
+        ],
+        columns=["symbol", "date", "close"],
+    )
+    df = df.set_index(["symbol", "date"])
+    portfolio.capture_bar(DATE_1, df)
+    assert len(portfolio.bars) == 1
+    bar = portfolio.bars[0]
+    assert bar.date == DATE_1
+    assert bar.cash == cash + shares * fill_price
+    assert bar.equity == bar.cash
+    assert bar.margin == close_price * shares
+    assert bar.pnl == (fill_price - close_price) * shares
+    assert bar.market_value == bar.equity - bar.margin
+    assert bar.fees == 0
+    assert len(portfolio.position_bars) == 1
+    pos_bar = portfolio.position_bars[0]
+    assert pos_bar.symbol == SYMBOL_1
+    assert pos_bar.date == DATE_1
+    assert pos_bar.long_shares == 0
+    assert pos_bar.short_shares == shares
+    assert pos_bar.close == close_price
+    assert pos_bar.equity == 0
+    assert pos_bar.margin == close_price * shares
+    assert pos_bar.unrealized_pnl == (fill_price - close_price) * shares
+    assert pos_bar.market_value == pos_bar.margin + pos_bar.unrealized_pnl
+
+
+def test_capture_bar_when_long_position():
+    cash = 100_000
+    fill_price = Decimal("16.72")
+    shares = 100
+    close_price = Decimal("16.7")
+    portfolio = Portfolio(cash)
+    portfolio.buy(DATE_1, SYMBOL_1, shares, fill_price)
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, close_price],
+        ],
+        columns=["symbol", "date", "close"],
+    )
+    df = df.set_index(["symbol", "date"])
+    portfolio.capture_bar(DATE_1, df)
+    assert len(portfolio.bars) == 1
+    bar = portfolio.bars[0]
+    assert bar.date == DATE_1
+    assert bar.cash == cash - shares * fill_price
+    assert bar.equity == cash + bar.pnl
+    assert bar.margin == 0
+    assert bar.pnl == (close_price - fill_price) * shares
+    assert bar.market_value == bar.equity
+    assert bar.fees == 0
+    assert len(portfolio.position_bars) == 1
+    pos_bar = portfolio.position_bars[0]
+    assert pos_bar.symbol == SYMBOL_1
+    assert pos_bar.date == DATE_1
+    assert pos_bar.long_shares == shares
+    assert pos_bar.short_shares == 0
+    assert pos_bar.close == close_price
+    assert pos_bar.equity == shares * close_price
+    assert pos_bar.margin == 0
+    assert pos_bar.unrealized_pnl == (close_price - fill_price) * shares
+    assert pos_bar.market_value == pos_bar.equity

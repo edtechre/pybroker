@@ -906,13 +906,13 @@ class Portfolio:
                 if close is not None:
                     pos.close = close
                     pos.pnl = _calculate_pnl(close, pos.entries, "short")
-                    pos.market_value = pos.pnl
                     pos.margin = close * pos.shares
+                    pos.market_value = pos.margin + pos.pnl
                     pos_short_shares += pos.shares
-                    pos_market_value += pos.pnl
+                    pos_market_value += pos.market_value
                     pos_pnl += pos.pnl
                     pos_margin += pos.margin
-                total_market_value += pos.market_value
+                total_market_value -= pos.margin
                 total_margin += pos.margin
             if close is not None:
                 self.position_bars.append(
