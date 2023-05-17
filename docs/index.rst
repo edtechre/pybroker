@@ -16,6 +16,7 @@
          font-family: Bosun;
          font-weight: 900;
          font-size: 3em;
+         margin-bottom: 0.25em;
       }
       .shields a {
          margin-right: 0.5em;
