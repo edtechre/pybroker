@@ -31,13 +31,13 @@ PyBroker supports Python 3.9+ on Windows, Mac, and Linux. You can install
 PyBroker using ``pip``:
 
 ```bash
-    pip install lib-pybroker
+   pip install -U lib-pybroker
 ```
 
 Or you can clone the Git repository with:
 
 ```bash
-    git clone https://github.com/edtechre/pybroker
+   git clone https://github.com/edtechre/pybroker
 ```
 
 ## A Quick Example
