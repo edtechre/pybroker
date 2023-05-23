@@ -380,16 +380,25 @@ class IndicatorScope:
 
 
 class ModelInputScope:
-    """Caches and retrieves model input data.
+    r"""Caches and retrieves model input data.
 
     Args:
         col_scope: :class:`.ColumnScope`.
         ind_scope: :class:`.IndicatorScope`.
+        models: :class:`Mapping` of
+            :class:`pybroker.common.ModelSymbol` pairs to
+            :class:`pybroker.common.TrainedModel`\ s.
     """
 
-    def __init__(self, col_scope: ColumnScope, ind_scope: IndicatorScope):
+    def __init__(
+        self,
+        col_scope: ColumnScope,
+        ind_scope: IndicatorScope,
+        models: Mapping[ModelSymbol, TrainedModel],
+    ):
         self._col_scope = col_scope
         self._ind_scope = ind_scope
+        self._models = models
         self._sym_inputs: dict[ModelSymbol, pd.DataFrame] = {}
         self._scope = StaticScope.instance()
 
@@ -424,7 +433,20 @@ class ModelInputScope:
         for ind_name in self._scope.get_indicator_names(name):
             input_[ind_name] = self._ind_scope.fetch(symbol, ind_name)
         df = pd.DataFrame.from_dict(input_)
-        df = self._scope.get_model_source(name).prepare_input_data(df)
+        if model_sym not in self._models:
+            raise ValueError(f"Model {name!r} not found for {symbol}.")
+        trained_model = self._models[model_sym]
+        if trained_model.input_cols is not None:
+            for input_col in trained_model.input_cols:
+                if input_col not in df.columns:
+                    raise ValueError(
+                        f"Missing column {input_col!r} for input data to "
+                        f"model {model_sym.model_name!r}."
+                    )
+            df = df[list(trained_model.input_cols)]
+        model_source = self._scope.get_model_source(name)
+        if not trained_model.input_cols or model_source._input_data_fn:
+            df = model_source.prepare_input_data(df)
         self._sym_inputs[model_sym] = df
         return df if end_index is None else df.loc[: end_index - 1]
 
@@ -477,14 +499,6 @@ class PredictionScope:
         if model_sym not in self._models:
             raise ValueError(f"Model {name!r} not found for {symbol}.")
         trained_model = self._models[model_sym]
-        if trained_model.input_cols is not None:
-            for input_col in trained_model.input_cols:
-                if input_col not in input_.columns:
-                    raise ValueError(
-                        f"Missing column {input_col!r} for input data to "
-                        f"model {model_sym.model_name!r}."
-                    )
-            input_ = input_[list(trained_model.input_cols)]
         if trained_model.predict_fn is not None:
             pred = trained_model.predict_fn(trained_model.instance, input_)
         else:

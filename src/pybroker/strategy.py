@@ -164,7 +164,7 @@ class BacktestMixin:
         col_scope = ColumnScope(test_data)
         price_scope = PriceScope(col_scope, sym_end_index)
         ind_scope = IndicatorScope(indicator_data, test_dates)
-        input_scope = ModelInputScope(col_scope, ind_scope)
+        input_scope = ModelInputScope(col_scope, ind_scope, models)
         pred_scope = PredictionScope(models, input_scope)
         pending_order_scope = PendingOrderScope()
         exec_ctxs: dict[str, ExecContext] = {}

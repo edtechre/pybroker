@@ -211,8 +211,8 @@ def ind_scope(ind_data, dates):
 
 
 @pytest.fixture()
-def input_scope(col_scope, ind_scope):
-    return ModelInputScope(col_scope, ind_scope)
+def input_scope(col_scope, ind_scope, trained_models):
+    return ModelInputScope(col_scope, ind_scope, trained_models)
 
 
 @pytest.fixture()

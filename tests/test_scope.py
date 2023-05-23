@@ -280,30 +280,23 @@ class TestModelInputScope:
         self,
         scope,
         indicators,
-        ind_names,
         input_scope,
         symbol,
         data_source_df,
         end_index,
+        trained_model,
     ):
         scope.custom_data_cols = set()
-        expected_cols = set(ind_names) | {
-            "date",
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume",
-        }
+        expected_cols = {"hhv", "llv", "sumv"}
 
         def input_fn(df):
             assert set(df.columns) == expected_cols
-            df["foo"] = np.ones(len(df["close"]))
+            df["foo"] = np.ones(len(df["hhv"]))
             return df
 
         model_source = model(
-            "model",
-            lambda symbol, *_: {MODEL_NAME: symbol},
+            trained_model.name,
+            lambda *_: trained_model,
             indicators,
             input_data_fn=input_fn,
         )
@@ -413,15 +406,13 @@ class TestPredictionScope:
     def test_fetch_when_input_data_empty_then_error(self, col_scope):
         model_name = "no_input_data"
         ind_scope = IndicatorScope({}, [])
-        input_scope = ModelInputScope(col_scope, ind_scope)
         pybroker.model(model_name, lambda sym, train, test: {})
         model = TrainedModel(
             name=model_name, instance={}, predict_fn=None, input_cols=None
         )
-        pred_scope = PredictionScope(
-            models={ModelSymbol(model_name, "SPY"): model},
-            input_scope=input_scope,
-        )
+        models = {ModelSymbol(model_name, "SPY"): model}
+        input_scope = ModelInputScope(col_scope, ind_scope, models)
+        pred_scope = PredictionScope(models, input_scope)
         with pytest.raises(
             ValueError,
             match=re.escape(
