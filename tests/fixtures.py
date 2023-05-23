@@ -183,10 +183,14 @@ def trained_models(model_source, preds, symbols, data_source_df, request):
                 MODEL_NAME,
                 FakeModel(sym, None),
                 predict_fn=predict_fn(preds[sym]),
+                input_cols=("hhv", "llv", "sumv"),
             )
         else:
             trained_models[model_sym] = TrainedModel(
-                MODEL_NAME, FakeModel(sym, preds[sym]), predict_fn=None
+                MODEL_NAME,
+                FakeModel(sym, preds[sym]),
+                predict_fn=None,
+                input_cols=("hhv", "llv", "sumv"),
             )
     return trained_models
 

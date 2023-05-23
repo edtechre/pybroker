@@ -70,11 +70,14 @@ class TrainedModel(NamedTuple):
         instance: Trained model instance.
         predict_fn: :class:`Callable` that overrides calling the model's
             default ``predict`` function.
+        input_cols: Names of the columns to be used as input for the model when
+            making predictions.
     """
 
     name: str
     instance: Any
     predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]]
+    input_cols: Optional[tuple[str]]
 
 
 class DataCol(Enum):

@@ -28,7 +28,16 @@ from .indicator import Indicator
 from .scope import StaticScope
 from dataclasses import asdict
 from numpy.typing import NDArray
-from typing import Any, Callable, Collection, Iterable, Mapping, Optional
+from typing import (
+    Any,
+    Callable,
+    Collection,
+    Iterable,
+    Mapping,
+    NamedTuple,
+    Optional,
+    Union,
+)
 
 
 class ModelSource:
@@ -90,7 +99,10 @@ class ModelLoader(ModelSource):
     Args:
         name: Name of model.
         load_fn: ``Callable[[symbol: str, ...], DataFrame]`` used to load and
-            return a pre-trained model.
+            return a pre-trained model. This is expected to
+            return either a trained model instance, or a tuple containing a
+            trained model instance and a :class:`Collection` of column names to
+            to be used as input for the model when making predictions.
         indicator_names: :class:`Iterable` of names of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
@@ -108,7 +120,7 @@ class ModelLoader(ModelSource):
     def __init__(
         self,
         name: str,
-        load_fn: Callable[..., Any],
+        load_fn: Callable[..., Union[Any, tuple[Any, Collection[str]]]],
         indicator_names: Iterable[str],
         input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]],
         predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]],
@@ -119,7 +131,7 @@ class ModelLoader(ModelSource):
         )
         self._load_fn = functools.partial(load_fn, **kwargs)
 
-    def __call__(self, symbol: str) -> Any:
+    def __call__(self, symbol: str) -> Union[Any, tuple[Any, Collection[str]]]:
         """Loads pre-trained model.
 
         Args:
@@ -144,7 +156,10 @@ class ModelTrainer(ModelSource):
         name: Name of model.
         train_fn: ``Callable[[symbol: str, train_data: DataFrame,
             test_data: DataFrame, ...], DataFrame]`` used to train and return a
-            model.
+            model. This is expected to return either a trained model instance,
+            or a tuple containing a trained model instance and a
+            :class:`Collection` of column names to to be used as input for the
+            model when making predictions.
         indicator_names: :class:`Iterable` of names of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
@@ -162,7 +177,7 @@ class ModelTrainer(ModelSource):
     def __init__(
         self,
         name: str,
-        train_fn: Callable[..., Any],
+        train_fn: Callable[..., Union[Any, tuple[Any, Collection[str]]]],
         indicator_names: Iterable[str],
         input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]],
         predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]],
@@ -175,7 +190,7 @@ class ModelTrainer(ModelSource):
 
     def __call__(
         self, symbol: str, train_data: pd.DataFrame, test_data: pd.DataFrame
-    ) -> Any:
+    ) -> Union[Any, tuple[Any, Collection[str]]]:
         """Trains model.
 
         Args:
@@ -197,7 +212,7 @@ class ModelTrainer(ModelSource):
 
 def model(
     name: str,
-    fn: Callable[..., Any],
+    fn: Callable[..., Union[Any, tuple[Any, Collection[str]]]],
     indicators: Optional[Iterable[Indicator]] = None,
     input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]] = None,
     predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]] = None,
@@ -213,7 +228,10 @@ def model(
             for training, then ``fn`` has signature ``Callable[[symbol: str,
             train_data: DataFrame, test_data: DataFrame, ...], DataFrame]``.
             If for loading, then ``fn`` has signature
-            ``Callable[[symbol: str, ...], DataFrame]``.
+            ``Callable[[symbol: str, ...], DataFrame]``. This is expected to
+            return either a trained model instance, or a tuple containing a
+            trained model instance and a :class:`Collection` of column names to
+            to be used as input for the model when making predictions.
         indicators: :class:`Iterable` of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
@@ -261,6 +279,19 @@ def model(
         )
         scope.set_model_source(trainer)
         return trainer
+
+
+class CachedModel(NamedTuple):
+    """Stores cached model data.
+
+    Attributes:
+        model: Trained model instance.
+        input_cols: Names of the columns to be used as input for the model when
+            making predictions.
+    """
+
+    model: Any
+    input_cols: Optional[tuple[str]]
 
 
 class ModelsMixin:
@@ -329,17 +360,28 @@ class ModelsMixin:
                             ind_series.index.isin(test_dates)
                         ].values
                 scope.logger.info_train_model_start(model_sym)
-                model = source(sym, sym_train_data, sym_test_data)
+                model_result = source(sym, sym_train_data, sym_test_data)
                 scope.logger.info_train_model_completed(model_sym)
             elif isinstance(source, ModelLoader):
-                model = source(sym)
+                model_result = source(sym)
                 scope.logger.info_loaded_model(model_sym)
             else:
                 raise TypeError(f"Invalid ModelSource type: {type(source)}")
+            input_cols: Optional[tuple[str]] = None
+            if isinstance(model_result, tuple):
+                model = model_result[0]
+                input_cols = tuple(model_result[1])  # type: ignore[assignment]
+            else:
+                model = model_result
             models[model_sym] = TrainedModel(
-                model_name, model, source._predict_fn
+                name=model_name,
+                instance=model,
+                predict_fn=source._predict_fn,
+                input_cols=input_cols,
             )
-            self._set_cached_model(model, model_sym, cache_date_fields)
+            self._set_cached_model(
+                model, input_cols, model_sym, cache_date_fields
+            )
         scope.logger.train_split_completed()
         return models
 
@@ -368,11 +410,20 @@ class ModelsMixin:
                 **asdict(cache_date_fields),
             )
             scope.logger.debug_get_model_cache(cache_key)
-            model = scope.model_cache.get(repr(cache_key))
-            if model is not None:
+            cached_data = scope.model_cache.get(repr(cache_key))
+            if cached_data is not None:
+                input_cols = None
+                if isinstance(cached_data, CachedModel):
+                    model = cached_data.model
+                    input_cols = cached_data.input_cols
+                else:
+                    model = cached_data
                 source = scope.get_model_source(model_sym.model_name)
                 models[model_sym] = TrainedModel(
-                    model_sym.model_name, model, source._predict_fn
+                    name=model_sym.model_name,
+                    instance=model,
+                    predict_fn=source._predict_fn,
+                    input_cols=input_cols,
                 )
             else:
                 uncached_model_syms.append(model_sym)
@@ -381,6 +432,7 @@ class ModelsMixin:
     def _set_cached_model(
         self,
         model: Any,
+        input_cols: Optional[tuple[str]],
         model_sym: ModelSymbol,
         cache_date_fields: CacheDateFields,
     ):
@@ -392,5 +444,6 @@ class ModelsMixin:
             model_name=model_sym.model_name,
             **asdict(cache_date_fields),
         )
+        cached_model = CachedModel(model, input_cols)
         scope.logger.debug_set_model_cache(cache_key)
-        scope.model_cache.set(repr(cache_key), model)
+        scope.model_cache.set(repr(cache_key), cached_model)

@@ -62,8 +62,14 @@ def model_syms(train_data, model_source):
     ]
 
 
-@pytest.mark.parametrize("pretrained", [True, False])
-def test_model(indicators, pretrained):
+@pytest.mark.parametrize(
+    "pretrained, input_cols",
+    [
+        (True, False),
+        (True, False),
+    ],
+)
+def test_model(indicators, pretrained, input_cols):
     def input_data_fn(df):
         pass
 
@@ -73,7 +79,7 @@ def test_model(indicators, pretrained):
     name = f"pretrained={pretrained}"
     source = model(
         name,
-        lambda x: x,
+        lambda x: (x, ["hhv", "llv"]) if input_cols else x,
         indicators,
         input_data_fn=input_data_fn,
         predict_fn=predict_fn,

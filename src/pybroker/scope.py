@@ -477,6 +477,14 @@ class PredictionScope:
         if model_sym not in self._models:
             raise ValueError(f"Model {name!r} not found for {symbol}.")
         trained_model = self._models[model_sym]
+        if trained_model.input_cols is not None:
+            for input_col in trained_model.input_cols:
+                if input_col not in input_.columns:
+                    raise ValueError(
+                        f"Missing column {input_col!r} for input data to "
+                        f"model {model_sym.model_name!r}."
+                    )
+            input_ = input_[list(trained_model.input_cols)]
         if trained_model.predict_fn is not None:
             pred = trained_model.predict_fn(trained_model.instance, input_)
         else:

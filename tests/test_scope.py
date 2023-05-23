@@ -393,7 +393,9 @@ class TestPredictionScope:
             pred_scope.fetch(sym, name)
 
     def test_fetch_when_predict_not_defined_then_error(self, input_scope):
-        model = TrainedModel(name=MODEL_NAME, instance={}, predict_fn=None)
+        model = TrainedModel(
+            name=MODEL_NAME, instance={}, predict_fn=None, input_cols=None
+        )
         pred_scope = PredictionScope(
             models={ModelSymbol(MODEL_NAME, "SPY"): model},
             input_scope=input_scope,
@@ -413,7 +415,9 @@ class TestPredictionScope:
         ind_scope = IndicatorScope({}, [])
         input_scope = ModelInputScope(col_scope, ind_scope)
         pybroker.model(model_name, lambda sym, train, test: {})
-        model = TrainedModel(name=model_name, instance={}, predict_fn=None)
+        model = TrainedModel(
+            name=model_name, instance={}, predict_fn=None, input_cols=None
+        )
         pred_scope = PredictionScope(
             models={ModelSymbol(model_name, "SPY"): model},
             input_scope=input_scope,
