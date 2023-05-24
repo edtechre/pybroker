@@ -278,10 +278,11 @@ def max_drawdown(changes: NDArray[np.float_]) -> float:
     n = len(changes)
     if not n:
         return 0
-    cumulative = max_equity = changes[0]
+    cumulative = 0
+    max_equity = 0
     dd = 0
-    for i in range(1, n):
-        cumulative += changes[i]
+    for change in changes:
+        cumulative += change
         if cumulative > max_equity:
             max_equity = cumulative
         else:
@@ -302,10 +303,11 @@ def max_drawdown_percent(returns: NDArray[np.float_]) -> float:
     n = len(returns)
     if not n:
         return 0
-    cumulative = max_equity = returns[0]
-    dd = 0
-    for i in range(1, n):
-        cumulative *= returns[i]
+    cumulative = 1.0
+    max_equity = 1.0
+    dd = 0.0
+    for r in returns:
+        cumulative *= r
         if cumulative > max_equity:
             max_equity = cumulative
         elif max_equity > 0:
