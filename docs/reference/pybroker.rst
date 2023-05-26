@@ -23,5 +23,6 @@ Submodules
    pybroker.model
    pybroker.portfolio
    pybroker.scope
+   pybroker.slippage
    pybroker.strategy
    pybroker.vect
