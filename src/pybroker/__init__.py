@@ -44,6 +44,7 @@ from .scope import (
     register_columns,
     unregister_columns,
 )
+from .slippage import RandomSlippageModel
 from .strategy import Strategy, TestResult
 from .vect import cross, highv, lowv, sumv
 

@@ -37,6 +37,7 @@ from pybroker.portfolio import (
     Trade,
 )
 from pybroker.scope import PendingOrder
+from pybroker.slippage import SlippageData, SlippageModel
 from pybroker.strategy import (
     BacktestMixin,
     Execution,
@@ -1749,6 +1750,42 @@ class TestStrategy:
         assert trade["exit"] == 99.99
         assert trade["shares"] == 100
 
+    def test_backtest_when_slippage_and_exit_long_on_last_bar(
+        self, data_source_df
+    ):
+        class FakeSlippageModel(SlippageModel):
+            def apply_slippage(self, data: SlippageData, ctx: ExecContext):
+                ctx.sell_fill_price = 190
+
+        def buy_exec_fn(ctx):
+            if not ctx.long_pos():
+                ctx.buy_shares = 100
+                ctx.buy_fill_price = 150
+
+        def sell_fill_price(_symbol, _bar_data):
+            return 199.99
+
+        config = StrategyConfig(
+            exit_on_last_bar=True, exit_sell_fill_price=sell_fill_price
+        )
+        strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+        strategy.set_slippage_model(FakeSlippageModel())
+        strategy.add_execution(buy_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        dates = data_source_df[data_source_df["symbol"] == "SPY"][
+            "date"
+        ].unique()
+        dates = dates[dates <= np.datetime64(END_DATE)]
+        assert len(result.trades) == 1
+        trade = result.trades.iloc[0]
+        assert trade["type"] == "long"
+        assert trade["symbol"] == "SPY"
+        assert trade["entry_date"] == dates[1]
+        assert trade["exit_date"] == dates[-1]
+        assert trade["entry"] == 150
+        assert trade["exit"] == 190
+        assert trade["shares"] == 100
+
     def test_backtest_when_buy_shares_and_sell_shares_then_error(
         self, data_source_df
     ):
@@ -1933,6 +1970,52 @@ class TestStrategy:
             )
             assert row["fees"].item() == 0
         assert len(result.trades) == len(buy_orders)
+        assert (result.trades["stop"] == "bar").all()
+
+    def test_backtest_when_slippage(self, data_source_df):
+        class FakeSlippageModel(SlippageModel):
+            def apply_slippage(self, data: SlippageData, ctx: ExecContext):
+                ctx.buy_shares = 99
+
+        def buy_exec_fn(ctx):
+            ctx.buy_fill_price = PriceType.CLOSE
+            ctx.sell_fill_price = PriceType.OPEN
+            ctx.buy_shares = 100
+            ctx.hold_bars = 2
+
+        df = data_source_df[data_source_df["symbol"] == "SPY"]
+        dates = df["date"].unique()
+        dates = dates[dates <= np.datetime64(END_DATE)]
+        buy_dates = dates[1:]
+        sell_dates = dates[3:]
+        config = StrategyConfig(initial_cash=500_000)
+        strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+        strategy.set_slippage_model(FakeSlippageModel())
+        strategy.add_execution(buy_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        orders = result.orders
+        buy_orders = orders[orders["type"] == "buy"]
+        assert len(buy_orders) == len(buy_dates)
+        for buy_date in buy_dates:
+            row = buy_orders[buy_orders["date"] == buy_date]
+            assert row["symbol"].item() == "SPY"
+            assert row["shares"].item() == 99
+            assert np.isnan(row["limit_price"].item())
+            assert row["fill_price"].item() == round(
+                df[df["date"] == buy_date]["close"].item(), 2
+            )
+            assert row["fees"].item() == 0
+        sell_orders = orders[orders["type"] == "sell"]
+        assert len(sell_orders) == len(sell_dates)
+        for sell_date in sell_dates:
+            row = sell_orders[sell_orders["date"] == sell_date]
+            assert row["symbol"].item() == "SPY"
+            assert row["shares"].item() == 99
+            assert np.isnan(row["limit_price"].item())
+            assert row["fill_price"].item() == round(
+                df[df["date"] == sell_date]["open"].item(), 2
+            )
+            assert row["fees"].item() == 0
         assert (result.trades["stop"] == "bar").all()
 
     def test_backtest_when_stop_loss(self, data_source_df):

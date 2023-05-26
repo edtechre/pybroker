@@ -55,6 +55,7 @@ from .scope import (
     PriceScope,
     StaticScope,
 )
+from .slippage import SlippageData, SlippageModel
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime
@@ -124,6 +125,7 @@ class BacktestMixin:
         portfolio: Portfolio,
         pos_size_handler: Optional[Callable[[PosSizeContext], None]],
         exit_dates: Mapping[str, np.datetime64],
+        slippage_model: Optional[SlippageModel] = None,
         enable_fractional_shares: bool = False,
     ):
         r"""Backtests a ``set`` of :class:`.Execution`\ s that implement
@@ -213,7 +215,7 @@ class BacktestMixin:
         cover_results: deque[ExecResult] = deque()
         buy_results: deque[ExecResult] = deque()
         sell_results: deque[ExecResult] = deque()
-        exit_syms: deque[str] = deque()
+        exit_ctxs: deque[ExecContext] = deque()
         active_ctxs: dict[str, ExecContext] = {}
         for i, date in enumerate(test_dates):
             active_ctxs.clear()
@@ -228,7 +230,7 @@ class BacktestMixin:
                     and sym in exit_dates
                     and date == exit_dates[sym]
                 ):
-                    exit_syms.append(sym)
+                    exit_ctxs.append(ctx)
             is_cover_sched = date in cover_sched
             is_buy_sched = date in buy_sched
             is_sell_sched = date in sell_sched
@@ -296,6 +298,8 @@ class BacktestMixin:
             if after_exec_fn is not None:
                 after_exec_fn(active_ctxs)
             for ctx in active_ctxs.values():
+                if slippage_model and (ctx.buy_shares or ctx.sell_shares):
+                    self._apply_slippage(slippage_model, ctx, price_scope)
                 result = self._to_result(ctx)
                 if result is None:
                     continue
@@ -336,11 +340,12 @@ class BacktestMixin:
                     col_scope=col_scope,
                     pending_order_scope=pending_order_scope,
                 )
-            while exit_syms:
+            while exit_ctxs:
                 self._exit_position(
                     portfolio=portfolio,
                     date=date,
-                    symbol=exit_syms.popleft(),
+                    ctx=exit_ctxs.popleft(),
+                    slippage_model=slippage_model,
                     exit_cover_fill_price=config.exit_cover_fill_price,
                     exit_sell_fill_price=config.exit_sell_fill_price,
                     price_scope=price_scope,
@@ -348,6 +353,24 @@ class BacktestMixin:
             portfolio.incr_bars()
             if i % 10 == 0 or i == len(test_dates) - 1:
                 logger.backtest_executions_loading(i + 1)
+
+    def _apply_slippage(
+        self,
+        slippage_model: SlippageModel,
+        ctx: ExecContext,
+        price_scope: PriceScope,
+    ):
+        buy_fill_price = price_scope.fetch(ctx.symbol, ctx.buy_fill_price)
+        sell_fill_price = price_scope.fetch(ctx.symbol, ctx.sell_fill_price)
+        buy_shares = to_decimal(ctx.buy_shares) if ctx.buy_shares else None
+        sell_shares = to_decimal(ctx.sell_shares) if ctx.sell_shares else None
+        data = SlippageData(
+            buy_fill_price=buy_fill_price,
+            sell_fill_price=sell_fill_price,
+            buy_shares=buy_shares,
+            sell_shares=sell_shares,
+        )
+        slippage_model.apply_slippage(data, ctx)
 
     def _to_result(self, ctx: ExecContext) -> Optional[ExecResult]:
         if ctx.buy_shares is not None and ctx.sell_shares is not None:
@@ -371,7 +394,8 @@ class BacktestMixin:
         self,
         portfolio: Portfolio,
         date: np.datetime64,
-        symbol: str,
+        slippage_model: Optional[SlippageModel],
+        ctx: ExecContext,
         exit_cover_fill_price: Union[
             PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
         ],
@@ -380,11 +404,17 @@ class BacktestMixin:
         ],
         price_scope: PriceScope,
     ):
-        buy_fill_price = price_scope.fetch(symbol, exit_cover_fill_price)
-        sell_fill_price = price_scope.fetch(symbol, exit_sell_fill_price)
+        if slippage_model:
+            ctx.buy_fill_price = exit_cover_fill_price
+            ctx.sell_fill_price = exit_sell_fill_price
+            self._apply_slippage(slippage_model, ctx, price_scope)
+            exit_cover_fill_price = ctx.buy_fill_price
+            exit_sell_fill_price = ctx.sell_fill_price
+        buy_fill_price = price_scope.fetch(ctx.symbol, exit_cover_fill_price)
+        sell_fill_price = price_scope.fetch(ctx.symbol, exit_sell_fill_price)
         portfolio.exit_position(
             date,
-            symbol,
+            ctx.symbol,
             buy_fill_price=buy_fill_price,
             sell_fill_price=sell_fill_price,
         )
@@ -821,6 +851,7 @@ class Strategy(
         self._pos_size_handler: Optional[
             Callable[[PosSizeContext], None]
         ] = None
+        self._slippage_model: Optional[SlippageModel] = None
         self._scope = StaticScope.instance()
         self._logger = self._scope.logger
 
@@ -853,6 +884,10 @@ class Strategy(
             verify_data_source_columns(data_source)
         elif not isinstance(data_source, DataSource):
             raise TypeError(f"Invalid data_source type: {type(data_source)}")
+
+    def set_slippage_model(self, slippage_model: Optional[SlippageModel]):
+        """Sets :class:`pybroker.slippage.SlippageModel`."""
+        self._slippage_model = slippage_model
 
     def add_execution(
         self,
@@ -1308,6 +1343,7 @@ class Strategy(
                     portfolio=portfolio,
                     pos_size_handler=self._pos_size_handler,
                     exit_dates=exit_dates,
+                    slippage_model=self._slippage_model,
                     enable_fractional_shares=self._fractional_shares_enabled(),
                 )
 
