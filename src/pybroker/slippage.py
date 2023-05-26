@@ -36,15 +36,15 @@ class SlippageModel(ABC):
 
     @abstractmethod
     def apply_slippage(self, data: SlippageData, ctx: ExecContext):
-        """Applies slippage to ```ctx```."""
+        """Applies slippage to ``ctx``."""
 
 
 class RandomSlippageModel(SlippageModel):
     """Implements a simple random slippage model.
 
     Args:
-        price_pct: ```tuple[min, max]``` percentages of price slippage.
-        shares_pct: ```tuple[min, max]``` percentages of share slippage.
+        price_pct: ``tuple[min, max]`` percentages of price slippage.
+        shares_pct: ``tuple[min, max]`` percentages of share slippage.
     """
 
     def __init__(
