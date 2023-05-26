@@ -23,7 +23,14 @@ from typing import NamedTuple, Optional
 
 
 class SlippageData(NamedTuple):
-    """Contains data to use for calculating slippage."""
+    """Contains data to use for calculating slippage.
+    
+    Attributes:
+        buy_shares: Number of shares to buy.
+        sell_shares: Number of shares to sell.
+        buy_fill_price: Fill price to use for a buy order.
+        sell_fill_price: Fill price to use for a sell order.
+    """
 
     buy_shares: Optional[Decimal]
     sell_shares: Optional[Decimal]
