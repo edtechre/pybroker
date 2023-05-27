@@ -1,11 +1,7 @@
 name: Package
 
 on:
-  push:
-    branches:
-      - master
-  schedule:
-    - cron: '0 12 * * *'
+  - push
 
 jobs:
   format:
