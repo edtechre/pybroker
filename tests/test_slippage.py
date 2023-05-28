@@ -17,6 +17,7 @@ with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import pytest
 import random
+import re
 from .fixtures import *
 from pybroker.context import ExecContext
 from pybroker.slippage import RandomSlippageModel, SlippageData
@@ -47,6 +48,26 @@ def ctx(
 
 
 class TestRandomSlippageModel:
+    def test_init_when_invalid_min_pct_then_error(self):
+        with pytest.raises(
+            ValueError,
+            match=re.escape(r"min_pct must be between 0% and 100%."),
+        ):
+            RandomSlippageModel(min_pct=-1, max_pct=100)
+
+    def test_init_when_invalid_max_pct_then_error(self):
+        with pytest.raises(
+            ValueError,
+            match=re.escape(r"max_pct must be between 0% and 100%."),
+        ):
+            RandomSlippageModel(min_pct=0, max_pct=101)
+
+    def test_init_when_min_gte_max_pct_then_error(self):
+        with pytest.raises(
+            ValueError, match=re.escape("min_pct must be < max_pct.")
+        ):
+            RandomSlippageModel(min_pct=5, max_pct=1)
+
     def test_slip_when_buy_shares(self, ctx):
         model = RandomSlippageModel(min_pct=1, max_pct=2)
         data = SlippageData(buy_shares=100, sell_shares=None)

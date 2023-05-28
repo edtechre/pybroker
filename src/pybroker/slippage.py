@@ -51,6 +51,12 @@ class RandomSlippageModel(SlippageModel):
     """
 
     def __init__(self, min_pct: float, max_pct: float):
+        if min_pct < 0 or min_pct > 100:
+            raise ValueError(r"min_pct must be between 0% and 100%.")
+        if max_pct < 0 or max_pct > 100:
+            raise ValueError(r"max_pct must be between 0% and 100%.")
+        if min_pct >= max_pct:
+            raise ValueError("min_pct must be < max_pct.")
         self.min_pct = min_pct / 100.0
         self.max_pct = max_pct / 100.0
 
