@@ -299,7 +299,7 @@ class BacktestMixin:
                 after_exec_fn(active_ctxs)
             for ctx in active_ctxs.values():
                 if slippage_model and (ctx.buy_shares or ctx.sell_shares):
-                    self._apply_slippage(slippage_model, ctx, price_scope)
+                    self._apply_slippage(slippage_model, ctx)
                 result = self._to_result(ctx)
                 if result is None:
                     continue
@@ -345,7 +345,6 @@ class BacktestMixin:
                     portfolio=portfolio,
                     date=date,
                     ctx=exit_ctxs.popleft(),
-                    slippage_model=slippage_model,
                     exit_cover_fill_price=config.exit_cover_fill_price,
                     exit_sell_fill_price=config.exit_sell_fill_price,
                     price_scope=price_scope,
@@ -358,18 +357,10 @@ class BacktestMixin:
         self,
         slippage_model: SlippageModel,
         ctx: ExecContext,
-        price_scope: PriceScope,
     ):
-        buy_fill_price = price_scope.fetch(ctx.symbol, ctx.buy_fill_price)
-        sell_fill_price = price_scope.fetch(ctx.symbol, ctx.sell_fill_price)
         buy_shares = to_decimal(ctx.buy_shares) if ctx.buy_shares else None
         sell_shares = to_decimal(ctx.sell_shares) if ctx.sell_shares else None
-        data = SlippageData(
-            buy_fill_price=buy_fill_price,
-            sell_fill_price=sell_fill_price,
-            buy_shares=buy_shares,
-            sell_shares=sell_shares,
-        )
+        data = SlippageData(buy_shares=buy_shares, sell_shares=sell_shares)
         slippage_model.apply_slippage(data, ctx)
 
     def _to_result(self, ctx: ExecContext) -> Optional[ExecResult]:
@@ -394,7 +385,6 @@ class BacktestMixin:
         self,
         portfolio: Portfolio,
         date: np.datetime64,
-        slippage_model: Optional[SlippageModel],
         ctx: ExecContext,
         exit_cover_fill_price: Union[
             PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
@@ -404,12 +394,6 @@ class BacktestMixin:
         ],
         price_scope: PriceScope,
     ):
-        if slippage_model:
-            ctx.buy_fill_price = exit_cover_fill_price
-            ctx.sell_fill_price = exit_sell_fill_price
-            self._apply_slippage(slippage_model, ctx, price_scope)
-            exit_cover_fill_price = ctx.buy_fill_price
-            exit_sell_fill_price = ctx.sell_fill_price
         buy_fill_price = price_scope.fetch(ctx.symbol, exit_cover_fill_price)
         sell_fill_price = price_scope.fetch(ctx.symbol, exit_sell_fill_price)
         portfolio.exit_position(

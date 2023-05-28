@@ -28,14 +28,10 @@ class SlippageData(NamedTuple):
     Attributes:
         buy_shares: Number of shares to buy.
         sell_shares: Number of shares to sell.
-        buy_fill_price: Fill price to use for a buy order.
-        sell_fill_price: Fill price to use for a sell order.
     """
 
     buy_shares: Optional[Decimal]
     sell_shares: Optional[Decimal]
-    buy_fill_price: Decimal
-    sell_fill_price: Decimal
 
 
 class SlippageModel(ABC):
@@ -50,31 +46,17 @@ class RandomSlippageModel(SlippageModel):
     """Implements a simple random slippage model.
 
     Args:
-        price_pct: ``tuple[min, max]`` percentages of price slippage.
-        shares_pct: ``tuple[min, max]`` percentages of share slippage.
+        min_pct: Min percentage of slippage.
+        max_pct: Max percentage of slippage.
     """
 
-    def __init__(
-        self,
-        price_pct: Optional[tuple[float, float]] = None,
-        shares_pct: Optional[tuple[float, float]] = None,
-    ):
-        if not price_pct and not shares_pct:
-            raise ValueError("Must pass either price_pct or shares_pct.")
-        if price_pct is not None:
-            if len(price_pct) != 2:
-                raise ValueError("price_pct must be a tuple[min, max].")
-            price_pct = (price_pct[0] / 100.0, price_pct[1] / 100.0)
-        if shares_pct is not None:
-            if len(shares_pct) != 2:
-                raise ValueError("shares_pct must be a tuple[min, max].")
-            shares_pct = (shares_pct[0] / 100.0, shares_pct[1] / 100.0)
-        self.price_pct = price_pct
-        self.shares_pct = shares_pct
+    def __init__(self, min_pct: float, max_pct: float):
+        self.min_pct = min_pct / 100.0
+        self.max_pct = max_pct / 100.0
 
     def apply_slippage(self, data: SlippageData, ctx: ExecContext):
-        if self.shares_pct and (data.buy_shares or data.sell_shares):
-            slippage_pct = Decimal(random.uniform(*self.shares_pct))
+        if data.buy_shares or data.sell_shares:
+            slippage_pct = Decimal(random.uniform(self.min_pct, self.max_pct))
             if data.buy_shares:
                 ctx.buy_shares = (
                     data.buy_shares - slippage_pct * data.buy_shares
@@ -83,11 +65,3 @@ class RandomSlippageModel(SlippageModel):
                 ctx.sell_shares = (
                     data.sell_shares - slippage_pct * data.sell_shares
                 )
-        if self.price_pct:
-            slippage_pct = Decimal(random.uniform(*self.price_pct))
-            ctx.buy_fill_price = (
-                data.buy_fill_price + data.buy_fill_price * slippage_pct
-            )
-            ctx.sell_fill_price = (
-                data.sell_fill_price - data.sell_fill_price * slippage_pct
-            )

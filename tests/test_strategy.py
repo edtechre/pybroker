@@ -1750,42 +1750,6 @@ class TestStrategy:
         assert trade["exit"] == 99.99
         assert trade["shares"] == 100
 
-    def test_backtest_when_slippage_and_exit_long_on_last_bar(
-        self, data_source_df
-    ):
-        class FakeSlippageModel(SlippageModel):
-            def apply_slippage(self, data: SlippageData, ctx: ExecContext):
-                ctx.sell_fill_price = 190
-
-        def buy_exec_fn(ctx):
-            if not ctx.long_pos():
-                ctx.buy_shares = 100
-                ctx.buy_fill_price = 150
-
-        def sell_fill_price(_symbol, _bar_data):
-            return 199.99
-
-        config = StrategyConfig(
-            exit_on_last_bar=True, exit_sell_fill_price=sell_fill_price
-        )
-        strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
-        strategy.set_slippage_model(FakeSlippageModel())
-        strategy.add_execution(buy_exec_fn, "SPY")
-        result = strategy.backtest(calc_bootstrap=False)
-        dates = data_source_df[data_source_df["symbol"] == "SPY"][
-            "date"
-        ].unique()
-        dates = dates[dates <= np.datetime64(END_DATE)]
-        assert len(result.trades) == 1
-        trade = result.trades.iloc[0]
-        assert trade["type"] == "long"
-        assert trade["symbol"] == "SPY"
-        assert trade["entry_date"] == dates[1]
-        assert trade["exit_date"] == dates[-1]
-        assert trade["entry"] == 150
-        assert trade["exit"] == 190
-        assert trade["shares"] == 100
-
     def test_backtest_when_buy_shares_and_sell_shares_then_error(
         self, data_source_df
     ):
