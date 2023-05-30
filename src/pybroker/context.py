@@ -18,7 +18,7 @@ with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import numpy as np
 import pandas as pd
-from .common import (
+from pybroker.common import (
     BarData,
     DataCol,
     ModelSymbol,
@@ -27,10 +27,10 @@ from .common import (
     to_datetime,
     to_decimal,
 )
-from .config import StrategyConfig
-from .model import TrainedModel
-from .portfolio import Entry, Order, Portfolio, Position, Stop, Trade
-from .scope import (
+from pybroker.config import StrategyConfig
+from pybroker.model import TrainedModel
+from pybroker.portfolio import Entry, Order, Portfolio, Position, Stop, Trade
+from pybroker.scope import (
     ColumnScope,
     IndicatorScope,
     ModelInputScope,

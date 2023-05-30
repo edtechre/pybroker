@@ -17,15 +17,15 @@ with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import functools
 import pandas as pd
-from .cache import CacheDateFields, ModelCacheKey
-from .common import (
+from pybroker.cache import CacheDateFields, ModelCacheKey
+from pybroker.common import (
     DataCol,
     IndicatorSymbol,
     ModelSymbol,
     TrainedModel,
 )
-from .indicator import Indicator
-from .scope import StaticScope
+from pybroker.indicator import Indicator
+from pybroker.scope import StaticScope
 from dataclasses import asdict
 from numpy.typing import NDArray
 from typing import (

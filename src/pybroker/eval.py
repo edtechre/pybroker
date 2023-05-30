@@ -17,8 +17,8 @@ with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import numpy as np
 import pandas as pd
-from .scope import StaticScope
-from .vect import highv
+from pybroker.scope import StaticScope
+from pybroker.vect import highv
 from collections import deque
 from dataclasses import dataclass, field
 from numba import njit

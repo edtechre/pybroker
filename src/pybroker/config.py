@@ -15,7 +15,7 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from .common import BarData, FeeMode, PriceType
+from pybroker.common import BarData, FeeMode, PriceType
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Callable, Optional, Union

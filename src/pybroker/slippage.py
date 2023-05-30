@@ -16,7 +16,7 @@ with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import random
-from .context import ExecContext
+from pybroker.context import ExecContext
 from abc import ABC, abstractmethod
 from decimal import Decimal
 from typing import NamedTuple, Optional

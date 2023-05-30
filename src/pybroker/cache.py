@@ -16,7 +16,7 @@ with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
-from .scope import StaticScope
+from pybroker.scope import StaticScope
 from dataclasses import dataclass
 from datetime import datetime
 from diskcache import Cache

@@ -19,7 +19,7 @@ import datetime
 import logging
 import numpy as np
 import time
-from .common import Day, IndicatorSymbol, ModelSymbol, to_datetime
+from pybroker.common import Day, IndicatorSymbol, ModelSymbol, to_datetime
 from decimal import Decimal
 from progressbar import ProgressBar
 from typing import Iterable, Optional, Sequence, Sized
