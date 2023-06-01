@@ -11,4 +11,3 @@ dist/
 src/lib_pybroker.egg-info
 .idea/
 .pytest_cache/
-main.py

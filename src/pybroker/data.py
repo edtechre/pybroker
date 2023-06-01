@@ -15,13 +15,13 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import akshare
 import alpaca.data.historical.stock as alpaca_stock
 import alpaca.data.historical.crypto as alpaca_crypto
 import itertools
 import numpy as np
 import pandas as pd
 import yfinance
-import akshare
 from pybroker.cache import DataSourceCacheKey
 from pybroker.common import (
     DataCol,
