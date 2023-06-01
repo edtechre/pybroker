@@ -45,11 +45,11 @@ class DataSourceCacheMixin:
     """
 
     def get_cached(
-        self,
-        symbols: Iterable[str],
-        timeframe: str,
-        start_date: Union[str, datetime, pd.Timestamp, np.datetime64],
-        end_date: Union[str, datetime, pd.Timestamp, np.datetime64],
+            self,
+            symbols: Iterable[str],
+            timeframe: str,
+            start_date: Union[str, datetime, pd.Timestamp, np.datetime64],
+            end_date: Union[str, datetime, pd.Timestamp, np.datetime64],
     ) -> tuple[pd.DataFrame, Iterable[str]]:
         """Retrieves cached data from disk when caching is enabled with
         :meth:`pybroker.cache.enable_data_source_cache`.
@@ -112,11 +112,11 @@ class DataSourceCacheMixin:
         return df, uncached_syms
 
     def set_cached(
-        self,
-        timeframe: str,
-        start_date: Union[str, datetime, pd.Timestamp, np.datetime64],
-        end_date: Union[str, datetime, pd.Timestamp, np.datetime64],
-        data: pd.DataFrame,
+            self,
+            timeframe: str,
+            start_date: Union[str, datetime, pd.Timestamp, np.datetime64],
+            end_date: Union[str, datetime, pd.Timestamp, np.datetime64],
+            data: pd.DataFrame,
     ):
         """Stores data to disk cache when caching is enabled with
         :meth:`pybroker.cache.enable_data_source_cache`.
@@ -171,11 +171,11 @@ class DataSource(ABC, DataSourceCacheMixin):
         self._logger = self._scope.logger
 
     def query(
-        self,
-        symbols: Union[str, Iterable[str]],
-        start_date: Union[str, datetime],
-        end_date: Union[str, datetime],
-        timeframe: Optional[str] = "",
+            self,
+            symbols: Union[str, Iterable[str]],
+            start_date: Union[str, datetime],
+            end_date: Union[str, datetime],
+            timeframe: Optional[str] = "",
     ) -> pd.DataFrame:
         """Queries data. Cached data is returned if caching is enabled by
         calling :meth:`pybroker.cache.enable_data_source_cache`.
@@ -206,9 +206,7 @@ class DataSource(ABC, DataSourceCacheMixin):
         if type(symbols) == str and not symbols:
             raise ValueError("Symbols cannot be empty.")
         unique_syms = (
-            frozenset((symbols,))
-            if type(symbols) == str
-            else frozenset(symbols)
+            frozenset((symbols,)) if type(symbols) == str else frozenset(symbols)
         )
         if not unique_syms:
             raise ValueError("Symbols cannot be empty.")
@@ -230,9 +228,9 @@ class DataSource(ABC, DataSourceCacheMixin):
         )
         df = self._fetch_data(unique_syms, start_date, end_date, timeframe)
         if (
-            self._scope.data_source_cache is not None
-            and not cached_df.columns.empty
-            and set(cached_df.columns) != set(df.columns)
+                self._scope.data_source_cache is not None
+                and not cached_df.columns.empty
+                and set(cached_df.columns) != set(df.columns)
         ):
             self._logger.info_invalidate_data_source_cache()
             self._scope.data_source_cache.clear()
@@ -247,11 +245,11 @@ class DataSource(ABC, DataSourceCacheMixin):
 
     @abstractmethod
     def _fetch_data(
-        self,
-        symbols: frozenset[str],
-        start_date: datetime,
-        end_date: datetime,
-        timeframe: Optional[str],
+            self,
+            symbols: frozenset[str],
+            start_date: datetime,
+            end_date: datetime,
+            timeframe: Optional[str],
     ) -> pd.DataFrame:
         """:meta public:
         Override this method to return data from a custom
@@ -283,13 +281,11 @@ class DataSource(ABC, DataSourceCacheMixin):
     def _format_timeframe(self, timeframe: Optional[str]) -> str:
         if not timeframe:
             return ""
-        return " ".join(
-            f"{part[0]}{part[1]}" for part in parse_timeframe(timeframe)
-        )
+        return " ".join(f"{part[0]}{part[1]}" for part in parse_timeframe(timeframe))
 
 
 def _parse_alpaca_timeframe(
-    timeframe: Optional[str],
+        timeframe: Optional[str],
 ) -> tuple[int, TimeFrameUnit]:
     if timeframe is None:
         raise ValueError("Timeframe needs to be specified for Alpaca.")
@@ -322,21 +318,21 @@ class Alpaca(DataSource):
         self._api = alpaca_stock.StockHistoricalDataClient(api_key, api_secret)
 
     def query(
-        self,
-        symbols: Union[str, Iterable[str]],
-        start_date: Union[str, datetime],
-        end_date: Union[str, datetime],
-        timeframe: Optional[str] = "1d",
+            self,
+            symbols: Union[str, Iterable[str]],
+            start_date: Union[str, datetime],
+            end_date: Union[str, datetime],
+            timeframe: Optional[str] = "1d",
     ) -> pd.DataFrame:
         _parse_alpaca_timeframe(timeframe)
         return super().query(symbols, start_date, end_date, timeframe)
 
     def _fetch_data(
-        self,
-        symbols: frozenset[str],
-        start_date: datetime,
-        end_date: datetime,
-        timeframe: Optional[str],
+            self,
+            symbols: frozenset[str],
+            start_date: datetime,
+            end_date: datetime,
+            timeframe: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
         amount, unit = _parse_alpaca_timeframe(timeframe)
@@ -369,9 +365,7 @@ class Alpaca(DataSource):
         df.rename(columns={"timestamp": DataCol.DATE.value}, inplace=True)
         df = df[[col.value for col in DataCol]]
         df[DataCol.DATE.value] = pd.to_datetime(df[DataCol.DATE.value])
-        df[DataCol.DATE.value] = df[DataCol.DATE.value].dt.tz_convert(
-            self.__EST
-        )
+        df[DataCol.DATE.value] = df[DataCol.DATE.value].dt.tz_convert(self.__EST)
         return df
 
 
@@ -401,26 +395,24 @@ class AlpacaCrypto(DataSource):
     def __init__(self, api_key: str, api_secret: str):
         super().__init__()
         self._scope.register_custom_cols(self.TRADE_COUNT)
-        self._api = alpaca_crypto.CryptoHistoricalDataClient(
-            api_key, api_secret
-        )
+        self._api = alpaca_crypto.CryptoHistoricalDataClient(api_key, api_secret)
 
     def query(
-        self,
-        symbols: Union[str, Iterable[str]],
-        start_date: Union[str, datetime],
-        end_date: Union[str, datetime],
-        timeframe: Optional[str] = "1d",
+            self,
+            symbols: Union[str, Iterable[str]],
+            start_date: Union[str, datetime],
+            end_date: Union[str, datetime],
+            timeframe: Optional[str] = "1d",
     ) -> pd.DataFrame:
         _parse_alpaca_timeframe(timeframe)
         return super().query(symbols, start_date, end_date, timeframe)
 
     def _fetch_data(
-        self,
-        symbols: frozenset[str],
-        start_date: datetime,
-        end_date: datetime,
-        timeframe: Optional[str],
+            self,
+            symbols: frozenset[str],
+            start_date: datetime,
+            end_date: datetime,
+            timeframe: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
         amount, unit = _parse_alpaca_timeframe(timeframe)
@@ -440,9 +432,7 @@ class AlpacaCrypto(DataSource):
         df.rename(columns={"timestamp": DataCol.DATE.value}, inplace=True)
         df = df[[col for col in self.COLUMNS]]
         df[DataCol.DATE.value] = pd.to_datetime(df[DataCol.DATE.value])
-        df[DataCol.DATE.value] = df[DataCol.DATE.value].dt.tz_convert(
-            self.__EST
-        )
+        df[DataCol.DATE.value] = df[DataCol.DATE.value].dt.tz_convert(self.__EST)
         return df
 
 
@@ -461,11 +451,11 @@ class YFinance(DataSource):
         self._scope.register_custom_cols(self.ADJ_CLOSE)
 
     def query(
-        self,
-        symbols: Union[str, Iterable[str]],
-        start_date: Union[str, datetime],
-        end_date: Union[str, datetime],
-        _: Optional[str] = "",
+            self,
+            symbols: Union[str, Iterable[str]],
+            start_date: Union[str, datetime],
+            end_date: Union[str, datetime],
+            _: Optional[str] = "",
     ) -> pd.DataFrame:
         r"""Queries data from `Yahoo Finance <https://finance.yahoo.com/>`_\ .
         The timeframe of the data is limited to per day only.
@@ -481,11 +471,11 @@ class YFinance(DataSource):
         return super().query(symbols, start_date, end_date, self.__TIMEFRAME)
 
     def _fetch_data(
-        self,
-        symbols: frozenset[str],
-        start_date: datetime,
-        end_date: datetime,
-        _: Optional[str],
+            self,
+            symbols: frozenset[str],
+            start_date: datetime,
+            end_date: datetime,
+            _: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
         df = yfinance.download(list(symbols), start=start_date, end=end_date)
@@ -539,7 +529,7 @@ class AKShare(DataSource):
     r"""Retrieves data from `AKShare <https://akshare.akfamily.xyz/>`_\ .
 
     Attributes:
-        ADJ_CLOSE: Column name of adjusted close prices.
+        ADJ_CLOSE: Column name of adjusted close prices, represents post-adjusted closing price
     """
 
     ADJ_CLOSE: Final = "adj_close"
@@ -550,13 +540,13 @@ class AKShare(DataSource):
         self._scope.register_custom_cols(self.ADJ_CLOSE)
 
     def query(
-        self,
-        symbols: Union[str, Iterable[str]],
-        start_date: Union[str, datetime],
-        end_date: Union[str, datetime],
-        _: Optional[str] = "",
+            self,
+            symbols: Union[str, Iterable[str]],
+            start_date: Union[str, datetime],
+            end_date: Union[str, datetime],
+            _: Optional[str] = "",
     ) -> pd.DataFrame:
-        r"""Queries data from `Yahoo Finance <https://finance.yahoo.com/>`_\ .
+        r"""Queries data from `AKShare <https://akshare.akfamily.xyz/>`_\ .
         The timeframe of the data is limited to per day only.
 
         Args:
@@ -570,25 +560,37 @@ class AKShare(DataSource):
         return super().query(symbols, start_date, end_date, self.__TIMEFRAME)
 
     def _fetch_data(
-        self,
-        symbols: frozenset[str],
-        start_date: datetime,
-        end_date: datetime,
-        _: Optional[str],
+            self,
+            symbols: frozenset[str],
+            start_date: datetime,
+            end_date: datetime,
+            _: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
-        start_date = to_datetime(start_date).strftime("%Y%m%d")
-        end_date = to_datetime(end_date).strftime("%Y%m%d")
-        symbols = list(symbols)
-        symbols_simple = [item.split('.')[0] for item in symbols]
+        start_date_str = to_datetime(start_date).strftime("%Y%m%d")
+        end_date_str = to_datetime(end_date).strftime("%Y%m%d")
+        symbols_list = list(symbols)
+        symbols_simple = [item.split(".")[0] for item in symbols_list]
         result = pd.DataFrame()
-        for i_num in range(len(symbols)):
+        for i_num in range(len(symbols_list)):
             try:
-                temp_df = akshare.stock_zh_a_hist(symbols_simple[i_num], start_date=start_date, end_date=end_date, period="daily", adjust="")
-                temp_hfq_df = akshare.stock_zh_a_hist(symbols_simple[i_num], start_date=start_date, end_date=end_date, period="daily", adjust="qfq")
-                temp_df['symbol'] = symbols[i_num]
-                temp_df[self.ADJ_CLOSE] = temp_hfq_df['收盘']
-            except KeyError as e:
+                temp_df = akshare.stock_zh_a_hist(
+                    symbols_simple[i_num],
+                    start_date=start_date_str,
+                    end_date=end_date_str,
+                    period="daily",
+                    adjust="",
+                )
+                temp_hfq_df = akshare.stock_zh_a_hist(
+                    symbols_simple[i_num],
+                    start_date=start_date_str,
+                    end_date=end_date_str,
+                    period="daily",
+                    adjust="qfq",
+                )
+                temp_df["symbol"] = symbols_list[i_num]
+                temp_df[self.ADJ_CLOSE] = temp_hfq_df["收盘"]
+            except KeyError:
                 temp_df = pd.DataFrame()
             result = pd.concat([result, temp_df], ignore_index=True)
         if result.columns.empty:
@@ -606,25 +608,29 @@ class AKShare(DataSource):
             )
         if result.empty:
             return result
-        result.rename(columns={
-            '日期': DataCol.DATE.value,
-            '开盘': DataCol.OPEN.value,
-            '收盘': DataCol.CLOSE.value,
-            '最高': DataCol.HIGH.value,
-            '最低': DataCol.LOW.value,
-            '成交量': DataCol.VOLUME.value,
-            "symbol": DataCol.SYMBOL.value,
-
-        }, inplace=True)
-        result['date'] = pd.to_datetime(result['date'])
-        result = result[[
-            DataCol.DATE.value,
-            DataCol.SYMBOL.value,
-            DataCol.OPEN.value,
-            DataCol.HIGH.value,
-            DataCol.LOW.value,
-            DataCol.CLOSE.value,
-            DataCol.VOLUME.value,
-            self.ADJ_CLOSE,
-        ]]
+        result.rename(
+            columns={
+                "日期": DataCol.DATE.value,
+                "开盘": DataCol.OPEN.value,
+                "收盘": DataCol.CLOSE.value,
+                "最高": DataCol.HIGH.value,
+                "最低": DataCol.LOW.value,
+                "成交量": DataCol.VOLUME.value,
+                "symbol": DataCol.SYMBOL.value,
+            },
+            inplace=True,
+        )
+        result["date"] = pd.to_datetime(result["date"])
+        result = result[
+            [
+                DataCol.DATE.value,
+                DataCol.SYMBOL.value,
+                DataCol.OPEN.value,
+                DataCol.HIGH.value,
+                DataCol.LOW.value,
+                DataCol.CLOSE.value,
+                DataCol.VOLUME.value,
+                self.ADJ_CLOSE,
+            ]
+        ]
         return result
