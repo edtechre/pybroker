@@ -539,8 +539,7 @@ class AKShare(DataSource):
     r"""Retrieves data from `AKShare <https://akshare.akfamily.xyz/>`_\ .
 
     Attributes:
-        ADJ_CLOSE: Column name of adjusted close prices. \
-        it represents post-adjusted closing price
+        ADJ_CLOSE: Column name of adjusted close prices.
     """
 
     ADJ_CLOSE: Final = "adj_close"
