@@ -15,6 +15,7 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import akshare
 import joblib
 import os
 import pandas as pd
@@ -25,7 +26,13 @@ from .fixtures import *  # noqa: F401
 from datetime import datetime
 from pybroker.cache import DataSourceCacheKey
 from pybroker.common import to_seconds
-from pybroker.data import Alpaca, AlpacaCrypto, DataSourceCacheMixin, YFinance
+from pybroker.data import (
+    AKShare,
+    Alpaca,
+    AlpacaCrypto,
+    DataSourceCacheMixin,
+    YFinance,
+)
 from unittest import mock
 
 API_KEY = "api_key"
@@ -529,6 +536,80 @@ class TestYFinance:
             yfinance, "download", return_value=pd.DataFrame(columns=columns)
         ):
             df = yf.query(symbols, START_DATE, END_DATE)
+        assert df.empty
+        assert set(df.columns) == set(
+            (
+                "date",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "symbol",
+                "adj_close",
+            )
+        )
+
+
+class TestAKShare:
+    @pytest.mark.usefixtures("setup_ds_cache")
+    def test_query(self):
+        symbols = ["A"]
+        ak = AKShare()
+        expected_df = pd.DataFrame(
+            {
+                "日期": [END_DATE],
+                "开盘": [1],
+                "收盘": [2],
+                "最高": [3],
+                "最低": [4],
+                "成交量": [5],
+                "symbol": symbols,
+            }
+        )
+        with mock.patch.object(
+            akshare, "stock_zh_a_hist", return_value=expected_df
+        ):
+            df = ak.query(symbols, START_DATE, END_DATE)
+        assert set(df.columns) == {
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "adj_close",
+            "symbol",
+        }
+        assert df.shape[0] == expected_df.shape[0]
+        assert set(df["symbol"].unique()) == set(symbols)
+        assert (df["date"].unique() == expected_df["日期"].unique()).all()
+
+    @pytest.mark.parametrize(
+        "columns",
+        [
+            [],
+            [
+                "date",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "symbol",
+                "adj_close",
+            ],
+        ],
+    )
+    @pytest.mark.usefixtures("setup_ds_cache")
+    def test_query_when_empty_result(self, columns):
+        ak = AKShare()
+        with mock.patch.object(
+            akshare,
+            "stock_zh_a_hist",
+            return_value=pd.DataFrame(columns=columns),
+        ):
+            df = ak.query(["A"], START_DATE, END_DATE)
         assert df.empty
         assert set(df.columns) == set(
             (

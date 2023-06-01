@@ -582,23 +582,23 @@ class AKShare(DataSource):
         symbols_list = list(symbols)
         symbols_simple = [item.split(".")[0] for item in symbols_list]
         result = pd.DataFrame()
-        for i_num in range(len(symbols_list)):
+        for i in range(len(symbols_list)):
             try:
                 temp_df = akshare.stock_zh_a_hist(
-                    symbols_simple[i_num],
+                    symbols_simple[i],
                     start_date=start_date_str,
                     end_date=end_date_str,
                     period="daily",
                     adjust="",
                 )
                 temp_hfq_df = akshare.stock_zh_a_hist(
-                    symbols_simple[i_num],
+                    symbols_simple[i],
                     start_date=start_date_str,
                     end_date=end_date_str,
                     period="daily",
                     adjust="qfq",
                 )
-                temp_df["symbol"] = symbols_list[i_num]
+                temp_df["symbol"] = symbols_list[i]
                 temp_df[self.ADJ_CLOSE] = temp_hfq_df["收盘"]
             except KeyError:
                 temp_df = pd.DataFrame()
@@ -626,7 +626,6 @@ class AKShare(DataSource):
                 "最高": DataCol.HIGH.value,
                 "最低": DataCol.LOW.value,
                 "成交量": DataCol.VOLUME.value,
-                "symbol": DataCol.SYMBOL.value,
             },
             inplace=True,
         )
