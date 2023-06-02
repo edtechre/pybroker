@@ -111,7 +111,7 @@ snippets:
    strategy = Strategy(YFinance(), start_date='1/1/2022', end_date='7/1/2022')
    strategy.add_execution(
       exec_fn, ['AAPL', 'MSFT'], indicators=highest('high_10d', 'close', period=10))
-   # Require at least 20 days of data.
+   # Run the backtest after 20 days have passed.
    result = strategy.backtest(warmup=20)
 
 **Model-based Strategy**::
