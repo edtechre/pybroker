@@ -35,7 +35,7 @@ PyBroker
             alt="python">
       </a>
       <a href="https://pypi.org/project/lib-pybroker/">
-         <img src="https://img.shields.io/badge/pypi-v1.1.16-brightgreen.svg"
+         <img src="https://img.shields.io/badge/pypi-v1.1.17-brightgreen.svg"
             alt="PyPI">
       </a>
       <a href="https://www.pybroker.com/en/latest/license.html">
