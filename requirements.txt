@@ -1,3 +1,4 @@
+akshare>=1.10.1
 alpaca-py>=0.7.2
 black>=22.10.0
 diskcache>=5.4.0

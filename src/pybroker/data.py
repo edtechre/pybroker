@@ -15,6 +15,7 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import akshare
 import alpaca.data.historical.stock as alpaca_stock
 import alpaca.data.historical.crypto as alpaca_crypto
 import itertools
@@ -531,4 +532,114 @@ class YFinance(DataSource):
                 sym_df[DataCol.VOLUME.value] = df[("Volume", sym)].values
                 sym_df[self.ADJ_CLOSE] = df[("Adj Close", sym)].values
                 result = pd.concat((result, sym_df))
+        return result
+
+
+class AKShare(DataSource):
+    r"""Retrieves data from `AKShare <https://akshare.akfamily.xyz/>`_\ .
+
+    Attributes:
+        ADJ_CLOSE: Column name of adjusted close prices.
+    """
+
+    ADJ_CLOSE: Final = "adj_close"
+    __TIMEFRAME: Final = "1d"
+
+    def __init__(self):
+        super().__init__()
+        self._scope.register_custom_cols(self.ADJ_CLOSE)
+
+    def query(
+        self,
+        symbols: Union[str, Iterable[str]],
+        start_date: Union[str, datetime],
+        end_date: Union[str, datetime],
+        _: Optional[str] = "",
+    ) -> pd.DataFrame:
+        r"""Queries data from `AKShare <https://akshare.akfamily.xyz/>`_\ .
+        The timeframe of the data is limited to per day only.
+
+        Args:
+            symbols: Ticker symbols of the data to query.
+            start_date: Start date of the data to query (inclusive).
+            end_date: End date of the data to query (inclusive).
+
+        Returns:
+            :class:`pandas.DataFrame` containing the queried data.
+        """
+        return super().query(symbols, start_date, end_date, self.__TIMEFRAME)
+
+    def _fetch_data(
+        self,
+        symbols: frozenset[str],
+        start_date: datetime,
+        end_date: datetime,
+        _: Optional[str],
+    ) -> pd.DataFrame:
+        """:meta private:"""
+        start_date_str = to_datetime(start_date).strftime("%Y%m%d")
+        end_date_str = to_datetime(end_date).strftime("%Y%m%d")
+        symbols_list = list(symbols)
+        symbols_simple = [item.split(".")[0] for item in symbols_list]
+        result = pd.DataFrame()
+        for i in range(len(symbols_list)):
+            try:
+                temp_df = akshare.stock_zh_a_hist(
+                    symbols_simple[i],
+                    start_date=start_date_str,
+                    end_date=end_date_str,
+                    period="daily",
+                    adjust="",
+                )
+                temp_hfq_df = akshare.stock_zh_a_hist(
+                    symbols_simple[i],
+                    start_date=start_date_str,
+                    end_date=end_date_str,
+                    period="daily",
+                    adjust="qfq",
+                )
+                temp_df["symbol"] = symbols_list[i]
+                temp_df[self.ADJ_CLOSE] = temp_hfq_df["收盘"]
+            except KeyError:
+                temp_df = pd.DataFrame()
+            result = pd.concat([result, temp_df], ignore_index=True)
+        if result.columns.empty:
+            return pd.DataFrame(
+                columns=[
+                    DataCol.SYMBOL.value,
+                    DataCol.DATE.value,
+                    DataCol.OPEN.value,
+                    DataCol.HIGH.value,
+                    DataCol.LOW.value,
+                    DataCol.CLOSE.value,
+                    DataCol.VOLUME.value,
+                    self.ADJ_CLOSE,
+                ]
+            )
+        if result.empty:
+            return result
+        result.rename(
+            columns={
+                "日期": DataCol.DATE.value,
+                "开盘": DataCol.OPEN.value,
+                "收盘": DataCol.CLOSE.value,
+                "最高": DataCol.HIGH.value,
+                "最低": DataCol.LOW.value,
+                "成交量": DataCol.VOLUME.value,
+            },
+            inplace=True,
+        )
+        result["date"] = pd.to_datetime(result["date"])
+        result = result[
+            [
+                DataCol.DATE.value,
+                DataCol.SYMBOL.value,
+                DataCol.OPEN.value,
+                DataCol.HIGH.value,
+                DataCol.LOW.value,
+                DataCol.CLOSE.value,
+                DataCol.VOLUME.value,
+                self.ADJ_CLOSE,
+            ]
+        ]
         return result
