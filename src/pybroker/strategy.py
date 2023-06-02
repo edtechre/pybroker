@@ -306,7 +306,7 @@ class BacktestMixin:
             for ctx in active_ctxs.values():
                 if slippage_model and (ctx.buy_shares or ctx.sell_shares):
                     self._apply_slippage(slippage_model, ctx)
-                result = self._to_result(ctx)
+                result = ctx.to_result()
                 if result is None:
                     continue
                 if result.buy_shares is not None:
@@ -368,24 +368,6 @@ class BacktestMixin:
         sell_shares = to_decimal(ctx.sell_shares) if ctx.sell_shares else None
         data = SlippageData(buy_shares=buy_shares, sell_shares=sell_shares)
         slippage_model.apply_slippage(data, ctx)
-
-    def _to_result(self, ctx: ExecContext) -> Optional[ExecResult]:
-        if ctx.buy_shares is not None and ctx.sell_shares is not None:
-            raise ValueError(
-                "For each symbol, only one of buy_shares or sell_shares can be"
-                " set per bar."
-            )
-        if ctx.buy_limit_price is not None and ctx.buy_shares is None:
-            raise ValueError(
-                "buy_shares must be set when buy_limit_price is set."
-            )
-        if ctx.sell_limit_price is not None and ctx.sell_shares is None:
-            raise ValueError(
-                "sell_shares must be set when sell_limit_price is set."
-            )
-        if not ctx.buy_shares and not ctx.sell_shares:
-            return None
-        return ctx.to_result()
 
     def _exit_position(
         self,
