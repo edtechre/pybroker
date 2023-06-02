@@ -301,12 +301,12 @@ class BacktestMixin:
                 )
             portfolio.check_stops(date, price_scope)
             portfolio.capture_bar(date, test_data)
-            if before_exec_fn is not None:
+            if before_exec_fn is not None and active_ctxs:
                 before_exec_fn(active_ctxs)
             for sym, ctx in active_ctxs.items():
                 if sym in exec_fns:
                     exec_fns[sym](ctx)
-            if after_exec_fn is not None:
+            if after_exec_fn is not None and active_ctxs:
                 after_exec_fn(active_ctxs)
             for ctx in active_ctxs.values():
                 if slippage_model and (ctx.buy_shares or ctx.sell_shares):
