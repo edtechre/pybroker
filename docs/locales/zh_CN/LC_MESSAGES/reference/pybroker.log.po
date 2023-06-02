@@ -1,0 +1,63 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2023, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-06-02 21:23+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.12.1\n"
+
+#: ../../source/reference/pybroker.log.rst:2 5e7de119d38b4189af003cc5138e02d3
+msgid "pybroker.log module"
+msgstr ""
+
+#: 1d856a05ed0549468e46b3b6d21cfc70 of pybroker.log:1
+msgid "Logging module."
+msgstr ""
+
+#: 7fd6abff79454e72a4670d02371f33bc of pybroker.log.Logger:1
+msgid "Bases: :py:class:`object`"
+msgstr ""
+
+#: 717bdd21b8614cec9a05faf2c8f5b73f of pybroker.log.Logger:1
+msgid "Class for logging information about triggered events."
+msgstr ""
+
+#: 49c4e3eda2914f91abc5be3283ea52af of pybroker.log.Logger
+msgid "Parameters"
+msgstr ""
+
+#: d57b46f45ae2439ab79e640b11b41572 of pybroker.log.Logger:3
+msgid ":class:`pybroker.scope.StaticScope`."
+msgstr ""
+
+#: 3c7f76d61dc6412ebfa5b4685509103c of pybroker.log.Logger.disable:1
+msgid "Disables logging."
+msgstr ""
+
+#: 488863bdebb746859b9ab430137fdcb5 of
+#: pybroker.log.Logger.disable_progress_bar:1
+msgid "Disables logging a progress bar."
+msgstr ""
+
+#: 47172768ca3944f3832b0a1ee0e53214 of pybroker.log.Logger.enable:1
+msgid "Enables logging."
+msgstr ""
+
+#: c78e203e49674add96fbceb90f04ecd5 of
+#: pybroker.log.Logger.enable_progress_bar:1
+msgid "Enables logging a progress bar."
+msgstr ""
+

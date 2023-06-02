@@ -1,0 +1,107 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2023, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-06-02 21:23+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.12.1\n"
+
+#: ../../source/reference/pybroker.vect.rst:2 b4a5a43e81c54d8b80895153b8757993
+msgid "pybroker.vect module"
+msgstr ""
+
+#: 1d2e4832be3a474d8a4ee760fa040508 of pybroker.vect:1
+msgid "Contains vectorized utility functions."
+msgstr ""
+
+#: 59b13bebf44047f5a7542a2adb800447 of pybroker.vect.cross:1
+msgid "Checks for crossover of ``a`` above ``b``."
+msgstr ""
+
+#: 41cc044d1c3247ec8aae8b20496282d6 588b2f107b934414a6d2cc2229f09a53
+#: 66840f8ea03744a3890d273dcb65023b 72879666118740d2bb9da55b571ae7c2
+#: b51786e151184e48919604dc5e718d9d of pybroker.vect.cross pybroker.vect.highv
+#: pybroker.vect.lowv pybroker.vect.returnv pybroker.vect.sumv
+msgid "Parameters"
+msgstr ""
+
+#: 3f47d5b3f33246999a21481bd018d518 40807c666e3b46619241ffd1a5d1d456
+#: 73e1e3d41ace40f89d39d554594715bf b2cac8d7e539495ab08480e95a9d7142
+#: b689a1c24b8d4ccaab3b66b06e3cf5a3 of pybroker.vect.cross:3
+#: pybroker.vect.cross:4 pybroker.vect.highv:3 pybroker.vect.lowv:3
+#: pybroker.vect.sumv:3
+msgid ":class:`numpy.ndarray` of data."
+msgstr ""
+
+#: 1cbe487be9c9472eb02f024dc8083892 4f9364f689344fe2b63bcdeadb18dcfe
+#: 95eec16817fe41f489be143abe357be4 98ad99fe003247208d644277925a9b71
+#: ee04ef2d349c4e7d91513a2cbe05e113 of pybroker.vect.cross pybroker.vect.highv
+#: pybroker.vect.lowv pybroker.vect.returnv pybroker.vect.sumv
+msgid "Returns"
+msgstr ""
+
+#: 8d94eeedbb22410197c29ce8f4fcc3a3 of pybroker.vect.cross:6
+msgid ""
+":class:`numpy.ndarray` containing values of ``1`` when ``a`` crosses "
+"above ``b``, otherwise values of ``0``."
+msgstr ""
+
+#: 94ad174e0ec74089a851f5372e5d178f of pybroker.vect.highv:1
+msgid "Calculates the highest values for every ``n`` period in ``array``."
+msgstr ""
+
+#: cad0245f033f496a9cb31a7b22cd0967 dd0136fdbb094919a88f274e9af4e594
+#: de62c2a5a6504096bf5e7613107b3f7f of pybroker.vect.highv:4
+#: pybroker.vect.lowv:4 pybroker.vect.sumv:4
+msgid "Length of period."
+msgstr ""
+
+#: f4e9fbfb3bb2488ab0e977f0d8300db5 of pybroker.vect.highv:6
+msgid ""
+":class:`numpy.ndarray` of the highest values for every ``n`` period in "
+"``array``."
+msgstr ""
+
+#: c9d53d57bf6a493fa82022e01ddb9d37 of pybroker.vect.lowv:1
+msgid "Calculates the lowest values for every ``n`` period in ``array``."
+msgstr ""
+
+#: d7964befc85543a999957229218778bb of pybroker.vect.lowv:6
+msgid ""
+":class:`numpy.ndarray` of the lowest values for every ``n`` period in "
+"``array``."
+msgstr ""
+
+#: b9bb985069af4eefb333d1ee4259fd2e of pybroker.vect.returnv:1
+msgid "Calculates returns."
+msgstr ""
+
+#: c656e71479e942c99c9c7b899ce1b568 of pybroker.vect.returnv:3
+msgid "Return period. Defaults to 1."
+msgstr ""
+
+#: 144da8e0448c4854afea5f4baeab0a2f of pybroker.vect.returnv:5
+msgid ":class:`numpy.ndarray` of returns."
+msgstr ""
+
+#: 34f43eaf46c14977acda3224d76b362a of pybroker.vect.sumv:1
+msgid "Calculates the sums for every ``n`` period in ``array``."
+msgstr ""
+
+#: 5cef902a4bec41b8a01d0bb7113b862a of pybroker.vect.sumv:6
+msgid ":class:`numpy.ndarray` of the sums for every ``n`` period in ``array``."
+msgstr ""
+

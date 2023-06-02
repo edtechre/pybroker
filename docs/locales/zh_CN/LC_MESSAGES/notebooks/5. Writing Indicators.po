@@ -1,0 +1,265 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2023, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-06-02 21:23+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.12.1\n"
+
+#: ../../source/notebooks/5. 2fc8e2514919455cadde0cfc32a8656b
+#: Indicators.ipynb:9 Writing
+msgid "Writing Indicators"
+msgstr ""
+
+#: ../../source/notebooks/5. 49eeb44bb2f54dd78cffcbfcf4e04487
+#: Indicators.ipynb:11 Writing
+msgid ""
+"This notebook explains how to create and integrate custom stock "
+"indicators in **PyBroker**. Indicators in **PyBroker** are written using "
+"`NumPy <https://numpy.org/>`__, a powerful library for numerical "
+"computing. To optimize performance, we'll also be utilizing `Numba "
+"<https://numba.pydata.org/>`__, a JIT compiler that translates Python "
+"code into efficient machine code. Numba is especially helpful for "
+"accelerating code that involves loops and NumPy arrays. Here's how we "
+"import these libraries:"
+msgstr ""
+
+#: ../../source/notebooks/5. 478e226917b3465dbb5332355e3fb0e1
+#: Indicators.ipynb:33 Writing
+msgid ""
+"The following code shows an indicator function that calculates close "
+"prices minus a moving average (CMMA), which can be used for a `mean "
+"reversion <https://en.wikipedia.org/wiki/Mean_reversion_(finance)>`__ "
+"strategy:"
+msgstr ""
+
+#: ../../source/notebooks/5. 5851ad0be1b94fcf9396120b5fca1efa
+#: Indicators.ipynb:74 Writing
+msgid ""
+"The ``cmma`` function takes two arguments: ``bar_data``, which is an "
+"instance of the `BarData "
+"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.BarData>`__"
+" class that holds OHLCV data and custom fields, and ``lookback``, which "
+"is a user-defined argument for the lookback of the moving average."
+msgstr ""
+
+#: ../../source/notebooks/5. 5fd9ee296bcc42a6adbadc69b2d83b7a
+#: Indicators.ipynb:76 Writing
+msgid ""
+"The ``vec_cmma`` function is JIT-compiled by Numba and nested inside "
+"``cmma``. This is necessary since a Numba compiled function supports a "
+"NumPy array as an argument but not an instance of a Python class like "
+"``BarData``. Note the computation of the indicator values is `vectorized "
+"<https://en.wikipedia.org/wiki/Array_programming>`__ by Numba, meaning "
+"that it's performed on all of the historical data at once. This approach "
+"significantly speeds up the backtesting process."
+msgstr ""
+
+#: ../../source/notebooks/5. Indicators.ipynb:78 Writing
+#: d8c011e3f3544eae800669f1271fd3ae
+msgid ""
+"The next step is to register the indicator function with **PyBroker** "
+"using the following code:"
+msgstr ""
+
+#: ../../source/notebooks/5. Indicators.ipynb:101 Writing
+#: b712a2bcc7b74a7fa736d6e956f352a7
+msgid ""
+"Here, we are giving the name ``cmma_20`` to the indicator function and "
+"specifying the ``lookback`` parameter as ``20`` bars. Any arguments in "
+"the indicator function that come after ``bar_data`` will be passed as "
+"user-defined arguments to `pybroker.indicator "
+"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.indicator>`__."
+" Once the indicator function is registered with **PyBroker**, it will "
+"return a new `Indicator "
+"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.Indicator>`__"
+" instance that references the indicator function we defined."
+msgstr ""
+
+#: ../../source/notebooks/5. Indicators.ipynb:104 Writing
+#: e282639b86624d05a24348ce62d31e87
+msgid ""
+"The following is an example of how to use the registered ``Indicator`` in"
+" **PyBroker** with some data downloaded from `Yahoo Finance "
+"<https://finance.yahoo.com>`__:"
+msgstr ""
+
+#: ../../source/notebooks/5. 5a129e44f33a483890a56e104ec2f20b
+#: Indicators.ipynb:231 Writing
+msgid ""
+"As you can see, the ``Indicator`` instance is a ``Callable``. Once "
+"called, the resulting computed indicator values are returned as a `Pandas"
+" Series "
+"<https://pandas.pydata.org/docs/reference/api/pandas.Series.html>`__."
+msgstr ""
+
+#: ../../source/notebooks/5. Indicators.ipynb:233 Writing
+#: ecdd5419998841b5926daa027865b346
+msgid ""
+"The ``Indicator`` class also provides functions for measuring its "
+"information content. For example, you can compute the `interquartile "
+"range (IQR) <https://en.wikipedia.org/wiki/Interquartile_range>`__:"
+msgstr ""
+
+#: ../../source/notebooks/5. 61ba21eb01274688b4375a02804b43e3
+#: Indicators.ipynb:279 Writing
+msgid ""
+"Or compute the relative `entropy "
+"<https://en.wikipedia.org/wiki/Entropy_(information_theory)>`__:"
+msgstr ""
+
+#: ../../source/notebooks/5. Indicators.ipynb:326 Writing
+#: d9368564f55647cd93c011859da726c9
+msgid "Using the Indicator in a Strategy"
+msgstr ""
+
+#: ../../source/notebooks/5. Indicators.ipynb:328 Writing
+#: fec73844e2c948d1a3784012beb071a5
+msgid ""
+"After implementing our indicator, the next step is to integrate it into a"
+" trading strategy. The following example shows a simple strategy that "
+"goes long when the 20-day CMMA is less than 0 — i.e. when the last close "
+"price drops below the 20-day moving average:"
+msgstr ""
+
+#: ../../source/notebooks/5. 2155bc567ef04d97a368c23ce6144af5
+#: Indicators.ipynb:355 Writing
+msgid ""
+"The indicator values are retrieved by calling `ctx.indicator "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.BaseContext.indicator>`__"
+" on the `ExecContext "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
+" and passing in the registered name of the ``cmma_20`` indicator."
+msgstr ""
+
+#: ../../source/notebooks/5. Indicators.ipynb:357 Writing
+#: e104a3153d7940d29e18937c8e7aaab0
+msgid ""
+"(Note, you can also retrieve indicator data for another symbol by passing"
+" the symbol to `ExecContext#indicator() "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.indicator>`__)"
+msgstr ""
+
+#: ../../source/notebooks/5. 93b289a89ddb45e5a36726fb30875582
+#: Indicators.ipynb:381 Writing
+msgid ""
+"Here, the ``buy_cmma_cross`` function is added to the `Strategy "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy>`__"
+" along with the ``cmma_20`` indicator. We can enable caching of the "
+"computed indicator values to disk with the following:"
+msgstr ""
+
+#: ../../source/notebooks/5. Indicators.ipynb:427 Writing
+#: d1ff914e9979465db905ba96a75851c1
+msgid "Finally, we can run the backtest with the following code:"
+msgstr ""
+
+#: ../../source/notebooks/5. Indicators.ipynb:961 Writing
+#: df96659b29a541e183ec53a5adc58e5a
+msgid ""
+"When the backtest runs, **PyBroker** computes the indicator values. If "
+"there are multiple indicators added to the ``Strategy``, then "
+"**PyBroker** will compute them in parallel across multiple CPU cores."
+msgstr ""
+
+#: ../../source/notebooks/5. 3c5b2652e7b940bfb9441b944913792e
+#: Indicators.ipynb:973 Writing
+msgid "Vectorized Helpers"
+msgstr ""
+
+#: ../../source/notebooks/5. 17cd143dc43144a2bd525d3dd62239d8
+#: Indicators.ipynb:975 Writing
+msgid ""
+"The **PyBroker** library provides vectorized helper functions to make the"
+" process of computing indicators easier. One of these helper functions is"
+" `highv "
+"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.highv>`__,"
+" which calculates the highest value for every period of *n* bars."
+msgstr ""
+
+#: ../../source/notebooks/5. Indicators.ipynb:977 Writing
+#: d318c001b634482ab87ea26be84af9ec
+msgid ""
+"In the example code, an indicator function called ``hhv`` is defined that"
+" uses ``highv`` to calculate the *highest* high price for every period of"
+" 5 bars:"
+msgstr ""
+
+#: ../../source/notebooks/5. Indicators.ipynb:1062 Writing
+#: d6d77d4e3d334ea49346463acd0308fd
+msgid ""
+"The `pybroker.vect "
+"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html>`__ "
+"module also includes other vectorized helpers such as `lowv "
+"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.lowv>`__,"
+" `sumv "
+"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.sumv>`__,"
+" `returnv "
+"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.returnv>`__,"
+" and `cross "
+"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.cross>`__,"
+" the last of which is used to compute crossovers."
+msgstr ""
+
+#: ../../source/notebooks/5. 7b15e04117174ba49183c0aaf0b241f7
+#: Indicators.ipynb:1065 Writing
+msgid ""
+"Additionally, **PyBroker** includes convenient wrappers for `highest "
+"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.highest>`__"
+" and `lowest "
+"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.lowest>`__"
+" indicators. Our ``hhv`` indicator can be rewritten as:"
+msgstr ""
+
+#: ../../source/notebooks/5. 365f12b17e8645afb0215fe3fac216c1
+#: Indicators.ipynb:1148 Writing
+msgid "Computing Multiple Indicators"
+msgstr ""
+
+#: ../../source/notebooks/5. 1c108eaed9ff4cf4a61d47401a1757c3
+#: Indicators.ipynb:1150 Writing
+msgid ""
+"An `IndicatorSet "
+"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.IndicatorSet>`__"
+" can be used to calculate multiple indicators. The ``cmma_20`` and "
+"``hhv_5`` indicators can be computed together by adding them to the "
+"``IndicatorSet``. The resulting output will be a `Pandas DataFrame "
+"<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__ "
+"containing both:"
+msgstr ""
+
+#: ../../source/notebooks/5. Indicators.ipynb:1431 Writing
+#: d9cc4f6927114923985bb297c037ff27
+msgid "Using TA-Lib"
+msgstr ""
+
+#: ../../source/notebooks/5. 1458248664a3472fa45f6f33fa9956b4
+#: Indicators.ipynb:1433 Writing
+msgid ""
+"`TA-Lib <https://github.com/TA-Lib/ta-lib-python>`__ is a widely used "
+"technical analysis library that implements many financial indicators. "
+"Integrating TA-Lib with **PyBroker** is straightforward. Here is an "
+"example:"
+msgstr ""
+
+#: ../../source/notebooks/5. 11218d14b3be4ca4bb0a664461e03ad2
+#: Indicators.ipynb:1515 Writing
+msgid ""
+"`In the next tutorial, you will learn how to train a model using custom "
+"indicators in PyBroker "
+"<https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html>`__."
+msgstr ""
+

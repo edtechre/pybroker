@@ -1,0 +1,344 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2023, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-06-02 21:23+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.12.1\n"
+
+#: ../../source/reference/pybroker.common.rst:2
+#: db727290665642cfbf4b9930e44eeba3
+msgid "pybroker.common module"
+msgstr ""
+
+#: 81d35e2fd1864305bd727fac7a35600d of pybroker.common:1
+msgid "Contains common classes and utilities."
+msgstr ""
+
+#: 7454539e2f514173bd50dadd670c8eb5 of pybroker.common.BarData:1
+msgid "Bases: :py:class:`object`"
+msgstr ""
+
+#: 4e946e4b10c149048450a4fc3d753011 of pybroker.common.BarData:1
+msgid ""
+"Contains data for a series of bars. Each field is a "
+":class:`numpy.ndarray` that contains bar values in the series. The values"
+" are sorted in ascending chronological order."
+msgstr ""
+
+#: 66c7741eb0df446181efc05024c3fba0 of pybroker.common.BarData
+msgid "Parameters"
+msgstr ""
+
+#: 67afea8d42bd4f8daedc76a2f9e8a2f0 of pybroker.common.BarData:5
+msgid "Timestamps of each bar."
+msgstr ""
+
+#: c5c9c2beb8e0481095f75dfc5d473d04 of pybroker.common.BarData:6
+msgid "Open prices."
+msgstr ""
+
+#: 4a5fd462c4c34536b85a0bae7c2251a0 of pybroker.common.BarData:7
+msgid "High prices."
+msgstr ""
+
+#: fb5491e8d43a4b95963f131b52efc828 of pybroker.common.BarData:8
+msgid "Low prices."
+msgstr ""
+
+#: aab16ec42915443aba1c7e1203362b49 of pybroker.common.BarData:9
+msgid "Close prices."
+msgstr ""
+
+#: e419ee6a069842dfab262c436d8a89db of pybroker.common.BarData:10
+msgid "Trading volumes."
+msgstr ""
+
+#: bd5ae420d660454799db88d89197048b of pybroker.common.BarData:11
+msgid "Volume-weighted average prices (VWAP)."
+msgstr ""
+
+#: 542f6d0f80004ba89d29c530b58c5794 of pybroker.common.BarData:12
+msgid "Custom data fields."
+msgstr ""
+
+#: 00dacbe778e240ccba829bd3fe0ec686 1d3c769810e341a4bca731c28fc09c80
+#: 32b3499bfe9544fbbdeb8398d716e5a6 5ea6f0bcaf1e4d0cbefaa80c0e4e5a28
+#: be240a51b34f497696848763f846f80e of pybroker.common.DataCol:1
+#: pybroker.common.Day:1 pybroker.common.FeeMode:1 pybroker.common.PriceType:1
+#: pybroker.common.StopType:1
+msgid "Bases: :py:class:`~enum.Enum`"
+msgstr ""
+
+#: ac9d441fca3f4c7eaf5b5549a5cd0af9 of pybroker.common.DataCol:1
+msgid "Default data column names."
+msgstr ""
+
+#: 8fe5070c5a744d37b7d66c018c78c412 of pybroker.common.Day:1
+msgid "Enumeration of days."
+msgstr ""
+
+#: 3c216e64fc36471baa3782e9c6f9f6a2 of pybroker.common.FeeMode:1
+msgid "Brokerage fee mode to use for backtesting."
+msgstr ""
+
+#: 498ca4cc690a4f6398ebfd3ff893a6fe of pybroker.common.FeeMode:5
+msgid ""
+"Fee is a percentage of order amount, where order amount is fill_price * "
+"shares."
+msgstr ""
+
+#: 7b8ac3c97a6d4b789329e67eb7acbb7c of pybroker.common.FeeMode:10
+msgid "Fee is a constant amount per order."
+msgstr ""
+
+#: d2d4156195f04626ad005b046ee40def of pybroker.common.FeeMode:14
+msgid "Fee is a constant amount per share in order."
+msgstr ""
+
+#: 56ae8ade86b4452987eeb135c4346ef2 70380192559849af8a41d7fb6b3e9fad
+#: cc583a68f11643cc9532dcaa7a0bd586 of pybroker.common.IndicatorSymbol:1
+#: pybroker.common.ModelSymbol:1 pybroker.common.TrainedModel:1
+msgid "Bases: :py:class:`~typing.NamedTuple`"
+msgstr ""
+
+#: 5f8840b7a8894c4f94cbdbab80ca7c0c of pybroker.common.IndicatorSymbol:1
+msgid ":class:`pybroker.indicator.Indicator`/symbol identifier."
+msgstr ""
+
+#: 779f26622c064667b79a399e5100c28d of pybroker.common.IndicatorSymbol:5
+msgid "Indicator name."
+msgstr ""
+
+#: 09062ef3349d4a9e8795a7326a2a7691 58f5a4b6b1bf432e98e2714c16772e4e
+#: 5ec5514f3d794fa39e6031d07db16e00 73b47f8bcfc14624bd584a612dadbe7c
+#: 8424542b835d41b7a2e25e0e3aee1234 90a348c3289e4e18b88c756731627fa6
+#: df9ffe654f32418caf49d5a583cfdcec eab6c60923cb44548bb84652de58cec7 of
+#: pybroker.common.IndicatorSymbol pybroker.common.ModelSymbol
+#: pybroker.common.TrainedModel
+msgid "type"
+msgstr ""
+
+#: 2ffd32d4e5bc452fa1ffda30648e723c 525900696401464a8b7a613c50a85c26
+#: 62065125d6b0430d9bb15a15ebbc6d97 82475ff3d243414ab62ec219757bd71f
+#: 85efd98f9e884e1aa224af597e624785 of pybroker.common.IndicatorSymbol:7
+#: pybroker.common.IndicatorSymbol:13 pybroker.common.ModelSymbol:7
+#: pybroker.common.ModelSymbol:13 pybroker.common.TrainedModel:7
+msgid "str"
+msgstr ""
+
+#: 4796fba0f5e7427fb5dd20d924db9ef0 68cc3a2f2fd0451fafce01a2dd613da3 of
+#: pybroker.common.IndicatorSymbol:11 pybroker.common.ModelSymbol:11
+msgid "Ticker symbol."
+msgstr ""
+
+#: a247d127ab8a468eaa8cb72eab5293be of pybroker.common.ModelSymbol:1
+msgid ":class:`pybroker.model.ModelSource`/symbol identifier."
+msgstr ""
+
+#: 4c46f1de22334d88b07694b7908bc6cc of pybroker.common.ModelSymbol:5
+msgid "Model name."
+msgstr ""
+
+#: 26bd3f34b013445cad8796cdb1f064ff of pybroker.common.PriceType:1
+msgid ""
+"Enumeration of price types used to specify fill price with "
+":class:`pybroker.context.ExecContext`."
+msgstr ""
+
+#: 9a0445b11504497d80f8a6cf3e8f475f of pybroker.common.PriceType:6
+msgid "Open price of the current bar."
+msgstr ""
+
+#: 517bf157d68746ed82a38c26e5e7d665 of pybroker.common.PriceType:10
+msgid "Low price of the current bar."
+msgstr ""
+
+#: b61b94f210aa411b8b71ceb2bf1ed167 of pybroker.common.PriceType:14
+msgid "High price of the current bar."
+msgstr ""
+
+#: eca4a1eb9e60447fbb0a39579d6ae82e of pybroker.common.PriceType:18
+msgid "Close price of the current bar."
+msgstr ""
+
+#: af7a09b194ba4f34b3e80188de11d25c of pybroker.common.PriceType:22
+msgid "Midpoint between low price and high price of the current bar."
+msgstr ""
+
+#: dace08ccf3ad4f58bdbc86d1b1adaf15 of pybroker.common.PriceType:26
+msgid "Average of open, low, high, and close prices of the current bar."
+msgstr ""
+
+#: 82c7cd8c1295442ebed36879628bfcf8 of pybroker.common.StopType:1
+msgid "Stop types."
+msgstr ""
+
+#: 6a46d3b0125a4883a7e0d2a76e6cd986 of pybroker.common.StopType:5
+msgid "Stop that triggers after n bars."
+msgstr ""
+
+#: 0288209b24b849feafc2b3700b4230f4 of pybroker.common.StopType:9
+msgid "Stop loss."
+msgstr ""
+
+#: d354c1c66cd24b6ebc0b97cb75f42220 of pybroker.common.StopType:13
+msgid "Take profit."
+msgstr ""
+
+#: ce0665f3ce7d4271ad32a463fa31173c of pybroker.common.StopType:17
+msgid "Trailing stop loss."
+msgstr ""
+
+#: 7c5a3a8e6e3b4356a58293cb7e8ea9d5 of pybroker.common.TrainedModel:1
+msgid "Trained model/symbol identifier."
+msgstr ""
+
+#: a8ef4bac4943425496eb74b575f6b438 of pybroker.common.TrainedModel:5
+msgid "Trained model name."
+msgstr ""
+
+#: 3fce45c54edc49e8baf99c67e1574dfd of pybroker.common.TrainedModel:11
+msgid "Trained model instance."
+msgstr ""
+
+#: 2e0bb5cac2514cfdab355e9735f9db8e of pybroker.common.TrainedModel:13
+msgid "Any"
+msgstr ""
+
+#: 3106c181e0ce4984beeea6b69c97347d of pybroker.common.TrainedModel:17
+msgid ""
+":class:`Callable` that overrides calling the model's default ``predict`` "
+"function."
+msgstr ""
+
+#: 90da347e1d2548f6adaf4e09197d36ac of pybroker.common.TrainedModel:20
+msgid ""
+"Callable[[Any, pandas.core.frame.DataFrame], numpy.ndarray[Any, "
+"numpy.dtype[numpy._typing._generic_alias.ScalarType]]] | None"
+msgstr ""
+
+#: f80fece980484b8eada6ba823cb9ef21 of pybroker.common.TrainedModel:24
+msgid ""
+"Names of the columns to be used as input for the model when making "
+"predictions."
+msgstr ""
+
+#: dd573d9a5ec54bc9a24caa18781214ce of pybroker.common.TrainedModel:27
+msgid "tuple[str] | None"
+msgstr ""
+
+#: ../../docstring 4b250054685b40b9a813a64b52133b2f of
+#: pybroker.common.TrainedModel.input_cols:1
+msgid "Alias for field number 3"
+msgstr ""
+
+#: 986e00600a164cfaa902d3dcddc36525 of pybroker.common.default_parallel:1
+msgid ""
+"Returns a :class:`joblib.Parallel` instance with ``n_jobs`` equal to the "
+"number of CPUs on the host machine."
+msgstr ""
+
+#: f430c57c89ac43409cf07ccc68daafc6 of pybroker.common.parse_timeframe:1
+msgid "Parses timeframe string with the following units:"
+msgstr ""
+
+#: 451b86a36b954c818fb5d23d8a7053ad f401bd913aa44e44a9280c7f05508df7 of
+#: pybroker.common.parse_timeframe:3 pybroker.common.to_seconds:4
+msgid "``\"s\"``/``\"sec\"``: seconds"
+msgstr ""
+
+#: 4d51f83d096b4b07aa24cce1e2f0cb78 c98db67605e443a1a6370c6c953d3bb4 of
+#: pybroker.common.parse_timeframe:4 pybroker.common.to_seconds:5
+msgid "``\"m\"``/``\"min\"``: minutes"
+msgstr ""
+
+#: 7a89fdfba4c74232a06269ce19b7a800 e05f6c609b5149ad8f59a57de9087591 of
+#: pybroker.common.parse_timeframe:5 pybroker.common.to_seconds:6
+msgid "``\"h\"``/``\"hour\"``: hours"
+msgstr ""
+
+#: 34e4ac6f218b4d8484cdfb65fd1eddb1 ba5500be79684f828030ff740615b967 of
+#: pybroker.common.parse_timeframe:6 pybroker.common.to_seconds:7
+msgid "``\"d\"``/``\"day\"``: days"
+msgstr ""
+
+#: 670b151ef5f74147bc9d1929216cf993 ab167b261d184a8985865ea3842fcaa6 of
+#: pybroker.common.parse_timeframe:7 pybroker.common.to_seconds:8
+msgid "``\"w\"``/``\"week\"``: weeks"
+msgstr ""
+
+#: 59f1fff41c094e0b989126ed2fbcffb7 92771e6bd26446a1ad4f8e01b10e433e of
+#: pybroker.common.parse_timeframe:8 pybroker.common.to_seconds:9
+msgid "``\"mo\"``/``\"month\"``: months"
+msgstr ""
+
+#: 41fe11422d6442759d1058e9cf91466a 77204de109804ea5ac4e3c8df06aea2d of
+#: pybroker.common.parse_timeframe:10 pybroker.common.to_seconds:11
+msgid "An example timeframe string is ``1h 30m``."
+msgstr ""
+
+#: 4e113c3a8d774be4b8b920f8801989f4 7a383c5f97ee4e9ea0e1dc6d29d49df7
+#: aa3abe00bc554b5bbcc7212a80f9e0f8 of pybroker.common.parse_timeframe
+#: pybroker.common.quantize pybroker.common.to_seconds
+msgid "Returns"
+msgstr ""
+
+#: 8b2916d301f64f439492c80c2bf568da of pybroker.common.parse_timeframe:12
+msgid ""
+"``list`` of ``tuple[int, str]``, where each tuple contains an ``int`` "
+"value and ``str`` unit."
+msgstr ""
+
+#: 1aa56a034ec5484c9c5c136f8d29720f of pybroker.common.quantize:1
+msgid ""
+"Quantizes a :class:`pandas.DataFrame` column by rounding values to the "
+"nearest cent."
+msgstr ""
+
+#: 22132064c44046729f9b62b17e6a2b7c of pybroker.common.quantize:4
+msgid "The quantized column converted to ``float`` values."
+msgstr ""
+
+#: 3ccf6a09cd9a4da4883f700e59dd5d03 of pybroker.common.to_datetime:1
+msgid "Converts ``date`` to :class:`datetime`."
+msgstr ""
+
+#: cdeeb50fee2147e1abdb505fb031b114 of pybroker.common.to_decimal:1
+msgid "Converts ``value`` to :class:`Decimal`."
+msgstr ""
+
+#: a2f2511329d0438cbce932521dc88989 of pybroker.common.to_seconds:1
+msgid ""
+"Converts a timeframe string to seconds, where ``timeframe`` supports the "
+"following units:"
+msgstr ""
+
+#: d9da0176924642b7ae5abd98d176c8d5 of pybroker.common.to_seconds:13
+msgid "The converted number of seconds."
+msgstr ""
+
+#: 6e5d29e46b6d48cbaa7202132db13ec9 of
+#: pybroker.common.verify_data_source_columns:1
+msgid ""
+"Verifies that a :class:`pandas.DataFrame` contains all of the columns "
+"required by a :class:`pybroker.data.DataSource`."
+msgstr ""
+
+#: 96d470321453435faf96f6d3bd485768 of pybroker.common.verify_date_range:1
+msgid "Verifies date range bounds."
+msgstr ""
+

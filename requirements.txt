@@ -22,4 +22,5 @@ pytest-xdist>=3.0.2
 scikit-learn>=1.2.1
 Sphinx>=5.3.0
 sphinx_rtd_theme>=1.1.1
+sphinx-intl>=2.1.0
 yfinance>=0.1.84
