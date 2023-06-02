@@ -1,0 +1,29 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: pbtest \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-06-01 23:34+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.12.1\n"
+
+#: ../../source/install.rst:2 001640309e9a4802808203ea883b7578
+msgid "Installation"
+msgstr "安装"
+
+#: ../../source/install.rst:4 3a453981d3194128b395b94acda310fa
+msgid ""
+"PyBroker supports Python 3.9+ on Windows, Mac, and Linux. You can install"
+" PyBroker using ``pip``:"
+msgstr "PyBroker 支持 Python 3.9+ on Windows, Mac, and Linux. 你可以安装"
+" PyBroker 使用 ``pip``:"
+
+#: ../../source/install.rst:11 4410dadb7cd4453dbe18599024f578be
+msgid "Or you can clone the Git repository with:"
+msgstr "或者你可以克隆源码"

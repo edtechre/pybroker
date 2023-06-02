@@ -2,7 +2,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath("../src/"))
-sys.path.insert(0, os.path.abspath("../docs/notebooks/"))
+sys.path.insert(0, os.path.abspath("./notebooks/"))
 
 nitpick_ignore = [("py:class", "type")]
 
@@ -53,3 +53,9 @@ html_title = "PyBroker"
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
 html_extra_path = ["_html"]
+
+# Multi-language docs.
+language = "en"
+locale_dirs = ['./locales/']
+gettext_compact = False
+gettext_uuid = True
