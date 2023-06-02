@@ -133,6 +133,7 @@ class BacktestMixin:
         exit_dates: Mapping[str, np.datetime64],
         slippage_model: Optional[SlippageModel] = None,
         enable_fractional_shares: bool = False,
+        warmup: Optional[int] = None,
     ):
         r"""Backtests a ``set`` of :class:`.Execution`\ s that implement
         trading logic.
@@ -156,6 +157,8 @@ class BacktestMixin:
             exit_dates: :class:`Mapping` of symbols to exit dates.
             enable_fractional_shares: Whether to enable trading fractional
                 shares.
+            warmup: Number of bars that need to pass before running the
+                executions.
 
         Returns:
             :class:`.TestResult` of the backtest.
@@ -228,8 +231,10 @@ class BacktestMixin:
             for sym, ctx in exec_ctxs.items():
                 if date not in sym_exec_dates[sym]:
                     continue
-                active_ctxs[sym] = ctx
                 sym_end_index[sym] += 1
+                if warmup and sym_end_index[sym] <= warmup:
+                    continue
+                active_ctxs[sym] = ctx
                 set_exec_ctx_data(ctx, date)
                 if (
                     exit_dates
@@ -1005,6 +1010,7 @@ class Strategy(
         shuffle: bool = False,
         calc_bootstrap: bool = False,
         disable_parallel: bool = False,
+        warmup: Optional[int] = None,
     ) -> Optional[TestResult]:
         """Backtests the trading strategy by running executions that were added
         with :meth:`.add_execution`.
@@ -1052,6 +1058,8 @@ class Strategy(
                 serially. If ``False``, :class:`pybroker.indicator.Indicator`
                 data is computed in parallel using multiple processes.
                 Defaults to ``False``.
+            warmup: Number of bars that need to pass before running the
+                executions.
 
         Returns:
             :class:`.BacktestResult` containing portfolio balances, order
@@ -1069,6 +1077,7 @@ class Strategy(
             shuffle=shuffle,
             calc_bootstrap=calc_bootstrap,
             disable_parallel=disable_parallel,
+            warmup=warmup,
         )
 
     def walkforward(
@@ -1084,6 +1093,7 @@ class Strategy(
         shuffle: bool = False,
         calc_bootstrap: bool = False,
         disable_parallel: bool = False,
+        warmup: Optional[int] = None,
     ) -> Optional[TestResult]:
         """Backtests the trading strategy using `Walkforward Analysis
         <https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis>`_.
@@ -1137,11 +1147,15 @@ class Strategy(
                 serially. If ``False``, :class:`pybroker.indicator.Indicator`
                 data is computed in parallel using multiple processes.
                 Defaults to ``False``.
+            warmup: Number of bars that need to pass before running the
+                executions.
 
         Returns:
             :class:`.BacktestResult` containing portfolio balances, order
             history, and evaluation metrics.
         """
+        if warmup is not None and warmup < 1:
+            raise ValueError("warmup must be > 0.")
         scope = StaticScope.instance()
         try:
             scope.freeze_data_cols()
@@ -1214,6 +1228,7 @@ class Strategy(
                 train_size=train_size,
                 shuffle=shuffle,
                 train_only=train_only,
+                warmup=warmup,
             )
             if train_only:
                 self._logger.walkforward_completed()
@@ -1257,6 +1272,7 @@ class Strategy(
         train_size: float,
         shuffle: bool,
         train_only: bool,
+        warmup: Optional[int],
     ):
         sessions: dict[str, dict] = defaultdict(dict)
         exit_dates: dict[str, np.datetime64] = {}
@@ -1317,6 +1333,7 @@ class Strategy(
                     exit_dates=exit_dates,
                     slippage_model=self._slippage_model,
                     enable_fractional_shares=self._fractional_shares_enabled(),
+                    warmup=warmup,
                 )
 
     def _filter_dates(

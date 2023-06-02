@@ -2268,3 +2268,24 @@ class TestStrategy:
         assert buy_order["shares"] == 200
         assert np.isnan(buy_order["limit_price"])
         assert buy_order["fees"] == 0
+
+    def test_backtest_when_warmup(self, data_source_df):
+        def exec_fn(ctx):
+            if ctx.bars <= 10:
+                raise AssertionError("Warmup failed.")
+            elif not ctx.long_pos():
+                ctx.buy_shares = 100
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn, "SPY")
+        result = strategy.backtest(warmup=10)
+        assert len(result.orders) == 1
+
+    def test_backtest_when_warmup_invalid_then_error(self, data_source_df):
+        def exec_fn(ctx):
+            pass
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn, "SPY")
+        with pytest.raises(ValueError, match=re.escape("warmup must be > 0.")):
+            strategy.backtest(warmup=-1)
