@@ -474,13 +474,11 @@ def test_calc_target_shares_with_cash(ctx):
     assert ctx.calc_target_shares(1 / 3, 20, 10_000) == 166
 
 
-def test_to_result(ctx, symbol, date):
+def test_to_result_when_buy(ctx, symbol, date):
     ctx.buy_fill_price = PriceType.AVERAGE
+    ctx.sell_fill_price = PriceType.HIGH
     ctx.buy_shares = 20
     ctx.buy_limit_price = 99.99
-    ctx.sell_fill_price: PriceType = PriceType.HIGH
-    ctx.sell_shares = 20
-    ctx.sell_limit_price = 110.11
     ctx.hold_bars = 2
     ctx.score = 7
     result = ctx.to_result()
@@ -489,9 +487,6 @@ def test_to_result(ctx, symbol, date):
     assert result.buy_fill_price == PriceType.AVERAGE
     assert result.buy_shares == 20
     assert result.buy_limit_price == Decimal("99.99")
-    assert result.sell_fill_price == PriceType.HIGH
-    assert result.sell_shares == 20
-    assert result.sell_limit_price == Decimal("110.11")
     assert result.hold_bars == 2
     assert result.score == 7
     assert len(result.long_stops) == 1
@@ -505,6 +500,154 @@ def test_to_result(ctx, symbol, date):
     assert stop.bars == 2
     assert stop.fill_price == PriceType.HIGH
     assert stop.limit_price is None
+
+
+def test_to_result_when_sell(ctx, symbol, date):
+    ctx.buy_fill_price = PriceType.AVERAGE
+    ctx.sell_fill_price = PriceType.HIGH
+    ctx.sell_shares = 20
+    ctx.sell_limit_price = 110.11
+    ctx.hold_bars = 2
+    ctx.score = 7
+    result = ctx.to_result()
+    assert result.symbol == symbol
+    assert result.date == date
+    assert result.sell_fill_price == PriceType.HIGH
+    assert result.sell_shares == 20
+    assert result.sell_limit_price == Decimal("110.11")
+    assert result.hold_bars == 2
+    assert result.score == 7
+    assert len(result.short_stops) == 1
+    assert result.long_stops is None
+    stop = next(iter(result.short_stops))
+    assert stop.symbol == symbol
+    assert stop.stop_type == StopType.BAR
+    assert stop.pos_type == "short"
+    assert stop.percent is None
+    assert stop.points is None
+    assert stop.bars == 2
+    assert stop.fill_price == PriceType.AVERAGE
+    assert stop.limit_price is None
+
+
+def test_to_result_when_buy_shares_and_sell_shares_then_error(ctx):
+    ctx.buy_shares = 100
+    ctx.sell_shares = 100
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "For each symbol, only one of buy_shares or sell_shares can be "
+            "set per bar."
+        ),
+    ):
+        ctx.to_result()
+
+
+@pytest.mark.parametrize(
+    "attr, value, error",
+    [
+        (
+            "buy_limit_price",
+            100,
+            "buy_shares must be set when buy_limit_price is set.",
+        ),
+        (
+            "buy_fill_price",
+            PriceType.CLOSE,
+            "buy_shares or hold_bars must be set when buy_fill_price is set.",
+        ),
+    ],
+)
+def test_to_result_when_not_buy_shares_then_error(ctx, attr, value, error):
+    ctx.sell_shares = 100
+    setattr(ctx, attr, value)
+    with pytest.raises(ValueError, match=re.escape(error)):
+        ctx.to_result()
+
+
+@pytest.mark.parametrize(
+    "attr, value, error",
+    [
+        (
+            "sell_limit_price",
+            100,
+            "sell_shares must be set when sell_limit_price is set.",
+        ),
+        (
+            "sell_fill_price",
+            PriceType.CLOSE,
+            "sell_shares or hold_bars must be set when sell_fill_price is "
+            "set.",
+        ),
+    ],
+)
+def test_to_result_when_not_sell_shares_then_error(ctx, attr, value, error):
+    ctx.buy_shares = 100
+    setattr(ctx, attr, value)
+    with pytest.raises(ValueError, match=re.escape(error)):
+        ctx.to_result()
+
+
+@pytest.mark.parametrize(
+    "attr, value, error",
+    [
+        (
+            "hold_bars",
+            2,
+            "Either buy_shares or sell_shares must be set when hold_bars is "
+            "set.",
+        ),
+    ],
+)
+def test_to_result_not_buy_shares_and_not_sell_shares_then_error(
+    ctx, attr, value, error
+):
+    setattr(ctx, attr, value)
+    with pytest.raises(ValueError, match=re.escape(error)):
+        ctx.to_result()
+
+
+@pytest.mark.parametrize(
+    "attr",
+    [
+        "stop_loss",
+        "stop_loss_pct",
+        "stop_loss_limit",
+        "stop_profit",
+        "stop_profit_pct",
+        "stop_profit_limit",
+        "stop_trailing",
+        "stop_trailing_pct",
+        "stop_trailing_limit",
+    ],
+)
+def test_to_result_not_buy_shares_and_not_sell_shares_and_stop_then_error(
+    ctx, attr
+):
+    setattr(ctx, attr, 10)
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "Either buy_shares or sell_shares must be set when a stop is set."
+        ),
+    ):
+        ctx.to_result()
+
+
+def test_result_when_not_buy_shares_and_not_sell_shares_then_return_none(ctx):
+    assert ctx.to_result() is None
+
+
+def test_result_when_default_buy_fill_price(ctx):
+    ctx.buy_shares = 100
+    result = ctx.to_result()
+    assert result.buy_fill_price == PriceType.MIDDLE
+
+
+def test_result_when_default_sell_fill_price(ctx):
+    ctx.sell_shares = 100
+    result = ctx.to_result()
+    assert result.sell_fill_price == PriceType.MIDDLE
 
 
 @pytest.mark.parametrize("pos_type", ["long", "short"])
@@ -587,6 +730,22 @@ def test_to_result_when_stop_pct_and_points_then_error(ctx, stop_attr):
         ctx.to_result()
 
 
+@pytest.mark.parametrize(
+    "stop_attr", ["stop_loss", "stop_profit", "stop_trailing"]
+)
+def test_to_result_when_stop_limit_and_not_stop_then_error(ctx, stop_attr):
+    ctx.buy_shares = 100
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            f"Either {stop_attr} or {stop_attr}_pct must be set when "
+            f"{stop_attr}_limit is set."
+        ),
+    ):
+        setattr(ctx, f"{stop_attr}_limit", 20)
+        ctx.to_result()
+
+
 def test_orders(ctx_with_orders, orders):
     assert tuple(ctx_with_orders.orders()) == orders
 
@@ -644,10 +803,10 @@ def test_set_exec_ctx_data(ctx, sym_end_index):
     assert ctx.bars == sym_end_index[ctx.symbol]
     assert not ctx._foreign
     assert ctx._cover is False
-    assert ctx.buy_fill_price == PriceType.MIDDLE
+    assert ctx.buy_fill_price is None
     assert ctx.buy_shares is None
     assert ctx.buy_limit_price is None
-    assert ctx.sell_fill_price == PriceType.MIDDLE
+    assert ctx.sell_fill_price is None
     assert ctx.sell_shares is None
     assert ctx.sell_limit_price is None
     assert ctx.hold_bars is None

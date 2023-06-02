@@ -98,9 +98,6 @@ snippets:
    from pybroker import Strategy, YFinance, highest
 
    def exec_fn(ctx):
-      # Require at least 20 days of data.
-      if ctx.bars < 20:
-         return
       # Get the rolling 10 day high.
       high_10d = ctx.indicator('high_10d')
       # Buy on a new 10 day high.
@@ -114,7 +111,8 @@ snippets:
    strategy = Strategy(YFinance(), start_date='1/1/2022', end_date='7/1/2022')
    strategy.add_execution(
       exec_fn, ['AAPL', 'MSFT'], indicators=highest('high_10d', 'close', period=10))
-   result = strategy.backtest()
+   # Run the backtest after 20 days have passed.
+   result = strategy.backtest(warmup=20)
 
 **Model-based Strategy**::
 

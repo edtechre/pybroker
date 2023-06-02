@@ -626,24 +626,28 @@ class ExecContext(BaseContext):
         self._foreign: dict[str, pd.DataFrame] = {}
 
         self.symbol: str = symbol
-        self.buy_fill_price: Union[
-            int,
-            float,
-            np.floating,
-            Decimal,
-            PriceType,
-            Callable[[str, BarData], Union[int, float, Decimal]],
-        ] = PriceType.MIDDLE
+        self.buy_fill_price: Optional[
+            Union[
+                int,
+                float,
+                np.floating,
+                Decimal,
+                PriceType,
+                Callable[[str, BarData], Union[int, float, Decimal]],
+            ]
+        ] = None
         self.buy_shares: Optional[Union[int, float, Decimal]] = None
         self.buy_limit_price: Optional[Union[int, float, Decimal]] = None
-        self.sell_fill_price: Union[
-            int,
-            float,
-            np.floating,
-            Decimal,
-            PriceType,
-            Callable[[str, BarData], Union[int, float, Decimal]],
-        ] = PriceType.MIDDLE
+        self.sell_fill_price: Optional[
+            Union[
+                int,
+                float,
+                np.floating,
+                Decimal,
+                PriceType,
+                Callable[[str, BarData], Union[int, float, Decimal]],
+            ]
+        ] = None
         self.sell_shares: Optional[Union[int, float, Decimal]] = None
         self.sell_limit_price: Optional[Union[int, float, Decimal]] = None
         self.hold_bars: Optional[int] = None
@@ -753,13 +757,15 @@ class ExecContext(BaseContext):
     @property
     def cover_fill_price(
         self,
-    ) -> Union[
-        int,
-        float,
-        np.floating,
-        Decimal,
-        PriceType,
-        Callable[[str, BarData], Union[int, float, Decimal]],
+    ) -> Optional[
+        Union[
+            int,
+            float,
+            np.floating,
+            Decimal,
+            PriceType,
+            Callable[[str, BarData], Union[int, float, Decimal]],
+        ]
     ]:
         """Alias for :attr:`.buy_fill_price`. When set, this causes the buy
         order to be placed before any sell orders.
@@ -769,13 +775,15 @@ class ExecContext(BaseContext):
     @cover_fill_price.setter
     def cover_fill_price(
         self,
-        fill_price: Union[
-            int,
-            float,
-            np.floating,
-            Decimal,
-            PriceType,
-            Callable[[str, BarData], Union[int, float, Decimal]],
+        fill_price: Optional[
+            Union[
+                int,
+                float,
+                np.floating,
+                Decimal,
+                PriceType,
+                Callable[[str, BarData], Union[int, float, Decimal]],
+            ]
         ],
     ):
         self.buy_fill_price = fill_price
@@ -1182,12 +1190,39 @@ class ExecContext(BaseContext):
                     limit_price=self.stop_trailing_limit,
                 )
             )
+        if (
+            self.stop_loss_limit is not None
+            and self.stop_loss is None
+            and self.stop_loss_pct is None
+        ):
+            raise ValueError(
+                "Either stop_loss or stop_loss_pct must be set when "
+                "stop_loss_limit is set."
+            )
+        if (
+            self.stop_profit_limit is not None
+            and self.stop_profit is None
+            and self.stop_profit_pct is None
+        ):
+            raise ValueError(
+                "Either stop_profit or stop_profit_pct must be set when "
+                "stop_profit_limit is set."
+            )
+        if (
+            self.stop_trailing_limit is not None
+            and self.stop_trailing is None
+            and self.stop_trailing_pct is None
+        ):
+            raise ValueError(
+                "Either stop_trailing or stop_trailing_pct must be set when "
+                "stop_trailing_limit is set."
+            )
         if pos_type == "long":
             return frozenset(stops), None
         else:
             return None, frozenset(stops)
 
-    def to_result(self) -> ExecResult:
+    def to_result(self) -> Optional[ExecResult]:
         """Creates an :class:`.ExecResult` from the data set on
         :class:`.ExecContext`.
         """
@@ -1195,6 +1230,64 @@ class ExecContext(BaseContext):
             raise ValueError("curr_date is not set.")
         if self.symbol is None:
             raise ValueError("symbol is not set.")
+        if self.buy_shares is None:
+            if self.buy_limit_price is not None:
+                raise ValueError(
+                    "buy_shares must be set when buy_limit_price is set."
+                )
+            if self.buy_fill_price is not None and self.hold_bars is None:
+                raise ValueError(
+                    "buy_shares or hold_bars must be set when "
+                    "buy_fill_price is set."
+                )
+        if self.sell_shares is None:
+            if self.sell_limit_price is not None:
+                raise ValueError(
+                    "sell_shares must be set when sell_limit_price is set."
+                )
+            if self.sell_fill_price is not None and self.hold_bars is None:
+                raise ValueError(
+                    "sell_shares or hold_bars must be set when "
+                    "sell_fill_price is set."
+                )
+        if self.buy_shares is None and self.sell_shares is None:
+            if (
+                self.stop_loss is not None
+                or self.stop_loss_pct is not None
+                or self.stop_loss_limit is not None
+                or self.stop_profit is not None
+                or self.stop_profit_pct is not None
+                or self.stop_profit_limit is not None
+                or self.stop_trailing is not None
+                or self.stop_trailing_pct is not None
+                or self.stop_trailing_limit is not None
+            ):
+                raise ValueError(
+                    "Either buy_shares or sell_shares must be set when a stop "
+                    "is set."
+                )
+            if self.hold_bars is not None:
+                raise ValueError(
+                    "Either buy_shares or sell_shares must be set when "
+                    "hold_bars is set."
+                )
+        if self.buy_shares is not None and self.sell_shares is not None:
+            raise ValueError(
+                "For each symbol, only one of buy_shares or sell_shares can be"
+                " set per bar."
+            )
+        if not self.buy_shares and not self.sell_shares:
+            return None
+        buy_fill_price = (
+            self.buy_fill_price
+            if self.buy_fill_price is not None
+            else PriceType.MIDDLE
+        )
+        sell_fill_price = (
+            self.sell_fill_price
+            if self.sell_fill_price is not None
+            else PriceType.MIDDLE
+        )
         buy_shares = (
             to_decimal(self.buy_shares)
             if self.buy_shares is not None
@@ -1219,8 +1312,8 @@ class ExecContext(BaseContext):
         return ExecResult(
             symbol=self.symbol,
             date=self._curr_date,
-            buy_fill_price=self.buy_fill_price,
-            sell_fill_price=self.sell_fill_price,
+            buy_fill_price=buy_fill_price,
+            sell_fill_price=sell_fill_price,
             score=self.score,
             hold_bars=self.hold_bars,
             buy_shares=buy_shares,
@@ -1253,10 +1346,10 @@ def set_exec_ctx_data(ctx: ExecContext, date: np.datetime64):
     ctx._dt = None
     ctx._foreign.clear()
     ctx._cover = False
-    ctx.buy_fill_price = PriceType.MIDDLE
+    ctx.buy_fill_price = None
     ctx.buy_shares = None
     ctx.buy_limit_price = None
-    ctx.sell_fill_price = PriceType.MIDDLE
+    ctx.sell_fill_price = None
     ctx.sell_shares = None
     ctx.sell_limit_price = None
     ctx.hold_bars = None
