@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-02 21:23+0800\n"
+"POT-Creation-Date: 2023-06-02 22:55-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -17,21 +17,21 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.12.1\n"
+"Generated-By: Babel 2.11.0\n"
 
-#: ../../source/notebooks/3. 75024f9ac1a749b7a429633603089a6b Bootstrap
+#: ../../source/notebooks/3. 4d89d1e36db74140b1dc63b482eddcf0 Bootstrap
 #: Evaluating Metrics.ipynb:9 with
 msgid "Evaluating with Bootstrap Metrics"
 msgstr ""
 
-#: ../../source/notebooks/3. 67c85262865d444d89f15f358b5342c2 Bootstrap
+#: ../../source/notebooks/3. 9c24b50ff5354ad7b43708758d8a8dca Bootstrap
 #: Evaluating Metrics.ipynb:11 with
 msgid ""
 "Bootstrap metrics can help us to more thoroughly evaluate a trading "
 "strategy, as we will see in this notebook."
 msgstr ""
 
-#: ../../source/notebooks/3. 838e575b6a824eb9b5bf26c8b6f4b328 Bootstrap
+#: ../../source/notebooks/3. 37a2aaf2e21845308ae4b53944637bea Bootstrap
 #: Evaluating Metrics.ipynb:13 with
 msgid ""
 "`In the previous notebook "
@@ -40,7 +40,7 @@ msgid ""
 "implementation again:"
 msgstr ""
 
-#: ../../source/notebooks/3. 0e09ed386351417bacc1fc393fb6c65b Bootstrap
+#: ../../source/notebooks/3. 438605523ecb4bdbaea9c1c74a5c5d4d Bootstrap
 #: Evaluating Metrics.ipynb:52 with
 msgid ""
 "As before, we create a new `Strategy "
@@ -48,7 +48,7 @@ msgid ""
 " instance with the given configurations:"
 msgstr ""
 
-#: ../../source/notebooks/3. 27ce3900d5a64caca46dea02079b4916 Bootstrap
+#: ../../source/notebooks/3. 31664014dcd0486fa568cad88cdba771 Bootstrap
 #: Evaluating Metrics.ipynb:76 with
 msgid ""
 "This time, the ``Strategy`` is configured with a `bootstrap_sample_size "
@@ -58,7 +58,7 @@ msgid ""
 msgstr ""
 
 #: ../../source/notebooks/3. Bootstrap Evaluating Metrics.ipynb:565
-#: be83a09f689e40b7800fbf9af10d96e4 with
+#: bf64d29be0704694adb1a005518a67f2 with
 msgid ""
 "When we look at the ``total_pnl`` metric above, it seems that we have a "
 "profitable trading strategy on our first try. However, we cannot be "
@@ -68,23 +68,23 @@ msgid ""
 "compute metrics."
 msgstr ""
 
-#: ../../source/notebooks/3. 85b572926790482dbd8961f536d5a26a Bootstrap
-#: Evaluating Metrics.ipynb:567 with
+#: ../../source/notebooks/3. Bootstrap Evaluating Metrics.ipynb:567
+#: ddea21439a5b4fb0b31ef357d0c1e568 with
 msgid ""
 "The bootstrap method works by repeatedly computing a metric on random "
-"samples drawn from the backtest's returns. Then, the metric is computed "
+"samples drawn from the backtest’s returns. Then, the metric is computed "
 "on each random sample, and the average is taken. By doing this on "
 "thousands of random samples, we obtain a more robust and accurate "
 "estimate of the metric."
 msgstr ""
 
-#: ../../source/notebooks/3. 4cf3b36973b840fe8cceaa329ee674ae Bootstrap
+#: ../../source/notebooks/3. 9979bb0871b64878a8708b7ca0ce97b6 Bootstrap
 #: Evaluating Metrics.ipynb:570 with
 msgid "Confidence Intervals"
 msgstr ""
 
-#: ../../source/notebooks/3. Bootstrap Evaluating Metrics.ipynb:572
-#: dba2fad257b24f1199b5cb276e1348ea with
+#: ../../source/notebooks/3. 31ba9e5503f34f9a823ffcdf42c818ea Bootstrap
+#: Evaluating Metrics.ipynb:572 with
 msgid ""
 "**PyBroker** applies the bootstrap method to calculate `confidence "
 "intervals <https://en.wikipedia.org/wiki/Confidence_interval>`__ for two "
@@ -93,7 +93,7 @@ msgid ""
 " and `Sharpe Ratio <https://en.wikipedia.org/wiki/Sharpe_ratio>`__:"
 msgstr ""
 
-#: ../../source/notebooks/3. 4a0c2d25fe66425fa0dad5bcdbea000e Bootstrap
+#: ../../source/notebooks/3. 7c47aa1311d048f0a94c8dbd517131ea Bootstrap
 #: Evaluating Metrics.ipynb:716 with
 msgid ""
 "**PyBroker** uses the `bias corrected and accelerated (BCa) bootstrap "
@@ -103,29 +103,29 @@ msgid ""
 " more information in the metrics."
 msgstr ""
 
-#: ../../source/notebooks/3. Bootstrap Evaluating Metrics.ipynb:718
-#: f3c2df90d0ec4afbb0dda62d3a6aad47 with
+#: ../../source/notebooks/3. 4d6012cb2a2f4b2283cecf7e4bfac98a Bootstrap
+#: Evaluating Metrics.ipynb:718 with
 msgid ""
 "The resulting table shows the lower bound of the confidence interval at "
 "the given confidence level. This provides a more conservative estimate of"
-" the strategy's performance. For example, we can be ``97.5%`` confident "
+" the strategy’s performance. For example, we can be ``97.5%`` confident "
 "that the Sharpe Ratio is at or above a given value of *x*."
 msgstr ""
 
 #: ../../source/notebooks/3. Bootstrap Evaluating Metrics.ipynb:720
-#: a9d75e67dfe649a890f653791dcdaeea with
+#: bd84b1a8ce084bdd993ad6051e7c935f with
 msgid ""
 "In this example, the Sharpe Ratio has negative lower bounds, and the "
 "lower bounds of the Profit Factor are less than 1, which suggests that "
 "the strategy is not reliable."
 msgstr ""
 
-#: ../../source/notebooks/3. 06fedbb95612470da54e3473f65cbfe0 Bootstrap
-#: Evaluating Metrics.ipynb:723 with
+#: ../../source/notebooks/3. Bootstrap Evaluating Metrics.ipynb:723
+#: cd4c2c2f41c9481fbe1dc97a996cf33e with
 msgid "Maximum Drawdown"
 msgstr ""
 
-#: ../../source/notebooks/3. 3701037e34964d218dd2f453744879d5 Bootstrap
+#: ../../source/notebooks/3. 267edf7416524b8cb8f51e699ff8fecb Bootstrap
 #: Evaluating Metrics.ipynb:725 with
 msgid ""
 "In this section, we examine the maximum drawdown of the strategy using "
@@ -134,15 +134,15 @@ msgid ""
 "are displayed below:"
 msgstr ""
 
-#: ../../source/notebooks/3. 9af5f68a2d3c40d18d03f52c4252f345 Bootstrap
-#: Evaluating Metrics.ipynb:849 with
+#: ../../source/notebooks/3. Bootstrap Evaluating Metrics.ipynb:849
+#: bd554835585148e3a3c5cd814f2a1a83 with
 msgid ""
 "These confidence levels were obtained using per-bar returns from the "
-"backtest's out-of-sample results, similar to how the Profit Factor and "
+"backtest’s out-of-sample results, similar to how the Profit Factor and "
 "Sharpe Ratio were calculated."
 msgstr ""
 
-#: ../../source/notebooks/3. 6378dbda935a49e78683d21ca86af12c Bootstrap
+#: ../../source/notebooks/3. 21dc40a02ac641cbb1a16d7d62dfe442 Bootstrap
 #: Evaluating Metrics.ipynb:851 with
 msgid ""
 "We can observe that the bootstrapped max drawdown of ``-10.56%`` at a "
@@ -151,11 +151,42 @@ msgid ""
 "tests to evaluate the performance of your trading strategy."
 msgstr ""
 
-#: ../../source/notebooks/3. 2c29bb8e443842bb9e7e5097938c846d Bootstrap
+#: ../../source/notebooks/3. 6fcbe617d654484eb7e7ca15b4c7ed1e Bootstrap
 #: Evaluating Metrics.ipynb:853 with
 msgid ""
 "`In the next notebook, we will discuss how to incorporate ranking and "
 "position sizing in your trading strategies "
 "<https://www.pybroker.com/en/latest/notebooks/4.%20Ranking%20and%20Position%20Sizing.html>`__."
 msgstr ""
+
+#~ msgid ""
+#~ "The bootstrap method works by repeatedly"
+#~ " computing a metric on random samples"
+#~ " drawn from the backtest's returns. "
+#~ "Then, the metric is computed on "
+#~ "each random sample, and the average "
+#~ "is taken. By doing this on "
+#~ "thousands of random samples, we obtain"
+#~ " a more robust and accurate estimate"
+#~ " of the metric."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "The resulting table shows the lower "
+#~ "bound of the confidence interval at "
+#~ "the given confidence level. This "
+#~ "provides a more conservative estimate of"
+#~ " the strategy's performance. For example,"
+#~ " we can be ``97.5%`` confident that"
+#~ " the Sharpe Ratio is at or "
+#~ "above a given value of *x*."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "These confidence levels were obtained "
+#~ "using per-bar returns from the "
+#~ "backtest's out-of-sample results, "
+#~ "similar to how the Profit Factor "
+#~ "and Sharpe Ratio were calculated."
+#~ msgstr ""
 

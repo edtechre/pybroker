@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-02 21:23+0800\n"
+"POT-Creation-Date: 2023-06-02 22:55-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -17,39 +17,39 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.12.1\n"
+"Generated-By: Babel 2.11.0\n"
 
 #: ../../source/reference/pybroker.strategy.rst:2
-#: 44ed27dfd75a4aaba8fed7269af400ba
+#: 2528de94ce4643a18a17843522d6bfc9
 msgid "pybroker.strategy module"
 msgstr ""
 
-#: 99aaf2919b6545328cef86d2345cd738 of pybroker.strategy:1
+#: 2bf1aff228cd4d9ca479ab97da213617 of pybroker.strategy:1
 msgid "Contains implementation for backtesting trading strategies."
 msgstr ""
 
-#: 520935beb100404e894a2f62b2e429f6 7a175072d4734a848cd7eba2282aee49
-#: c3b6a59b79bc405b8143e02bff5d7c74 of pybroker.strategy.BacktestMixin:1
+#: 2e96d47df2e54924b5701e9254465d9e 782d247778854948a0750146f63b6807
+#: fe6acb6b331d472a885e66d736cfef88 of pybroker.strategy.BacktestMixin:1
 #: pybroker.strategy.TestResult:1 pybroker.strategy.WalkforwardMixin:1
 msgid "Bases: :py:class:`object`"
 msgstr ""
 
-#: 6d32b8aca9b54082bb15d596aca7460a of pybroker.strategy.BacktestMixin:1
+#: c35dbf6640104f6b9de236cf2214aa4e of pybroker.strategy.BacktestMixin:1
 msgid "Mixin implementing backtesting functionality."
 msgstr ""
 
-#: 39632f629110461b96d5713eafa0f546 of
+#: 1b00b9b329ee47bc844238155bee756b of
 #: pybroker.strategy.BacktestMixin.backtest_executions:1
 msgid ""
 "Backtests a ``set`` of :class:`.Execution`\\ s that implement trading "
 "logic."
 msgstr ""
 
-#: 11b799d517ae48788e4610d1c9d0459b 25544d34c01c41d19c4f058f6fa21f35
-#: 2606bfeead184c149787937af7a3e822 3194be3ae8a04a2795d7454897305a88
-#: 3b9243b3155346a6bd966b9d792570f9 4851f422b69d44cdbbc28e409fca5f5e
-#: 615a666589794b81930ebeca894eb732 63244355b81347128ba777c866bc9845
-#: c29ae2bc757849d88331bcb6393fb3de of
+#: 0113e827ea8f41dab6f7879008fdda5c 074877376dc540cebd26158eca35e5b6
+#: 40028ca9003246b8a4028317d59f5fac 411697f40127403eab64430fd09ea6ee
+#: 4c7b3b4f27964b689da4a0623ea6948c 9f6c51fb7c8a4e9686cd9477038dce09
+#: c9213c089bbf45a68fa02cf9665b1b0e dd102e2301a64ebaaec143367e69acdf
+#: f0db066bb89842b6b9c2e1f1d72857c0 of
 #: pybroker.strategy.BacktestMixin.backtest_executions
 #: pybroker.strategy.Strategy pybroker.strategy.Strategy.add_execution
 #: pybroker.strategy.Strategy.backtest
@@ -61,140 +61,148 @@ msgstr ""
 msgid "Parameters"
 msgstr ""
 
-#: 8d509ae5b4da4e21b92460edc4f8fab1 of
+#: 633debf1f77a4ec3bb0f6f19f5fa4ff3 of
 #: pybroker.strategy.BacktestMixin.backtest_executions:4
 msgid ":class:`pybroker.config.StrategyConfig`."
 msgstr ""
 
-#: b7c454d88caa44168c34eba46cbceeb9 of
+#: 32fae905088b4c21b63ba829e8b2f873 of
 #: pybroker.strategy.BacktestMixin.backtest_executions:5
 msgid ":class:`.Execution`\\ s to run."
 msgstr ""
 
-#: 5e3045f7dbd0441bab05e91591848b58 of
+#: 41c5b8f01ecf4dd8b698ef7b0ce23dd7 of
 #: pybroker.strategy.BacktestMixin.backtest_executions:6
 msgid ""
 ":class:`Mapping` of symbols to :class:`Mapping` of custom data that "
 "persists for every bar during the :class:`.Execution`."
 msgstr ""
 
-#: b72317a25c8945ec8e1c8d8106235c70 of
+#: 6fa7152654be4fb28ac39f0140cce46f of
 #: pybroker.strategy.BacktestMixin.backtest_executions:9
 msgid ""
 ":class:`Mapping` of :class:`pybroker.common.ModelSymbol` pairs to "
 ":class:`pybroker.common.TrainedModel`\\ s."
 msgstr ""
 
-#: 2557743b211e43a59002824afa39de01 of
+#: 4facec643b24456e80f9f76d3536fe51 of
 #: pybroker.strategy.BacktestMixin.backtest_executions:11
 msgid ""
 ":class:`Mapping` of :class:`pybroker.common.IndicatorSymbol` pairs to "
 ":class:`pandas.Series` of :class:`pybroker.indicator.Indicator` values."
 msgstr ""
 
-#: 6c088d20f83940148fb370801cc71f7d of
+#: 73c109128aba445789dfcd6b13c38edb of
 #: pybroker.strategy.BacktestMixin.backtest_executions:15
 msgid ":class:`pandas.DataFrame` of test data."
 msgstr ""
 
-#: fce4543d0eab48c69d5c58bf5d24afcc of
+#: c5e1119b5bf146ee82a7eaeb10daa8b9 of
 #: pybroker.strategy.BacktestMixin.backtest_executions:16
 msgid ":class:`pybroker.portfolio.Portfolio`."
 msgstr ""
 
-#: 2aec555610bb484aa737de29daac7e13 of
+#: 77f45655b029432d992cc97db5796b8e of
 #: pybroker.strategy.BacktestMixin.backtest_executions:17
 msgid ""
 ":class:`Callable` that sets position sizes when placing orders for buy "
 "and sell signals."
 msgstr ""
 
-#: 6b569c867bab4d4fa177cb6bb84ede29 of
+#: 3df69af627a84f1aae8f3febcad3d59b of
 #: pybroker.strategy.BacktestMixin.backtest_executions:19
 msgid ":class:`Mapping` of symbols to exit dates."
 msgstr ""
 
-#: 0f97404fda864262acd64a281dd96b8f of
+#: 09210c7799bf477e815522531ddc5057 of
 #: pybroker.strategy.BacktestMixin.backtest_executions:20
 msgid "Whether to enable trading fractional shares."
 msgstr ""
 
-#: 0fbedd4fd87845cdbdf52cd689b1f6ed 27af77611a784faf80c14852a92ced38
-#: 3b7f3acc5a054dd8b5ae52f2ea33e1e5 619dd584c02245239b59ec762cb0a1ae of
+#: 2898061c4fc6496fabcfc159023f18d9 4b79e5747f94455fbfa8a062d3405b1e
+#: 9d27e16150b34f3088fdf2d0ce8e2d4d of
+#: pybroker.strategy.BacktestMixin.backtest_executions:22
+#: pybroker.strategy.Strategy.backtest:46
+#: pybroker.strategy.Strategy.walkforward:52
+msgid "Number of bars that need to pass before running the executions."
+msgstr ""
+
+#: 0fcfdf33b53144299010323ed46304f4 8cfaeadc373e46fa932bb0e2d93013e0
+#: a08a5e8f936c4679a419673e43599a54 f1ec031850d14d9ab09a5baf539ac9b9 of
 #: pybroker.strategy.BacktestMixin.backtest_executions
 #: pybroker.strategy.Strategy.backtest pybroker.strategy.Strategy.walkforward
 #: pybroker.strategy.WalkforwardMixin.walkforward_split
 msgid "Returns"
 msgstr ""
 
-#: be6305ef70174497b413cfe490d71801 of
-#: pybroker.strategy.BacktestMixin.backtest_executions:23
+#: a56033796e69456d86718fb2c2c2bf23 of
+#: pybroker.strategy.BacktestMixin.backtest_executions:25
 msgid ":class:`.TestResult` of the backtest."
 msgstr ""
 
-#: 1fb5b652b9c44efcbaad6ce967c815d0 af4252978b0541c09704b68a8cc3dfd5 of
+#: a90d042810b7429a8ce46fe338eaf0a7 ce4ee148e95c41eca3fb8929fb20d4e6 of
 #: pybroker.strategy.Execution:1 pybroker.strategy.WalkforwardWindow:1
 msgid "Bases: :py:class:`~typing.NamedTuple`"
 msgstr ""
 
-#: a56ef964367442edae88009c16df66ba of pybroker.strategy.Execution:1
+#: 0fd708cbb01940c893954494171c8a22 of pybroker.strategy.Execution:1
 msgid ""
 "Represents an execution of a :class:`.Strategy`. Holds a reference to a "
 ":class:`Callable` that implements trading logic."
 msgstr ""
 
-#: d9da21cb56ea457eae699dc6c797211e of pybroker.strategy.Execution:6
+#: e7692fc9284d467e9364b348086c1389 of pybroker.strategy.Execution:6
 msgid "Unique ID."
 msgstr ""
 
-#: 0e1937f260f94857aa9ee954ce2e1c3b 345acf08bd984b898489f79bfaa42a75
-#: 5182ace2812a4cb1b1e3e71312a5adaa 5415a2f80c2d4778a18d56ffa7e479a3
-#: 5be02ac82aa3455e8f91be22ef661520 5f865b0afce94d46aa5f3a2c4e00c7fe
-#: 6643e6838c75467da885e211e87e83a1 7d83e376c0b242968968d0540930c5f3
-#: 976d900daf97414a8b65e0802cb870a0 a69c026d575143c9b8647c8e64f59936
-#: a7945085076b4fbb81afc26e571af444 ae5e54a396e34c35968d04284802d1eb
-#: aeb411b8544b4e7cad1b4d662cbcac4e c1b7fe9210ab47a098f52108d01a748c
-#: d09111c954714813b43322b970311a20 dd6f480e8d884140a1b5e990c6dda239 of
+#: 2050f0ee041f4d778ad9f35d3172ee01 2ff38b03ce90488f943a48d4ee07b4b5
+#: 324c0642c9a14eccbd8af6c978f48af7 37f168007038434399bb778e9e50761f
+#: 4a725605c0154515a528f3a0fe1f4f3b 511772487d524919960ec8f76683c964
+#: 5698f5be833947f7977e290b9389cba7 649f291219b64a02945e3e262af7a995
+#: 7abb9a1c1c5f4188ac0c9614bfc139c3 8bd8bb2118b948d8a3edfa958fcde4b4
+#: b0b89dc38cf34933982909cc77866554 b317b909c4cb4f21a93c8d25c8852297
+#: b68afbe017da4091bc5ce4ebdcd6fc32 c733db79276c47b4a63e3db8c77447cb
+#: d2bf8e9b7615458b9f910e41fa202ac8 edfd334befee4455964fbcbddff86a82 of
 #: pybroker.strategy.Execution pybroker.strategy.TestResult
 #: pybroker.strategy.WalkforwardWindow
 msgid "type"
 msgstr ""
 
-#: 1f345a87f2094044be1faed4de134f89 of pybroker.strategy.Execution:8
+#: 0308083de8cb47d18f8fce952cb184c1 of pybroker.strategy.Execution:8
 msgid "int"
 msgstr ""
 
-#: 72eee99452924e91b21912eb7bdad4ca of pybroker.strategy.Execution:12
+#: dd6b40c3cd4c43a8b56ce6ecdbe7c9cd of pybroker.strategy.Execution:12
 msgid "Ticker symbols used for execution of ``fn``."
 msgstr ""
 
-#: 21479e7324c84ce78f4adf7d5f4612d4 234abce8bda24c21b58c071f7ca5c935
-#: 9111e87d852a4e1d8ecf7efb1f48cf35 of pybroker.strategy.Execution:14
+#: 98e8d6b5f4984cc5a8f42f320b6a6196 abcdd5a23d884aba8611b96728b5721d
+#: c3bad7fdd0884a22aa90dc78514566b9 of pybroker.strategy.Execution:14
 #: pybroker.strategy.Execution:27 pybroker.strategy.Execution:34
 msgid "frozenset[str]"
 msgstr ""
 
-#: b5cb1f2193dd4c07a508c4419f006592 of pybroker.strategy.Execution:18
+#: 638949506c7544aba2729cb3fc005e75 of pybroker.strategy.Execution:18
 msgid "Implements trading logic."
 msgstr ""
 
-#: 8f486a06334d46eaa9d436d4a854125b of pybroker.strategy.Execution:20
+#: a28b49037e68418c8ce213688299eee9 of pybroker.strategy.Execution:20
 msgid "Callable[[pybroker.context.ExecContext], None] | None"
 msgstr ""
 
-#: 5f5cc82a410042b0b70c91ac7e3da8c1 of pybroker.strategy.Execution:24
+#: 03f710db5a6e41769b9216da1d1a2d37 of pybroker.strategy.Execution:24
 msgid ""
 "Names of :class:`pybroker.model.ModelSource`\\ s used for execution of "
 "``fn``."
 msgstr ""
 
-#: 85db82f42eb5413da81a8657e3cd6f52 of pybroker.strategy.Execution:31
+#: ef224a0d122d486d9e29b56ed2f1f6e9 of pybroker.strategy.Execution:31
 msgid ""
 "Names of :class:`pybroker.indicator.Indicator`\\ s used for execution of "
 "``fn``."
 msgstr ""
 
-#: 2ee2eb92dda04850a74dc64ac3453bbf of pybroker.strategy.Strategy:1
+#: e125539334c043e8a984d682ef2caf8d of pybroker.strategy.Strategy:1
 msgid ""
 "Bases: :py:class:`~pybroker.strategy.BacktestMixin`, "
 ":py:class:`~pybroker.eval.EvaluateMixin`, "
@@ -203,34 +211,34 @@ msgid ""
 ":py:class:`~pybroker.strategy.WalkforwardMixin`"
 msgstr ""
 
-#: bcb13ea29a764890a29e53aa72683f40 of pybroker.strategy.Strategy:1
+#: 512c1cfc74954625862d7e7c8d00cc29 of pybroker.strategy.Strategy:1
 msgid "Class representing a trading strategy to backtest."
 msgstr ""
 
-#: 5f526bc64ebf458889cef32b7a8848d6 of pybroker.strategy.Strategy:3
+#: 607bc7c20630498393a0afb324702bff of pybroker.strategy.Strategy:3
 msgid ""
 ":class:`pybroker.data.DataSource` or :class:`pandas.DataFrame` of "
 "backtesting data."
 msgstr ""
 
-#: dc8bf0e5cebd4fe9b3155b1ebcb45408 of pybroker.strategy.Strategy:5
+#: 037cc8015469420b9036376f9337857d of pybroker.strategy.Strategy:5
 msgid "Starting date of the data to fetch from ``data_source`` (inclusive)."
 msgstr ""
 
-#: 209a850dca584517aa59281b61abf437 of pybroker.strategy.Strategy:7
+#: 57b6f3e77d604f22a7619b5e2ae36223 of pybroker.strategy.Strategy:7
 msgid "Ending date of the data to fetch from ``data_source`` (inclusive)."
 msgstr ""
 
-#: 9506fd1738ba4fbdabb4c316a6e30472 of pybroker.strategy.Strategy:9
+#: 6715bd43d8b54ddc9e8c7a91a6ff7c1a of pybroker.strategy.Strategy:9
 msgid "``Optional`` :class:`pybroker.config.StrategyConfig`."
 msgstr ""
 
-#: 817a2b572edb4867a25bf15819dff2cb of
+#: b4d2dd5e06034c9bbf290eeac47e0f84 of
 #: pybroker.strategy.Strategy.add_execution:1
 msgid "Adds an execution to backtest."
 msgstr ""
 
-#: f6956e0c27d144409da77d4752aab463 of
+#: 32143214c4244a2b880a485e57fa0d23 of
 #: pybroker.strategy.Strategy.add_execution:3
 msgid ""
 ":class:`Callable` invoked on every bar of data during the backtest and "
@@ -238,46 +246,46 @@ msgid ""
 " ``symbols``."
 msgstr ""
 
-#: ea80c52cf7f74de89bc957b950b68615 of
+#: c07fe9ce2d6149dbb67220482be25ed1 of
 #: pybroker.strategy.Strategy.add_execution:6
 msgid ""
 "Ticker symbols used to run ``fn``, where ``fn`` is called separately for "
 "each symbol."
 msgstr ""
 
-#: 78b2120a08ad42888166fde08f24a2d1 of
+#: 8b723606d6b24a979c18e189b6856161 of
 #: pybroker.strategy.Strategy.add_execution:8
 msgid ""
 ":class:`Iterable` of :class:`pybroker.model.ModelSource`\\ s to "
 "train/load for backtesting."
 msgstr ""
 
-#: 27513d8f784845b4ab771ea8903940c3 of
+#: 7189e853b1924813a317f282a802499c of
 #: pybroker.strategy.Strategy.add_execution:10
 msgid ""
 ":class:`Iterable` of :class:`pybroker.indicator.Indicator`\\ s to compute"
 " for backtesting."
 msgstr ""
 
-#: 5cb8ba6df62b43fd8a86ef7e06376376 of pybroker.strategy.Strategy.backtest:1
+#: 71df3cd7edce4a6aba955db5063f67c5 of pybroker.strategy.Strategy.backtest:1
 msgid ""
 "Backtests the trading strategy by running executions that were added with"
 " :meth:`.add_execution`."
 msgstr ""
 
-#: cdbb842779a34631974a676bbf169485 of pybroker.strategy.Strategy.backtest:4
+#: 016ef9f28ec244ac85f44c230008e1f9 of pybroker.strategy.Strategy.backtest:4
 msgid ""
 "Starting date of the backtest (inclusive). Must be within ``start_date`` "
 "and ``end_date`` range that was passed to :meth:`.__init__`."
 msgstr ""
 
-#: d998d7b3fe9041da92efbd225f443a27 of pybroker.strategy.Strategy.backtest:7
+#: ae2e24f3b3c145e9bec49fc1edb54eef of pybroker.strategy.Strategy.backtest:7
 msgid ""
 "Ending date of the backtest (inclusive). Must be within ``start_date`` "
 "and ``end_date`` range that was passed to :meth:`.__init__`."
 msgstr ""
 
-#: aa8ae916caf146b1af0dc2a38bb6306c abbe257288ee4fa29b7275fc8c89be98 of
+#: 5de9760545b84b54b2e8eb612e9f2104 c645680ef82c456faabb638dc92c9c22 of
 #: pybroker.strategy.Strategy.backtest:10
 #: pybroker.strategy.Strategy.walkforward:16
 msgid ""
@@ -289,7 +297,7 @@ msgid ""
 "example timeframe string is ``1h 30m``."
 msgstr ""
 
-#: 1a6803e707c947048b7a7e6267c77326 6543a4f428c94ac99c68ffc79e84443f of
+#: 1355e80bc2f649a78e4da752e105e709 b7b60a6bad1345c7b7f64e5a8da1176d of
 #: pybroker.strategy.Strategy.backtest:10
 #: pybroker.strategy.Strategy.walkforward:16
 msgid ""
@@ -297,49 +305,49 @@ msgid ""
 "backtesting data. The timeframe string supports the following units:"
 msgstr ""
 
-#: 297d7c3841274aa4ad755a81c857a872 6f0bbbb63ae64449adba7e54952a48db of
+#: b63520a3b9fd48708d8fc0706a521c20 ce87530e1dde449b9eb079a3b5170b25 of
 #: pybroker.strategy.Strategy.backtest:14
 #: pybroker.strategy.Strategy.walkforward:20
 msgid "``\"s\"``/``\"sec\"``: seconds"
 msgstr ""
 
-#: 301398ee81b04a9d86c51efe2eb55159 b06d7b9b021a492d92ce2c81961ed15c of
+#: b323e25e4f01450abf3cd88b943225d1 ccd85572e85a44479e1e3405c3e2647b of
 #: pybroker.strategy.Strategy.backtest:15
 #: pybroker.strategy.Strategy.walkforward:21
 msgid "``\"m\"``/``\"min\"``: minutes"
 msgstr ""
 
-#: 22eeb00c796e4e66929ce41d81f3ccf2 6c2f09997e2a473488985fe13ad5e857 of
+#: 4c2061a4ef5e49d3afda5193e4e1226c 969a5b024bba44b1aeca5634b725b7f3 of
 #: pybroker.strategy.Strategy.backtest:16
 #: pybroker.strategy.Strategy.walkforward:22
 msgid "``\"h\"``/``\"hour\"``: hours"
 msgstr ""
 
-#: 1ab1f0ee88f44567834e9974a6a5399d 9d79923921ad49ff94b542ff83fd2f57 of
+#: 772bc213f2e0462a8ccefc09f6581925 d9792379f5cd4d25bb4a3314fa1e4b2c of
 #: pybroker.strategy.Strategy.backtest:17
 #: pybroker.strategy.Strategy.walkforward:23
 msgid "``\"d\"``/``\"day\"``: days"
 msgstr ""
 
-#: 4674956909684e4a858af989f2f22cd2 dc3531d2395a45c58d357153ea7d411c of
+#: 9c55456c74354c75abb57bcd89e170d9 f1a5be1b373d4277b95233347f269f52 of
 #: pybroker.strategy.Strategy.backtest:18
 #: pybroker.strategy.Strategy.walkforward:24
 msgid "``\"w\"``/``\"week\"``: weeks"
 msgstr ""
 
-#: c8a40060844b497bad7a1d2ac8872097 d4a1783e9971468cb245d5f547a16dd2 of
+#: 507cca076d724ef39591d25196868f86 790556efd52f484b86ca52728d156dcc of
 #: pybroker.strategy.Strategy.backtest:19
 #: pybroker.strategy.Strategy.walkforward:25
 msgid "``\"mo\"``/``\"month\"``: months"
 msgstr ""
 
-#: 6a757604b0ff49f089264791b572d5aa 8403d6d2a65e4d7eae78cf255c826d27 of
+#: b620417aba72448e9b9570e2c4d8d44d ba90144e07cd44fda73e53f2ee68e858 of
 #: pybroker.strategy.Strategy.backtest:21
 #: pybroker.strategy.Strategy.walkforward:27
 msgid "An example timeframe string is ``1h 30m``."
 msgstr ""
 
-#: 1a57dde921954573befe35b6ae81cdb4 ebd74b31b72b43769a318d6c451a89b8 of
+#: 7809f44de6724e13bc059951e8f6e850 8e7d9e428e4e4b22b0a62d734e61baa3 of
 #: pybroker.strategy.Strategy.backtest:22
 #: pybroker.strategy.Strategy.walkforward:28
 msgid ""
@@ -347,7 +355,7 @@ msgid ""
 " the backtesting data (inclusive)."
 msgstr ""
 
-#: 4a194ea8a6b44aa5b261036cd8fdfdcf 509b38bb15d1416e90115864d110b602 of
+#: bdf7178d1f81400c8d8a7bcae250d5a1 d75845fb8c0445cdba33f994886e456e of
 #: pybroker.strategy.Strategy.backtest:25
 #: pybroker.strategy.Strategy.walkforward:31
 msgid ""
@@ -355,8 +363,8 @@ msgid ""
 " data."
 msgstr ""
 
-#: 70c17e2abb7c4528b246a18635315039 82315bcbff40474d80f0d2b91d1a03f1
-#: c3ee7d1675ae4122b11d8efa5b656df3 of pybroker.strategy.Strategy.backtest:27
+#: c2251a74c5ed4647b451beb3728ec8c2 ce29f24b6b244b46836368fc1ec5d536
+#: de21928c69a241ee94555a58729a5907 of pybroker.strategy.Strategy.backtest:27
 #: pybroker.strategy.Strategy.walkforward:33
 #: pybroker.strategy.WalkforwardMixin.walkforward_split:9
 msgid ""
@@ -366,7 +374,7 @@ msgid ""
 "test boundary."
 msgstr ""
 
-#: 11df8b106f874693b308e82f4625c564 21a287a2e6ef43a8bc79b2ddb243f529 of
+#: 4fdd325a59b54e8b9cb662141040e47e 7c7fcddc8a4243a1a519eb05026a9044 of
 #: pybroker.strategy.Strategy.backtest:31
 #: pybroker.strategy.Strategy.walkforward:37
 #, python-format
@@ -377,7 +385,7 @@ msgid ""
 "remaining 10% of data being used for testing."
 msgstr ""
 
-#: d2b42226e1dc4065bc2e5d07915ac9e5 dd3bc37865de417aa462e034e2d246a1 of
+#: 137b048198e34c3a88094878fc412912 7d3f4f0368d6409b8234922dfc6f9eca of
 #: pybroker.strategy.Strategy.backtest:36
 #: pybroker.strategy.Strategy.walkforward:42
 msgid ""
@@ -386,7 +394,7 @@ msgid ""
 ":meth:`pybroker.cache.enable_model_cache`."
 msgstr ""
 
-#: 78c0436a6cac428f902ef71e1ab1533f d20466dae05d46a385326c35f2fb6107 of
+#: 3373c149674140d1ab588a443cb2ac1b c1df9b3be1d544e3848d06b13698e529 of
 #: pybroker.strategy.Strategy.backtest:39
 #: pybroker.strategy.Strategy.walkforward:45
 msgid ""
@@ -394,7 +402,7 @@ msgid ""
 "``False``."
 msgstr ""
 
-#: 0758685062ed48259f71ef4fe8e4fe43 08ec2cd5c4984bcfb2f2faeb6d8c447a of
+#: 1ffcaca2292d4a948dec3aa9b58aedb3 5c9c1617e87543d780077dc46c43402a of
 #: pybroker.strategy.Strategy.backtest:41
 #: pybroker.strategy.Strategy.walkforward:47
 msgid ""
@@ -403,27 +411,27 @@ msgid ""
 "computed in parallel using multiple processes. Defaults to ``False``."
 msgstr ""
 
-#: 43fb94e934e14869b1fd623721092d17 917a24a879224e969ace21eda9caaafa of
-#: pybroker.strategy.Strategy.backtest:47
-#: pybroker.strategy.Strategy.walkforward:53
+#: 02b0f61b89a14eba84977e1df05a033b d90488c0f2164815b9fd151b93ca862f of
+#: pybroker.strategy.Strategy.backtest:49
+#: pybroker.strategy.Strategy.walkforward:55
 msgid ""
 ":class:`.BacktestResult` containing portfolio balances, order history, "
 "and evaluation metrics."
 msgstr ""
 
-#: f482142fe3744f4791d7040b6f0d3661 of
+#: dd8116021a2842ada356cc7f4d9ade7a of
 #: pybroker.strategy.Strategy.clear_executions:1
 msgid "Clears executions that were added with :meth:`.add_execution`."
 msgstr ""
 
-#: 0f57e994e1d84acba08d55e27838f485 of
+#: 7d4523eb9edd46809a1d937d523eeb5a of
 #: pybroker.strategy.Strategy.set_after_exec:1
 msgid ""
 ":class:`Callable[[Mapping[str, ExecContext]]` that runs after all "
 "execution functions."
 msgstr ""
 
-#: 37429d887a9e4cba88cf7423a0866a4a f0a2b8f9a3094aebbc241239712e1e8b of
+#: 38fb76845eec4093bc07eadcf7b6398b eff42694368445be85a751a0784fdfd2 of
 #: pybroker.strategy.Strategy.set_after_exec:4
 #: pybroker.strategy.Strategy.set_before_exec:4
 msgid ""
@@ -431,33 +439,33 @@ msgid ""
 ":class:`ExecContext`\\ s."
 msgstr ""
 
-#: d5c4510e2dc544fd83b986fb82826462 of
+#: 527f2a6096024e95b5e1b530bcca8873 of
 #: pybroker.strategy.Strategy.set_before_exec:1
 msgid ""
 ":class:`Callable[[Mapping[str, ExecContext]]` that runs before all "
 "execution functions."
 msgstr ""
 
-#: fbf945a8dc1e4127b6e29e89247228e2 of
+#: 73937fa949514fd08d6ddd78569439e8 of
 #: pybroker.strategy.Strategy.set_pos_size_handler:1
 msgid ""
 "Sets a :class:`Callable` that determines position sizes to use for buy "
 "and sell signals."
 msgstr ""
 
-#: 946d8651a886425ab343a9c3b4282267 of
+#: c2825aa8cde0454a8397437d1262c874 of
 #: pybroker.strategy.Strategy.set_pos_size_handler:4
 msgid ""
 ":class:`Callable` invoked before placing orders for buy and sell signals,"
 " and is passed a :class:`pybroker.context.PosSizeContext`."
 msgstr ""
 
-#: 009ef16da4624d688feb19a9e4a051a6 of
+#: 51b7da6f67174d4b964cdbe84e47beb5 of
 #: pybroker.strategy.Strategy.set_slippage_model:1
 msgid "Sets :class:`pybroker.slippage.SlippageModel`."
 msgstr ""
 
-#: e3067128177f4648a9a1f184af5ebcf5 of pybroker.strategy.Strategy.walkforward:1
+#: 3b96889c9d1f40698c05eb762097823f of pybroker.strategy.Strategy.walkforward:1
 msgid ""
 "Backtests the trading strategy using `Walkforward Analysis "
 "<https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html"
@@ -469,13 +477,13 @@ msgid ""
 ":meth:`.add_execution`."
 msgstr ""
 
-#: 056ddc2a386e47e9b297f669cd4e41aa 97121de7b5bd46a19c932b4e964e473e of
+#: 4b8053a5225546cd8dc02c77824d5dcb 83843d533f3549dbb834cdc07af3e131 of
 #: pybroker.strategy.Strategy.walkforward:9
 #: pybroker.strategy.WalkforwardMixin.walkforward_split:8
 msgid "Number of walkforward time windows."
 msgstr ""
 
-#: c962742df61845f9bea043d931d42e69 of
+#: 3c054aa4632a412aad213a70435bf47e of
 #: pybroker.strategy.Strategy.walkforward:10
 msgid ""
 "Starting date of the Walkforward Analysis (inclusive). Must be within "
@@ -483,7 +491,7 @@ msgid ""
 ":meth:`.__init__`."
 msgstr ""
 
-#: 15b0c5b49fed4fb2ac1d073a9cee7ab9 of
+#: 914e7e315fdb41f5b23e889c935ad2c1 of
 #: pybroker.strategy.Strategy.walkforward:13
 msgid ""
 "Ending date of the Walkforward Analysis (inclusive). Must be within "
@@ -491,79 +499,79 @@ msgid ""
 ":meth:`.__init__`."
 msgstr ""
 
-#: 10805a175f344fae9dc1449f57c2cf7e of pybroker.strategy.TestResult:1
+#: 051f84e137ed4eee8ed3f404456f53fb of pybroker.strategy.TestResult:1
 msgid "Contains the results of backtesting a :class:`.Strategy`."
 msgstr ""
 
-#: ec2880f061ef46179c2de588057982b6 of pybroker.strategy.TestResult:5
+#: 2e2ce47b5db1426d8bb84f6017ac5bd2 of pybroker.strategy.TestResult:5
 msgid "Starting date of backtest."
 msgstr ""
 
-#: 35cb8c965e5144e59210479eea31b5b1 8c746bc765d34214b1434e0424849232 of
+#: 9648743d53e4485ca05310e18ea088bd 9d494d3bf2634fd9b0e2ab1f59ee16ed of
 #: pybroker.strategy.TestResult:7 pybroker.strategy.TestResult:13
 msgid "datetime.datetime"
 msgstr ""
 
-#: 16bce46f42aa489ea752da1ada65c10d of pybroker.strategy.TestResult:11
+#: 4aad488e8a7a4e369c9b941876da3821 of pybroker.strategy.TestResult:11
 msgid "Ending date of backtest."
 msgstr ""
 
-#: 9050855e42144870945431ae1f2f618a of pybroker.strategy.TestResult:17
+#: 28a88831c83a43c092221b450cd2ca69 of pybroker.strategy.TestResult:17
 msgid ""
 ":class:`pandas.DataFrame` of :class:`pybroker.portfolio.Portfolio` "
 "balances for every bar."
 msgstr ""
 
-#: 4d5c93d144f7409e8f45bdcddb64b86b 59f4308b48f34feeabc31b4c4f3c666a
-#: 9b1fd3afe22346d6b125af1e5157aa59 d52d76358545497085242b0e7dee8023
-#: f0fb3df9e5f64c339b69a543f5df7451 of pybroker.strategy.TestResult:20
+#: 33c0b38ecbd14aa7acdf0b22b481b285 691e81ff9c85489098acf49db4fe6364
+#: a52bcda83f194a17b4f1894c98dcb694 c87f518fa56940d6b62671843cc3fe46
+#: ed116a4a44fa4cde92e31b9f9293ffc1 of pybroker.strategy.TestResult:20
 #: pybroker.strategy.TestResult:27 pybroker.strategy.TestResult:33
 #: pybroker.strategy.TestResult:39 pybroker.strategy.TestResult:51
 msgid "pandas.core.frame.DataFrame"
 msgstr ""
 
-#: 20973d83253242eaa2b92056f0c9e9c2 of pybroker.strategy.TestResult:24
+#: f3d77baecfc8410ca5fff13dd4d72b50 of pybroker.strategy.TestResult:24
 msgid ""
 ":class:`pandas.DataFrame` of :class:`pybroker.portfolio.Position` "
 "balances for every bar."
 msgstr ""
 
-#: 6a3c6900ba87403fb4e0ddc8c4ec5cf0 of pybroker.strategy.TestResult:31
+#: 8c373e3e59c145aab1bec297d8eeb87b of pybroker.strategy.TestResult:31
 msgid ":class:`pandas.DataFrame` of all orders that were placed."
 msgstr ""
 
-#: 33e8e77925894afb83f163bc54422150 of pybroker.strategy.TestResult:37
+#: 3aece21a1060476d9b27c5fe28e5fd3b of pybroker.strategy.TestResult:37
 msgid ":class:`pandas.DataFrame` of all trades that were made."
 msgstr ""
 
-#: 64414bf43a9a42c4b67e176f8b3eda28 of pybroker.strategy.TestResult:43
+#: 5aa4bb36599441a090a1597de77bd358 of pybroker.strategy.TestResult:43
 msgid "Evaluation metrics."
 msgstr ""
 
-#: 48c7482661d947a6a6417cdeec5e5a9c of pybroker.strategy.TestResult:45
+#: 4f8de61d72124be9afbdbd23f4b47a77 of pybroker.strategy.TestResult:45
 msgid "pybroker.eval.EvalMetrics"
 msgstr ""
 
-#: bfb88b940d234d4da3a3c03e4cfb0927 of pybroker.strategy.TestResult:49
+#: c4f4a38ee3994fcf8b2f9f7cabb86965 of pybroker.strategy.TestResult:49
 msgid ":class:`pandas.DataFrame` of evaluation metrics."
 msgstr ""
 
-#: 6727afdd6c6a4f7d80decb9dec56a0bb of pybroker.strategy.TestResult:55
+#: 4cad92b723be4055bf713890a51424c2 of pybroker.strategy.TestResult:55
 msgid "Randomized bootstrap evaluation metrics."
 msgstr ""
 
-#: 92b0aacceb29460684ecf144051d86fa of pybroker.strategy.TestResult:57
+#: a242001eb9d24539bbd1d531be5a17f5 of pybroker.strategy.TestResult:57
 msgid "pybroker.eval.BootstrapResult | None"
 msgstr ""
 
-#: 8d69b5a94af641c5a127db0af64e3e11 of pybroker.strategy.WalkforwardMixin:1
+#: 14704cd221cf4c1199cd854917c55f40 of pybroker.strategy.WalkforwardMixin:1
 msgid ""
 "Mixin implementing logic for `Walkforward Analysis "
 "<https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html"
 "#Walkforward-Analysis>`_."
 msgstr ""
 
-#: f69106db3dba44ef97e7464064b520a2 of
+#: 01f754c1334f43c3bf011bb3ad8af18f of
 #: pybroker.strategy.WalkforwardMixin.walkforward_split:1
 msgid ""
 "Splits a :class:`pandas.DataFrame` containing data for multiple ticker "
@@ -573,14 +581,14 @@ msgid ""
 "#Walkforward-Analysis>`_."
 msgstr ""
 
-#: 897b941100c14a1c8c5f3b72856b2d9e of
+#: 98c9f291dd2e4ed29c4937e87693e535 of
 #: pybroker.strategy.WalkforwardMixin.walkforward_split:6
 msgid ""
 ":class:`pandas.DataFrame` of data to split into train/test windows for "
 "Walkforward Analysis."
 msgstr ""
 
-#: bc31d04174764154824ddaa4e1c6b0e6 of
+#: 2fdc229d981a4aa98d427ebd924bc539 of
 #: pybroker.strategy.WalkforwardMixin.walkforward_split:13
 #, python-format
 msgid ""
@@ -590,21 +598,21 @@ msgid ""
 " 10% of data being used for testing."
 msgstr ""
 
-#: 0cd36632ed2c404f926b812207a1e718 of
+#: 1293bf0d0e564952bbb6a2f1c0a4ff45 of
 #: pybroker.strategy.WalkforwardMixin.walkforward_split:17
 msgid ""
 "Whether to randomly shuffle the data used for training. Defaults to "
 "``False``."
 msgstr ""
 
-#: 6c0ca2c88d734fea8eb930e72f4432e5 of
+#: 22697f6c4ecc4d3690170844a00bdb87 of
 #: pybroker.strategy.WalkforwardMixin.walkforward_split:20
 msgid ""
 ":class:`Iterator` of :class:`.WalkforwardWindow`\\ s containing train and"
 " test data."
 msgstr ""
 
-#: a026250d630d44b8afb34256feadcab2 of pybroker.strategy.WalkforwardWindow:1
+#: 17412f76a47846b7a0abf2f090003548 of pybroker.strategy.WalkforwardWindow:1
 msgid ""
 "Contains ``train_data`` and ``test_data`` of a time window used for "
 "`Walkforward Analysis "
@@ -612,16 +620,19 @@ msgid ""
 "#Walkforward-Analysis>`_."
 msgstr ""
 
-#: f0511b7d011d4965b3316cc1e2cc0ac7 of pybroker.strategy.WalkforwardWindow:7
+#: 45131825fbf0485785737a892bf8baf2 of pybroker.strategy.WalkforwardWindow:7
 msgid "Train data."
 msgstr ""
 
-#: d210d8e71c2e4f2980ad414c334ebd92 f62fa1c4d4ac46c8b0fe94ca10015943 of
+#: 4ec138cccc9949b1abe59a2d38eacc4a ed589e96f7c94334a27314c5a70ef413 of
 #: pybroker.strategy.WalkforwardWindow:9 pybroker.strategy.WalkforwardWindow:15
-msgid "numpy.ndarray[Any, numpy.dtype[numpy.int32]]"
+msgid "numpy.ndarray[Any, numpy.dtype[numpy.int64]]"
 msgstr ""
 
-#: d827ce51beed4d52888adccc10321db1 of pybroker.strategy.WalkforwardWindow:13
+#: 33ada00455f047489f6c4aa98bbab492 of pybroker.strategy.WalkforwardWindow:13
 msgid "Test data."
 msgstr ""
+
+#~ msgid "numpy.ndarray[Any, numpy.dtype[numpy.int32]]"
+#~ msgstr ""
 

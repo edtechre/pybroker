@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-02 21:23+0800\n"
+"POT-Creation-Date: 2023-06-02 22:55-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -17,49 +17,49 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.12.1\n"
+"Generated-By: Babel 2.11.0\n"
 
-#: ../../source/notebooks/10. 2d5cd18e34144c27aec8413c2d2e118e Rotational
+#: ../../source/notebooks/10. 05291487377347429140de974493df8c Rotational
 #: Trading.ipynb:9
 msgid "Rotational Trading"
 msgstr ""
 
-#: ../../source/notebooks/10. Rotational Trading.ipynb:11
-#: d29fb3c9399848389720ffa3b644cdc1
+#: ../../source/notebooks/10. 5288b9dae0494d4aa38b005b77196cd7 Rotational
+#: Trading.ipynb:11
 msgid ""
 "Rotational trading involves purchasing the best-performing assets while "
 "selling underperforming ones. As you may have guessed, **PyBroker** is an"
-" excellent tool for backtesting such strategies. So, let's dive in and "
+" excellent tool for backtesting such strategies. So, let’s dive in and "
 "get started with testing our rotational trading strategy!"
 msgstr ""
 
-#: ../../source/notebooks/10. 03c324fd77c7443b9c35f584a03799ff Rotational
+#: ../../source/notebooks/10. 809a9cc5c01c430a819ccccd8f3793f4 Rotational
 #: Trading.ipynb:33
 msgid ""
 "Our strategy will involve ranking and buying stocks with the highest "
 "`price rate-of-change (ROC) "
 "<https://www.investopedia.com/terms/p/pricerateofchange.asp>`__. To "
-"start, we'll define a 20-day ROC indicator using `TA-Lib "
+"start, we’ll define a 20-day ROC indicator using `TA-Lib "
 "<https://github.com/TA-Lib/ta-lib-python>`__:"
 msgstr ""
 
-#: ../../source/notebooks/10. 36867753bf90445aa0afdaec2a632ca2 Rotational
+#: ../../source/notebooks/10. 10f0ffd89dd14c818d1d337bc9cf49ef Rotational
 #: Trading.ipynb:57
-msgid "Next, let's define the rules of our strategy:"
+msgid "Next, let’s define the rules of our strategy:"
 msgstr ""
 
-#: ../../source/notebooks/10. Rotational Trading.ipynb:59
-#: c91b24130c2b439cb410557c7380ef17
+#: ../../source/notebooks/10. 197d6bc9da6f4fc19b5da3818b607ee7 Rotational
+#: Trading.ipynb:59
 msgid "Buy the two stocks with the highest 20-day ROC."
 msgstr ""
 
-#: ../../source/notebooks/10. Rotational Trading.ipynb:60
-#: a50c829a21694563b41797da970543ea
+#: ../../source/notebooks/10. 6795b32a980a40c9bc5dfcf1a856a79a Rotational
+#: Trading.ipynb:60
 #, python-format
 msgid "Allocate 50% of our capital to each stock."
 msgstr ""
 
-#: ../../source/notebooks/10. 5b18698b301c4fad96bdd21dfbe5bac8 Rotational
+#: ../../source/notebooks/10. 8520984bf00a432081664d525a870f88 Rotational
 #: Trading.ipynb:61
 msgid ""
 "If either of the stocks is no longer ranked among the top five 20-day "
@@ -67,40 +67,40 @@ msgid ""
 msgstr ""
 
 #: ../../source/notebooks/10. Rotational Trading.ipynb:62
-#: c9196bd6710040ec8fc3bc4e934b0ecc
+#: b69d40eaff7940fe9dc517c14d814540
 msgid "Trade these rules daily."
 msgstr ""
 
-#: ../../source/notebooks/10. 0c34df40dc8a4f62bd0e6d88987e8850 Rotational
+#: ../../source/notebooks/10. 63536b82bb934952a5dea2f47dd3ba9c Rotational
 #: Trading.ipynb:64
 msgid "Let’s set up our config and some parameters for the above rules:"
 msgstr ""
 
-#: ../../source/notebooks/10. 4c54863eea784636a8d9eff4fe349061 Rotational
-#: Trading.ipynb:113
+#: ../../source/notebooks/10. 0ce5187abda0448995ba4c5f881d8040 Rotational
+#: Trading.ipynb:112
 msgid ""
 "To proceed with our strategy, we will implement a ``rank`` function that "
 "ranks each stock by their 20-day ROC in descending order, from highest to"
 " lowest."
 msgstr ""
 
-#: ../../source/notebooks/10. 4f66c1af95ba4e7689fea8f981fa495e Rotational
-#: Trading.ipynb:149
+#: ../../source/notebooks/10. Rotational Trading.ipynb:146
+#: d65778919dcf4ec39bd2032d2d855d1b
 msgid ""
 "The ``top_symbols`` global parameter contains the symbols of the stocks "
 "with the top five highest 20-day ROCs."
 msgstr ""
 
-#: ../../source/notebooks/10. Rotational Trading.ipynb:151
-#: d7c903d2dde24f21823cdfd8ff97c036
+#: ../../source/notebooks/10. 455cf73175f142c78de87df5eab30aaa Rotational
+#: Trading.ipynb:148
 msgid ""
 "Now that we have a method for ranking stocks by their ROC, we can proceed"
 " with implementing a ``rotate`` function to manage the rotational "
 "trading."
 msgstr ""
 
-#: ../../source/notebooks/10. 545cbe0c71ed4dbd9533a1794e2d6a20 Rotational
-#: Trading.ipynb:181
+#: ../../source/notebooks/10. Rotational Trading.ipynb:176
+#: b8879014e83546878bd23919860c154d
 msgid ""
 "We liquidate the currently held stock if it is no longer ranked among the"
 " top five 20-day ROCs. Otherwise, we rank all stocks by their 20-day ROC "
@@ -109,8 +109,8 @@ msgid ""
 "<https://www.pybroker.com/en/latest/notebooks/4.%20Ranking%20and%20Position%20Sizing.html>`__."
 msgstr ""
 
-#: ../../source/notebooks/10. 21c5e35fa7904298a7a28b955b93d31b Rotational
-#: Trading.ipynb:183
+#: ../../source/notebooks/10. 8a241dfc5de34616b4d6f4613682e715 Rotational
+#: Trading.ipynb:178
 msgid ""
 "We will use the `set_before_exec "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_before_exec>`__"
@@ -118,4 +118,28 @@ msgid ""
 "``rotate`` function. For this backtest, we will use a universe of 10 "
 "stocks:"
 msgstr ""
+
+#~ msgid ""
+#~ "Rotational trading involves purchasing the "
+#~ "best-performing assets while selling "
+#~ "underperforming ones. As you may have"
+#~ " guessed, **PyBroker** is an excellent "
+#~ "tool for backtesting such strategies. "
+#~ "So, let's dive in and get started"
+#~ " with testing our rotational trading "
+#~ "strategy!"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Our strategy will involve ranking and"
+#~ " buying stocks with the highest "
+#~ "`price rate-of-change (ROC) "
+#~ "<https://www.investopedia.com/terms/p/pricerateofchange.asp>`__. "
+#~ "To start, we'll define a 20-day "
+#~ "ROC indicator using `TA-Lib "
+#~ "<https://github.com/TA-Lib/ta-lib-python>`__:"
+#~ msgstr ""
+
+#~ msgid "Next, let's define the rules of our strategy:"
+#~ msgstr ""
 
