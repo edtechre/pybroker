@@ -1,0 +1,169 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2023, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-06-02 22:55-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.11.0\n"
+
+#: ../../source/notebooks/9. Positions.ipynb:9 Rebalancing
+#: f13f80a4e33c4b9bac6d573f12e32ece
+msgid "Rebalancing Positions"
+msgstr ""
+
+#: ../../source/notebooks/9. Positions.ipynb:11 Rebalancing
+#: e5d9622848fb4b419362c8b5442778a2
+msgid ""
+"**PyBroker** can be used to simulate rebalancing a portfolio. This means "
+"that **PyBroker** can simulate adjusting the asset allocation of a "
+"portfolio to match a desired target allocation. Additionally, our "
+"portfolio can be rebalanced using `portfolio optimization "
+"<https://en.wikipedia.org/wiki/Portfolio_optimization>`__, as this "
+"notebook will demonstrate."
+msgstr ""
+
+#: ../../source/notebooks/9. Positions.ipynb:62 Rebalancing
+#: d26e853ab1a343438b3e76a5fbee8423
+msgid "Equal Position Sizing"
+msgstr ""
+
+#: ../../source/notebooks/9. Positions.ipynb:64 Rebalancing
+#: c7f4ff70496049abb0098cafab0d344f
+msgid ""
+"Let’s assume that we want to rebalance a long-only portfolio at the "
+"beginning of every month to make sure that each asset in our portfolio "
+"has a roughly equal allocation."
+msgstr ""
+
+#: ../../source/notebooks/9. 6ff264fa17f946fa90c55d623ea95438
+#: Positions.ipynb:66 Rebalancing
+msgid ""
+"We first start by writing a helper function to detect when the current "
+"bar’s date is the start of a new month:"
+msgstr ""
+
+#: ../../source/notebooks/9. 37b74f6473e14b59b63dccf9e42a12ea
+#: Positions.ipynb:91 Rebalancing
+msgid ""
+"Next, we implement a function that will either buy or sell enough shares "
+"in an asset to reach a target allocation."
+msgstr ""
+
+#: ../../source/notebooks/9. 26a1610880c947e9893d4fe44c72accd
+#: Positions.ipynb:125 Rebalancing
+msgid ""
+"If the current allocation is above the target level, the function will "
+"sell some shares of the asset, while if the current allocation is below "
+"the target level, the function will buy some shares of the asset."
+msgstr ""
+
+#: ../../source/notebooks/9. Positions.ipynb:127 Rebalancing
+#: c422e8b05891459f990c7f29278e1aa9
+msgid ""
+"Following that, we write a ``rebalance`` function to set each asset to an"
+" equal target allocation at the beginning of each month:"
+msgstr ""
+
+#: ../../source/notebooks/9. Positions.ipynb:152 Rebalancing
+#: ae32bcd19f2f4281aebf34fab13e43d5
+msgid ""
+"Now that we have implemented the ``rebalance`` function, the next step is"
+" to backtest our rebalancing strategy using five different stocks in our "
+"portfolio. To process all stocks at once on each bar of data, we will use"
+" the `Strategy#set_after_exec "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_after_exec>`__"
+" method:"
+msgstr ""
+
+#: ../../source/notebooks/9. 50494c5363ef414580ed8dfc9d712dd5
+#: Positions.ipynb:508 Rebalancing
+msgid "Portfolio Optimization"
+msgstr ""
+
+#: ../../source/notebooks/9. Positions.ipynb:510 Rebalancing
+#: a8625ae89d0c4ea9a60c76b5a49d655f
+msgid ""
+"`Portfolio optimization "
+"<https://en.wikipedia.org/wiki/Portfolio_optimization>`__ can guide our "
+"rebalancing in order to meet some objective for our portfolio. For "
+"instance, we can use portfolio optimization with the goal of allocating "
+"assets in a way to minimize risk."
+msgstr ""
+
+#: ../../source/notebooks/9. 7a64d9cf62034dc697c53fc8eaecc1c5
+#: Positions.ipynb:512 Rebalancing
+msgid ""
+"`Riskfolio-Lib <https://riskfolio-lib.readthedocs.io/>`__ is a popular "
+"Python library for performing portfolio optimization. Below shows how to "
+"use it to construct a minimum risk portfolio by minimizing the "
+"portfolio’s `Conditional Value at Risk (CVar) "
+"<https://www.investopedia.com/terms/c/conditional_value_at_risk.asp>`__ "
+"based on the past year of returns:"
+msgstr ""
+
+#: ../../source/notebooks/9. 977d8ef888a0489b83c7cc795c539cdf
+#: Positions.ipynb:564 Rebalancing
+msgid ""
+"You can find more information and examples of using `Riskfolio-Lib <https"
+"://riskfolio-lib.readthedocs.io/>`__ on the official documentation. Now, "
+"let’s move on to backtesting the strategy!"
+msgstr ""
+
+#: ../../source/notebooks/9. 543c9a7203164808be59a37dcb6c7cc6
+#: Positions.ipynb:832 Rebalancing
+msgid ""
+"Above, we can observe that the portfolio optimization resulted in "
+"allocating the entire portfolio to 3 of the 5 stocks during the first "
+"month of the backtest."
+msgstr ""
+
+#~ msgid ""
+#~ "Let's assume that we want to "
+#~ "rebalance a long-only portfolio at "
+#~ "the beginning of every month to "
+#~ "make sure that each asset in our"
+#~ " portfolio has a roughly equal "
+#~ "allocation."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "We first start by writing a helper"
+#~ " function to detect when the current"
+#~ " bar's date is the start of a"
+#~ " new month:"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "`Riskfolio-Lib <https://riskfolio-"
+#~ "lib.readthedocs.io/>`__ is a popular Python"
+#~ " library for performing portfolio "
+#~ "optimization. Below shows how to use "
+#~ "it to construct a minimum risk "
+#~ "portfolio by minimizing the portfolio's "
+#~ "`Conditional Value at Risk (CVar) "
+#~ "<https://www.investopedia.com/terms/c/conditional_value_at_risk.asp>`__"
+#~ " based on the past year of "
+#~ "returns:"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "You can find more information and "
+#~ "examples of using `Riskfolio-Lib <https"
+#~ "://riskfolio-lib.readthedocs.io/>`__ on the "
+#~ "official documentation. Now, let's move "
+#~ "on to backtesting the strategy!"
+#~ msgstr ""
+

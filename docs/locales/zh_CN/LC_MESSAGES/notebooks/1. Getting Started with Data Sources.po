@@ -1,0 +1,215 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2023, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-06-02 22:55-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.11.0\n"
+
+#: ../../source/notebooks/1. 11c1175af8ae48c5bcf4fcf04bc0f2a2 Data Getting
+#: Sources.ipynb:9 Started with
+msgid "Getting Started with Data Sources"
+msgstr ""
+
+#: ../../source/notebooks/1. 0f75a394595b4f469479a8312c32a21f Data Getting
+#: Sources.ipynb:11 Started with
+msgid ""
+"Welcome to **PyBroker**! The best place to start is to learn about "
+"`DataSources "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__."
+" A ``DataSource`` is a class that can fetch data from external sources, "
+"which you can then use to backtest your trading strategies."
+msgstr ""
+
+#: ../../source/notebooks/1. Data Getting Sources.ipynb:14 Started
+#: bd7803798f6f491f950abb25addbfee4 with
+msgid "Yahoo Finance"
+msgstr ""
+
+#: ../../source/notebooks/1. 16b17ed5015f4515b617a45f5ac42b91 Data Getting
+#: Sources.ipynb:16 Started with
+msgid ""
+"One of the built-in ``DataSources`` in **PyBroker** is `Yahoo Finance "
+"<https://finance.yahoo.com>`__. To use it, you can import `YFinance "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance>`__:"
+msgstr ""
+
+#: ../../source/notebooks/1. 47439cdf31874c489fc5302712acad67 Data Getting
+#: Sources.ipynb:344 Started with
+msgid ""
+"The above code queries data for AAPL and MSFT stocks, and returns a "
+"`Pandas DataFrame "
+"<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__ "
+"with the results."
+msgstr ""
+
+#: ../../source/notebooks/1. 39c2fb6a2883456087add5f45a3688d2 Data Getting
+#: Sources.ipynb:347 Started with
+msgid "Caching Data"
+msgstr ""
+
+#: ../../source/notebooks/1. 3a0b7b276cdf44dd86b0cc615f283a77 Data Getting
+#: Sources.ipynb:349 Started with
+msgid ""
+"If you want to speed up your data retrieval, you can cache your queries "
+"using **PyBroker**\\ ’s caching system. You can enable caching by calling"
+" `pybroker.enable_data_source_cache(‘name’) "
+"<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.enable_data_source_cache>`__"
+" where ``name`` is the name of the cache you want to use:"
+msgstr ""
+
+#: ../../source/notebooks/1. Data Getting Sources.ipynb:397 Started
+#: e6f9817145484085907312d479536e46 with
+msgid ""
+"The next call to `query "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource.query>`__"
+" will cache the returned data to disk. Each unique combination of ticker "
+"symbol and date range will be cached separately:"
+msgstr ""
+
+#: ../../source/notebooks/1. 1d83698a0d374ed2b3738d7208c859fe Data Getting
+#: Sources.ipynb:721 Started with
+msgid ""
+"Calling ``query`` again with the same ticker symbols and date range "
+"returns the cached data:"
+msgstr ""
+
+#: ../../source/notebooks/1. 271847afe95640628d998b4030467e40 Data Getting
+#: Sources.ipynb:1040 Started with
+msgid ""
+"You can clear your cache using `pybroker.clear_data_source_cache "
+"<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.clear_data_source_cache>`__:"
+msgstr ""
+
+#: ../../source/notebooks/1. 8380b2cef7234f0db4d2ac6b9aa9f266 Data Getting
+#: Sources.ipynb:1061 Started with
+msgid ""
+"Or disable caching altogether using `pybroker.disable_data_source_cache "
+"<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.disable_data_source_cache>`__:"
+msgstr ""
+
+#: ../../source/notebooks/1. 2097b617eb11492488fa12a13073718c Data Getting
+#: Sources.ipynb:1082 Started with
+msgid ""
+"Note that these calls should be made after first calling "
+"`pybroker.enable_data_source_cache "
+"<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.enable_data_source_cache>`__."
+msgstr ""
+
+#: ../../source/notebooks/1. 12ada8e0514643d5a658d9d4e000b6ff Data Getting
+#: Sources.ipynb:1094 Started with
+msgid "Alpaca"
+msgstr ""
+
+#: ../../source/notebooks/1. Data Getting Sources.ipynb:1096 Started
+#: bcd8977e48e44d429277d37d0aabb582 with
+msgid ""
+"**PyBroker** also includes an `Alpaca <https://alpaca.markets/>`__ "
+"``DataSource`` for fetching stock data. To use it, you can import `Alpaca"
+" "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.Alpaca>`__"
+" and provide your API key and secret:"
+msgstr ""
+
+#: ../../source/notebooks/1. Data Getting Sources.ipynb:1120 Started
+#: d9e76d0b596e4b209297937e0fd78698 with
+msgid ""
+"You can query ``Alpaca`` for stock data using the same syntax as with "
+"Yahoo Finance, but Alpaca also supports querying data by different "
+"timeframes. For example, to query 1 minute data:"
+msgstr ""
+
+#: ../../source/notebooks/1. 4ca33726a54e4d13b66d10c46de958eb Data Getting
+#: Sources.ipynb:1448 Started with
+msgid "Alpaca Crypto"
+msgstr ""
+
+#: ../../source/notebooks/1. 675b7bcdbb0841eda854da84365d858b Data Getting
+#: Sources.ipynb:1450 Started with
+msgid ""
+"If you are interested in fetching cryptocurrency data, you can use "
+"`AlpacaCrypto "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.AlpacaCrypto>`__."
+" Here’s an example of how to use it:"
+msgstr ""
+
+#: ../../source/notebooks/1. 065c76bb4ceb4bbd9641e3c89685c13b Data Getting
+#: Sources.ipynb:1790 Started with
+msgid ""
+"In the above example, we’re querying for hourly data for the BTC/USD "
+"currency pair."
+msgstr ""
+
+#: ../../source/notebooks/1. 447182feaf584f1587fc4a5d78d5ef2a Data Getting
+#: Sources.ipynb:1802 Started with
+msgid "AKShare"
+msgstr ""
+
+#: ../../source/notebooks/1. 271247956a2641d6aee2d78b10f85e3c Data Getting
+#: Sources.ipynb:1804 Started with
+msgid ""
+"**PyBroker** also includes an `AKShare "
+"<https://github.com/akfamily/akshare>`__ ``DataSource`` for fetching "
+"**Chinese** stock data. AKShare, a widely-used open-source package, is "
+"tailored for obtaining financial data, with a focus on the Chinese "
+"market. This free tool provides users with access to higher quality data "
+"compared to yfinance for the Chinese market. To use it, you can import "
+"`AKShare "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.AKShare>`__:"
+msgstr ""
+
+#: ../../source/notebooks/1. Data Getting Sources.ipynb:2091 Started
+#: af35055b43334034813aa77150392462 with
+msgid ""
+"`In the next notebook, we’ll take a look at how to use DataSources to "
+"backtest a simple trading strategy "
+"<https://www.pybroker.com/en/latest/notebooks/2.%20Backtesting%20a%20Strategy.html>`__."
+msgstr ""
+
+#~ msgid ""
+#~ "If you want to speed up your "
+#~ "data retrieval, you can cache your "
+#~ "queries using **PyBroker**'s caching system."
+#~ " You can enable caching by calling"
+#~ " `pybroker.enable_data_source_cache('name') "
+#~ "<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.enable_data_source_cache>`__"
+#~ " where ``name`` is the name of "
+#~ "the cache you want to use:"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "If you are interested in fetching "
+#~ "cryptocurrency data, you can use "
+#~ "`AlpacaCrypto "
+#~ "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.AlpacaCrypto>`__."
+#~ " Here's an example of how to "
+#~ "use it:"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "In the above example, we're querying "
+#~ "for hourly data for the BTC/USD "
+#~ "currency pair."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "`In the next notebook, we'll take "
+#~ "a look at how to use DataSources"
+#~ " to backtest a simple trading "
+#~ "strategy "
+#~ "<https://www.pybroker.com/en/latest/notebooks/2.%20Backtesting%20a%20Strategy.html>`__."
+#~ msgstr ""
+

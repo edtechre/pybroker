@@ -1,8 +1,8 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath("../src/"))
-sys.path.insert(0, os.path.abspath("./notebooks/"))
+sys.path.insert(0, os.path.abspath("../../src/"))
+sys.path.insert(0, os.path.abspath("notebooks/"))
 
 nitpick_ignore = [("py:class", "type")]
 
@@ -56,6 +56,6 @@ html_extra_path = ["_html"]
 
 # Multi-language docs.
 language = "en"
-locale_dirs = ["./locales/"]
+locale_dirs = ['../locales/']
 gettext_compact = False
 gettext_uuid = True

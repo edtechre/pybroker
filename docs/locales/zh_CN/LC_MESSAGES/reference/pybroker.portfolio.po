@@ -1,0 +1,662 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2023, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-06-02 21:23+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.12.1\n"
+
+#: ../../source/reference/pybroker.portfolio.rst:2
+#: 66b82b7018454645aee40af6fa33a6a4
+msgid "pybroker.portfolio module"
+msgstr ""
+
+#: 33c376145cdc4763814c6cfcd4fcbe7c of pybroker.portfolio:1
+msgid ""
+"Contains portfolio related functionality, such as portfolio metrics and "
+"placing orders."
+msgstr ""
+
+#: 0243f87868f34bf28ded38091cb47a1c 7b11364ad30748cdb1b6116052f3d26e
+#: cbc9576798544b2fa6bfa00b7fc25f01 of pybroker.portfolio.Entry:1
+#: pybroker.portfolio.Portfolio:1 pybroker.portfolio.Position:1
+msgid "Bases: :py:class:`object`"
+msgstr ""
+
+#: 401c9cadd3654036b7ff40a81ceb89e6 of pybroker.portfolio.Entry:1
+msgid "Contains information about an entry into a :class:`.Position`."
+msgstr ""
+
+#: 133a7c7b5dd1432eb6dd098743bcfbde 6f4ccfb2c49a43528e61ea3b68d35d4c
+#: 9fd7face5e6f4fc39301d5dc3ee3f1a7 fdb9cf0790e44c6d94081980564ca6ff of
+#: pybroker.portfolio.Entry:5 pybroker.portfolio.Order:5
+#: pybroker.portfolio.Stop:5 pybroker.portfolio.Trade:5
+msgid "Unique identifier."
+msgstr ""
+
+#: 01a072dba42c4fa8b469cabd1e679ccd 047caadd64d94de8b0f0deada251b9e4
+#: 06d199f7b9984a459003f6fa4afdc1d7 09cfbb81aa1e4fe3b9cdab147ea97022
+#: 18eee9951bf0438d95897dba6cba2737 1e849c9cd7f2464a8a6ba80d469107a1
+#: 253219faf2a04d409bbbc2036bcbf5ce 290d70e8632e48659993a41ffec8aa41
+#: 2a5f5198e7e54c168d3b59cf352e14ba 2ac37c97335540978ab406c9d1144828
+#: 2ee4214dbde645bfa4519dc9d1cb8f6f 38352511ae544e2bb7c401e2c7c4ba54
+#: 39e78f0e18c84e0ab69245999a6af2dd 3a5c92a096124f2680638dded62eabf5
+#: 3e0dc29d7ee146e08265f4f646105195 460a0f6ce5d5498ab5c901bd28bc70c8
+#: 4741963106f34a919234d13a75aee661 4c1c6de40c4943d59536dafd4abc7557
+#: 524bf6bbafce4e349603fbfd3172279b 559ebdaf0e2445c980cae18f7b1ab827
+#: 5b15465e475c49718ce35a5cfab48c17 5f328e2a0a664fce80bf4cd7acc13278
+#: 604f9b8a81174f7892f5ea7f4073ccc3 66eea88d7545442798130ea6af15f851
+#: 67bc7f46b9c2484f91b956f048b118d6 67c27e4892384fc1905cac5b16032aed
+#: 71d2bdfc529c47a0b61376f83e24ecac 7c5f6c63b2ac4a7297e8b5e0bed73128
+#: 81fcc981aa9d4673bef0e65812ed9a65 9b1a4a2e93c148069cd4d2e9cefab32c
+#: 9beacc8b7edb4d999f2dc05f4c87dd0e a13324f6f4324d9ba0e047aeea642cae
+#: a44d5f76d7ad41409ded00bb49ad7092 a5bf1a994ee6433f8cb098fb9632d128
+#: a7029a4f8c284957963348c0cf7290a8 aad0369dd19640558696f4ac613a5950
+#: ab276fe5b41446eaaa5428bcf5f98d38 ac2754395f7a48daafc5d788fd98f1bc
+#: b1dda219b0a94056a80c4c4d828a9e81 b425a5451a284ea7ab6355a557303d79
+#: b4def4e8e1034859a7b53ad755196193 b4e2f514a81940a39a36e2e8a07dec95
+#: be31a2531665482a833204c033cb285c c55a4ec0f82642518146076597350406
+#: c600114115324e2d9ef7d6390dd2cdfb ce8b4fd6243042dfbcf0ce9f9eadc5ef
+#: d10aacca7c51464a9c616ca6b70af4e4 d4aa57683ba24085beaa3c65c6b1572a
+#: d69b8ceb769f4274866f10780983dae0 dd5383e8c6e04d50870ddc5990cc0fc7
+#: ded31e4965084aab8817753c1c94b82f e19881555f32427c9af36fe9096897b9
+#: e1eff3a84000486aaf18f15a5e460850 e30f3541b13a4c62ba44d4d0b83ad548
+#: e7b1773971f7457e9dfd944400574e97 ea68f506050f48c7a223415792a016b3
+#: eb24dd43a46e4f2d8c835264bc6331f6 ecc2386f26254ff8a0c8d41067555ae8
+#: f15d1210f7c84f0abff13c55e7421341 f476dc580e3a4c2eb3d5c0dbbc9b9326
+#: f6f7a8ce239c432a89b9580545399a86 fc365fa637dd4857b30c6ad1df7a29ea
+#: fc9c1b227f3c46849513a270cabbf6b1 fdc8b8d4693148ee9a048b0bb7283d9f of
+#: pybroker.portfolio.Entry pybroker.portfolio.Order
+#: pybroker.portfolio.PortfolioBar pybroker.portfolio.Position
+#: pybroker.portfolio.PositionBar pybroker.portfolio.Stop
+#: pybroker.portfolio.Trade
+msgid "type"
+msgstr ""
+
+#: 2810744f33d84cac9ed722fa1bb60a46 54d7c1634cd14d0cb934afd203a68617
+#: 734f4b111e0e4a668c6380e22a98c94e 8701d0c4c1ac47cd9434aafe601b7c18
+#: c233139d45b44a5da0f917275c73e97b d3c68e62785b4efe90dc76625dc3692a
+#: e2970e7d523e4cefa0a6fccbdb400450 of pybroker.portfolio.Entry:7
+#: pybroker.portfolio.Entry:43 pybroker.portfolio.Order:7
+#: pybroker.portfolio.Position:62 pybroker.portfolio.Stop:7
+#: pybroker.portfolio.Trade:7 pybroker.portfolio.Trade:74
+msgid "int"
+msgstr ""
+
+#: 3c6c5aa51fb644878fbed279504c20a1 of pybroker.portfolio.Entry:11
+msgid "Date of the entry."
+msgstr ""
+
+#: 1bebbd9d8dd74ffaa0514f40df5f0138 3c371d1cd2f64d529819d7fce7b1a7fd
+#: 7cc34c5cf1b445279f90487ae01c0e98 94ad76ed6a8346faa0a48c6e6cd97888
+#: a930240b96f7425190295fa4ee5d0b0c ab658a37fd86437089ee9e8afa08d16c of
+#: pybroker.portfolio.Entry:13 pybroker.portfolio.Order:25
+#: pybroker.portfolio.PortfolioBar:7 pybroker.portfolio.PositionBar:13
+#: pybroker.portfolio.Trade:25 pybroker.portfolio.Trade:31
+msgid "numpy.datetime64"
+msgstr ""
+
+#: 9f58e5a265e848a2b33a7fe8ccfec446 of pybroker.portfolio.Entry:17
+msgid "Symbol of the entry."
+msgstr ""
+
+#: b6a65c95ccb0471cab0f3a057bc7dfa8 c104b1082cf54752ab4300b6214061c4
+#: dae574fe836e4766ac54b0ae3c988fe0 dbe49c5793f44b5aadc834209d52002b
+#: e3332f8565984752999fbf45110ed0ff e8c0d25ea9cf45b7857c83f0477243c1 of
+#: pybroker.portfolio.Entry:19 pybroker.portfolio.Order:19
+#: pybroker.portfolio.Position:7 pybroker.portfolio.PositionBar:7
+#: pybroker.portfolio.Stop:13 pybroker.portfolio.Trade:19
+msgid "str"
+msgstr ""
+
+#: 03b18177726e48f4977a323293eb4e77 611ab9cf24f14fc39a4abfa11cb6b040
+#: 8f0e9f8b5d8241898e482a33057e97c6 of pybroker.portfolio.Entry:23
+#: pybroker.portfolio.Position:11 pybroker.portfolio.Trade:47
+msgid "Number of shares."
+msgstr ""
+
+#: 026459447e384d68aebd8a3490758954 04296f328a6e480a881ccfd067421db7
+#: 06907cae8438462ab200b32faa73324c 0a0df41a5b9a41eebe2782a446ad21d0
+#: 0a2cba7ebfcb4d4eaf2960fce129cc5e 0eb3214a1a664574b5f85bf650ed2a66
+#: 1c2637842eba478980b36fb90765271d 227db56c5f274666908958265f8732d8
+#: 269fead33bbe4a2daa00acc7d9cd16ff 2f8c654f60fa43e58eb08958a7a9b0f6
+#: 4457dda39df44bfe97d3a68d933eb564 4aa6cc20e0834ed6b470fe75b5b83c57
+#: 54fb7e2b9c924561ae65590744d6f344 568f189c40f04064a5613fdf60947cdc
+#: 58636843007645788552f16c6ab87608 5bfd09b906544bcab32b034d328ae752
+#: 770ecfec87b141f7b064081e8a411c59 8a0d3533c83d4b41adde2994b044bb28
+#: a6b7a574fc184887a1640cf4fafc3fa4 b316297eeee44720b08d1675f8c943f0
+#: bd975067cee7462a9e2b8384ca72a6ca bf3c512240e5452788f0ab540f954445
+#: c4947170b65f44dda72dacf9577097d2 c59aef4438c14d17ab7a2bfc0f23e191
+#: d5a24a7ad40c4a94988ad6994afb39c9 e38ff4e6e6674e04a1692c66c45dea46
+#: e6637bf6dcee4bb698554449a9ad7b59 ec56f1ef30ca498894c95e68551ee79d
+#: eca9245776d2497fa7a362cc1126f3b0 f394f5432a1842cdbf4ea24ad7ca190f
+#: f39fd2ff2d43493180e7f01eb915e646 of pybroker.portfolio.Entry:25
+#: pybroker.portfolio.Entry:31 pybroker.portfolio.Order:31
+#: pybroker.portfolio.Order:43 pybroker.portfolio.Order:49
+#: pybroker.portfolio.PortfolioBar:13 pybroker.portfolio.PortfolioBar:19
+#: pybroker.portfolio.PortfolioBar:25 pybroker.portfolio.PortfolioBar:31
+#: pybroker.portfolio.PortfolioBar:38 pybroker.portfolio.PortfolioBar:44
+#: pybroker.portfolio.Position:13 pybroker.portfolio.Position:25
+#: pybroker.portfolio.Position:31 pybroker.portfolio.Position:37
+#: pybroker.portfolio.Position:43 pybroker.portfolio.Position:49
+#: pybroker.portfolio.PositionBar:19 pybroker.portfolio.PositionBar:25
+#: pybroker.portfolio.PositionBar:31 pybroker.portfolio.PositionBar:37
+#: pybroker.portfolio.PositionBar:43 pybroker.portfolio.PositionBar:49
+#: pybroker.portfolio.PositionBar:55 pybroker.portfolio.Trade:37
+#: pybroker.portfolio.Trade:43 pybroker.portfolio.Trade:49
+#: pybroker.portfolio.Trade:55 pybroker.portfolio.Trade:61
+#: pybroker.portfolio.Trade:68 pybroker.portfolio.Trade:80
+msgid "decimal.Decimal"
+msgstr ""
+
+#: 4e3ff02c9b6846ae9c8f62f52dc69c5a of pybroker.portfolio.Entry:29
+msgid "Share price of the entry."
+msgstr ""
+
+#: 516d9283a9034375a5a7f9e4aeff9839 fe6c2116ddf64501abaadde8059832de of
+#: pybroker.portfolio.Entry:35 pybroker.portfolio.Stop:17
+msgid "Type of  :class:`.Position`, either ``long`` or ``short``."
+msgstr ""
+
+#: 41d1344f48144ac1ac7287f1c55c60e6 4748820cf09c49ea943610a0de05028f
+#: 6e99afcca96e42ecbac3b38d7917650f e585605e94374f6e96b8b63ac52654a3 of
+#: pybroker.portfolio.Entry:37 pybroker.portfolio.Position:19
+#: pybroker.portfolio.Stop:19 pybroker.portfolio.Trade:13
+msgid "Literal['long', 'short']"
+msgstr ""
+
+#: 486e9159ace44467bf6e58efb207d5df db4ca23445334242b1a56d4453c4303a of
+#: pybroker.portfolio.Entry:41 pybroker.portfolio.Position:60
+msgid "Current number of bars since entry."
+msgstr ""
+
+#: 85fb14587e4548bcbfa43839b7983d2d of pybroker.portfolio.Entry:47
+msgid "Stops set on the entry."
+msgstr ""
+
+#: bb09b0a7da6949bd84671cc99c4caf4e of pybroker.portfolio.Entry:49
+msgid "set[pybroker.portfolio.Stop]"
+msgstr ""
+
+#: 0af0f8212d0d4dbe9845d3aab7d32022 2cc2d160b1ed4a37a42e6383d34abcda
+#: 5c47aaaa3cb04072a5183a516be270a2 dda1aa4945ef4095ad0799c339fe53b6
+#: f38fd97e7db14971a3d24f9b42a637ca of pybroker.portfolio.Order:1
+#: pybroker.portfolio.PortfolioBar:1 pybroker.portfolio.PositionBar:1
+#: pybroker.portfolio.Stop:1 pybroker.portfolio.Trade:1
+msgid "Bases: :py:class:`~typing.NamedTuple`"
+msgstr ""
+
+#: 986a3072b0ee48149d26b0d000c62685 of pybroker.portfolio.Order:1
+msgid "Holds information about a filled order."
+msgstr ""
+
+#: b1cd7d6b02fb476490cb549c32c21f4e of pybroker.portfolio.Order:11
+msgid "Type of order, either ``buy`` or ``sell``."
+msgstr ""
+
+#: 24a584d589b4442ab1f6ee2524326735 of pybroker.portfolio.Order:13
+msgid "Literal['buy', 'sell']"
+msgstr ""
+
+#: c5ec8abe7f7046398286af899e4c704f of pybroker.portfolio.Order:17
+msgid "Ticker symbol of the order."
+msgstr ""
+
+#: 97346d0a5fbe43f69611777e6f084a41 of pybroker.portfolio.Order:23
+msgid "Date the order was filled."
+msgstr ""
+
+#: 380706519ff24865930398160308f89d of pybroker.portfolio.Order:29
+msgid "Number of shares bought or sold."
+msgstr ""
+
+#: 0bbbd039a8104a879f0796c9dacc764b of pybroker.portfolio.Order:35
+msgid "Limit price that was used for the order."
+msgstr ""
+
+#: 1dcb0e5dc3454717ad30707dd3b35c7f 2088dff2b8be4ada84756e43b5f89b75
+#: 7dd071df6c40455e99ce8d7b35f0d878 d258d29dbeb244a09f998003bcd3ac27 of
+#: pybroker.portfolio.Order:37 pybroker.portfolio.Stop:25
+#: pybroker.portfolio.Stop:31 pybroker.portfolio.Stop:49
+msgid "decimal.Decimal | None"
+msgstr ""
+
+#: 957bce3963fb410cbccaa227ca390edf of pybroker.portfolio.Order:41
+msgid "Price that the order was filled at."
+msgstr ""
+
+#: da2bd0f45cc246beab39328b3b5a7109 of pybroker.portfolio.Order:47
+msgid "Brokerage fees for order."
+msgstr ""
+
+#: 3c03864d45ba4309a852218cb0daff3d of pybroker.portfolio.Portfolio:1
+msgid ""
+"Class representing a portfolio of holdings. The portfolio contains "
+"information about open positions and balances, and is also used to place "
+"buy and sell orders."
+msgstr ""
+
+#: 3fc415b27322470d923436af42eae9c9 6b76d51f246a487983eca98b12d38b44
+#: 762611c311fe4eb995838a27192ca8a1 7e17d53006f94bc4aa4edae43f8f5d09
+#: abdb33f474f7441c9fc2211bd8ff1931 of pybroker.portfolio.Portfolio
+#: pybroker.portfolio.Portfolio.buy pybroker.portfolio.Portfolio.capture_bar
+#: pybroker.portfolio.Portfolio.remove_stops pybroker.portfolio.Portfolio.sell
+msgid "Parameters"
+msgstr ""
+
+#: b540176faed748fe96ab163df165ec59 of pybroker.portfolio.Portfolio:5
+msgid "Starting cash balance."
+msgstr ""
+
+#: 7a962c4b8171478e8cf42d77b5408496 of pybroker.portfolio.Portfolio:6
+msgid "Brokerage fee mode."
+msgstr ""
+
+#: 420a08204ef74701980e5ebb9f9f1d4c of pybroker.portfolio.Portfolio:7
+msgid "Brokerage fee amount."
+msgstr ""
+
+#: 67a4895bebe94db7a20ce19a6271af3b of pybroker.portfolio.Portfolio:8
+msgid ""
+"Maximum number of long :class:`.Position`\\ s that can be held at a time."
+" If ``None``, then unlimited."
+msgstr ""
+
+#: ffab9ac59c654368be223c40fcc7fbd7 of pybroker.portfolio.Portfolio:10
+msgid ""
+"Maximum number of short :class:`.Position`\\ s that can be held at a "
+"time. If ``None``, then unlimited."
+msgstr ""
+
+#: 0fc792118b8746c09174942e4ed0b9c6 of pybroker.portfolio.Portfolio:15
+msgid "Current cash balance."
+msgstr ""
+
+#: 0015e56d5c884f0faa87d27ad7b603c3 of pybroker.portfolio.Portfolio:19
+msgid "Current amount of equity."
+msgstr ""
+
+#: 15d7ad5990e1444881bdeebdf8cc90cf of pybroker.portfolio.Portfolio:23
+msgid ""
+"Current market value. The market value is defined as the amount of equity"
+" held in cash and long positions added together with the unrealized PnL "
+"of all open short positions."
+msgstr ""
+
+#: e94fcec4cc434c8da31d08560eed8a8a of pybroker.portfolio.Portfolio:29
+msgid "Current brokerage fees."
+msgstr ""
+
+#: e00fed07214747c2b20360c351e8cdf2 of pybroker.portfolio.Portfolio:33
+msgid "Whether to enable trading fractional shares."
+msgstr ""
+
+#: bd41dfd015e14617a6d5e0778bd1089a of pybroker.portfolio.Portfolio:37
+msgid "``deque`` of all filled orders, sorted in ascending chronological order."
+msgstr ""
+
+#: 5a7d7e3070534a21b63b120466126493 of pybroker.portfolio.Portfolio:42
+msgid "Current amount of margin held in open positions."
+msgstr ""
+
+#: ada8a75363b84c7f96916f621ff482d9 of pybroker.portfolio.Portfolio:46
+msgid "Realized profit and loss (PnL)."
+msgstr ""
+
+#: e0f0299a23b740c3b917db64e16af064 of pybroker.portfolio.Portfolio:50
+msgid "``dict`` mapping ticker symbols to open long :class:`.Position`\\ s."
+msgstr ""
+
+#: c763c5fba73947e8ab4229327b5546bc of pybroker.portfolio.Portfolio:55
+msgid "``dict`` mapping ticker symbols to open short :class:`.Position`\\ s."
+msgstr ""
+
+#: a1435461217549f7a1ca319dd79d03c3 of pybroker.portfolio.Portfolio:60
+msgid "Ticker symbols of all currently open positions."
+msgstr ""
+
+#: 7168015c114e4b6e9fe1ab24d0e02c5f of pybroker.portfolio.Portfolio:64
+msgid ""
+"``deque`` of snapshots of :class:`.Portfolio` state on every bar, sorted "
+"in ascending chronological order."
+msgstr ""
+
+#: 66e27368345443668caa99c1a7c2e5ed of pybroker.portfolio.Portfolio:69
+msgid ""
+"``deque`` of snapshots of :class:`.Position` states on every bar, sorted "
+"in ascending chronological order."
+msgstr ""
+
+#: ae2cc55239fb46c687d5079830253b7b of pybroker.portfolio.Portfolio:74
+msgid "Running win rate of trades."
+msgstr ""
+
+#: 7da0575fc29d4ac88a9f8bf569485f7f of pybroker.portfolio.Portfolio:78
+msgid "Running loss rate of trades."
+msgstr ""
+
+#: cb6c613e394549f58b6d534433d6932b of pybroker.portfolio.Portfolio.buy:1
+msgid "Places a buy order."
+msgstr ""
+
+#: 9118a2fe3d2d498a8d7f8125ffcbcb2f dd25d0aa4c84421c9b50cee1837c5783 of
+#: pybroker.portfolio.Portfolio.buy:3 pybroker.portfolio.Portfolio.sell:3
+msgid "Date when the :class:`.Order` is placed."
+msgstr ""
+
+#: e2536bb9e8844ca9a4746af89ac26faa of pybroker.portfolio.Portfolio.buy:4
+msgid "Ticker symbol to buy."
+msgstr ""
+
+#: 052b99942ab4408dbbb09e567b990fc5 of pybroker.portfolio.Portfolio.buy:5
+msgid "Number of shares to buy."
+msgstr ""
+
+#: 5385196f96d4443c84e80b566a83eea3 9f4f32aeb1894edebff07d2ee44f41cc of
+#: pybroker.portfolio.Portfolio.buy:6 pybroker.portfolio.Portfolio.sell:6
+msgid "If filled, the price used to fill the :class:`.Order`."
+msgstr ""
+
+#: 3ffdb116e547432ebacd1bdb87317e27 6a68c09558304def85145d8575ecb6ad of
+#: pybroker.portfolio.Portfolio.buy:7 pybroker.portfolio.Portfolio.sell:7
+msgid "Limit price of the :class:`.Order`."
+msgstr ""
+
+#: 148d1b7092694a8d8cc7f048d5dffcd7 c071fdc0464a4be8ab68295b5e985a6a of
+#: pybroker.portfolio.Portfolio.buy:8 pybroker.portfolio.Portfolio.sell:8
+msgid ""
+":class:`.Stop`\\ s to set on the :class:`.Entry` created from the "
+":class:`.Order`, if filled."
+msgstr ""
+
+#: 7a9804dc110248faae5c81fa9c5c6df4 8ec2176d971f4e1e90b994b42dc36d5b of
+#: pybroker.portfolio.Portfolio.buy pybroker.portfolio.Portfolio.sell
+msgid "Returns"
+msgstr ""
+
+#: 5dd3a744f762499eae4a3ab25e1fbf33 70682fc1f13841adac576faff8658ddd of
+#: pybroker.portfolio.Portfolio.buy:11 pybroker.portfolio.Portfolio.sell:11
+msgid ":class:`.Order` if the order was filled, otherwise ``None``."
+msgstr ""
+
+#: a01c8c93fd3c4622bceb6ab764364a93 of
+#: pybroker.portfolio.Portfolio.capture_bar:1
+msgid "Captures portfolio state of the current bar."
+msgstr ""
+
+#: a42dcc7adb48405ca3257e00f698631d of
+#: pybroker.portfolio.Portfolio.capture_bar:3
+msgid "Date of current bar."
+msgstr ""
+
+#: be0e7035c9ee4f5ba8faa08c447d71f2 of
+#: pybroker.portfolio.Portfolio.capture_bar:4
+msgid ":class:`pandas.DataFrame` containing close prices."
+msgstr ""
+
+#: 53213f377c924545a90e01125753885c of
+#: pybroker.portfolio.Portfolio.check_stops:1
+msgid "Checks whether stops are triggered."
+msgstr ""
+
+#: acb9216f523c46d498e2152674fb6c79 of
+#: pybroker.portfolio.Portfolio.exit_position:1
+msgid ""
+"Exits any long and short positions for ``symbol`` at ``buy_fill_price`` "
+"and ``sell_fill_price``."
+msgstr ""
+
+#: 7e9f6d8167494043bca55f8cb9971c90 of pybroker.portfolio.Portfolio.incr_bars:1
+msgid "Increments the number of bars held by every trade entry."
+msgstr ""
+
+#: d109a006e05641beb56913d4d636f31f of
+#: pybroker.portfolio.Portfolio.remove_stop:1
+msgid "Removes a :class:`.Stop` with ``stop_id``."
+msgstr ""
+
+#: d55848b313d74f5e921aedc1ba9fa12c of
+#: pybroker.portfolio.Portfolio.remove_stops:1
+msgid "Removes :class:`.Stop`\\ s."
+msgstr ""
+
+#: 1f7534a3051b4004b9aeb0a5d5694caf of
+#: pybroker.portfolio.Portfolio.remove_stops:3
+msgid ""
+"Ticker symbol, :class:`.Position`, or :class:`.Entry` for which to cancel"
+" stops."
+msgstr ""
+
+#: 499aeacbc7d04eb683335151687202d7 of
+#: pybroker.portfolio.Portfolio.remove_stops:5
+msgid ":class:`pybroker.common.StopType`."
+msgstr ""
+
+#: 378e9df0a8a947f6b010d1a13cbdbe86 of pybroker.portfolio.Portfolio.sell:1
+msgid "Places a sell order."
+msgstr ""
+
+#: f61d996ddaca444aae213eb98260b1aa of pybroker.portfolio.Portfolio.sell:4
+msgid "Ticker symbol to sell."
+msgstr ""
+
+#: 3ca44eaafd8a40bbb79b75f12fd3cfd3 of pybroker.portfolio.Portfolio.sell:5
+msgid "Number of shares to sell."
+msgstr ""
+
+#: 639e5bc3a9da4870aabb7ed842fd6991 of pybroker.portfolio.PortfolioBar:1
+msgid "Snapshot of :class:`.Portfolio` state, captured per bar."
+msgstr ""
+
+#: 0fc6f82ffbdf46b3be262770279f00de 573e0874491f4f788716228a07ca3cc4 of
+#: pybroker.portfolio.PortfolioBar:5 pybroker.portfolio.PositionBar:11
+msgid "Date of bar."
+msgstr ""
+
+#: 5b83eceba733417eb20b89c98b85cd68 of pybroker.portfolio.PortfolioBar:11
+msgid "Amount of cash in :class:`.Portfolio`."
+msgstr ""
+
+#: c9c98f59f5b745d3a1efc03b9d6adf66 of pybroker.portfolio.PortfolioBar:17
+msgid "Amount of equity in :class:`.Portfolio`."
+msgstr ""
+
+#: f844bb0c80594c47996a35a1dbd27ad4 of pybroker.portfolio.PortfolioBar:23
+msgid "Amount of margin in :class:`.Portfolio`."
+msgstr ""
+
+#: 4d80618d5f484c48a3b753cb931935ea of pybroker.portfolio.PortfolioBar:29
+msgid "Market value of :class:`.Portfolio`."
+msgstr ""
+
+#: 11cd5f406a1b4662bb123484fecffe8d of pybroker.portfolio.PortfolioBar:35
+msgid "Realized + unrealized profit and loss (PnL) of :class:`.Portfolio`."
+msgstr ""
+
+#: 2b6474b9c247462a8e6d33e12eb3ab23 of pybroker.portfolio.PortfolioBar:42
+msgid "Brokerage fees."
+msgstr ""
+
+#: 8ced6b8eeaa64021a3e16e823c99a51a of pybroker.portfolio.Position:1
+msgid "Contains information about an open position in ``symbol``."
+msgstr ""
+
+#: f13a81a9d56c49379f9131987eda532d of pybroker.portfolio.Position:5
+msgid "Ticker symbol of the position."
+msgstr ""
+
+#: 53b7a7fd71684649b186895f230e229a of pybroker.portfolio.Position:17
+msgid "Type of position, either ``long`` or ``short``."
+msgstr ""
+
+#: 434b02bdc0074304828fb3e185be197b 70678a30cc0b43149f0747486fd31d6f of
+#: pybroker.portfolio.Position:23 pybroker.portfolio.PositionBar:29
+msgid "Last close price of ``symbol``."
+msgstr ""
+
+#: d97c5638369c487f9d22d6dc947458a7 of pybroker.portfolio.Position:29
+msgid "Equity in the position."
+msgstr ""
+
+#: 5a4b701f03624dbcb70f03dcad5a34fd of pybroker.portfolio.Position:35
+msgid "Market value of position."
+msgstr ""
+
+#: cbe3241ea66844999de1f85005df3b23 of pybroker.portfolio.Position:41
+msgid "Amount of margin in position."
+msgstr ""
+
+#: c572c989c6f14f0cb18e7a9440544d53 of pybroker.portfolio.Position:47
+msgid "Unrealized profit and loss (PnL)."
+msgstr ""
+
+#: 07e75a628f19433ebe8ce73857840206 of pybroker.portfolio.Position:53
+msgid ""
+"``deque`` of position :class:`.Entry`\\ s sorted in ascending "
+"chronological order."
+msgstr ""
+
+#: 7f8a1e24e7cd486b96aa1bf2c8c8f94f of pybroker.portfolio.Position:56
+msgid "collections.deque[pybroker.portfolio.Entry]"
+msgstr ""
+
+#: ebf4fb42b1e84931bfbbd79212fe1a1b of pybroker.portfolio.PositionBar:1
+msgid "Snapshot of an open :class:`.Position`\\ 's state, captured per bar."
+msgstr ""
+
+#: d957f4a9dee14cc5bba8b2da9df288b2 of pybroker.portfolio.PositionBar:5
+msgid "Ticker symbol of :class:`.Position`."
+msgstr ""
+
+#: 648b3dcf3c454dbd94c188edd2fda878 of pybroker.portfolio.PositionBar:17
+msgid "Number of shares long in :class:`.Position`."
+msgstr ""
+
+#: ac230ed4de6344f5944a29ebe73b394d of pybroker.portfolio.PositionBar:23
+msgid "Number of shares short in :class:`.Position`."
+msgstr ""
+
+#: 03be4de855914394a57fdb278aa9c235 of pybroker.portfolio.PositionBar:35
+msgid "Amount of equity in :class:`.Position`."
+msgstr ""
+
+#: b1aed5b0c13344988515cc126307e00e of pybroker.portfolio.PositionBar:41
+msgid "Market value of :class:`.Position`."
+msgstr ""
+
+#: 389132363b6f4daaa0f00316b716ea74 of pybroker.portfolio.PositionBar:47
+msgid "Amount of margin in :class:`.Position`."
+msgstr ""
+
+#: 14a77783fced4decb024d5d9c3941738 of pybroker.portfolio.PositionBar:53
+msgid "Unrealized profit and loss (PnL) of :class:`.Position`."
+msgstr ""
+
+#: 5623943fda484dd9b9ca69168fd40a77 of pybroker.portfolio.Stop:1
+msgid "Contains information about a stop set on :class:`.Entry`."
+msgstr ""
+
+#: 13ff26e371c24f4c93e43d1a1084afc8 of pybroker.portfolio.Stop:11
+msgid "Symbol of the stop."
+msgstr ""
+
+#: 628c7584b0664930a70891c228990df4 of pybroker.portfolio.Stop:23
+msgid "Percent from entry price."
+msgstr ""
+
+#: 2bff80a7f4f545a9ae2bb45384ecc0b2 of pybroker.portfolio.Stop:29
+msgid "Cash amount from entry price."
+msgstr ""
+
+#: 8b5202dc789d454e8a591e59318810f6 of pybroker.portfolio.Stop:35
+msgid "Number of bars after which to trigger the stop."
+msgstr ""
+
+#: 492591f98608411587d09db109932ec5 of pybroker.portfolio.Stop:37
+msgid "int | None"
+msgstr ""
+
+#: 8f6db97a8b694832b47b0bbc628ae5fb of pybroker.portfolio.Stop:41
+msgid "Price that the stop will be filled at."
+msgstr ""
+
+#: 7a836eab18ed4943b3fe6454e2d8c49d of pybroker.portfolio.Stop:43
+msgid ""
+"int | float | numpy.floating | decimal.Decimal | "
+"pybroker.common.PriceType | Callable[[str, pybroker.common.BarData], int "
+"| float | decimal.Decimal] | None"
+msgstr ""
+
+#: 88ea64fa1d7b46a48f3cf691d1675224 of pybroker.portfolio.Stop:47
+msgid "Limit price to use for the stop."
+msgstr ""
+
+#: a3b6ca807b4e405dbf54b3adc850af54 of pybroker.portfolio.Trade:1
+msgid "Holds information about a completed trade (entry and exit)."
+msgstr ""
+
+#: 8f783fed0cc8443bbef6ef57057d7dd6 of pybroker.portfolio.Trade:11
+msgid "Type of trade, either ``long`` or ``short``."
+msgstr ""
+
+#: 3dfec6e2052d474c99b9b1f46c63b58f of pybroker.portfolio.Trade:17
+msgid "Ticker symbol of the trade."
+msgstr ""
+
+#: 23536f32902243ad9afaa33484be7789 of pybroker.portfolio.Trade:23
+msgid "Entry date."
+msgstr ""
+
+#: 2e6e255eb4ca464fb938d5e42c809630 of pybroker.portfolio.Trade:29
+msgid "Exit date."
+msgstr ""
+
+#: dfd5448d13f145b0bee431a798040e37 of pybroker.portfolio.Trade:35
+msgid "Entry price."
+msgstr ""
+
+#: 00a03eb33b3b480887f0cbce4da5dbfe of pybroker.portfolio.Trade:41
+msgid "Exit price."
+msgstr ""
+
+#: 93af6ae1404e402dbb60b155e82ececb of pybroker.portfolio.Trade:53
+msgid "Profit and loss (PnL)."
+msgstr ""
+
+#: e79fb9e9337f4d90af807e0012501a6e of pybroker.portfolio.Trade:59
+msgid "Return measured in percentage."
+msgstr ""
+
+#: c4217e136f5e46b48053a023ca999bcd of pybroker.portfolio.Trade:65
+msgid "Aggregate profit and loss (PnL) of the strategy after the trade."
+msgstr ""
+
+#: 0ef5008994ad4f40bb649adb7fd42529 of pybroker.portfolio.Trade:72
+msgid "Number of bars the trade was held."
+msgstr ""
+
+#: ac070dd0771e4768a3d70a419d6ea53f of pybroker.portfolio.Trade:78
+msgid "Profit and loss (PnL) per bar held."
+msgstr ""
+
+#: af7df846d279431a8c90b5e0c090602d of pybroker.portfolio.Trade:84
+msgid "Type of stop that was triggered, if any."
+msgstr ""
+
+#: 7de8a7dd184a4100906aaa307e040f97 of pybroker.portfolio.Trade:86
+msgid "Literal['bar', 'loss', 'profit', 'trailing'] | None"
+msgstr ""
+

@@ -1,0 +1,420 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2023, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-06-02 22:55-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.11.0\n"
+
+#: ../../source/notebooks/2. 8932ec4218944d1c87d67a77752bf2ab Backtesting
+#: Strategy.ipynb:9 a
+msgid "Backtesting a Strategy"
+msgstr ""
+
+#: ../../source/notebooks/2. Backtesting Strategy.ipynb:11 a
+#: f7200d4a52fa461290690e98230d7461
+msgid ""
+"We’re all set to test a basic trading strategy using **PyBroker**! To get"
+" started, we’ll import the necessary classes listed below:"
+msgstr ""
+
+#: ../../source/notebooks/2. 15a40cbc03ac4c7aa8129e4830062228 Backtesting
+#: Strategy.ipynb:60 a
+msgid ""
+"For our backtest, we’ll be using `Yahoo Finance "
+"<https://finance.yahoo.com>`__ as our `DataSource "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__."
+" We’ll also be using data source caching to ensure that we only download "
+"the necessary data once when we run our backtests."
+msgstr ""
+
+#: ../../source/notebooks/2. Backtesting Strategy.ipynb:62 a
+#: ec6cb5c116854e9a8e2d0b5b2b0f0c4e
+msgid ""
+"The next step is to set up a new instance of the `Strategy "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy>`__"
+" class which will be used to perform a backtest on our trading strategy. "
+"Here’s how you can do it:"
+msgstr ""
+
+#: ../../source/notebooks/2. 3c33d8741a8b4852bce709b40fea2213 Backtesting
+#: Strategy.ipynb:64 a
+msgid ""
+"First, you can create a `StrategyConfig "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig>`__"
+" object to configure the ``Strategy``. In this case, we’re setting the "
+"initial cash to ``500,000``:"
+msgstr ""
+
+#: ../../source/notebooks/2. 877cab8692304d8b9e65fec61912361e Backtesting
+#: Strategy.ipynb:85 a
+msgid ""
+"Then, you can create a new instance of the ``Strategy`` class by passing "
+"in the following arguments:"
+msgstr ""
+
+#: ../../source/notebooks/2. Backtesting Strategy.ipynb:87 a
+#: b298f714c77949789260368b7ccdacd7
+msgid "A data source: In this case, we’re using Yahoo Finance as the data source."
+msgstr ""
+
+#: ../../source/notebooks/2. 1acddc95f3d54104b0e616108e21e37b Backtesting
+#: Strategy.ipynb:88 a
+msgid "A start date: This is the starting date for the backtest."
+msgstr ""
+
+#: ../../source/notebooks/2. 6ae90b2df80f4661911f16a3fd1a734e Backtesting
+#: Strategy.ipynb:89 a
+msgid "An end date: This is the end date for the backtest."
+msgstr ""
+
+#: ../../source/notebooks/2. Backtesting Strategy.ipynb:90 a
+#: a187eee372e44df7bc65b1bb816ce20f
+msgid "The configuration object created earlier."
+msgstr ""
+
+#: ../../source/notebooks/2. 1c93dc4e39f542e79feadbcb65604394 Backtesting
+#: Strategy.ipynb:111 a
+msgid ""
+"The ``Strategy`` instance is now ready to download data from Yahoo "
+"Finance for the period between March 1, 2017, and March 1, 2022, before "
+"running the backtest using the specified configuration options. If you "
+"need to modify other configuration options, you can refer to the "
+"`StrategyConfig reference documentation "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig>`__."
+msgstr ""
+
+#: ../../source/notebooks/2. 615136c1bb8f4b55b7ac344a2c7ce81a Backtesting
+#: Strategy.ipynb:114 a
+msgid "Defining Strategy Rules"
+msgstr ""
+
+#: ../../source/notebooks/2. 2ebbe6b9440141d29d88aebdcc3d1847 Backtesting
+#: Strategy.ipynb:116 a
+msgid ""
+"In this section, you will learn how to implement a basic trading strategy"
+" in **PyBroker** with the following rules:"
+msgstr ""
+
+#: ../../source/notebooks/2. 3611805d525a4fdaab53579cb5707030 Backtesting
+#: Strategy.ipynb:118 a
+msgid ""
+"Buy shares in a stock if the last close price is less than the low of the"
+" previous bar and there is no open long position in that stock."
+msgstr ""
+
+#: ../../source/notebooks/2. Backtesting Strategy.ipynb:119 a
+#: f885a59cc87343ef95e6d1fa86e5e140
+msgid ""
+"Set the limit price of the buy order to 0.01 less than the last close "
+"price."
+msgstr ""
+
+#: ../../source/notebooks/2. 10b9ae6737b4475199d334af597f8f08 Backtesting
+#: Strategy.ipynb:120 a
+msgid "Hold the position for 3 days before liquidating it at market price."
+msgstr ""
+
+#: ../../source/notebooks/2. 31b0874d70894aa0b28e33e8e3d0ebe6 Backtesting
+#: Strategy.ipynb:121 a
+#, python-format
+msgid ""
+"Trade the rules on AAPL and MSFT, allocating up to 25% of the portfolio "
+"to each."
+msgstr ""
+
+#: ../../source/notebooks/2. 6b592f2ab6934bbd80a4f76b9e367bc2 Backtesting
+#: Strategy.ipynb:123 a
+msgid ""
+"To accomplish this, you will define a ``buy_low`` function that "
+"**PyBroker** will call separately for AAPL and MSFT on every bar of data."
+" Each bar corresponds to a single day of data:"
+msgstr ""
+
+#: ../../source/notebooks/2. Backtesting Strategy.ipynb:156 a
+#: bd8a4dd56417400985ad860426c160f4
+msgid ""
+"That is a lot to unpack! The ``buy_low`` function will receive an "
+"`ExecContext "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
+" (``ctx``) containing data for the current ticker symbol (AAPL or MSFT). "
+"The ``ExecContext`` will contain all of the close prices up until the "
+"most recent bar of the current ticker symbol. The latest close price is "
+"retrieved with ``ctx.close[-1]``."
+msgstr ""
+
+#: ../../source/notebooks/2. Backtesting Strategy.ipynb:158 a
+#: db2979a9133b4eac8fa15d193130f15e
+#, python-format
+msgid ""
+"The ``buy_low`` function will use the ``ExecContext`` to place a buy "
+"order. The number of shares to purchase is set using `ctx.buy_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buy_shares>`__,"
+" which is calculated with `ctx.calc_target_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.calc_target_shares>`__."
+" In this case, the number of shares to buy will be equal to 25% of the "
+"portfolio."
+msgstr ""
+
+#: ../../source/notebooks/2. 33f8b809378a43a18c9a642219af9e3f Backtesting
+#: Strategy.ipynb:161 a
+msgid ""
+"The limit price of the order is set with `buy_limit_price "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buy_limit_price>`__."
+" If the criteria are met, the buy order will be filled on the next bar. "
+"The time at which the order is filled can be configured with "
+"`StrategyConfig.buy_delay "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.buy_delay>`__,"
+" and its fill price can be set with `ExecContext.buy_fill_price "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buy_fill_price>`__."
+" By default, buy orders are filled on the next bar (``buy_delay=1``) and "
+"at a `fill price equal to the midpoint between that bar’s open and close "
+"price "
+"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.PriceType.MIDDLE>`__."
+msgstr ""
+
+#: ../../source/notebooks/2. Backtesting Strategy.ipynb:164 a
+#: b4d7ad708d6b4fb7afa52b23f8df243d
+msgid ""
+"Finally, `ctx.hold_bars "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.hold_bars>`__"
+" specifies how many bars to hold the position for before liquidating it. "
+"When liquidated, the shares are sold at market price equal to "
+"`ExecContext.sell_fill_price "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_fill_price>`__,"
+" which is configurable and defaults to the midpoint between the bar’s "
+"open and close price."
+msgstr ""
+
+#: ../../source/notebooks/2. Backtesting Strategy.ipynb:167 a
+#: e358a90e730f4c65bbebda6d881314c0
+msgid ""
+"To add the ``buy_low`` rules to the ``Strategy`` for AAPL and MSFT, you "
+"will use `add_execution "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__:"
+msgstr ""
+
+#: ../../source/notebooks/2. 9b1aa7603eb44be0b65192abf394661c Backtesting
+#: Strategy.ipynb:189 a
+msgid "Adding a Second Execution"
+msgstr ""
+
+#: ../../source/notebooks/2. 0b137c08461b480d82fe31340116e089 Backtesting
+#: Strategy.ipynb:191 a
+msgid ""
+"You can use different sets of trading rules for different tickers within "
+"the same ``Strategy`` instance. In other words, you are not restricted to"
+" using only one set of trading rules for a single group of tickers."
+msgstr ""
+
+#: ../../source/notebooks/2. 05a396a86237462b9d574c69316e5225 Backtesting
+#: Strategy.ipynb:193 a
+msgid ""
+"To demonstrate this, a new set of rules for a short strategy is provided "
+"in a function called ``short_high``, which is similar to the previous set"
+" of rules:"
+msgstr ""
+
+#: ../../source/notebooks/2. 3082d363eecb4bed81378a8f0f9ff57a Backtesting
+#: Strategy.ipynb:224 a
+msgid "The rules in ``short_high`` will be traded on ``TSLA``:"
+msgstr ""
+
+#: ../../source/notebooks/2. 1e98a8bc592949f3b4f7e18c4176b58e Backtesting
+#: Strategy.ipynb:245 a
+msgid ""
+"(Note, you can also retrieve bar data for another symbol by calling "
+"`ExecContext#foreign "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.foreign>`__)"
+msgstr ""
+
+#: ../../source/notebooks/2. Backtesting Strategy.ipynb:257 a
+#: ead7033028254f10ae5e518872e7293e
+msgid "Running a Backtest"
+msgstr ""
+
+#: ../../source/notebooks/2. 85b5a4c80f9f4597a14f8335873db853 Backtesting
+#: Strategy.ipynb:259 a
+msgid ""
+"To run a backtest, call the `backtest "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`__"
+" method on the ``Strategy`` instance. Here is an example:"
+msgstr ""
+
+#: ../../source/notebooks/2. 36bb702bafa64dadb72ded307479331c Backtesting
+#: Strategy.ipynb:376 a
+msgid ""
+"That was fast! The ``backtest`` method will return an instance of "
+"`TestResult "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.TestResult>`__."
+" You can access various information and metrics about the backtest "
+"through this instance. For example, to see the daily balances of the "
+"portfolio, you can plot the market value using `Matplotlib "
+"<https://matplotlib.org/>`__:"
+msgstr ""
+
+#: ../../source/notebooks/2. 2d6755c267e744ec8545ae13fdee7938 Backtesting
+#: Strategy.ipynb:434 a
+msgid ""
+"You can also access the daily balance of each position that was held, the"
+" trades that were made for every entry and exit, and all of the orders "
+"that were placed:"
+msgstr ""
+
+#: ../../source/notebooks/2. 03fa4654d2dd405f8e6578514c27851d Backtesting
+#: Strategy.ipynb:1339 a
+msgid ""
+"Additionally, ``result.metrics_df`` contains a DataFrame of metrics "
+"calculated using the returns of the backtest. `You can read about what "
+"these metrics mean on the reference documentation "
+"<https://www.pybroker.com/en/latest/reference/pybroker.eval.html#pybroker.eval.EvalMetrics>`__."
+msgstr ""
+
+#: ../../source/notebooks/2. 63e71f55d6204976b49b5ddd1fc3f4ae Backtesting
+#: Strategy.ipynb:1728 a
+msgid "Filtering Backtest Data"
+msgstr ""
+
+#: ../../source/notebooks/2. Backtesting Strategy.ipynb:1730 a
+#: e1f63a03ed4a480eb03861c60b5ea402
+msgid ""
+"You can filter the data used for the backtest to only include specific "
+"bars. For example, you can limit the strategy to trade only on Mondays by"
+" filtering the data to only contain bars for Mondays:"
+msgstr ""
+
+#: ../../source/notebooks/2. 2725ddfccfe34258b46343c75dc92f98 Backtesting
+#: Strategy.ipynb:2074 a
+msgid ""
+"The data doesn’t need to be downloaded again from Yahoo Finance because "
+"caching is enabled and the cached data only needs to be filtered."
+msgstr ""
+
+#: ../../source/notebooks/2. 5b901d35421b45fb8d401057026e63bd Backtesting
+#: Strategy.ipynb:2076 a
+msgid ""
+"You can also filter the data by time range, such as 9:30-10:30 AM, using "
+"the `between_time "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`__"
+" argument."
+msgstr ""
+
+#: ../../source/notebooks/2. Backtesting Strategy.ipynb:2078 a
+#: a9ea077c4913405ebfb65ef71639cb2b
+#, python-format
+msgid ""
+"Although the metrics earlier indicate that we have a profitable strategy,"
+" we may be misled by randomness. `In the next notebook, we’ll discuss how"
+" to use bootstrapping to further evaluate our trading strategies "
+"<https://www.pybroker.com/en/latest/notebooks/3.%20Evaluating%20with%20Bootstrap%20Metrics.html>`__."
+msgstr ""
+
+#~ msgid ""
+#~ "We're all set to test a basic "
+#~ "trading strategy using **PyBroker**! To "
+#~ "get started, we'll import the necessary"
+#~ " classes listed below:"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "For our backtest, we'll be using "
+#~ "`Yahoo Finance <https://finance.yahoo.com>`__ as "
+#~ "our `DataSource "
+#~ "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__."
+#~ " We'll also be using data source "
+#~ "caching to ensure that we only "
+#~ "download the necessary data once when"
+#~ " we run our backtests."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "The next step is to set up a"
+#~ " new instance of the `Strategy "
+#~ "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy>`__"
+#~ " class which will be used to "
+#~ "perform a backtest on our trading "
+#~ "strategy. Here's how you can do "
+#~ "it:"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "First, you can create a `StrategyConfig"
+#~ " "
+#~ "<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig>`__"
+#~ " object to configure the ``Strategy``. "
+#~ "In this case, we're setting the "
+#~ "initial cash to ``500,000``:"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "A data source: In this case, we're"
+#~ " using Yahoo Finance as the data "
+#~ "source."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "The limit price of the order is"
+#~ " set with `buy_limit_price "
+#~ "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buy_limit_price>`__."
+#~ " If the criteria are met, the "
+#~ "buy order will be filled on the"
+#~ " next bar. The time at which "
+#~ "the order is filled can be "
+#~ "configured with `StrategyConfig.buy_delay "
+#~ "<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.buy_delay>`__,"
+#~ " and its fill price can be set"
+#~ " with `ExecContext.buy_fill_price "
+#~ "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buy_fill_price>`__."
+#~ " By default, buy orders are filled"
+#~ " on the next bar (``buy_delay=1``) "
+#~ "and at a `fill price equal to "
+#~ "the midpoint between that bar's open "
+#~ "and close price "
+#~ "<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.PriceType.MIDDLE>`__."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Finally, `ctx.hold_bars "
+#~ "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.hold_bars>`__"
+#~ " specifies how many bars to hold "
+#~ "the position for before liquidating it."
+#~ " When liquidated, the shares are sold"
+#~ " at market price equal to "
+#~ "`ExecContext.sell_fill_price "
+#~ "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_fill_price>`__,"
+#~ " which is configurable and defaults "
+#~ "to the midpoint between the bar's "
+#~ "open and close price."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "The data doesn't need to be "
+#~ "downloaded again from Yahoo Finance "
+#~ "because caching is enabled and the "
+#~ "cached data only needs to be "
+#~ "filtered."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Although the metrics earlier indicate "
+#~ "that we have a profitable strategy, "
+#~ "we may be misled by randomness. "
+#~ "`In the next notebook, we'll discuss "
+#~ "how to use bootstrapping to further "
+#~ "evaluate our trading strategies "
+#~ "<https://www.pybroker.com/en/latest/notebooks/3.%20Evaluating%20with%20Bootstrap%20Metrics.html>`__."
+#~ msgstr ""
+
