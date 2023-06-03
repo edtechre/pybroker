@@ -19,17 +19,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.12.1\n"
 
-#: ../../source/install.rst:2 bcf4a1f6e358423f95ec0084da10b200
-msgid "Installation"
-msgstr "安装"
-
-#: ../../source/install.rst:4 b59d900234cd43ce89f5be0d8690b66a
-msgid ""
-"PyBroker supports Python 3.9+ on Windows, Mac, and Linux. You can install"
-" PyBroker using ``pip``:"
-msgstr ""
-
-#: ../../source/install.rst:11 06d5859345914a0f82d6cc1b5f94c668
-msgid "Or you can clone the Git repository with:"
+#: ../../source/license.rst:3 1606ec6c62b44bc68b637349ca5b3850
+msgid "License"
 msgstr ""
 

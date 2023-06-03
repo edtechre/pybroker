@@ -1,0 +1,183 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2023, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-06-02 21:23+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.12.1\n"
+
+#: ../../source/reference/pybroker.config.rst:2
+#: 0a7bcf81973c4f7b9d741c72e972e7f4
+msgid "pybroker.config module"
+msgstr ""
+
+#: 58d4f69fbc284edea3c715adfd2ad504 of pybroker.config:1
+msgid "Contains configuration options."
+msgstr ""
+
+#: e91a138b0f234ec594c2867d995391a4 of pybroker.config.StrategyConfig:1
+msgid "Bases: :py:class:`object`"
+msgstr ""
+
+#: fac390a9ade34faa8dc8b5adc1ee4109 of pybroker.config.StrategyConfig:1
+msgid "Configuration options for :class:`pybroker.strategy.Strategy`."
+msgstr ""
+
+#: 564a476c032e43f58e4bee99836609f3 of pybroker.config.StrategyConfig:5
+msgid "Starting cash of strategy."
+msgstr ""
+
+#: 30bffa10ebbf45678180ee625193cbbe 3153a12510444270b83f2251a087d5bc
+#: 350029c6897d463f9549b3df574d406d 3b04995bb2d1435c924660a66b30ad85
+#: 67d1637d5f49448fa93e49e5c9e28211 8a8dbf00c326469187b099549ab760ff
+#: a62da600e4ab435890204bf42bda1048 ad56a288953646f99894f180cc2675ad
+#: bc44ce8e4f0e48eb92797e8908c01909 ce5f1df391604e099b6aa3a3104a71f8
+#: f044d619eb9f455d9ab6b1a82e389a0f f708e0a05c364d7cbf2984bd9cc7f612
+#: fb20da617f3a48658fa8c70bc7dec6d7 fd932d6cc5e842c98f23f34211a91701 of
+#: pybroker.config.StrategyConfig
+msgid "type"
+msgstr ""
+
+#: ae0585486c3c48b9b6207141fc35e3de b27b692496d44383b5210c2e4fbbdf87 of
+#: pybroker.config.StrategyConfig:7 pybroker.config.StrategyConfig:25
+msgid "float"
+msgstr ""
+
+#: a202a93683d84ef790c755da9c499987 of pybroker.config.StrategyConfig:11
+msgid ""
+":class:`pybroker.common.FeeMode` for calculating brokerage fees. Supports"
+" one of:"
+msgstr ""
+
+#: 9a63b725786249d99c3bc905797f2e66 of pybroker.config.StrategyConfig:14
+msgid "``ORDER_PERCENT``: Fee is a percentage of order amount."
+msgstr ""
+
+#: 5f734ffb52df45cca35ae5d5c7baf130 of pybroker.config.StrategyConfig:15
+msgid "``PER_ORDER``: Fee is a constant amount per order."
+msgstr ""
+
+#: 66fe2b9734004450b766d372b50e6f32 of pybroker.config.StrategyConfig:16
+msgid "``PER_SHARE``: Fee is a constant amount per share in order."
+msgstr ""
+
+#: c39c3ce3d1414238abda4be0641d8afb of pybroker.config.StrategyConfig:17
+msgid "``None``: Fees are disabled (default)."
+msgstr ""
+
+#: c15bb043bc9842e88380b5486f7daa7b of pybroker.config.StrategyConfig:19
+msgid "pybroker.common.FeeMode | None"
+msgstr ""
+
+#: 05243ace1b5e429ea0e781151db770b0 of pybroker.config.StrategyConfig:23
+msgid "Brokerage fee amount."
+msgstr ""
+
+#: 73856f4817e949ffbc581919ce55d976 of pybroker.config.StrategyConfig:29
+msgid ""
+"Whether to enable trading fractional shares. Set to ``True`` for crypto "
+"trading. Defaults to ``False``."
+msgstr ""
+
+#: 5047230f6ac049bbab772c945708ffd5 b622d792ec4a435988b7f2d0d0367575 of
+#: pybroker.config.StrategyConfig:32 pybroker.config.StrategyConfig:86
+msgid "bool"
+msgstr ""
+
+#: 8a0725e5cc444da08242d1cceb96b4d2 of pybroker.config.StrategyConfig:36
+msgid ""
+"Maximum number of long positions that can be held at any time in "
+":class:`pybroker.portfolio.Portfolio`. Unlimited when ``None``. Defaults "
+"to ``None``."
+msgstr ""
+
+#: 216a78580402472fb88e20a46dde0816 8b8a6b12286747b8b922edceb4a82345
+#: a4e52fd4055340288df571e5ca895abf of pybroker.config.StrategyConfig:40
+#: pybroker.config.StrategyConfig:48 pybroker.config.StrategyConfig:110
+msgid "int | None"
+msgstr ""
+
+#: d0a65185eaa743cda3c697ce2a26f592 of pybroker.config.StrategyConfig:44
+msgid ""
+"Maximum number of short positions that can be held at any time in "
+":class:`pybroker.portfolio.Portfolio`. Unlimited when ``None``. Defaults "
+"to ``None``."
+msgstr ""
+
+#: 0f9cb97ae8e2403eb2bf5d4bc7246d1e of pybroker.config.StrategyConfig:52
+msgid ""
+"Number of bars before placing an order for a buy signal. The default "
+"value of ``1`` places a buy order on the next bar. Must be > ``0``."
+msgstr ""
+
+#: 15b95320a0c44e72a34c6f6d4b13e00f 63b77338b2e542eb8bd0d967436d87c7
+#: 7865f0cddc584cf8a936a78c9bd03128 97dcc89b785e4ff396ce7243b6079110 of
+#: pybroker.config.StrategyConfig:56 pybroker.config.StrategyConfig:64
+#: pybroker.config.StrategyConfig:71 pybroker.config.StrategyConfig:78
+msgid "int"
+msgstr ""
+
+#: 49803ba57ae342f780640116e40e0796 of pybroker.config.StrategyConfig:60
+msgid ""
+"Number of bars before placing an order for a sell signal. The default "
+"value of ``1`` places a sell order on the next bar. Must be > ``0``."
+msgstr ""
+
+#: 0b44dfb4a6514fff9b816788eca73325 of pybroker.config.StrategyConfig:68
+msgid ""
+"Number of samples used to compute boostrap metrics. Defaults to "
+"``10_000``."
+msgstr ""
+
+#: 93f4a4d8ce7744b487da7fa8c342f53f of pybroker.config.StrategyConfig:75
+msgid ""
+"Size of each random sample used to compute bootstrap metrics. Defaults to"
+" ``1_000``."
+msgstr ""
+
+#: 4ebe6c2b289c40c7a405a6d93195c842 of pybroker.config.StrategyConfig:82
+msgid ""
+"Whether to automatically exit any open positions on the last bar of data "
+"available for a symbol. Defaults to ``False``."
+msgstr ""
+
+#: 23622af1ec4e4c2f8e71026dc3fb3cd4 of pybroker.config.StrategyConfig:90
+msgid ""
+"Fill price for covering an open short position when "
+":attr:`.exit_on_last_bar` is ``True``. Defaults to "
+":attr:`pybroker.common.PriceType.MIDDLE`."
+msgstr ""
+
+#: 4edbea458db84dfbadd4b226d3bf2bd5 c508a1a02ed745dda357dedf34ae0ab6 of
+#: pybroker.config.StrategyConfig:94 pybroker.config.StrategyConfig:102
+msgid ""
+"pybroker.common.PriceType | Callable[[str, pybroker.common.BarData], int "
+"| float | decimal.Decimal]"
+msgstr ""
+
+#: e156c4b024504a1ab94eb47d64774239 of pybroker.config.StrategyConfig:98
+msgid ""
+"Fill price for selling an open long position when "
+":attr:`.exit_on_last_bar` is ``True``. Defaults to "
+":attr:`pybroker.common.PriceType.MIDDLE`."
+msgstr ""
+
+#: ae4c908b70ad4daba9de9a7c7ef0a2db of pybroker.config.StrategyConfig:106
+msgid ""
+"Number of observations used to annualize the Sharpe Ratio. For example, a"
+" value of ``252`` would be used to annualize daily returns."
+msgstr ""
+
