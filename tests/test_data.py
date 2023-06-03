@@ -41,6 +41,7 @@ API_VERSION = "v2"
 TIMEFRAME = "1m"
 START_DATE = datetime.strptime("2021-02-02", "%Y-%m-%d")
 END_DATE = datetime.strptime("2022-02-02", "%Y-%m-%d")
+ADJUSTMENT = "all"
 ALPACA_COLS = [
     "date",
     "symbol",
@@ -131,7 +132,9 @@ class TestDataSourceCacheMixin:
     @pytest.mark.usefixtures("scope")
     def test_set_cached(self, alpaca_df, symbols, mock_cache):
         cache_mixin = DataSourceCacheMixin()
-        cache_mixin.set_cached(TIMEFRAME, START_DATE, END_DATE, alpaca_df)
+        cache_mixin.set_cached(
+            TIMEFRAME, START_DATE, END_DATE, ADJUSTMENT, alpaca_df
+        )
         assert len(mock_cache.set.call_args_list) == len(symbols)
         for i, sym in enumerate(symbols):
             expected_cache_key = DataSourceCacheKey(
@@ -139,6 +142,7 @@ class TestDataSourceCacheMixin:
                 tf_seconds=to_seconds(TIMEFRAME),
                 start_date=START_DATE,
                 end_date=END_DATE,
+                adjustment=ADJUSTMENT,
             )
             cache_key, sym_df = mock_cache.set.call_args_list[i].args
             assert cache_key == repr(expected_cache_key)
@@ -151,7 +155,7 @@ class TestDataSourceCacheMixin:
     def test_get_cached_when_empty(self, mock_cache, query_symbols):
         cache_mixin = DataSourceCacheMixin()
         df, uncached_syms = cache_mixin.get_cached(
-            query_symbols, TIMEFRAME, START_DATE, END_DATE
+            query_symbols, TIMEFRAME, START_DATE, END_DATE, ADJUSTMENT
         )
         assert df.empty
         assert uncached_syms == query_symbols
@@ -162,6 +166,7 @@ class TestDataSourceCacheMixin:
                 tf_seconds=to_seconds(TIMEFRAME),
                 start_date=START_DATE,
                 end_date=END_DATE,
+                adjustment=ADJUSTMENT,
             )
             cache_key = mock_cache.get.call_args_list[i].args[0]
             assert cache_key == repr(expected_cache_key)
@@ -169,9 +174,11 @@ class TestDataSourceCacheMixin:
     @pytest.mark.usefixtures("setup_enabled_ds_cache")
     def test_set_and_get_cached(self, alpaca_df, symbols):
         cache_mixin = DataSourceCacheMixin()
-        cache_mixin.set_cached(TIMEFRAME, START_DATE, END_DATE, alpaca_df)
+        cache_mixin.set_cached(
+            TIMEFRAME, START_DATE, END_DATE, ADJUSTMENT, alpaca_df
+        )
         df, uncached_syms = cache_mixin.get_cached(
-            symbols, TIMEFRAME, START_DATE, END_DATE
+            symbols, TIMEFRAME, START_DATE, END_DATE, ADJUSTMENT
         )
         assert df.equals(alpaca_df)
         assert not len(uncached_syms)
@@ -180,9 +187,11 @@ class TestDataSourceCacheMixin:
     def test_set_and_get_cached_when_partial(self, alpaca_df, symbols):
         cache_mixin = DataSourceCacheMixin()
         cached_df = alpaca_df[alpaca_df["symbol"].isin(symbols[:2])]
-        cache_mixin.set_cached(TIMEFRAME, START_DATE, END_DATE, cached_df)
+        cache_mixin.set_cached(
+            TIMEFRAME, START_DATE, END_DATE, ADJUSTMENT, cached_df
+        )
         df, uncached_syms = cache_mixin.get_cached(
-            symbols, TIMEFRAME, START_DATE, END_DATE
+            symbols, TIMEFRAME, START_DATE, END_DATE, ADJUSTMENT
         )
         assert df.equals(cached_df)
         assert uncached_syms == symbols[2:]
@@ -216,15 +225,21 @@ class TestDataSourceCacheMixin:
     ):
         cache_mixin = DataSourceCacheMixin()
         with pytest.raises(error):
-            cache_mixin.set_cached(timeframe, start_date, end_date, alpaca_df)
+            cache_mixin.set_cached(
+                timeframe, start_date, end_date, ADJUSTMENT, alpaca_df
+            )
         with pytest.raises(error):
-            cache_mixin.get_cached(symbols, timeframe, start_date, end_date)
+            cache_mixin.get_cached(
+                symbols, timeframe, start_date, ADJUSTMENT, end_date
+            )
 
     def test_set_and_get_cached_when_cache_disabled(self, alpaca_df, symbols):
         cache_mixin = DataSourceCacheMixin()
-        cache_mixin.set_cached(TIMEFRAME, START_DATE, END_DATE, alpaca_df)
+        cache_mixin.set_cached(
+            TIMEFRAME, START_DATE, END_DATE, ADJUSTMENT, alpaca_df
+        )
         df, uncached_syms = cache_mixin.get_cached(
-            symbols, TIMEFRAME, START_DATE, END_DATE
+            symbols, TIMEFRAME, START_DATE, END_DATE, ADJUSTMENT
         )
         assert df.empty
         assert uncached_syms == symbols
@@ -243,7 +258,9 @@ class TestAlpaca:
         with mock.patch.object(
             alpaca._api, "get_stock_bars", return_value=mock_bars
         ):
-            df = alpaca.query(symbols, START_DATE, END_DATE, TIMEFRAME)
+            df = alpaca.query(
+                symbols, START_DATE, END_DATE, TIMEFRAME, adjustment="all"
+            )
             df = (
                 df.sort_values(["symbol", "date"])
                 .reset_index(drop=True)
@@ -256,19 +273,33 @@ class TestAlpaca:
             )
             assert df.equals(expected)
 
+    def test_query_when_invalid_adj_then_error(self, symbols):
+        alpaca = Alpaca(API_KEY, API_SECRET)
+        with pytest.raises(
+            ValueError,
+            match=re.escape("Unknown adjustment: foo"),
+        ):
+            alpaca.query(
+                symbols, START_DATE, END_DATE, TIMEFRAME, adjustment="foo"
+            )
+
     @pytest.mark.usefixtures(
         "setup_enabled_ds_cache", "mock_alpaca", "tmp_path"
     )
     def test_query_when_partial_cache(self, alpaca_df, bars_df, symbols):
         alpaca = Alpaca(API_KEY, API_SECRET)
         cached_df = alpaca_df[alpaca_df["symbol"].isin(symbols[-1:])]
-        alpaca.set_cached(TIMEFRAME, START_DATE, END_DATE, cached_df)
+        alpaca.set_cached(
+            TIMEFRAME, START_DATE, END_DATE, ADJUSTMENT, cached_df
+        )
         mock_bars = mock.Mock()
         mock_bars.df = bars_df[bars_df["symbol"].isin(symbols[:-1])]
         with mock.patch.object(
             alpaca._api, "get_stock_bars", return_value=mock_bars
         ):
-            df = alpaca.query(symbols, START_DATE, END_DATE, TIMEFRAME)
+            df = alpaca.query(
+                symbols, START_DATE, END_DATE, TIMEFRAME, ADJUSTMENT
+            )
             df = (
                 df.sort_values(["symbol", "date"])
                 .reset_index(drop=True)
@@ -288,13 +319,17 @@ class TestAlpaca:
         alpaca = Alpaca(API_KEY, API_SECRET)
         cached_df = alpaca_df[alpaca_df["symbol"].isin(symbols[-1:])]
         cached_df = cached_df.drop(columns=["vwap"])
-        alpaca.set_cached(TIMEFRAME, START_DATE, END_DATE, cached_df)
+        alpaca.set_cached(
+            TIMEFRAME, START_DATE, END_DATE, ADJUSTMENT, cached_df
+        )
         mock_bars = mock.Mock()
         mock_bars.df = bars_df[bars_df["symbol"].isin(symbols[:-1])]
         with mock.patch.object(
             alpaca._api, "get_stock_bars", return_value=mock_bars
         ):
-            df = alpaca.query(symbols, START_DATE, END_DATE, TIMEFRAME)
+            df = alpaca.query(
+                symbols, START_DATE, END_DATE, TIMEFRAME, ADJUSTMENT
+            )
             assert not df.empty
             assert set(df.columns) == set(
                 (
@@ -578,7 +613,6 @@ class TestAKShare:
             "low",
             "close",
             "volume",
-            "adj_close",
             "symbol",
         }
         assert df.shape[0] == expected_df.shape[0]
@@ -597,7 +631,6 @@ class TestAKShare:
                 "close",
                 "volume",
                 "symbol",
-                "adj_close",
             ],
         ],
     )
@@ -620,6 +653,5 @@ class TestAKShare:
                 "close",
                 "volume",
                 "symbol",
-                "adj_close",
             )
         )

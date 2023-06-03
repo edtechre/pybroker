@@ -54,6 +54,7 @@ class DataSourceCacheKey:
     tf_seconds: int
     start_date: datetime
     end_date: datetime
+    adjustment: Optional[str]
 
 
 @dataclass(frozen=True)
