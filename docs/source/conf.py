@@ -56,6 +56,7 @@ html_extra_path = ["../_html"]
 
 # Multi-language docs.
 language = "en"
+locales = ["zh_CN"]
 locale_dirs = ["../locales/"]
 gettext_compact = False
 gettext_uuid = True
