@@ -94,12 +94,14 @@ msgid ""
 "A super-fast backtesting engine built in `NumPy <https://numpy.org/>`_  "
 "and accelerated with `Numba <https://numba.pydata.org/>`_."
 msgstr ""
+"一个在 NumPy 中构建、并使用 Numba 进行加速的超快速回测引擎。"
 
 #: ../../source/index.rst:77 d9584ee208854cadab9bf3c3b2c76358
 msgid ""
 "The ability to create and execute trading rules and models across "
 "multiple instruments with ease."
 msgstr ""
+"能够轻松创建和执行跨多个金融工具的交易规则和模型的能力。"
 
 #: ../../source/index.rst:78 be0ba17a913f4a638e2bab92e58e0e02
 msgid ""

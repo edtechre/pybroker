@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-02 22:55-0700\n"
+"POT-Creation-Date: 2023-06-02 21:23+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -17,15 +17,15 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.11.0\n"
+"Generated-By: Babel 2.12.1\n"
 
-#: ../../source/notebooks/4. 1df1dc7c5a744806a4535c7ced4a59e5 Position Ranking
+#: ../../source/notebooks/4. 4df90d73630f4349836b0d74b0fec2e4 Position Ranking
 #: Sizing.ipynb:9 and
 msgid "Ranking and Position Sizing"
-msgstr ""
+msgstr "排序和仓位大小"
 
-#: ../../source/notebooks/4. Position Ranking Sizing.ipynb:11 and
-#: e71823abe5b74616a35ab2ba0ebeebf2
+#: ../../source/notebooks/4. 63d542e96a7c4b04a3c2d6730b2a483e Position Ranking
+#: Sizing.ipynb:11 and
 msgid ""
 "In this notebook, we will learn about the features of **PyBroker** that "
 "enable you to rank ticker symbols and set position sizes for a group of "
@@ -33,20 +33,20 @@ msgid ""
 "optimize your strategy and manage risk more effectively."
 msgstr ""
 
-#: ../../source/notebooks/4. 8aec7e9fbb624cf9912fc2ef642c894a Position Ranking
-#: Sizing.ipynb:61 and
+#: ../../source/notebooks/4. Position Ranking Sizing.ipynb:61 and
+#: c5b45f318d5d4d4ca168834b20487c4c
 msgid "Ranking Ticker Symbols"
 msgstr ""
 
 #: ../../source/notebooks/4. Position Ranking Sizing.ipynb:63 and
-#: bcc6fdc78e5e464484cdcf3d4388dd7d
+#: b4bc7175fe54493fb095e5c7e8f39f3b
 msgid ""
 "In this section, we will learn about how to rank ticker symbols when "
-"placing buy orders. Let’s begin with an example of how to rank ticker "
+"placing buy orders. Let's begin with an example of how to rank ticker "
 "symbols based on volume when placing buy orders."
 msgstr ""
 
-#: ../../source/notebooks/4. 1922ea2e400245ec80db689142af9a97 Position Ranking
+#: ../../source/notebooks/4. 27070ae976bb46e191205e9ba6cfff5f Position Ranking
 #: Sizing.ipynb:89 and
 #, python-format
 msgid ""
@@ -56,7 +56,7 @@ msgid ""
 "trading volume."
 msgstr ""
 
-#: ../../source/notebooks/4. 4a616b071e4f41a2a23fa604b9891478 Position Ranking
+#: ../../source/notebooks/4. 2f4d4a61c8db4c8397c8cf280d916637 Position Ranking
 #: Sizing.ipynb:112 and
 msgid ""
 "To limit the number of long positions that can be held at any time to "
@@ -71,29 +71,29 @@ msgid ""
 "'PFE']``."
 msgstr ""
 
-#: ../../source/notebooks/4. 19cba8b1a9df442fa7a2bc6885951047 Position Ranking
-#: Sizing.ipynb:584 and
+#: ../../source/notebooks/4. Position Ranking Sizing.ipynb:584
+#: a9efbe2bc1e246c2bba769782bd07001 and
 msgid "Setting Position Sizes"
 msgstr ""
 
-#: ../../source/notebooks/4. 0ed73d6b3b9b4b69a4579538a6170b08 Position Ranking
+#: ../../source/notebooks/4. 5fda3b3fb7b84c9393393c71a31b3375 Position Ranking
 #: Sizing.ipynb:586 and
 msgid ""
 "In **PyBroker**, you can set position sizes based on multiple tickers. To"
-" illustrate this, let’s take a simple buy and hold strategy that starts "
+" illustrate this, let's take a simple buy and hold strategy that starts "
 "trading after 100 days and holds positions for 30 days:"
 msgstr ""
 
-#: ../../source/notebooks/4. Position Ranking Sizing.ipynb:613 and
-#: e536d10d8c00458b9230bcca85907ed4
+#: ../../source/notebooks/4. 44d8e3e100314645864b7bc43251431a Position Ranking
+#: Sizing.ipynb:613 and
 msgid ""
 "This will buy ``100`` shares in each of ``['T', 'F', 'GM', 'PFE']``. But "
-"what if you don’t want to use equal position sizing? For example, you may"
+"what if you don't want to use equal position sizing? For example, you may"
 " want to size positions so that more shares are allocated to tickers with"
-" lower volatility to decrease the portfolio’s overall volatility."
+" lower volatility to decrease the portfolio's overall volatility."
 msgstr ""
 
-#: ../../source/notebooks/4. 4c37f14deb5f446ebbf3bac9ffe730e8 Position Ranking
+#: ../../source/notebooks/4. 36e659300efe474cba8f695ca7793483 Position Ranking
 #: Sizing.ipynb:615 and
 msgid ""
 "To customize position sizing for each ticker, we can define a "
@@ -102,8 +102,8 @@ msgid ""
 " function that calculates the position size for each ticker:"
 msgstr ""
 
-#: ../../source/notebooks/4. Position Ranking Sizing.ipynb:655 and
-#: e400613a91c34915b4e16e83b23f1a7a
+#: ../../source/notebooks/4. 95e28821e9ea46a9a55d933ca979002f Position Ranking
+#: Sizing.ipynb:655 and
 msgid ""
 "The handler runs on every bar that generates a buy or sell signal when "
 "`buy_shares "
@@ -114,7 +114,7 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__:"
 msgstr ""
 
-#: ../../source/notebooks/4. 645cd1479c584719835350f751a477b5 Position Ranking
+#: ../../source/notebooks/4. 8446b8cd2831467f812e289d18410684 Position Ranking
 #: Sizing.ipynb:1230 and
 msgid ""
 "Using this method allows for a lot of possibilities, such as using `Mean-"
@@ -123,8 +123,8 @@ msgid ""
 "portfolio allocations."
 msgstr ""
 
-#: ../../source/notebooks/4. 14dcc3d3777d4455ad3cd97ae7a0a646 Position Ranking
-#: Sizing.ipynb:1232 and
+#: ../../source/notebooks/4. Position Ranking Sizing.ipynb:1232
+#: a0815053562c411fa03b3bda9f04f4ed and
 msgid ""
 "`In the next notebook, we will discuss how to implement custom indicators"
 " in PyBroker "
@@ -158,5 +158,34 @@ msgstr ""
 #~ "so that more shares are allocated "
 #~ "to tickers with lower volatility to "
 #~ "decrease the portfolio's overall volatility."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "In this section, we will learn "
+#~ "about how to rank ticker symbols "
+#~ "when placing buy orders. Let’s begin "
+#~ "with an example of how to rank "
+#~ "ticker symbols based on volume when "
+#~ "placing buy orders."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "In **PyBroker**, you can set position"
+#~ " sizes based on multiple tickers. To"
+#~ " illustrate this, let’s take a simple"
+#~ " buy and hold strategy that starts"
+#~ " trading after 100 days and holds "
+#~ "positions for 30 days:"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "This will buy ``100`` shares in "
+#~ "each of ``['T', 'F', 'GM', 'PFE']``. "
+#~ "But what if you don’t want to "
+#~ "use equal position sizing? For example,"
+#~ " you may want to size positions "
+#~ "so that more shares are allocated "
+#~ "to tickers with lower volatility to "
+#~ "decrease the portfolio’s overall volatility."
 #~ msgstr ""
 

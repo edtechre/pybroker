@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-02 22:55-0700\n"
+"POT-Creation-Date: 2023-06-02 21:23+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -17,14 +17,14 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.11.0\n"
+"Generated-By: Babel 2.12.1\n"
 
 #: ../../source/notebooks/7. Creating Custom Data Source.ipynb:9 a
-#: defbbf7006e14a49becaa88dee320de6
+#: a4471a319f34420d95dd7a176497f09d
 msgid "Creating a Custom Data Source"
-msgstr ""
+msgstr "自定义数据"
 
-#: ../../source/notebooks/7. 77b87ce66ec24ff19e093e615d9fe869 Creating Custom
+#: ../../source/notebooks/7. 218c34a4c494467887404b89164a9095 Creating Custom
 #: Data Source.ipynb:11 a
 msgid ""
 "**PyBroker** comes with pre-built `DataSources "
@@ -39,13 +39,13 @@ msgid ""
 "create your own ``DataSource`` class."
 msgstr ""
 
-#: ../../source/notebooks/7. Creating Custom Data Source.ipynb:15 a
-#: efec6eb55122470985a575aea5707b72
+#: ../../source/notebooks/7. 1d5cf91391d943f9889d2a59955bd0d5 Creating Custom
+#: Data Source.ipynb:15 a
 msgid "Extending DataSource"
 msgstr ""
 
 #: ../../source/notebooks/7. Creating Custom Data Source.ipynb:17 a
-#: b1098c15eb524196aa6fc4125165bccd
+#: d750b3d04e21411b9e3c0df0f7f63ec0
 msgid ""
 "In the example code provided below, a new ``DataSource`` called "
 "``CSVDataSource`` is implemented, which loads data from a CSV file. The "
@@ -56,8 +56,8 @@ msgid ""
 "parameters provided:"
 msgstr ""
 
-#: ../../source/notebooks/7. 49bb2ef43c8847c587ef99d614585bf2 Creating Custom
-#: Data Source.ipynb:53 a
+#: ../../source/notebooks/7. Creating Custom Data Source.ipynb:53 a
+#: ab49b10603f3449890313859387dabf4
 msgid ""
 "To make the custom ``'rsi'`` column from the CSV file available to "
 "**PyBroker**, we register it using `pybroker.register_columns "
@@ -66,21 +66,21 @@ msgid ""
 " data."
 msgstr ""
 
-#: ../../source/notebooks/7. 67f7ed4182604b2e837c96599a77390b Creating Custom
-#: Data Source.ipynb:55 a
+#: ../../source/notebooks/7. Creating Custom Data Source.ipynb:55 a
+#: a39ccbeeeaa1421789163a7e3cb9527c
 msgid ""
-"It’s important to note that when returning the data from your custom "
+"It's important to note that when returning the data from your custom "
 "DataSource, it must include the following columns: ``symbol``, ``date``, "
 "``open``, ``high``, ``low``, and ``close``, as these columns are expected"
 " by **PyBroker**."
 msgstr ""
 
-#: ../../source/notebooks/7. 35118a5e9f3c4e97956bf53d5ea881ea Creating Custom
+#: ../../source/notebooks/7. 995ff972e8dd47db820a7885488840a1 Creating Custom
 #: Data Source.ipynb:57 a
 msgid "Now we can query the CSV data from an instance of ``CSVDataSource``:"
 msgstr ""
 
-#: ../../source/notebooks/7. 24d4c906d77b418a935a126bc6b274cb Creating Custom
+#: ../../source/notebooks/7. 4c597f90caba483bb073b0541e840ec6 Creating Custom
 #: Data Source.ipynb:368 a
 msgid ""
 "To use ``CSVDataSource`` in a backtest, we create a new `Strategy "
@@ -88,8 +88,8 @@ msgid ""
 " object and pass the custom ``DataSource``:"
 msgstr ""
 
-#: ../../source/notebooks/7. 5ae5e096c5e94a8f81c271babcdcdf71 Creating Custom
-#: Data Source.ipynb:615 a
+#: ../../source/notebooks/7. Creating Custom Data Source.ipynb:615 a
+#: be292acb4f0245e48e659be329df2c79
 msgid ""
 "Note that because we registered the custom ``rsi`` column with "
 "**PyBroker**, it can be accessed in the `ExecContext "
@@ -97,12 +97,12 @@ msgid ""
 " using ``ctx.rsi``."
 msgstr ""
 
-#: ../../source/notebooks/7. Creating Custom Data Source.ipynb:627 a
-#: e9d0f3c4a0b5443d8955f249e0446dac
+#: ../../source/notebooks/7. 193c965d24504f25973aa95b93f0d63a Creating Custom
+#: Data Source.ipynb:627 a
 msgid "Using a Pandas DataFrame"
 msgstr ""
 
-#: ../../source/notebooks/7. 99935012b48c42219c70c1f7459d340c Creating Custom
+#: ../../source/notebooks/7. 3b431fde999e43ad9d716a371f6c6895 Creating Custom
 #: Data Source.ipynb:629 a
 msgid ""
 "If you do not need the flexibility of implementing your own `DataSource "
@@ -112,13 +112,23 @@ msgid ""
 "to a ``Strategy`` instead."
 msgstr ""
 
-#: ../../source/notebooks/7. 38e1388a011c424ea36cf16833b786de Creating Custom
+#: ../../source/notebooks/7. 5dd7dccfb070431c94355dfdb4733294 Creating Custom
 #: Data Source.ipynb:631 a
 msgid "To demonstrate, the earlier example can be re-implemented as follows:"
 msgstr ""
 
 #~ msgid ""
 #~ "It's important to note that when "
+#~ "returning the data from your custom "
+#~ "DataSource, it must include the "
+#~ "following columns: ``symbol``, ``date``, "
+#~ "``open``, ``high``, ``low``, and ``close``,"
+#~ " as these columns are expected by "
+#~ "**PyBroker**."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "It’s important to note that when "
 #~ "returning the data from your custom "
 #~ "DataSource, it must include the "
 #~ "following columns: ``symbol``, ``date``, "
