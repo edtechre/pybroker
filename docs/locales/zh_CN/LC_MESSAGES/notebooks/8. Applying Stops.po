@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-02 22:55-0700\n"
+"POT-Creation-Date: 2023-06-02 21:23+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -17,14 +17,14 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.11.0\n"
+"Generated-By: Babel 2.12.1\n"
 
-#: ../../source/notebooks/8. 03f52542ad9b42ffbbd6fa14bfd909e5 Applying
+#: ../../source/notebooks/8. 364933e6934b448a8e317b16a31a1708 Applying
 #: Stops.ipynb:9
 msgid "Applying Stops"
-msgstr ""
+msgstr "应用止损"
 
-#: ../../source/notebooks/8. 8332da6614e849178d52a0e26add6b50 Applying
+#: ../../source/notebooks/8. 24136fcff94c4a84824e8f70569fcca7 Applying
 #: Stops.ipynb:11
 msgid ""
 "Stops are used to automatically buy or sell a security once it reaches a "
@@ -35,59 +35,59 @@ msgid ""
 msgstr ""
 
 #: ../../source/notebooks/8. Applying Stops.ipynb:13
-#: c873e147abf0447984acde054f505fbb
+#: a2bb247662b84001a295e755d7a19d86
 msgid ""
 "**PyBroker** supports the simulation of stops, which is explained in "
 "detail in this notebook:"
 msgstr ""
 
-#: ../../source/notebooks/8. 53a9925c703e4c8382d73b61eb39601b Applying
+#: ../../source/notebooks/8. 19fbd24c69c74862b8ea2b762697891e Applying
 #: Stops.ipynb:40
 msgid "Stop Loss"
 msgstr ""
 
-#: ../../source/notebooks/8. 4053429368ba4c0683425a4fed73672d Applying
+#: ../../source/notebooks/8. 3ce7bf4ef5204ece9759b3ce0ee6f293 Applying
 #: Stops.ipynb:42
 msgid ""
 "A stop loss order is used to automatically exit a trade once the "
-"security’s price reaches or falls below a specified level. For example, "
+"security's price reaches or falls below a specified level. For example, "
 "the following code shows an example of a stop loss order set at ``20%`` "
 "below the entry price:"
 msgstr ""
 
 #: ../../source/notebooks/8. Applying Stops.ipynb:314
-#: c71d898cd6064567b1925838b22a2d81
+#: f58165f9d0f443efa606869d4cde0755
 msgid "Take Profit"
 msgstr ""
 
 #: ../../source/notebooks/8. Applying Stops.ipynb:316
-#: d7c67d60900e41e5969362c178b7900f
+#: fb80796557e040d4a04ba2458435c72a
 msgid ""
 "Similarly, a take profit order can be used to lock in profits on a trade."
 " The following code adds a take profit order at ``10%`` above the entry "
 "price:"
 msgstr ""
 
-#: ../../source/notebooks/8. 4a581bceb5344f6bb101e18cce76938f Applying
-#: Stops.ipynb:789
+#: ../../source/notebooks/8. Applying Stops.ipynb:789
+#: fb29604bee5c489daddeee3a9b300512
 msgid "Trailing Stop"
 msgstr ""
 
-#: ../../source/notebooks/8. 0c0567a002e640bca05e637b3596caa0 Applying
+#: ../../source/notebooks/8. 9c921bf273084cc8983e0750ddbb7f7c Applying
 #: Stops.ipynb:791
 msgid ""
 "A trailing stop is an order that is used to exit a trade once the "
-"instrument’s price falls a certain percentage or cash amount below its "
+"instrument's price falls a certain percentage or cash amount below its "
 "highest market price. Here is an example of setting a trailing stop at "
 "``20%`` below the highest market price:"
 msgstr ""
 
-#: ../../source/notebooks/8. 3da8aad5b6bc4250b4f139cd6c452ff3 Applying
-#: Stops.ipynb:1264
+#: ../../source/notebooks/8. Applying Stops.ipynb:1264
+#: c47eca97c9244c1bb7ad68cc0241ef3e
 msgid "Setting a Limit Price"
 msgstr ""
 
-#: ../../source/notebooks/8. 5ef6065cd8ee47cfb745d3cdcdd59e70 Applying
+#: ../../source/notebooks/8. 2d08e9b5832142d9ab699628e128468c Applying
 #: Stops.ipynb:1266
 msgid ""
 "A stop order can be combined with a limit price to ensure that the order "
@@ -95,18 +95,18 @@ msgid ""
 "placing a limit price on a stop order:"
 msgstr ""
 
-#: ../../source/notebooks/8. 4483c154942d412ba3c0a2c25058b105 Applying
-#: Stops.ipynb:1976
+#: ../../source/notebooks/8. Applying Stops.ipynb:1976
+#: e8de7cbf23194b77a483bc04191074ef
 msgid "Canceling a Stop"
 msgstr ""
 
-#: ../../source/notebooks/8. 38e7f5623c22400a91bd7d3d225d93b3 Applying
-#: Stops.ipynb:1978
+#: ../../source/notebooks/8. Applying Stops.ipynb:1978
+#: dbc1aeb830894ab78cba32be12c919d6
 msgid "The following code shows an example of canceling a stop order:"
 msgstr ""
 
-#: ../../source/notebooks/8. 97d77b00d0034b27a4cc1762ecbfcd41 Applying
-#: Stops.ipynb:2225
+#: ../../source/notebooks/8. Applying Stops.ipynb:2225
+#: f570ce03d5504c5c92be103216b55f4f
 msgid ""
 "`For more information on the various attributes that can be used to set "
 "stops in PyBroker, you can refer to the ExecContext reference "
@@ -128,6 +128,27 @@ msgstr ""
 #~ "A trailing stop is an order that"
 #~ " is used to exit a trade once"
 #~ " the instrument's price falls a "
+#~ "certain percentage or cash amount below"
+#~ " its highest market price. Here is"
+#~ " an example of setting a trailing "
+#~ "stop at ``20%`` below the highest "
+#~ "market price:"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "A stop loss order is used to "
+#~ "automatically exit a trade once the "
+#~ "security’s price reaches or falls below"
+#~ " a specified level. For example, the"
+#~ " following code shows an example of"
+#~ " a stop loss order set at "
+#~ "``20%`` below the entry price:"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "A trailing stop is an order that"
+#~ " is used to exit a trade once"
+#~ " the instrument’s price falls a "
 #~ "certain percentage or cash amount below"
 #~ " its highest market price. Here is"
 #~ " an example of setting a trailing "
