@@ -1,0 +1,501 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2023, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-06-02 22:52-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.11.0\n"
+
+#: ../../docs/source/reference/pybroker.scope.rst:2
+#: 3d47dd11c1424236a874748c8c1e5574
+msgid "pybroker.scope module"
+msgstr ""
+
+#: 90fa4017abf345e681e0586c523c1b0b of pybroker.scope:1
+msgid ""
+"Contains scopes that store data and object references used to execute a "
+":class:`pybroker.strategy.Strategy`."
+msgstr ""
+
+#: 09a1731609ad4abebb8aa932a4f18bda 29fd210364654a378747514165bc9c5b
+#: 2d6b6c1c4bec4cce8b9ae6050a0dcee0 35ab758cf59e43a6a8104188a1125aad
+#: 9b6da3b8e1a64c9cabd9a74b39b64732 abf7d74c85c9497aa2a8e0d15dd037a4
+#: fb37720db9e245be803e89b2f3b9df9f of pybroker.scope.ColumnScope:1
+#: pybroker.scope.IndicatorScope:1 pybroker.scope.ModelInputScope:1
+#: pybroker.scope.PendingOrderScope:1 pybroker.scope.PredictionScope:1
+#: pybroker.scope.PriceScope:1 pybroker.scope.StaticScope:1
+msgid "Bases: :py:class:`object`"
+msgstr ""
+
+#: 5c336dc994fe41a0a4c94b06d6c9da36 of pybroker.scope.ColumnScope:1
+msgid "Caches and retrieves column data queried from :class:`pandas.DataFrame`."
+msgstr ""
+
+#: 040d48a40dff4e9fbeb229971cf32c7b 06f165ebc3a54e8d803a3f55789bf4a3
+#: 15ca077f222c4905a30ca5b96b71d92e 2342fd01bcc24640b641b3c8a712eb66
+#: 321f86e7562f47b1853c1fdf62cb51cc 7abd72bb76454f89bde1f4d8f121830a
+#: 906587b15742460484cc86fddcda5666 aca179b5e2e544a8b239266da215088d
+#: dd4623e978e04259804e364358a22202 e9a7fb659d45412e8a339c8d8bf21e07
+#: f8e3862f0f2c45e8a579ebcca1e22ed4 of pybroker.scope.ColumnScope
+#: pybroker.scope.ColumnScope.bar_data_from_data_columns
+#: pybroker.scope.ColumnScope.fetch pybroker.scope.ColumnScope.fetch_dict
+#: pybroker.scope.IndicatorScope pybroker.scope.IndicatorScope.fetch
+#: pybroker.scope.ModelInputScope pybroker.scope.ModelInputScope.fetch
+#: pybroker.scope.PendingOrderScope.add pybroker.scope.PredictionScope
+#: pybroker.scope.PredictionScope.fetch
+msgid "Parameters"
+msgstr ""
+
+#: 5c7e9b95d32d4d5fab4680bf5571e61d of pybroker.scope.ColumnScope:3
+msgid ":class:`pandas.DataFrame` containing the column data."
+msgstr ""
+
+#: 8d18784ab8714d06a445db3b0fcd6bf4 of
+#: pybroker.scope.ColumnScope.bar_data_from_data_columns:1
+msgid ""
+"Returns a new :class:`pybroker.common.BarData` instance containing column"
+" data of default and custom data columns registered with "
+":class:`.StaticScope`."
+msgstr ""
+
+#: 5552f59ca0dc40cfb1e3e67829ed733b 66ea3db116f3450b9972153babb7b233
+#: 7a41494feb504bc1813a21f9492469b9 b2e58825624a442c9c91b2817e08ca79
+#: c0ff72074c5b49349546eadb8fc3970e d435f0b2e0f2430a9892c66196049c52 of
+#: pybroker.scope.ColumnScope.bar_data_from_data_columns:5
+#: pybroker.scope.ColumnScope.fetch:3 pybroker.scope.ColumnScope.fetch_dict:3
+#: pybroker.scope.IndicatorScope.fetch:3 pybroker.scope.ModelInputScope.fetch:3
+#: pybroker.scope.PredictionScope.fetch:3
+msgid "Ticker symbol to query."
+msgstr ""
+
+#: c9b8f46381974c35ac10076c4f3a1692 cb0f96cae6d44f11bea1c4c4821eccf5
+#: f7801f48613840edb0e371812ed9582e of
+#: pybroker.scope.ColumnScope.bar_data_from_data_columns:6
+#: pybroker.scope.ColumnScope.fetch:5 pybroker.scope.ColumnScope.fetch_dict:5
+msgid ""
+"Truncates column values (exclusive). If ``None``, then column values are "
+"not truncated."
+msgstr ""
+
+#: 1fb6fb1f5af6414393270062f8152a42 of pybroker.scope.ColumnScope.fetch:1
+msgid "Fetches a :class:`numpy.ndarray` of column data for ``symbol``."
+msgstr ""
+
+#: 86d322ef7ac546ab88feebea64a87da0 of pybroker.scope.ColumnScope.fetch:4
+msgid "Name of column to query."
+msgstr ""
+
+#: 9073d7a58b434db99667cbdd2ef30640 97c901e80f6c4a4a9ca99f7a8a71a8a5
+#: c2140d71934b40868e5d2e3cda305961 c309839e5ad241c5aae6b56b08126ece
+#: d94377fde93940d2a2ba16d8ebf7b444 dde848e090134eccb9667902ad8eeed8 of
+#: pybroker.scope.ColumnScope.fetch pybroker.scope.ColumnScope.fetch_dict
+#: pybroker.scope.IndicatorScope.fetch pybroker.scope.ModelInputScope.fetch
+#: pybroker.scope.PendingOrderScope.add pybroker.scope.PredictionScope.fetch
+msgid "Returns"
+msgstr ""
+
+#: 9664127fcfa045d38209ad433459683d of pybroker.scope.ColumnScope.fetch:8
+msgid ""
+":class:`numpy.ndarray` of column data for every bar until ``end_index`` "
+"(when specified)."
+msgstr ""
+
+#: 2e54f00204d64621a668bc4f8cd927d6 of pybroker.scope.ColumnScope.fetch_dict:1
+msgid "Fetches a ``dict`` of column data for ``symbol``."
+msgstr ""
+
+#: 2b120cac71404b34b18518849dde4546 of pybroker.scope.ColumnScope.fetch_dict:4
+msgid "Names of columns to query."
+msgstr ""
+
+#: 7efd1e2596ba422580f9b1cd9df7e2f1 of pybroker.scope.ColumnScope.fetch_dict:8
+msgid ""
+"``dict`` mapping column names to :class:`numpy.ndarray`\\ s of column "
+"values."
+msgstr ""
+
+#: 8897a3d943a24a3a8c24db5c8fe70dbc of pybroker.scope.IndicatorScope:1
+msgid "Caches and retrieves :class:`pybroker.indicator.Indicator` data."
+msgstr ""
+
+#: 030fbd80edc7444ba9eef53cdeb9c51b of pybroker.scope.IndicatorScope:3
+msgid ""
+":class:`Mapping` of :class:`pybroker.common.IndicatorSymbol` pairs to "
+"``pandas.Series`` of :class:`pybroker.indicator.Indicator` values."
+msgstr ""
+
+#: 47725e8723024ea09008bb3fb298201f of pybroker.scope.IndicatorScope:6
+msgid ""
+"Filters :class:`pybroker.indicator.Indicator` data on :class:`Sequence` "
+"of dates."
+msgstr ""
+
+#: 9ccac6be91c4490eb6745f330946e15a of pybroker.scope.IndicatorScope.fetch:1
+msgid "Fetches :class:`pybroker.indicator.Indicator` data."
+msgstr ""
+
+#: a10084e2e15e4a51b49774a3ecff6abd of pybroker.scope.IndicatorScope.fetch:4
+msgid "Name of :class:`pybroker.indicator.Indicator` to query."
+msgstr ""
+
+#: 4a2f3329fdc947eb877ebd7bfd45b9eb of pybroker.scope.IndicatorScope.fetch:5
+msgid ""
+"Truncates the array of :class:`pybroker.indicator.Indicator` data "
+"returned (exclusive). If ``None``, then indicator data is not truncated."
+msgstr ""
+
+#: dce0ed0dd35943d5a0810b2df2e74521 of pybroker.scope.IndicatorScope.fetch:9
+msgid ""
+":class:`numpy.ndarray` of :class:`pybroker.indicator.Indicator` data for "
+"every bar until ``end_index`` (when specified)."
+msgstr ""
+
+#: 1b849af3cb8a4247966fc0f2459f31b2 of pybroker.scope.ModelInputScope:1
+msgid "Caches and retrieves model input data."
+msgstr ""
+
+#: 2b1ec285d31f4f15be73ed13ece39bc3 of pybroker.scope.ModelInputScope:3
+msgid ":class:`.ColumnScope`."
+msgstr ""
+
+#: 149560145c4c46d5a5237f5094529c9a of pybroker.scope.ModelInputScope:4
+msgid ":class:`.IndicatorScope`."
+msgstr ""
+
+#: 9ab2864a814345e682d3a66d18bf9783 b0cab8e54cab435bb82d93e19fa79577 of
+#: pybroker.scope.ModelInputScope:5 pybroker.scope.PredictionScope:3
+msgid ""
+":class:`Mapping` of :class:`pybroker.common.ModelSymbol` pairs to "
+":class:`pybroker.common.TrainedModel`\\ s."
+msgstr ""
+
+#: 6a2885dcc76446a3a25c47b9d7243f13 of pybroker.scope.ModelInputScope.fetch:1
+msgid "Fetches model input data."
+msgstr ""
+
+#: 1b8c7154f8ae414ba487689ea7e70a9c of pybroker.scope.ModelInputScope.fetch:4
+msgid "Name of :class:`pybroker.model.ModelSource` to query input data."
+msgstr ""
+
+#: c19d16b7e8ce40eb8d9f97347d05fc15 of pybroker.scope.ModelInputScope.fetch:6
+msgid ""
+"Truncates the array of model input data returned (exclusive). If "
+"``None``, then model input data is not truncated."
+msgstr ""
+
+#: 6e32e8ad2b9847d2831535da3ad17d1c of pybroker.scope.ModelInputScope.fetch:10
+msgid ""
+":class:`numpy.ndarray` of model input data for every bar until "
+"``end_index`` (when specified)."
+msgstr ""
+
+#: 998ac2cc51b54e728629cda83a45060b of pybroker.scope.PendingOrder:1
+msgid "Bases: :py:class:`~typing.NamedTuple`"
+msgstr ""
+
+#: 41eede081ce44343bdc220bc126c16f5 of pybroker.scope.PendingOrder:1
+msgid "Holds data for a pending order."
+msgstr ""
+
+#: f0663b13cf97455dae6d551271e0650f of pybroker.scope.PendingOrder:5
+msgid "Unique ID."
+msgstr ""
+
+#: 0bd6536d670b4012b6346efd749708eb 462c814cf6054ae2933e19c6c7b2fd43
+#: 7f84383a340b4b479dcfe710d100b079 90d72e55616247b69974916716104647
+#: ab44ab043c40435884c2fd84ef871916 af8317dd48c74d27a16a65643b33b16c
+#: cba49fc5e9b44e409cdc0dbf2d2c579b ee02d51b8be4490fab23da00ad4ce19a of
+#: pybroker.scope.PendingOrder
+msgid "type"
+msgstr ""
+
+#: 5a2a68cf15a44beaa35397a0a98be8ca of pybroker.scope.PendingOrder:7
+msgid "int"
+msgstr ""
+
+#: 3a1819b417284ed29a16e74cc9523c53 a476adc5f6ba4f239c1d28e0bf6ff667 of
+#: pybroker.scope.PendingOrder:11 pybroker.scope.PendingOrderScope.add:3
+msgid "Type of order, either ``buy`` or ``sell``."
+msgstr ""
+
+#: a9256c25a7814f4a843a10521524af1b of pybroker.scope.PendingOrder:13
+msgid "Literal['buy', 'sell']"
+msgstr ""
+
+#: 2138b99249e94f0e8468142856b80ba3 531c8e1710ff42e2b663f2335425d925 of
+#: pybroker.scope.PendingOrder:17 pybroker.scope.PendingOrderScope.add:4
+msgid "Ticker symbol of the order."
+msgstr ""
+
+#: 2723d0231bc14986b9c2ac1929b085d7 of pybroker.scope.PendingOrder:19
+msgid "str"
+msgstr ""
+
+#: 524bbbd4bc9a4503b4aa890aa81257e4 ee70bf5f16704a4fa406b79e3a250028 of
+#: pybroker.scope.PendingOrder:23 pybroker.scope.PendingOrderScope.add:5
+msgid "Date the order was created."
+msgstr ""
+
+#: 3cc05205130245498b4099846f3d233d 529750858942420f8a9a40246c016bd5 of
+#: pybroker.scope.PendingOrder:25 pybroker.scope.PendingOrder:31
+msgid "numpy.datetime64"
+msgstr ""
+
+#: 04fa006baa7047b1aa0841d6857f5002 3fb0ecada0dc48a1b2b29d3b305f89ee of
+#: pybroker.scope.PendingOrder:29 pybroker.scope.PendingOrderScope.add:6
+msgid "Date the order will be executed."
+msgstr ""
+
+#: 1d179b54075d4a178c9315943223a13d 41d10c0d701141ba9e44c83a5c4a9b8a of
+#: pybroker.scope.PendingOrder:35 pybroker.scope.PendingOrderScope.add:7
+msgid "Number of shares to be bought or sold."
+msgstr ""
+
+#: 0e50fa57a64a47f49daec935aee4317f of pybroker.scope.PendingOrder:37
+msgid "decimal.Decimal"
+msgstr ""
+
+#: 5affde841cb1425cba52b067b2717b47 6fc53cda03584f928ea7938f94b1ae11 of
+#: pybroker.scope.PendingOrder:41 pybroker.scope.PendingOrderScope.add:8
+msgid "Limit price to use for the order."
+msgstr ""
+
+#: 241be3a17cc34b6fa31016bf2e9a9faa of pybroker.scope.PendingOrder:43
+msgid "decimal.Decimal | None"
+msgstr ""
+
+#: 15ad7e8229544bf8b9169156dfbd1e8a e43ee6dcadfd484db769f3e905dcb95f of
+#: pybroker.scope.PendingOrder:47 pybroker.scope.PendingOrderScope.add:9
+msgid "Price that the order will be filled at."
+msgstr ""
+
+#: 50454098afe64bd28dc28cadaf019803 of pybroker.scope.PendingOrder:49
+msgid ""
+"int | float | numpy.floating | decimal.Decimal | "
+"pybroker.common.PriceType | Callable[[str, pybroker.common.BarData], int "
+"| float | decimal.Decimal]"
+msgstr ""
+
+#: 348f1e07bdb9447ab0916182d0272081 of pybroker.scope.PendingOrderScope:1
+msgid "Stores :class:`.PendingOrder`\\ s"
+msgstr ""
+
+#: 9c7bdafcde1d4fa898d803b1469c9906 of pybroker.scope.PendingOrderScope.add:1
+msgid "Creates a :class:`.PendingOrder`."
+msgstr ""
+
+#: 940a256508bd4152a07b5a00f18a821a of pybroker.scope.PendingOrderScope.add:11
+msgid "ID of the :class:`.PendingOrder`."
+msgstr ""
+
+#: 1f7cc083c611418fb55bf73d56727759 of
+#: pybroker.scope.PendingOrderScope.contains:1
+msgid "Returns whether a :class:`.PendingOrder` exists with ``order_id``."
+msgstr ""
+
+#: 742e6e8b7fb44a8f80ddf4cf76ccb362 of
+#: pybroker.scope.PendingOrderScope.orders:1
+msgid "Returns an :class:`Iterable` of :class:`.PendingOrder`\\ s."
+msgstr ""
+
+#: 893a80c24dd9463e9b9305c1908c83b6 of
+#: pybroker.scope.PendingOrderScope.remove:1
+msgid "Removes a :class:`.PendingOrder` with ``order_id```."
+msgstr ""
+
+#: 86a5fcbd90f74ac9b2c4b15436da240e of
+#: pybroker.scope.PendingOrderScope.remove_all:1
+msgid "Removes all :class:`.PendingOrder`\\ s."
+msgstr ""
+
+#: 880083d07141445e96be1189e00df0be of pybroker.scope.PredictionScope:1
+msgid "Caches and retrieves model predictions."
+msgstr ""
+
+#: 65a2c6fa66d94e1fb5f8a164475698ac of pybroker.scope.PredictionScope:6
+msgid ":class:`.ModelInputScope`."
+msgstr ""
+
+#: d75199eec59c43bd9cb15b454d0ceb54 of pybroker.scope.PredictionScope.fetch:1
+msgid "Fetches model predictions."
+msgstr ""
+
+#: 36ad54c29f28473a9d2498e82018c0d8 of pybroker.scope.PredictionScope.fetch:4
+msgid "Name of :class:`pybroker.model.ModelSource` that made the predictions."
+msgstr ""
+
+#: ed0917dd02c141359da1feb3ad77e8d7 of pybroker.scope.PredictionScope.fetch:6
+msgid ""
+"Truncates the array of predictions returned (exclusive). If ``None``, "
+"then predictions are not truncated."
+msgstr ""
+
+#: 9a57a8e9717d47ed946c54833c9d96df of pybroker.scope.PredictionScope.fetch:9
+msgid ""
+":class:`numpy.ndarray` of model predictions for every bar until "
+"``end_index`` (when specified)."
+msgstr ""
+
+#: 4bf2cfc282f64924a2287f8845357b60 of pybroker.scope.PriceScope:1
+msgid "Retrieves most recent prices."
+msgstr ""
+
+#: acdd0df59ebe4c0c9cfbc963c35a60b6 of pybroker.scope.StaticScope:1
+msgid "A static registry of data and object references."
+msgstr ""
+
+#: 9bbf074130db4011a0b5c22c61355cb9 of pybroker.scope.StaticScope:5
+msgid ":class:`pybroker.log.Logger`"
+msgstr ""
+
+#: a80113bd564d4c1c8935b63880c8bc9b of pybroker.scope.StaticScope:9
+msgid ""
+":class:`diskcache.Cache` that stores data retrieved from "
+":class:`pybroker.data.DataSource`."
+msgstr ""
+
+#: 2896bf9f5c5c464ab8249d4c50c19d3e of pybroker.scope.StaticScope:14
+msgid "Namespace set for  :attr:`.data_source_cache`."
+msgstr ""
+
+#: 0f1486a5f99f43dab4d09bc01b6c6f41 of pybroker.scope.StaticScope:18
+msgid ""
+":class:`diskcache.Cache` that stores "
+":class:`pybroker.indicator.Indicator` data."
+msgstr ""
+
+#: a1ed0ece2ed1476594de642944d48410 of pybroker.scope.StaticScope:23
+msgid "Namespace set for :attr:`.indicator_cache`."
+msgstr ""
+
+#: cc642046642e42e1979232efe7db4ecb of pybroker.scope.StaticScope:27
+msgid ":class:`diskcache.Cache` that stores trained models."
+msgstr ""
+
+#: 8636b4e2959e4cac8520419c97079e0b of pybroker.scope.StaticScope:31
+msgid "Namespace set for :attr:`.model_cache`."
+msgstr ""
+
+#: ca102e3a8a624db5859ac403e395216e of pybroker.scope.StaticScope:35
+msgid ""
+"Default data columns in :class:`pandas.DataFrame` retrieved from a "
+":class:`pybroker.data.DataSource`."
+msgstr ""
+
+#: 603a012e8794495eb1d35982042908bd of pybroker.scope.StaticScope:40
+msgid ""
+"User-defined data columns in :class:`pandas.DataFrame` retrieved from a "
+":class:`pybroker.data.DataSource`."
+msgstr ""
+
+#: a2988670620647aba44fdc1545991ec1 of
+#: pybroker.scope.StaticScope.all_data_cols:1
+msgid "All registered data column names."
+msgstr ""
+
+#: 50fc0d8612fb4a49b6cd6976abbb871e of
+#: pybroker.scope.StaticScope.freeze_data_cols:1
+msgid "Prevents additional data columns from being registered."
+msgstr ""
+
+#: 6e3b70d97fdf484ca1bb8639faa1a3ca of
+#: pybroker.scope.StaticScope.get_indicator:1
+msgid "Retrieves a :class:`pybroker.indicator.Indicator` from static scope."
+msgstr ""
+
+#: 90b13601b26e4b27a5a9b29006179b33 of
+#: pybroker.scope.StaticScope.get_indicator_names:1
+msgid ""
+"Returns a ``tuple[str]`` of all :class:`pybroker.indicator.Indicator` "
+"names that are registered with :class:`pybroker.model.ModelSource` having"
+" ``model_name``."
+msgstr ""
+
+#: 46227ed685344962bae31074dbb77ba7 of
+#: pybroker.scope.StaticScope.get_model_source:1
+msgid "Retrieves a :class:`pybroker.model.ModelSource` from static scope."
+msgstr ""
+
+#: 69bd2decd76d45bd9518a4f8c3c80f8b of
+#: pybroker.scope.StaticScope.has_indicator:1
+msgid "Whether :class:`pybroker.indicator.Indicator` is stored in static scope."
+msgstr ""
+
+#: 88e01675685b44c0b8631983d9d2602b of
+#: pybroker.scope.StaticScope.has_model_source:1
+msgid "Whether :class:`pybroker.model.ModelSource` is stored in static scope."
+msgstr ""
+
+#: dd71728126a44db097373b92c432bda2 of pybroker.scope.StaticScope.instance:1
+msgid "Returns singleton instance."
+msgstr ""
+
+#: 6e30a74868f74c12af7e1c53b16bf10a 74becf718b3749c680e33a10385ba497 of
+#: pybroker.scope.StaticScope.param:1 pybroker.scope.param:1
+msgid "Get or set a global parameter."
+msgstr ""
+
+#: 0e34944fca7041a4bcc8f81713806eee of
+#: pybroker.scope.StaticScope.register_custom_cols:1
+msgid "Registers user-defined column names."
+msgstr ""
+
+#: 5eaa6d77bc1b47a29f6b25f8cc6cdd2d of
+#: pybroker.scope.StaticScope.set_indicator:1
+msgid "Stores :class:`pybroker.indicator.Indicator` in static scope."
+msgstr ""
+
+#: 2b27fa2da61a43ffb29b6972c80dbe8e of
+#: pybroker.scope.StaticScope.set_model_source:1
+msgid "Stores :class:`pybroker.model.ModelSource` in static scope."
+msgstr ""
+
+#: ddbfbfd574bc42cc9dd73fff360c7f35 of
+#: pybroker.scope.StaticScope.unfreeze_data_cols:1
+msgid ""
+"Allows additional data columns to be registered if "
+":func:`pybroker.scope.StaticScope.freeze_data_cols` was called."
+msgstr ""
+
+#: e04edcc166e24ba69fb925b14bae1903 of
+#: pybroker.scope.StaticScope.unregister_custom_cols:1
+msgid "Unregisters user-defined column names."
+msgstr ""
+
+#: 37f75befe33e4ca3a73fdefd0ca8c1d2 of pybroker.scope.disable_logging:1
+msgid "Disables event logging."
+msgstr ""
+
+#: 3e4cd960564a4caba7def946d1b8c11f of pybroker.scope.disable_progress_bar:1
+msgid "Disables logging a progress bar."
+msgstr ""
+
+#: da740f81370c478a9802686abb513621 of pybroker.scope.enable_logging:1
+msgid "Enables event logging."
+msgstr ""
+
+#: d760f4a2b2ea48cfa1b2000744add2a3 of pybroker.scope.enable_progress_bar:1
+msgid "Enables logging a progress bar."
+msgstr ""
+
+#: 505a65d0fb2e4d1ba1d62f1e107503c9 of pybroker.scope.register_columns:1
+msgid "Registers ``names`` of user-defined data columns."
+msgstr ""
+
+#: 0f9df7d084234dd39c42f3c841f58f05 of pybroker.scope.unregister_columns:1
+msgid "Unregisters ``names`` of user-defined data columns."
+msgstr ""
+

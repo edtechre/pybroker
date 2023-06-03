@@ -1,0 +1,132 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2023, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-06-02 22:52-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.11.0\n"
+
+#: ../../docs/source/notebooks/9. Positions.ipynb:9 Rebalancing
+#: f67503ec83714933ac82b651586ae75a
+msgid "Rebalancing Positions"
+msgstr ""
+
+#: ../../docs/source/notebooks/9. 11099d1068274cbb86f85da11f13e321
+#: Positions.ipynb:11 Rebalancing
+msgid ""
+"**PyBroker** can be used to simulate rebalancing a portfolio. This means "
+"that **PyBroker** can simulate adjusting the asset allocation of a "
+"portfolio to match a desired target allocation. Additionally, our "
+"portfolio can be rebalanced using `portfolio optimization "
+"<https://en.wikipedia.org/wiki/Portfolio_optimization>`__, as this "
+"notebook will demonstrate."
+msgstr ""
+
+#: ../../docs/source/notebooks/9. 650d3e20237043ccb4a664fe2073ca6f
+#: Positions.ipynb:62 Rebalancing
+msgid "Equal Position Sizing"
+msgstr ""
+
+#: ../../docs/source/notebooks/9. Positions.ipynb:64 Rebalancing
+#: d5c763dc02af4be8a1c9263bab8bf1c4
+msgid ""
+"Let’s assume that we want to rebalance a long-only portfolio at the "
+"beginning of every month to make sure that each asset in our portfolio "
+"has a roughly equal allocation."
+msgstr ""
+
+#: ../../docs/source/notebooks/9. Positions.ipynb:66 Rebalancing
+#: ab947664b1ca470e82b4f25e36e6ae38
+msgid ""
+"We first start by writing a helper function to detect when the current "
+"bar’s date is the start of a new month:"
+msgstr ""
+
+#: ../../docs/source/notebooks/9. 0f8a3394afea45e093c0ac8e831a1516
+#: Positions.ipynb:91 Rebalancing
+msgid ""
+"Next, we implement a function that will either buy or sell enough shares "
+"in an asset to reach a target allocation."
+msgstr ""
+
+#: ../../docs/source/notebooks/9. Positions.ipynb:125 Rebalancing
+#: b3c160f953fd4432bb660842958f4735
+msgid ""
+"If the current allocation is above the target level, the function will "
+"sell some shares of the asset, while if the current allocation is below "
+"the target level, the function will buy some shares of the asset."
+msgstr ""
+
+#: ../../docs/source/notebooks/9. 355e5ad67b084a8e85c618a22be78392
+#: Positions.ipynb:127 Rebalancing
+msgid ""
+"Following that, we write a ``rebalance`` function to set each asset to an"
+" equal target allocation at the beginning of each month:"
+msgstr ""
+
+#: ../../docs/source/notebooks/9. 9c04c2acb5154651a7da6d916326f7ba
+#: Positions.ipynb:152 Rebalancing
+msgid ""
+"Now that we have implemented the ``rebalance`` function, the next step is"
+" to backtest our rebalancing strategy using five different stocks in our "
+"portfolio. To process all stocks at once on each bar of data, we will use"
+" the `Strategy#set_after_exec "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_after_exec>`__"
+" method:"
+msgstr ""
+
+#: ../../docs/source/notebooks/9. 7d84701bfba449678d01b1740cafd679
+#: Positions.ipynb:508 Rebalancing
+msgid "Portfolio Optimization"
+msgstr ""
+
+#: ../../docs/source/notebooks/9. Positions.ipynb:510 Rebalancing
+#: da34e23323224d74b072896264c1e527
+msgid ""
+"`Portfolio optimization "
+"<https://en.wikipedia.org/wiki/Portfolio_optimization>`__ can guide our "
+"rebalancing in order to meet some objective for our portfolio. For "
+"instance, we can use portfolio optimization with the goal of allocating "
+"assets in a way to minimize risk."
+msgstr ""
+
+#: ../../docs/source/notebooks/9. Positions.ipynb:512 Rebalancing
+#: cef15812f977475090eb5d160f112170
+msgid ""
+"`Riskfolio-Lib <https://riskfolio-lib.readthedocs.io/>`__ is a popular "
+"Python library for performing portfolio optimization. Below shows how to "
+"use it to construct a minimum risk portfolio by minimizing the "
+"portfolio’s `Conditional Value at Risk (CVar) "
+"<https://www.investopedia.com/terms/c/conditional_value_at_risk.asp>`__ "
+"based on the past year of returns:"
+msgstr ""
+
+#: ../../docs/source/notebooks/9. 06e47a24443b4ef097647339752692e8
+#: Positions.ipynb:564 Rebalancing
+msgid ""
+"You can find more information and examples of using `Riskfolio-Lib <https"
+"://riskfolio-lib.readthedocs.io/>`__ on the official documentation. Now, "
+"let’s move on to backtesting the strategy!"
+msgstr ""
+
+#: ../../docs/source/notebooks/9. 220a92a173174b8fb08c38ffd72c1b15
+#: Positions.ipynb:832 Rebalancing
+msgid ""
+"Above, we can observe that the portfolio optimization resulted in "
+"allocating the entire portfolio to 3 of the 5 stocks during the first "
+"month of the backtest."
+msgstr ""
+

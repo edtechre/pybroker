@@ -1,0 +1,226 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2023, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-06-02 22:52-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.11.0\n"
+
+#: ../../docs/source/index.rst:147 ../../docs/source/install.rst:2
+#: 2cc646199dd047a197aba6c8df1f766e
+msgid "Installation"
+msgstr ""
+
+#: ../../docs/source/index.rst:147
+msgid "User Guide"
+msgstr ""
+
+#: ../../docs/source/index.rst:167
+msgid "Configuration Options"
+msgstr ""
+
+#: ../../docs/source/index.rst:167
+msgid "Modules"
+msgstr ""
+
+#: ../../docs/source/index.rst:167
+msgid "Index"
+msgstr ""
+
+#: ../../docs/source/index.rst:167
+msgid "Reference"
+msgstr ""
+
+#: ../../docs/source/index.rst:191
+msgid "Changelog"
+msgstr ""
+
+#: ../../docs/source/index.rst:191
+msgid "License"
+msgstr ""
+
+#: ../../docs/source/index.rst:191
+msgid "Other Information"
+msgstr ""
+
+#: ../../docs/source/index.rst:-1 ../../docs/source/index.rst:28
+#: 3e4d8ad034064aa2bed3654af0fdc112 58b18ff34f8443ca8213e98a16f80e79
+msgid "PyBroker"
+msgstr ""
+
+#: ../../docs/source/index.rst:-1 ../../docs/source/index.rst:64
+#: 08e24034094c4ce3b8312c15e247605d ef7a25ccde49473789694ccbeea063a4
+msgid "Algorithmic Trading in Python with Machine Learning"
+msgstr ""
+
+#: ../../docs/source/index.rst:-1 89cb9ac0a2824280b34ed41025883a6d
+msgid "XJpTXQaAdlEb2eAbndHa2ZmaUiOixSMaRusk-kKVKOQ"
+msgstr ""
+
+#: ../../docs/source/index.rst:66 34dbbc1ca0fe409e89dfd5ecc53fba41
+msgid ""
+"Are you looking to enhance your trading strategies with the power of "
+"Python and machine learning? Then you need to check out **PyBroker**! "
+"This Python framework is designed for developing algorithmic trading "
+"strategies, with a focus on strategies that use machine learning. With "
+"PyBroker, you can easily create and fine-tune trading rules, build "
+"powerful models, and gain valuable insights into your strategy's "
+"performance."
+msgstr ""
+
+#: ../../docs/source/index.rst:74 f90d8c4e3443423f9d4a8c7535d04cdf
+msgid "Key Features"
+msgstr ""
+
+#: ../../docs/source/index.rst:76 edba939b3b974d879e7e3e770bb20136
+msgid ""
+"A super-fast backtesting engine built in `NumPy <https://numpy.org/>`_  "
+"and accelerated with `Numba <https://numba.pydata.org/>`_."
+msgstr ""
+
+#: ../../docs/source/index.rst:77 f49bbfa26e514c78a5575ec037d6aadb
+msgid ""
+"The ability to create and execute trading rules and models across "
+"multiple instruments with ease."
+msgstr ""
+
+#: ../../docs/source/index.rst:78 7e53cc5a553a400c8a5d375e08a66d76
+msgid ""
+"Access to historical data from `Alpaca <https://alpaca.markets/>`_, "
+"`Yahoo Finance <https://finance.yahoo.com/>`_, `AKShare "
+"<https://github.com/akfamily/akshare>`_, or from `your own data provider "
+"<https://www.pybroker.com/en/latest/notebooks/7.%20Creating%20a%20Custom%20Data%20Source.html>`_."
+msgstr ""
+
+#: ../../docs/source/index.rst:79 ed39685cb5f346e2a3ad5c25bf620b91
+msgid ""
+"The option to train and backtest models using `Walkforward Analysis "
+"<https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html"
+"#Walkforward-Analysis>`_, which simulates how the strategy would perform "
+"during actual trading."
+msgstr ""
+
+#: ../../docs/source/index.rst:80 25d12ec26a09455ba7a9526cf4521155
+msgid ""
+"More reliable trading metrics that use randomized `bootstrapping "
+"<https://en.wikipedia.org/wiki/Bootstrapping_(statistics)>`_ to provide "
+"more accurate results."
+msgstr ""
+
+#: ../../docs/source/index.rst:81 068eabeb289e408cbeefac83151f6a16
+msgid ""
+"Caching of downloaded data, indicators, and models to speed up your "
+"development process."
+msgstr ""
+
+#: ../../docs/source/index.rst:82 ea8338bea1204314b651c28d00405f27
+msgid "Parallelized computations that enable faster performance."
+msgstr ""
+
+#: ../../docs/source/index.rst:84 cfa8627dec1e47a5b7f3b6f114375047
+msgid ""
+"With PyBroker, you'll have all the tools you need to create winning "
+"trading strategies backed by data and machine learning. Start using "
+"PyBroker today and take your trading to the next level!"
+msgstr ""
+
+#: ../../docs/source/install.rst:4 f587ab7955884415a3dd28ecba745b89
+msgid ""
+"PyBroker supports Python 3.9+ on Windows, Mac, and Linux. You can install"
+" PyBroker using ``pip``:"
+msgstr ""
+
+#: ../../docs/source/install.rst:11 891af3682f6a4d3c8bb6b983ee2b011d
+msgid "Or you can clone the Git repository with:"
+msgstr ""
+
+#: ../../docs/source/index.rst:91 a5835db00997482d87eb3c5927e8724d
+msgid "A Quick Example"
+msgstr ""
+
+#: ../../docs/source/index.rst:93 1c98f7533b8e43659f541f312bff6e56
+msgid ""
+"Get a glimpse of what backtesting with PyBroker looks like with these "
+"code snippets:"
+msgstr ""
+
+#: ../../docs/source/index.rst:96 2389ac1a5b4b42cf82c17ff970a15b71
+msgid "**Rule-based Strategy**::"
+msgstr ""
+
+#: ../../docs/source/index.rst:117 c140d86809564a4d80ad5bf2b24ac18f
+msgid "**Model-based Strategy**::"
+msgstr ""
+
+#: ../../docs/source/index.rst:145 0288352b533c4a759935fc8f23ab8afd
+msgid "To learn how to use PyBroker, see the notebooks under the *User Guide*:"
+msgstr ""
+
+#: ../../docs/source/index.rst:164 f282e6b56fce4d69bb5610dce513b7f7
+msgid ""
+"`The notebooks above are also available on Github "
+"<https://github.com/edtechre/pybroker/tree/master/docs/notebooks>`_."
+msgstr ""
+
+#: ../../docs/source/index.rst:176 14607a9a68cc49dcbaafe65dd5b6d1dd
+msgid "Recommended Reading"
+msgstr ""
+
+#: ../../docs/source/index.rst:178 08d9924cc5be47fba9a82acbc0a3ab42
+msgid ""
+"The following is a list of essential books that provide background "
+"information on quantitative finance and algorithmic trading:"
+msgstr ""
+
+#: ../../docs/source/index.rst:181 d147efe2e2ca4003b192a094d70f16e1
+msgid ""
+"Lingjie Ma, `Quantitative Investing: From Theory to Industry "
+"<https://www.amazon.com/Quantitative-Investing-Industry-Lingjie-"
+"Ma/dp/3030472019/>`_"
+msgstr ""
+
+#: ../../docs/source/index.rst:183 4d88b1afa0e94398987b037b515d8bc8
+msgid ""
+"Timothy Masters, `Testing and Tuning Market Trading Systems: Algorithms "
+"in C++ <https://www.amazon.com/Testing-Tuning-Market-Trading-"
+"Systems/dp/148424172X/>`_"
+msgstr ""
+
+#: ../../docs/source/index.rst:185 668a50b110f1470e9d5c15d76fea3fa0
+msgid ""
+"Stefan Jansen, `Machine Learning for Algorithmic Trading, 2nd Edition "
+"<https://www.amazon.com/Machine-Learning-Algorithmic-Trading-"
+"alternative/dp/1839217715/>`_"
+msgstr ""
+
+#: ../../docs/source/index.rst:187 38f18942ba5e4a44a8f2bc3486ca6997
+msgid ""
+"Ernest P. Chan, `Machine Trading: Deploying Computer Algorithms to "
+"Conquer the Markets <https://www.amazon.com/Machine-Trading-Deploying-"
+"Computer-Algorithms-ebook/dp/B01N7NKVG0/>`_"
+msgstr ""
+
+#: ../../docs/source/index.rst:189 65d7ee5053f94a649154aa148c8f2fc7
+msgid ""
+"Perry J. Kaufman, `Trading Systems and Methods, 6th Edition "
+"<https://www.amazon.com/Trading-Systems-Methods-Wiley-"
+"ebook/dp/B08141BBXR/>`_"
+msgstr ""
+
+#: ../../docs/source/index.rst:199 4d66af13c3cb44998c14469db3efa049
+msgid "Contact"
+msgstr ""
+

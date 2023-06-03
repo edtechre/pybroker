@@ -1,0 +1,133 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2023, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-06-02 22:52-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.11.0\n"
+
+#: ../../docs/source/notebooks/4. Position Ranking Sizing.ipynb:9 and
+#: c0a61e29c6ff4b57bf51fe12c2d6784c
+msgid "Ranking and Position Sizing"
+msgstr ""
+
+#: ../../docs/source/notebooks/4. Position Ranking Sizing.ipynb:11 and
+#: bfa4d6aa4f3a495c9640f53f2f33bbd2
+msgid ""
+"In this notebook, we will learn about the features of **PyBroker** that "
+"enable you to rank ticker symbols and set position sizes for a group of "
+"symbols in your trading strategy. With these features, you can easily "
+"optimize your strategy and manage risk more effectively."
+msgstr ""
+
+#: ../../docs/source/notebooks/4. Position Ranking Sizing.ipynb:61 and
+#: c81dbd490d734dbba4d4bdd77be003a2
+msgid "Ranking Ticker Symbols"
+msgstr ""
+
+#: ../../docs/source/notebooks/4. 51e0940253cc4205bb2587de926729ea Position
+#: Ranking Sizing.ipynb:63 and
+msgid ""
+"In this section, we will learn about how to rank ticker symbols when "
+"placing buy orders. Let’s begin with an example of how to rank ticker "
+"symbols based on volume when placing buy orders."
+msgstr ""
+
+#: ../../docs/source/notebooks/4. 4ff80b4a923748179b723f21ccf2fbcb Position
+#: Ranking Sizing.ipynb:89 and
+#, python-format
+msgid ""
+"The ``buy_highest_volume`` function ranks ticker symbols by their most "
+"recent trading volume and allocates 100% of the portfolio for 2 bars. The"
+" ``ctx.score`` is set to ``ctx.volume[-1]``, which is the most recent "
+"trading volume."
+msgstr ""
+
+#: ../../docs/source/notebooks/4. Position Ranking Sizing.ipynb:112 and
+#: e238084dbf5a4ea3a8eca9695bd218c2
+msgid ""
+"To limit the number of long positions that can be held at any time to "
+"``1``, we set `max_long_positions "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.max_long_positions>`__"
+" to ``1`` in the `StrategyConfig "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig>`__."
+" In this example, we add the ``buy_highest_volume`` function to the "
+"`Strategy "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy>`__"
+" object and specify the ticker symbols to trade: ``['T', 'F', 'GM', "
+"'PFE']``."
+msgstr ""
+
+#: ../../docs/source/notebooks/4. 5f9c3bce885b425c95b3b654c19962bb Position
+#: Ranking Sizing.ipynb:584 and
+msgid "Setting Position Sizes"
+msgstr ""
+
+#: ../../docs/source/notebooks/4. 0bc34ae4fcf54aeea82f880c86fb8c7f Position
+#: Ranking Sizing.ipynb:586 and
+msgid ""
+"In **PyBroker**, you can set position sizes based on multiple tickers. To"
+" illustrate this, let’s take a simple buy and hold strategy that starts "
+"trading after 100 days and holds positions for 30 days:"
+msgstr ""
+
+#: ../../docs/source/notebooks/4. 3cc4b02b19bd48c6b457b67c8161e7e4 Position
+#: Ranking Sizing.ipynb:613 and
+msgid ""
+"This will buy ``100`` shares in each of ``['T', 'F', 'GM', 'PFE']``. But "
+"what if you don’t want to use equal position sizing? For example, you may"
+" want to size positions so that more shares are allocated to tickers with"
+" lower volatility to decrease the portfolio’s overall volatility."
+msgstr ""
+
+#: ../../docs/source/notebooks/4. Position Ranking Sizing.ipynb:615 and
+#: ffe3a8c51ae0417a874eb7fd7d6dc75b
+msgid ""
+"To customize position sizing for each ticker, we can define a "
+"`pos_size_handler "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_pos_size_handler>`__"
+" function that calculates the position size for each ticker:"
+msgstr ""
+
+#: ../../docs/source/notebooks/4. Position Ranking Sizing.ipynb:655 and
+#: bd189e26f64e424a8441f184f2ec5392
+msgid ""
+"The handler runs on every bar that generates a buy or sell signal when "
+"`buy_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buy_shares>`__"
+" or `sell_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_shares>`__"
+" is set on the `ExecContext "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__:"
+msgstr ""
+
+#: ../../docs/source/notebooks/4. Position Ranking Sizing.ipynb:1230 and
+#: bcaa60c81e7c4fcd92f08d395f92636b
+msgid ""
+"Using this method allows for a lot of possibilities, such as using `Mean-"
+"Variance Optimization "
+"<https://en.wikipedia.org/wiki/Modern_portfolio_theory>`__ to determine "
+"portfolio allocations."
+msgstr ""
+
+#: ../../docs/source/notebooks/4. 1c6ca5f53db54155b958d1109ea847e5 Position
+#: Ranking Sizing.ipynb:1232 and
+msgid ""
+"`In the next notebook, we will discuss how to implement custom indicators"
+" in PyBroker "
+"<https://www.pybroker.com/en/latest/notebooks/5.%20Writing%20Indicators.html>`__."
+msgstr ""
+

@@ -1,0 +1,66 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2023, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-06-02 22:52-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.11.0\n"
+
+#: ../../docs/source/changelog.rst:3 a87fb0625e6d45dc9d97d43df9289ef6
+msgid "Changelog"
+msgstr ""
+
+#: ../../docs/source/changelog.rst:6 cc37857f025f494fa59210d0c1abf38e
+msgid "1.1.0"
+msgstr ""
+
+#: ../../docs/source/changelog.rst:8 72ffa4aaeefc47cebbbae1c8018c6438
+msgid ""
+"`Adds support for the following stop types: "
+"<https://www.pybroker.com/en/latest/notebooks/8.%20Applying%20Stops.html>`_"
+msgstr ""
+
+#: ../../docs/source/changelog.rst:10 12802ed283484144af64b14f9c051ef9
+msgid "Stop loss"
+msgstr ""
+
+#: ../../docs/source/changelog.rst:11 edf7e214601a40cab9d66743013e9d87
+msgid "Trailing stop loss"
+msgstr ""
+
+#: ../../docs/source/changelog.rst:12 710cddcb37054e57ace516a463776a88
+msgid "Take profit"
+msgstr ""
+
+#: ../../docs/source/changelog.rst:14 52015dc40bf34fc6934e213d570208a6
+msgid ""
+"`Allows canceling pending orders. "
+"<https://www.pybroker.com/en/latest/notebooks/FAQs.html#...-cancel-"
+"pending-orders?>`_"
+msgstr ""
+
+#: ../../docs/source/changelog.rst:16 03a874d176d1462e8085b81fcdfa681b
+msgid "Upgrades ``alpaca-trade-api-python`` to ``alpaca-py`` package."
+msgstr ""
+
+#: ../../docs/source/changelog.rst:19 407893440f484bf8bd16eaa98134c09c
+msgid "1.0.0"
+msgstr ""
+
+#: ../../docs/source/changelog.rst:21 b02270f5906d4756a3e10214f17d48bc
+msgid "Initial release!"
+msgstr ""
+

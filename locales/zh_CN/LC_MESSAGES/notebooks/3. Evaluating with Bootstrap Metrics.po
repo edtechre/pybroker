@@ -1,0 +1,161 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2023, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-06-02 22:52-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.11.0\n"
+
+#: ../../docs/source/notebooks/3. 42e7aaf5c6eb41a2a25d27615b0ac704 Bootstrap
+#: Evaluating Metrics.ipynb:9 with
+msgid "Evaluating with Bootstrap Metrics"
+msgstr ""
+
+#: ../../docs/source/notebooks/3. Bootstrap Evaluating Metrics.ipynb:11
+#: a483275643a54193814bba96252e8919 with
+msgid ""
+"Bootstrap metrics can help us to more thoroughly evaluate a trading "
+"strategy, as we will see in this notebook."
+msgstr ""
+
+#: ../../docs/source/notebooks/3. 0c33a06180e64e72b37017df9dccbe7a Bootstrap
+#: Evaluating Metrics.ipynb:13 with
+msgid ""
+"`In the previous notebook "
+"<https://www.pybroker.com/en/latest/notebooks/2.%20Backtesting%20a%20Strategy.html>`__,"
+" we implemented a trading strategy and backtested it. Here is the "
+"implementation again:"
+msgstr ""
+
+#: ../../docs/source/notebooks/3. 7194b86055004005a4cbacd1a9f9aa50 Bootstrap
+#: Evaluating Metrics.ipynb:52 with
+msgid ""
+"As before, we create a new `Strategy "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy>`__"
+" instance with the given configurations:"
+msgstr ""
+
+#: ../../docs/source/notebooks/3. 9ce903eb462944658e13ef770c0d5f32 Bootstrap
+#: Evaluating Metrics.ipynb:76 with
+msgid ""
+"This time, the ``Strategy`` is configured with a `bootstrap_sample_size "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.bootstrap_sample_size>`__"
+" of ``100`` because of the small amount of historical data being used. "
+"Next, we run the backtest with bootstrap metrics enabled:"
+msgstr ""
+
+#: ../../docs/source/notebooks/3. Bootstrap Evaluating Metrics.ipynb:565
+#: efaafe8eee8440cb9e36146cda49e9c6 with
+msgid ""
+"When we look at the ``total_pnl`` metric above, it seems that we have a "
+"profitable trading strategy on our first try. However, we cannot be "
+"completely sure that these results are repeatable and not just due to "
+"chance. To gain more confidence in our results, we can use the `boostrap "
+"method <https://en.wikipedia.org/wiki/Bootstrapping_(statistics)>`__ to "
+"compute metrics."
+msgstr ""
+
+#: ../../docs/source/notebooks/3. 6e7b175281314491b7aff916547617e4 Bootstrap
+#: Evaluating Metrics.ipynb:567 with
+msgid ""
+"The bootstrap method works by repeatedly computing a metric on random "
+"samples drawn from the backtest’s returns. Then, the metric is computed "
+"on each random sample, and the average is taken. By doing this on "
+"thousands of random samples, we obtain a more robust and accurate "
+"estimate of the metric."
+msgstr ""
+
+#: ../../docs/source/notebooks/3. Bootstrap Evaluating Metrics.ipynb:570
+#: fc9960fe43f34e4789005a1bb9371a21 with
+msgid "Confidence Intervals"
+msgstr ""
+
+#: ../../docs/source/notebooks/3. 2934481899b1476fb987c91846c2e2fc Bootstrap
+#: Evaluating Metrics.ipynb:572 with
+msgid ""
+"**PyBroker** applies the bootstrap method to calculate `confidence "
+"intervals <https://en.wikipedia.org/wiki/Confidence_interval>`__ for two "
+"performance metrics, the `Profit Factor "
+"<https://www.pybroker.com/en/latest/reference/pybroker.eval.html#pybroker.eval.EvalMetrics.profit_factor>`__"
+" and `Sharpe Ratio <https://en.wikipedia.org/wiki/Sharpe_ratio>`__:"
+msgstr ""
+
+#: ../../docs/source/notebooks/3. 340624a1fed74f25aa960b3553891ef7 Bootstrap
+#: Evaluating Metrics.ipynb:716 with
+msgid ""
+"**PyBroker** uses the `bias corrected and accelerated (BCa) bootstrap "
+"method <https://blogs.sas.com/content/iml/2017/07/12/bootstrap-bca-"
+"interval.html>`__ to calculate the confidence intervals for these "
+"metrics. The returns are sampled per-bar rather than per-trade to capture"
+" more information in the metrics."
+msgstr ""
+
+#: ../../docs/source/notebooks/3. 1f2f6104c8d94111817b20ec71c9207d Bootstrap
+#: Evaluating Metrics.ipynb:718 with
+msgid ""
+"The resulting table shows the lower bound of the confidence interval at "
+"the given confidence level. This provides a more conservative estimate of"
+" the strategy’s performance. For example, we can be ``97.5%`` confident "
+"that the Sharpe Ratio is at or above a given value of *x*."
+msgstr ""
+
+#: ../../docs/source/notebooks/3. Bootstrap Evaluating Metrics.ipynb:720
+#: f687b1ad5d854b8bb0f813594665c692 with
+msgid ""
+"In this example, the Sharpe Ratio has negative lower bounds, and the "
+"lower bounds of the Profit Factor are less than 1, which suggests that "
+"the strategy is not reliable."
+msgstr ""
+
+#: ../../docs/source/notebooks/3. 7568865ba3ac4650be5a7192b9f1e8f7 Bootstrap
+#: Evaluating Metrics.ipynb:723 with
+msgid "Maximum Drawdown"
+msgstr ""
+
+#: ../../docs/source/notebooks/3. 69e8d46069d948068c3be373bb74941b Bootstrap
+#: Evaluating Metrics.ipynb:725 with
+msgid ""
+"In this section, we examine the maximum drawdown of the strategy using "
+"the bootstrap method. The probabilities of the drawdown not exceeding "
+"certain values, represented in cash and percentage of portfolio equity, "
+"are displayed below:"
+msgstr ""
+
+#: ../../docs/source/notebooks/3. 14a6c8a8e97f4d209850e46c72666bca Bootstrap
+#: Evaluating Metrics.ipynb:849 with
+msgid ""
+"These confidence levels were obtained using per-bar returns from the "
+"backtest’s out-of-sample results, similar to how the Profit Factor and "
+"Sharpe Ratio were calculated."
+msgstr ""
+
+#: ../../docs/source/notebooks/3. 75d5a7f3cf6b444aaf68564004809ecd Bootstrap
+#: Evaluating Metrics.ipynb:851 with
+msgid ""
+"We can observe that the bootstrapped max drawdown of ``-10.56%`` at a "
+"``99.9%`` confidence level is worse than the ``-4.71%`` we saw in our "
+"original results. This highlights the importance of using randomized "
+"tests to evaluate the performance of your trading strategy."
+msgstr ""
+
+#: ../../docs/source/notebooks/3. 29b840a295954973832c5225bff7c2a9 Bootstrap
+#: Evaluating Metrics.ipynb:853 with
+msgid ""
+"`In the next notebook, we will discuss how to incorporate ranking and "
+"position sizing in your trading strategies "
+"<https://www.pybroker.com/en/latest/notebooks/4.%20Ranking%20and%20Position%20Sizing.html>`__."
+msgstr ""
+
