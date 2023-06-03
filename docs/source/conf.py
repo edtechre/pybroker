@@ -51,11 +51,11 @@ intersphinx_mapping = {
 
 html_title = "PyBroker"
 html_theme = "sphinx_rtd_theme"
-html_static_path = ["_static"]
-html_extra_path = ["_html"]
+html_static_path = ["../_static"]
+html_extra_path = ["../_html"]
 
 # Multi-language docs.
 language = "en"
-locale_dirs = ['../locales/']
+locale_dirs = ["../locales/"]
 gettext_compact = False
 gettext_uuid = True
