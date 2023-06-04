@@ -33,6 +33,7 @@ from pybroker.common import (
 )
 from pybroker.scope import StaticScope
 from abc import ABC, abstractmethod
+from alpaca.data.enums import Adjustment
 from alpaca.data.requests import CryptoBarsRequest, StockBarsRequest
 from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
 from datetime import datetime
@@ -50,6 +51,7 @@ class DataSourceCacheMixin:
         timeframe: str,
         start_date: Union[str, datetime, pd.Timestamp, np.datetime64],
         end_date: Union[str, datetime, pd.Timestamp, np.datetime64],
+        adjust: Optional[str],
     ) -> tuple[pd.DataFrame, Iterable[str]]:
         """Retrieves cached data from disk when caching is enabled with
         :meth:`pybroker.cache.enable_data_source_cache`.
@@ -70,6 +72,7 @@ class DataSourceCacheMixin:
                 An example timeframe string is ``1h 30m``.
             start_date: Starting date of the cached data (inclusive).
             end_date: Ending date of the cached data (inclusive).
+            adjust: The type of adjustment to make.
 
         Returns:
             ``tuple[pandas.DataFrame, Iterable[str]]`` containing a
@@ -93,6 +96,7 @@ class DataSourceCacheMixin:
                 tf_seconds=tf_seconds,
                 start_date=start_date,
                 end_date=end_date,
+                adjust=adjust,
             )
             cached = cache.get(repr(cache_key))
             scope.logger.debug_get_data_source_cache(cache_key)
@@ -116,6 +120,7 @@ class DataSourceCacheMixin:
         timeframe: str,
         start_date: Union[str, datetime, pd.Timestamp, np.datetime64],
         end_date: Union[str, datetime, pd.Timestamp, np.datetime64],
+        adjust: Optional[str],
         data: pd.DataFrame,
     ):
         """Stores data to disk cache when caching is enabled with
@@ -136,6 +141,7 @@ class DataSourceCacheMixin:
                 An example timeframe string would be ``1h 30m``.
             start_date: Starting date of the data to cache (inclusive).
             end_date: Ending date of the data to cache (inclusive).
+            adjust: The type of adjustment to make.
             data: :class:`pandas.DataFrame` containing the data to cache.
         """
         if data.empty:
@@ -154,6 +160,7 @@ class DataSourceCacheMixin:
                 tf_seconds=tf_seconds,
                 start_date=start_date,
                 end_date=end_date,
+                adjust=adjust,
             )
             cache.set(repr(cache_key), df)
             scope.logger.debug_set_data_source_cache(cache_key)
@@ -176,6 +183,7 @@ class DataSource(ABC, DataSourceCacheMixin):
         start_date: Union[str, datetime],
         end_date: Union[str, datetime],
         timeframe: Optional[str] = "",
+        adjust: Optional[str] = None,
     ) -> pd.DataFrame:
         """Queries data. Cached data is returned if caching is enabled by
         calling :meth:`pybroker.cache.enable_data_source_cache`.
@@ -196,6 +204,7 @@ class DataSource(ABC, DataSourceCacheMixin):
                 - ``"mo"``/``"month"``: months
 
                 An example timeframe string is ``1h 30m``.
+            adjust: The type of adjustment to make.
 
         Returns:
             :class:`pandas.DataFrame` containing the queried data.
@@ -218,6 +227,7 @@ class DataSource(ABC, DataSourceCacheMixin):
             timeframe=timeframe,
             start_date=start_date,
             end_date=end_date,
+            adjust=adjust,
         )
         if not uncached_syms:
             return cached_df
@@ -228,7 +238,9 @@ class DataSource(ABC, DataSourceCacheMixin):
             start_date=start_date,
             end_date=end_date,
         )
-        df = self._fetch_data(unique_syms, start_date, end_date, timeframe)
+        df = self._fetch_data(
+            unique_syms, start_date, end_date, timeframe, adjust
+        )
         if (
             self._scope.data_source_cache is not None
             and not cached_df.columns.empty
@@ -238,7 +250,7 @@ class DataSource(ABC, DataSourceCacheMixin):
             self._scope.data_source_cache.clear()
             return self.query(symbols, start_date, end_date, timeframe)
         verify_data_source_columns(df)
-        self.set_cached(timeframe, start_date, end_date, df)
+        self.set_cached(timeframe, start_date, end_date, adjust, df)
         df = pd.concat((cached_df, df))
         if not df.empty:
             df = df.sort_values(by=[DataCol.DATE.value, DataCol.SYMBOL.value])
@@ -252,6 +264,7 @@ class DataSource(ABC, DataSourceCacheMixin):
         start_date: datetime,
         end_date: datetime,
         timeframe: Optional[str],
+        adjust: Optional[str],
     ) -> pd.DataFrame:
         """:meta public:
         Override this method to return data from a custom
@@ -275,6 +288,7 @@ class DataSource(ABC, DataSourceCacheMixin):
                 - ``"mo"``/``"month"``: months
 
                 An example timeframe string is ``1h 30m``.
+            adjust: The type of adjustment to make.
 
         Returns:
             :class:`pandas.DataFrame` containing the queried data.
@@ -327,9 +341,10 @@ class Alpaca(DataSource):
         start_date: Union[str, datetime],
         end_date: Union[str, datetime],
         timeframe: Optional[str] = "1d",
+        adjust: Optional[str] = None,
     ) -> pd.DataFrame:
         _parse_alpaca_timeframe(timeframe)
-        return super().query(symbols, start_date, end_date, timeframe)
+        return super().query(symbols, start_date, end_date, timeframe, adjust)
 
     def _fetch_data(
         self,
@@ -337,16 +352,25 @@ class Alpaca(DataSource):
         start_date: datetime,
         end_date: datetime,
         timeframe: Optional[str],
+        adjust: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
         amount, unit = _parse_alpaca_timeframe(timeframe)
+        adj_enum = None
+        if adjust is not None:
+            for member in Adjustment:
+                if member.value == adjust:
+                    adj_enum = member
+                    break
+            if adj_enum is None:
+                raise ValueError(f"Unknown adjustment: {adjust}.")
         request = StockBarsRequest(
             symbol_or_symbols=list(symbols),
             start=start_date,
             end=end_date,
             timeframe=TimeFrame(amount, unit),
             limit=None,
-            adjustment=None,
+            adjustment=adj_enum,
             feed=None,
         )
         df = self._api.get_stock_bars(request).df  # type: ignore[union-attr]
@@ -411,9 +435,10 @@ class AlpacaCrypto(DataSource):
         start_date: Union[str, datetime],
         end_date: Union[str, datetime],
         timeframe: Optional[str] = "1d",
+        _: Optional[str] = None,
     ) -> pd.DataFrame:
         _parse_alpaca_timeframe(timeframe)
-        return super().query(symbols, start_date, end_date, timeframe)
+        return super().query(symbols, start_date, end_date, timeframe, _)
 
     def _fetch_data(
         self,
@@ -421,6 +446,7 @@ class AlpacaCrypto(DataSource):
         start_date: datetime,
         end_date: datetime,
         timeframe: Optional[str],
+        _: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
         amount, unit = _parse_alpaca_timeframe(timeframe)
@@ -465,7 +491,8 @@ class YFinance(DataSource):
         symbols: Union[str, Iterable[str]],
         start_date: Union[str, datetime],
         end_date: Union[str, datetime],
-        _: Optional[str] = "",
+        _timeframe: Optional[str] = "",
+        _adjust: Optional[str] = None,
     ) -> pd.DataFrame:
         r"""Queries data from `Yahoo Finance <https://finance.yahoo.com/>`_\ .
         The timeframe of the data is limited to per day only.
@@ -478,14 +505,17 @@ class YFinance(DataSource):
         Returns:
             :class:`pandas.DataFrame` containing the queried data.
         """
-        return super().query(symbols, start_date, end_date, self.__TIMEFRAME)
+        return super().query(
+            symbols, start_date, end_date, self.__TIMEFRAME, _adjust
+        )
 
     def _fetch_data(
         self,
         symbols: frozenset[str],
         start_date: datetime,
         end_date: datetime,
-        _: Optional[str],
+        _timeframe: Optional[str],
+        _adjust: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
         df = yfinance.download(list(symbols), start=start_date, end=end_date)
@@ -542,12 +572,7 @@ class AKShare(DataSource):
         ADJ_CLOSE: Column name of adjusted close prices.
     """
 
-    ADJ_CLOSE: Final = "adj_close"
     __TIMEFRAME: Final = "1d"
-
-    def __init__(self):
-        super().__init__()
-        self._scope.register_custom_cols(self.ADJ_CLOSE)
 
     def query(
         self,
@@ -555,6 +580,7 @@ class AKShare(DataSource):
         start_date: Union[str, datetime],
         end_date: Union[str, datetime],
         _: Optional[str] = "",
+        adjust: Optional[str] = "qfq",
     ) -> pd.DataFrame:
         r"""Queries data from `AKShare <https://akshare.akfamily.xyz/>`_\ .
         The timeframe of the data is limited to per day only.
@@ -563,11 +589,14 @@ class AKShare(DataSource):
             symbols: Ticker symbols of the data to query.
             start_date: Start date of the data to query (inclusive).
             end_date: End date of the data to query (inclusive).
+            adjust: The type of adjustment to make.
 
         Returns:
             :class:`pandas.DataFrame` containing the queried data.
         """
-        return super().query(symbols, start_date, end_date, self.__TIMEFRAME)
+        return super().query(
+            symbols, start_date, end_date, self.__TIMEFRAME, adjust
+        )
 
     def _fetch_data(
         self,
@@ -575,6 +604,7 @@ class AKShare(DataSource):
         start_date: datetime,
         end_date: datetime,
         _: Optional[str],
+        adjust: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
         start_date_str = to_datetime(start_date).strftime("%Y%m%d")
@@ -589,17 +619,10 @@ class AKShare(DataSource):
                     start_date=start_date_str,
                     end_date=end_date_str,
                     period="daily",
-                    adjust="",
+                    adjust=adjust if adjust is not None else "",
                 )
-                temp_hfq_df = akshare.stock_zh_a_hist(
-                    symbols_simple[i],
-                    start_date=start_date_str,
-                    end_date=end_date_str,
-                    period="daily",
-                    adjust="qfq",
-                )
-                temp_df["symbol"] = symbols_list[i]
-                temp_df[self.ADJ_CLOSE] = temp_hfq_df["收盘"]
+                if not temp_df.columns.empty:
+                    temp_df["symbol"] = symbols_list[i]
             except KeyError:
                 temp_df = pd.DataFrame()
             result = pd.concat([result, temp_df], ignore_index=True)
@@ -613,7 +636,6 @@ class AKShare(DataSource):
                     DataCol.LOW.value,
                     DataCol.CLOSE.value,
                     DataCol.VOLUME.value,
-                    self.ADJ_CLOSE,
                 ]
             )
         if result.empty:
@@ -639,7 +661,6 @@ class AKShare(DataSource):
                 DataCol.LOW.value,
                 DataCol.CLOSE.value,
                 DataCol.VOLUME.value,
-                self.ADJ_CLOSE,
             ]
         ]
         return result
