@@ -230,7 +230,7 @@ class TestDataSourceCacheMixin:
             )
         with pytest.raises(error):
             cache_mixin.get_cached(
-                symbols, timeframe, start_date, ADJUSTMENT, end_date
+                symbols, timeframe, start_date, end_date, ADJUSTMENT
             )
 
     def test_set_and_get_cached_when_cache_disabled(self, alpaca_df, symbols):
