@@ -21,7 +21,7 @@ msgstr ""
 
 #: ../../source/changelog.rst:3 3bad2582e1b841deaaf5bafb532d8542
 msgid "Changelog"
-msgstr ""
+msgstr "更新日志"
 
 #: ../../source/changelog.rst:6 8d01d4e16aa244febc8fdcbef94b9c68
 msgid "1.1.0"

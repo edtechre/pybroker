@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-02 21:23+0800\n"
+"POT-Creation-Date: 2023-06-05 11:51+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -19,7 +19,342 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.12.1\n"
 
-#: ../../source/license.rst:3 1606ec6c62b44bc68b637349ca5b3850
+#: ../../source/license.rst:3 977048dc62524f63ba5934a47a75c85f
 msgid "License"
+msgstr "许可证"
+
+#: ../../../LICENSE:1 9ba54ca943c84bfe8c1b87e97927be5d
+msgid "“Commons Clause” License Condition v1.0"
+msgstr ""
+
+#: ../../../LICENSE:3 6d78739c02d749f7b8580a868bdf8e0a
+msgid ""
+"The Software is provided to you by the Licensor under the License, as "
+"defined below, subject to the following condition."
+msgstr ""
+
+#: ../../../LICENSE:5 252c6c6b169540168911bbf0ee4fd550
+msgid ""
+"Without limiting other conditions in the License, the grant of rights "
+"under the License will not include, and the License does not grant to "
+"you, the right to Sell the Software."
+msgstr ""
+
+#: ../../../LICENSE:7 0156fc30402243bba6e3064abd2a97a1
+msgid ""
+"For purposes of the foregoing, “Sell” means practicing any or all of the "
+"rights granted to you under the License to provide to third parties, for "
+"a fee or other consideration (including without limitation fees for "
+"hosting or consulting/ support services related to the Software), a "
+"product or service whose value derives, entirely or substantially, from "
+"the functionality of the Software. Any license notice or attribution "
+"required by the License must also include this Commons Clause License "
+"Condition notice."
+msgstr ""
+
+#: ../../../LICENSE:9 0e8cdc50aac749d0afb3628bb9eda9a7
+msgid "Software: PyBroker"
+msgstr ""
+
+#: ../../../LICENSE:11 d2ac8b6ca77240739484e19a1865f95a
+msgid "License: Apache 2.0 with Commons Clause"
+msgstr ""
+
+#: ../../../LICENSE:13 9625ab35ee6840f6a0b5c270e4ea3439
+msgid "Licensor: Edward West"
+msgstr ""
+
+#: ../../../LICENSE:15 d9d9ad31cb594bbf8d58c0527c390898
+msgid "Apache License"
+msgstr ""
+
+#: ../../../LICENSE:16 c34c52df2a8a4ab2b56cfde8fecc8162
+msgid "Version 2.0, January 2004"
+msgstr ""
+
+#: ../../../LICENSE:17 17f049a5eeb648d18d888a59d44a736d
+msgid "http://www.apache.org/licenses/"
+msgstr ""
+
+#: ../../../LICENSE:19 55fc7b8c757a4b9daa6132f80c4e7f0f
+msgid "TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION"
+msgstr ""
+
+#: ../../../LICENSE:21 6506e55078fc4044bfa287764da9954b
+msgid "Definitions."
+msgstr ""
+
+#: ../../../LICENSE:23 6170b0585ce3421194ab93f483bacb44
+msgid ""
+"\"License\" shall mean the terms and conditions for use, reproduction, "
+"and distribution as defined by Sections 1 through 9 of this document."
+msgstr ""
+
+#: ../../../LICENSE:26 e350c37b93a54cea850720c5e502c5c3
+msgid ""
+"\"Licensor\" shall mean the copyright owner or entity authorized by the "
+"copyright owner that is granting the License."
+msgstr ""
+
+#: ../../../LICENSE:29 5e7e4aceb02b4054b2b18e2887c12c8a
+msgid ""
+"\"Legal Entity\" shall mean the union of the acting entity and all other "
+"entities that control, are controlled by, or are under common control "
+"with that entity. For the purposes of this definition, \"control\" means "
+"(i) the power, direct or indirect, to cause the direction or management "
+"of such entity, whether by contract or otherwise, or (ii) ownership of "
+"fifty percent (50%) or more of the outstanding shares, or (iii) "
+"beneficial ownership of such entity."
+msgstr ""
+
+#: ../../../LICENSE:37 f51ca58322ef40a6baad4aff07f40e64
+msgid ""
+"\"You\" (or \"Your\") shall mean an individual or Legal Entity exercising"
+" permissions granted by this License."
+msgstr ""
+
+#: ../../../LICENSE:40 75085ae644f346d7bb776bcfbcf5db2f
+msgid ""
+"\"Source\" form shall mean the preferred form for making modifications, "
+"including but not limited to software source code, documentation source, "
+"and configuration files."
+msgstr ""
+
+#: ../../../LICENSE:44 4315b0c683504dcda359a74d9a6a7165
+msgid ""
+"\"Object\" form shall mean any form resulting from mechanical "
+"transformation or translation of a Source form, including but not limited"
+" to compiled object code, generated documentation, and conversions to "
+"other media types."
+msgstr ""
+
+#: ../../../LICENSE:49 9c5f32a3d9a642c8b2dc41ac2883cdbd
+msgid ""
+"\"Work\" shall mean the work of authorship, whether in Source or Object "
+"form, made available under the License, as indicated by a copyright "
+"notice that is included in or attached to the work (an example is "
+"provided in the Appendix below)."
+msgstr ""
+
+#: ../../../LICENSE:54 b5f6f49e15c644fca3757ee886da3476
+msgid ""
+"\"Derivative Works\" shall mean any work, whether in Source or Object "
+"form, that is based on (or derived from) the Work and for which the "
+"editorial revisions, annotations, elaborations, or other modifications "
+"represent, as a whole, an original work of authorship. For the purposes "
+"of this License, Derivative Works shall not include works that remain "
+"separable from, or merely link (or bind by name) to the interfaces of, "
+"the Work and Derivative Works thereof."
+msgstr ""
+
+#: ../../../LICENSE:62 e69513f68fff470c996d3e75543f8df2
+msgid ""
+"\"Contribution\" shall mean any work of authorship, including the "
+"original version of the Work and any modifications or additions to that "
+"Work or Derivative Works thereof, that is intentionally submitted to "
+"Licensor for inclusion in the Work by the copyright owner or by an "
+"individual or Legal Entity authorized to submit on behalf of the "
+"copyright owner. For the purposes of this definition, \"submitted\" means"
+" any form of electronic, verbal, or written communication sent to the "
+"Licensor or its representatives, including but not limited to "
+"communication on electronic mailing lists, source code control systems, "
+"and issue tracking systems that are managed by, or on behalf of, the "
+"Licensor for the purpose of discussing and improving the Work, but "
+"excluding communication that is conspicuously marked or otherwise "
+"designated in writing by the copyright owner as \"Not a Contribution.\""
+msgstr ""
+
+#: ../../../LICENSE:76 f53ce6004063448ea923aaf0ca6f831b
+msgid ""
+"\"Contributor\" shall mean Licensor and any individual or Legal Entity on"
+" behalf of whom a Contribution has been received by Licensor and "
+"subsequently incorporated within the Work."
+msgstr ""
+
+#: ../../../LICENSE:80 a85a91ce52a9488eb8350e2e363a7fa2
+msgid ""
+"Grant of Copyright License. Subject to the terms and conditions of this "
+"License, each Contributor hereby grants to You a perpetual, worldwide, "
+"non-exclusive, no-charge, royalty-free, irrevocable copyright license to "
+"reproduce, prepare Derivative Works of, publicly display, publicly "
+"perform, sublicense, and distribute the Work and such Derivative Works in"
+" Source or Object form."
+msgstr ""
+
+#: ../../../LICENSE:87 fed7711a0c6e4c218d073f2f93acf785
+msgid ""
+"Grant of Patent License. Subject to the terms and conditions of this "
+"License, each Contributor hereby grants to You a perpetual, worldwide, "
+"non-exclusive, no-charge, royalty-free, irrevocable (except as stated in "
+"this section) patent license to make, have made, use, offer to sell, "
+"sell, import, and otherwise transfer the Work, where such license applies"
+" only to those patent claims licensable by such Contributor that are "
+"necessarily infringed by their Contribution(s) alone or by combination of"
+" their Contribution(s) with the Work to which such Contribution(s) was "
+"submitted. If You institute patent litigation against any entity "
+"(including a cross-claim or counterclaim in a lawsuit) alleging that the "
+"Work or a Contribution incorporated within the Work constitutes direct or"
+" contributory patent infringement, then any patent licenses granted to "
+"You under this License for that Work shall terminate as of the date such "
+"litigation is filed."
+msgstr ""
+
+#: ../../../LICENSE:103 c1f8eb36fb5b461dbd061665caa5efc1
+msgid ""
+"Redistribution. You may reproduce and distribute copies of the Work or "
+"Derivative Works thereof in any medium, with or without modifications, "
+"and in Source or Object form, provided that You meet the following "
+"conditions:"
+msgstr ""
+
+#: ../../../LICENSE:108 c7c34b2b271643e9b8a04ba5ac99893c
+msgid ""
+"You must give any other recipients of the Work or Derivative Works a copy"
+" of this License; and"
+msgstr ""
+
+#: ../../../LICENSE:111 22182d8c00754b4bb72c491d6695b59e
+msgid ""
+"You must cause any modified files to carry prominent notices stating that"
+" You changed the files; and"
+msgstr ""
+
+#: ../../../LICENSE:114 7858b4a9c0444d76b6462dd2b1f7d4df
+msgid ""
+"You must retain, in the Source form of any Derivative Works that You "
+"distribute, all copyright, patent, trademark, and attribution notices "
+"from the Source form of the Work, excluding those notices that do not "
+"pertain to any part of the Derivative Works; and"
+msgstr ""
+
+#: ../../../LICENSE:120 c003d0e5b86b4b0f8656f0bf6d80c3f0
+msgid ""
+"If the Work includes a \"NOTICE\" text file as part of its distribution, "
+"then any Derivative Works that You distribute must include a readable "
+"copy of the attribution notices contained within such NOTICE file, "
+"excluding those notices that do not pertain to any part of the Derivative"
+" Works, in at least one of the following places: within a NOTICE text "
+"file distributed as part of the Derivative Works; within the Source form "
+"or documentation, if provided along with the Derivative Works; or, within"
+" a display generated by the Derivative Works, if and wherever such third-"
+"party notices normally appear. The contents of the NOTICE file are for "
+"informational purposes only and do not modify the License. You may add "
+"Your own attribution notices within Derivative Works that You distribute,"
+" alongside or as an addendum to the NOTICE text from the Work, provided "
+"that such additional attribution notices cannot be construed as modifying"
+" the License."
+msgstr ""
+
+#: ../../../LICENSE:137 ec58f3c212074e58bfcebcc1ab57ebb7
+msgid ""
+"You may add Your own copyright statement to Your modifications and may "
+"provide additional or different license terms and conditions for use, "
+"reproduction, or distribution of Your modifications, or for any such "
+"Derivative Works as a whole, provided Your use, reproduction, and "
+"distribution of the Work otherwise complies with the conditions stated in"
+" this License."
+msgstr ""
+
+#: ../../../LICENSE:144 fcc23d26776f4dd8accf4def4a28088d
+msgid ""
+"Submission of Contributions. Unless You explicitly state otherwise, any "
+"Contribution intentionally submitted for inclusion in the Work by You to "
+"the Licensor shall be under the terms and conditions of this License, "
+"without any additional terms or conditions. Notwithstanding the above, "
+"nothing herein shall supersede or modify the terms of any separate "
+"license agreement you may have executed with Licensor regarding such "
+"Contributions."
+msgstr ""
+
+#: ../../../LICENSE:152 0c25caf395834dbcbe20d00992982e7b
+msgid ""
+"Trademarks. This License does not grant permission to use the trade "
+"names, trademarks, service marks, or product names of the Licensor, "
+"except as required for reasonable and customary use in describing the "
+"origin of the Work and reproducing the content of the NOTICE file."
+msgstr ""
+
+#: ../../../LICENSE:157 11a52e6ea6254701b80ab0ffdd69c18c
+msgid ""
+"Disclaimer of Warranty. Unless required by applicable law or agreed to in"
+" writing, Licensor provides the Work (and each Contributor provides its "
+"Contributions) on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF"
+" ANY KIND, either express or implied, including, without limitation, any "
+"warranties or conditions of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or "
+"FITNESS FOR A PARTICULAR PURPOSE. You are solely responsible for "
+"determining the appropriateness of using or redistributing the Work and "
+"assume any risks associated with Your exercise of permissions under this "
+"License."
+msgstr ""
+
+#: ../../../LICENSE:167 828ac423eae64c2ba6d73d8bfdffa2d2
+msgid ""
+"Limitation of Liability. In no event and under no legal theory, whether "
+"in tort (including negligence), contract, or otherwise, unless required "
+"by applicable law (such as deliberate and grossly negligent acts) or "
+"agreed to in writing, shall any Contributor be liable to You for damages,"
+" including any direct, indirect, special, incidental, or consequential "
+"damages of any character arising as a result of this License or out of "
+"the use or inability to use the Work (including but not limited to "
+"damages for loss of goodwill, work stoppage, computer failure or "
+"malfunction, or any and all other commercial damages or losses), even if "
+"such Contributor has been advised of the possibility of such damages."
+msgstr ""
+
+#: ../../../LICENSE:179 978e687d15ba4fcbad62bae4ca69380a
+msgid ""
+"Accepting Warranty or Additional Liability. While redistributing the Work"
+" or Derivative Works thereof, You may choose to offer, and charge a fee "
+"for, acceptance of support, warranty, indemnity, or other liability "
+"obligations and/or rights consistent with this License. However, in "
+"accepting such obligations, You may act only on Your own behalf and on "
+"Your sole responsibility, not on behalf of any other Contributor, and "
+"only if You agree to indemnify, defend, and hold each Contributor "
+"harmless for any liability incurred by, or claims asserted against, such "
+"Contributor by reason of your accepting any such warranty or additional "
+"liability."
+msgstr ""
+
+#: ../../../LICENSE:190 9a5da63d321940b39ca84b2c4079d2f8
+msgid "END OF TERMS AND CONDITIONS"
+msgstr ""
+
+#: ../../../LICENSE:192 4b5ab601cd944d36b9e65956bd41feb4
+msgid "APPENDIX: How to apply the Apache License to your work."
+msgstr ""
+
+#: ../../../LICENSE:194 e85e8f60a2f244b4931310ac042c4794
+msgid ""
+"To apply the Apache License to your work, attach the following "
+"boilerplate notice, with the fields enclosed by brackets \"[]\" replaced "
+"with your own identifying information. (Don't include the brackets!)  The"
+" text should be enclosed in the appropriate comment syntax for the file "
+"format. We also recommend that a file or class name and description of "
+"purpose be included on the same \"printed page\" as the copyright notice "
+"for easier identification within third-party archives."
+msgstr ""
+
+#: ../../../LICENSE:203 ed2da86f9d2e433baa5abb94cbabfa74
+msgid "Copyright 2023 Edward West"
+msgstr ""
+
+#: ../../../LICENSE:205 8916969fcc284b97a4bc5f60fe574167
+msgid ""
+"Licensed under the Apache License, Version 2.0 (the \"License\"); you may"
+" not use this file except in compliance with the License. You may obtain "
+"a copy of the License at"
+msgstr ""
+
+#: ../../../LICENSE:209 ce8e95464b344912a65ab35771577c0b
+msgid "http://www.apache.org/licenses/LICENSE-2.0"
+msgstr ""
+
+#: ../../../LICENSE:211 5fa20ca5f2444961bc23f93d7e62a98d
+msgid ""
+"Unless required by applicable law or agreed to in writing, software "
+"distributed under the License is distributed on an \"AS IS\" BASIS, "
+"WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. "
+"See the License for the specific language governing permissions and "
+"limitations under the License."
 msgstr ""
 
