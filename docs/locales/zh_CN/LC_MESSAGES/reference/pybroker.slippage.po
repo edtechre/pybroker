@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-02 21:23+0800\n"
+"POT-Creation-Date: 2023-06-05 11:51+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -20,71 +20,52 @@ msgstr ""
 "Generated-By: Babel 2.12.1\n"
 
 #: ../../source/reference/pybroker.slippage.rst:2
-#: 17afd9b2c0b7465baa94232fb952fa6e
+#: 41d75746332c4d189882b97913adf566
 msgid "pybroker.slippage module"
 msgstr ""
 
-#: ba617c3ce1c240bbbac8c9485c5001d9 of pybroker.slippage:1
-msgid "Implements slippage models."
-msgstr ""
+#~ msgid "Implements slippage models."
+#~ msgstr ""
 
-#: dce5f1b40e404222ae170390fbc73686 of pybroker.slippage.RandomSlippageModel:1
-msgid "Bases: :py:class:`~pybroker.slippage.SlippageModel`"
-msgstr ""
+#~ msgid "Bases: :py:class:`~pybroker.slippage.SlippageModel`"
+#~ msgstr ""
 
-#: aebadf0d892345e785ca63b50f31461e of pybroker.slippage.RandomSlippageModel:1
-msgid "Implements a simple random slippage model."
-msgstr ""
+#~ msgid "Implements a simple random slippage model."
+#~ msgstr ""
 
-#: f2550f34591e4972b8182fa2afd50511 of pybroker.slippage.RandomSlippageModel
-msgid "Parameters"
-msgstr ""
+#~ msgid "Parameters"
+#~ msgstr ""
 
-#: e994983baa704091bc79037159933d0d of pybroker.slippage.RandomSlippageModel:3
-msgid "Min percentage of slippage."
-msgstr ""
+#~ msgid "Min percentage of slippage."
+#~ msgstr ""
 
-#: 73d26ac3a4b649e88bb8eeb71ac95991 of pybroker.slippage.RandomSlippageModel:4
-msgid "Max percentage of slippage."
-msgstr ""
+#~ msgid "Max percentage of slippage."
+#~ msgstr ""
 
-#: 5a5c487e218f485ba0fbea92430fafad 888d729695f1444098ffb24582ff763a of
-#: pybroker.slippage.RandomSlippageModel.apply_slippage:1
-#: pybroker.slippage.SlippageModel.apply_slippage:1
-msgid "Applies slippage to ``ctx``."
-msgstr ""
+#~ msgid "Applies slippage to ``ctx``."
+#~ msgstr ""
 
-#: 282d44f08537481ca707ac3ea69dbb05 of pybroker.slippage.SlippageData:1
-msgid "Bases: :py:class:`~typing.NamedTuple`"
-msgstr ""
+#~ msgid "Bases: :py:class:`~typing.NamedTuple`"
+#~ msgstr ""
 
-#: b0957be6bd394320a6ba0f392778ad00 of pybroker.slippage.SlippageData:1
-msgid "Contains data to use for calculating slippage."
-msgstr ""
+#~ msgid "Contains data to use for calculating slippage."
+#~ msgstr ""
 
-#: 4345b2cc8d5a4e6abcd82d281d5d8211 of pybroker.slippage.SlippageData:5
-msgid "Number of shares to buy."
-msgstr ""
+#~ msgid "Number of shares to buy."
+#~ msgstr ""
 
-#: 4a84eb2e2b2d433c90cf90f8de051f8f ed5d856fc0244fda81e25cbcd9c8c761 of
-#: pybroker.slippage.SlippageData
-msgid "type"
-msgstr ""
+#~ msgid "type"
+#~ msgstr ""
 
-#: 698ff77f2b064373b8fcd41ee597a58c c4c7ebee48b249f1a3ddce9486b9e1cb of
-#: pybroker.slippage.SlippageData:7 pybroker.slippage.SlippageData:13
-msgid "decimal.Decimal | None"
-msgstr ""
+#~ msgid "decimal.Decimal | None"
+#~ msgstr ""
 
-#: a7778756599b47c5a57ccb973e3f2229 of pybroker.slippage.SlippageData:11
-msgid "Number of shares to sell."
-msgstr ""
+#~ msgid "Number of shares to sell."
+#~ msgstr ""
 
-#: 5823892412eb40f986455cc99e1bfd6e of pybroker.slippage.SlippageModel:1
-msgid "Bases: :py:class:`~abc.ABC`"
-msgstr ""
+#~ msgid "Bases: :py:class:`~abc.ABC`"
+#~ msgstr ""
 
-#: 938005aab27a443b971ae4f0b3c33248 of pybroker.slippage.SlippageModel:1
-msgid "Base class for implementing a slippage model."
-msgstr ""
+#~ msgid "Base class for implementing a slippage model."
+#~ msgstr ""
 
