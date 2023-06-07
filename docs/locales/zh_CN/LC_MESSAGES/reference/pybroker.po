@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-05 11:51+0800\n"
+"POT-Creation-Date: 2023-06-07 17:57+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -19,11 +19,15 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.12.1\n"
 
-#: ../../source/reference/pybroker.rst:2 16f9b4b384aa4f4f8d8a28fbb0b92e37
+#: ../../source/reference/pybroker.rst:2 8434e54d5fed4e9abe18d387ae188da9
 msgid "pybroker package"
 msgstr ""
 
-#: ../../source/reference/pybroker.rst:10 5e6c51ad96c74644b18c3c45405eceeb
+#: b7f7b00cfe104e4386503a5b08cf3750 of pybroker:1
+msgid "Global imports."
+msgstr ""
+
+#: ../../source/reference/pybroker.rst:10 fc335e95c650492dbc9d9c3c1057d66a
 msgid "Submodules"
 msgstr ""
 

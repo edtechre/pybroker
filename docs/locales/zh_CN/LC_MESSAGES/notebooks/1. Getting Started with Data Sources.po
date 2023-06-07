@@ -33,11 +33,13 @@ msgid ""
 " A ``DataSource`` is a class that can fetch data from external sources, "
 "which you can then use to backtest your trading strategies."
 msgstr ""
+"欢迎来到 PyBroker！最好的起点是学习有关 DataSources 的知识。"
+"DataSource 是一个可以从外部来源获取数据的类，您可以使用这些数据来回测您的交易策略。"
 
 #: ../../source/notebooks/1. 0c831c98686448a3ba22bc72b3b89538 Data Getting
 #: Sources.ipynb:14 Started with
 msgid "Yahoo Finance"
-msgstr ""
+msgstr "雅虎财经"
 
 #: ../../source/notebooks/1. Data Getting Sources.ipynb:16 Started
 #: ffac6030e77d460ea13e08878ac5ffd1 with
@@ -46,6 +48,9 @@ msgid ""
 "<https://finance.yahoo.com>`__. To use it, you can import `YFinance "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance>`__:"
 msgstr ""
+"PyBroker 内置的一个数据源是 `Yahoo Finance <https://finance.yahoo.com>`__。"
+"要使用它，您可以导入 `YFinance "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance>`__："
 
 #: ../../source/notebooks/1. Data Getting Sources.ipynb:344 Started
 #: d9b81eb76ee448998df3c0a579be7564 with
@@ -55,11 +60,13 @@ msgid ""
 "<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__ "
 "with the results."
 msgstr ""
+"上述代码查询了 AAPL 和 MSFT 股票的数据，并返回一个包含结果的 `Pandas DataFrame "
+"<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__。"
 
 #: ../../source/notebooks/1. 5d28b7d7932746ae8f6f1d7151d5ca52 Data Getting
 #: Sources.ipynb:347 Started with
 msgid "Caching Data"
-msgstr ""
+msgstr "缓存数据"
 
 #: ../../source/notebooks/1. 6032d2e73c0c42fba95232a94053afe0 Data Getting
 #: Sources.ipynb:349 Started with
@@ -70,6 +77,10 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.enable_data_source_cache>`__"
 " where ``name`` is the name of the cache you want to use:"
 msgstr ""
+"如果你想加快数据加载速度，可以使用 **PyBroker** 的缓存系统来缓存您的查询。"
+"您可以通过调用 `pybroker.enable_data_source_cache('name') "
+"<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.enable_data_source_cache>`__ "
+"来启用缓存，其中 ``name`` 是你想要使用的缓存名称："
 
 #: ../../source/notebooks/1. 1d876469e440476dbf7c797ae07c301f Data Getting
 #: Sources.ipynb:397 Started with
@@ -79,6 +90,9 @@ msgid ""
 " will cache the returned data to disk. Each unique combination of ticker "
 "symbol and date range will be cached separately:"
 msgstr ""
+"下一次调用 `查询 "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource.query>`__ "
+"时，将把返回的数据缓存到磁盘。每个唯一的股票代码和日期范围组合将被单独缓存："
 
 #: ../../source/notebooks/1. 646bbb2256c14b2cab7926fca8ee3b62 Data Getting
 #: Sources.ipynb:721 Started with
@@ -86,6 +100,7 @@ msgid ""
 "Calling ``query`` again with the same ticker symbols and date range "
 "returns the cached data:"
 msgstr ""
+"再次使用相同的股票代码和日期范围调用 ``查询`` 时，将返回缓存的数据："
 
 #: ../../source/notebooks/1. Data Getting Sources.ipynb:1040 Started
 #: b6b39199578d4f3db8b239b9d69186b2 with
@@ -93,6 +108,9 @@ msgid ""
 "You can clear your cache using `pybroker.clear_data_source_cache "
 "<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.clear_data_source_cache>`__:"
 msgstr ""
+"您可以使用 `pybroker.clear_data_source_cache "
+"<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.clear_data_source_cache>`__ "
+"清除缓存："
 
 #: ../../source/notebooks/1. 0c624fe8bddf4b7aa0ae57321b28ef99 Data Getting
 #: Sources.ipynb:1061 Started with
@@ -100,6 +118,9 @@ msgid ""
 "Or disable caching altogether using `pybroker.disable_data_source_cache "
 "<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.disable_data_source_cache>`__:"
 msgstr ""
+"或者使用 `pybroker.disable_data_source_cache "
+"<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.disable_data_source_cache>`__ "
+"完全禁用缓存："
 
 #: ../../source/notebooks/1. Data Getting Sources.ipynb:1082 Started
 #: db948f966b6c4a778e5fecfd36ee0dac with
@@ -108,6 +129,9 @@ msgid ""
 "`pybroker.enable_data_source_cache "
 "<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.enable_data_source_cache>`__."
 msgstr ""
+"请注意，在调用这些方法之前，应先调用 `pybroker.enable_data_source_cache "
+"<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.enable_data_source_cache>`__"
+"。"
 
 #: ../../source/notebooks/1. 805fc5c858d049469dbba9f64611c20f Data Getting
 #: Sources.ipynb:1094 Started with
