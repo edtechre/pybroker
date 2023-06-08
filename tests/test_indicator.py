@@ -19,7 +19,6 @@ import numpy as np
 import pandas as pd
 import pytest
 import re
-import re
 from pybroker.cache import CacheDateFields
 from .fixtures import *  # noqa: F401
 from pybroker.common import BarData, DataCol, IndicatorSymbol, to_datetime
