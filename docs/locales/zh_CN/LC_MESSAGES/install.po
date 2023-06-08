@@ -33,5 +33,5 @@ msgstr ""
 
 #: ../../source/install.rst:11 06d5859345914a0f82d6cc1b5f94c668
 msgid "Or you can clone the Git repository with:"
-msgstr "或者你可以通过克隆源码进行安装"
+msgstr "或者你可以通过克隆源码进行安装："
 
