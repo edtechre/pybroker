@@ -147,6 +147,10 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.Alpaca>`__"
 " and provide your API key and secret:"
 msgstr ""
+"**PyBroker** 还包括了一个 `Alpaca <https://alpaca.markets/>`__ ``数据源``，"
+"用于获取股票数据。要使用它，可以导入 `Alpaca"
+" <https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.Alpaca>`__"
+" 并提供你的 API 密钥和密钥："
 
 #: ../../source/notebooks/1. Data Getting Sources.ipynb:1120 Started
 #: b5d18e1b65584b448a44741a04c41c55 with
@@ -155,6 +159,8 @@ msgid ""
 "Yahoo Finance, but Alpaca also supports querying data by different "
 "timeframes. For example, to query 1 minute data:"
 msgstr ""
+"你可以使用与 Yahoo Finance 相同的语法查询 ``Alpaca`` 的股票数据，"
+"但 Alpaca 还支持按不同时间段查询数据。例如，要查询 1 分钟的数据："
 
 #: ../../source/notebooks/1. 2381d909d2ee4401941d882329750dc6 Data Getting
 #: Sources.ipynb:1448 Started with
@@ -169,6 +175,9 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.AlpacaCrypto>`__."
 " Here's an example of how to use it:"
 msgstr ""
+"如果你想获取加密货币数据，可以使用 `AlpacaCrypto "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.AlpacaCrypto>`__。"
+"以下是使用 AlpacaCrypto 的示例："
 
 #: ../../source/notebooks/1. 429abc1973f44e4380c3788f93e73dee Data Getting
 #: Sources.ipynb:1790 Started with
@@ -176,6 +185,7 @@ msgid ""
 "In the above example, we're querying for hourly data for the BTC/USD "
 "currency pair."
 msgstr ""
+"在上面的示例中，我们正在查询 BTC/USD 货币对的小时数据。"
 
 #: ../../source/notebooks/1. 1b5d6f90ea8b4d9a850cb2d2f2d173b2 Data Getting
 #: Sources.ipynb:1802 Started with
@@ -194,6 +204,11 @@ msgid ""
 "`AKShare "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.AKShare>`__:"
 msgstr ""
+"**PyBroker** 还包括了一个 `AKShare <https://github.com/akfamily/akshare>`__ ``数据源``，"
+"用于获取中国股票数据。AKShare 是一个广泛使用的开源包，专门用于获取金融数据，"
+"重点关注中国市场。与 yfinance 相比，这个免费工具为用户提供了更高质量的中国市场数据。"
+"要使用它，可以导入 `AKShare "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.AKShare>`__："
 
 #: ../../source/notebooks/1. Data Getting Sources.ipynb:2091 Started
 #: f2e645e4845a44c9a1a3497643acf955 with
@@ -202,6 +217,8 @@ msgid ""
 "backtest a simple trading strategy "
 "<https://www.pybroker.com/en/latest/notebooks/2.%20Backtesting%20a%20Strategy.html>`__."
 msgstr ""
+"`在下一个文章中，我们将研究如何使用 DataSources 对一个简单的交易策略进行回测 "
+"<https://www.pybroker.com/en/latest/notebooks/2.%20Backtesting%20a%20Strategy.html>`__。"
 
 #~ msgid ""
 #~ "If you want to speed up your "
