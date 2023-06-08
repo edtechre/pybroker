@@ -18,6 +18,7 @@ with this program.  If not, see <https://www.gnu.org/licenses/>.
 import numpy as np
 import pandas as pd
 import pytest
+import re
 from pybroker.cache import CacheDateFields
 from .fixtures import *  # noqa: F401
 from pybroker.common import BarData, DataCol, IndicatorSymbol, to_datetime
@@ -102,6 +103,19 @@ class TestIndicator:
         data = hhv_ind(data_source_df)
         assert len(data) == len(data_source_df["date"])
         assert isinstance(data.index[0], pd.Timestamp)
+
+    def test_call_when_invalid_shape_then_error(self, data_source_df):
+        def foo(_data):
+            return np.array([[1, 2, 3], [4, 5, 6]])
+
+        ind_foo = indicator("foo", foo)
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "Indicator foo must return a one-dimensional array."
+            ),
+        ):
+            ind_foo(data_source_df)
 
     def test_iqr(self, hhv_ind, data_source_df):
         assert isinstance(hhv_ind.iqr(data_source_df), float)

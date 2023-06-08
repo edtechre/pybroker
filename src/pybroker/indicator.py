@@ -109,6 +109,10 @@ class Indicator:
         values = self._fn(data)
         if isinstance(values, pd.Series):
             values = values.to_numpy()
+        if len(values.shape) != 1:
+            raise ValueError(
+                f"Indicator {self.name} must return a one-dimensional array."
+            )
         return pd.Series(values, index=data.date)
 
     def __repr__(self):
