@@ -22,7 +22,7 @@ msgstr ""
 #: ../../source/notebooks/5. 2fc8e2514919455cadde0cfc32a8656b
 #: Indicators.ipynb:9 Writing
 msgid "Writing Indicators"
-msgstr "撰写指标"
+msgstr "编写指标"
 
 #: ../../source/notebooks/5. 49eeb44bb2f54dd78cffcbfcf4e04487
 #: Indicators.ipynb:11 Writing
@@ -36,6 +36,14 @@ msgid ""
 "accelerating code that involves loops and NumPy arrays. Here's how we "
 "import these libraries:"
 msgstr ""
+"本篇文章解释了如何在 **PyBroker** 中创建和整合自定义股票指标。"
+"**PyBroker** 中的指标是用 `NumPy "
+"<https://numpy.org/>`__"
+" 编写的，NumPy 是一个功能强大的数值计算库。为了优化性能，"
+"我们还将使用 `Numba "
+"<https://numba.pydata.org/>`__"
+"，这是一个即时编译器，可以将 Python 代码转换为高效的机器代码。"
+"Numba 对于加速涉及循环和 NumPy 数组的代码特别有用。以下是我们如何导入这些库："
 
 #: ../../source/notebooks/5. 478e226917b3465dbb5332355e3fb0e1
 #: Indicators.ipynb:33 Writing
@@ -45,6 +53,9 @@ msgid ""
 "reversion <https://en.wikipedia.org/wiki/Mean_reversion_(finance)>`__ "
 "strategy:"
 msgstr ""
+"以下代码显示了一个指标函数，计算收盘价减去移动平均值（CMMA），可用于 `均值回归 "
+"<https://en.wikipedia.org/wiki/Mean_reversion_(finance)>`__"
+" 策略："
 
 #: ../../source/notebooks/5. 5851ad0be1b94fcf9396120b5fca1efa
 #: Indicators.ipynb:74 Writing
@@ -55,6 +66,10 @@ msgid ""
 " class that holds OHLCV data and custom fields, and ``lookback``, which "
 "is a user-defined argument for the lookback of the moving average."
 msgstr ""
+"``cmma`` 函数接受两个参数：``bar_data``，它是一个包含 OHLCV 数据和自定义字段的"
+" `BarData "
+"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.BarData>`__"
+" 类实例；以及 ``lookback``，它是一个用户定义的参数，用于移动平均值的回溯期。"
 
 #: ../../source/notebooks/5. 5fd9ee296bcc42a6adbadc69b2d83b7a
 #: Indicators.ipynb:76 Writing
@@ -67,13 +82,19 @@ msgid ""
 "that it's performed on all of the historical data at once. This approach "
 "significantly speeds up the backtesting process."
 msgstr ""
+"``vec_cmma`` 函数由 Numba JIT 编译并嵌套在 ``cmma`` 中。"
+"这是必要的，因为 Numba 编译过的函数支持 NumPy 数组作为参数，"
+"但不支持像 ``BarData`` 这样的 Python 类实例。请注意，"
+"指标值的计算是由 Numba `向量化 "
+"<https://en.wikipedia.org/wiki/Array_programming>`__"
+"的，这意味着它是一次性对所有历史数据进行的。这种方法显著加快了回测过程。"
 
 #: ../../source/notebooks/5. Indicators.ipynb:78 Writing
 #: d8c011e3f3544eae800669f1271fd3ae
 msgid ""
 "The next step is to register the indicator function with **PyBroker** "
 "using the following code:"
-msgstr ""
+msgstr "下一步是使用以下代码将指标函数注册到 **PyBroker**："
 
 #: ../../source/notebooks/5. Indicators.ipynb:101 Writing
 #: b712a2bcc7b74a7fa736d6e956f352a7
