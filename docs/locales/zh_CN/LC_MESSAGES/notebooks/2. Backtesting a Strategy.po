@@ -30,6 +30,8 @@ msgid ""
 "We're all set to test a basic trading strategy using **PyBroker**! To get"
 " started, we'll import the necessary classes listed below:"
 msgstr ""
+"我们已经准备好使用 **PyBroker** 测试一个基本的交易策略了！"
+"首先，我们将导入以下所列的必要类："
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:60 a
 #: dc87c509bee04d4497b03544005be055
@@ -40,6 +42,11 @@ msgid ""
 " We'll also be using data source caching to ensure that we only download "
 "the necessary data once when we run our backtests."
 msgstr ""
+"对于我们的回测，我们将使用 `Yahoo Finance "
+"<https://finance.yahoo.com>`__"
+"作为我们的`数据源 "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__"
+"。我们还将使用数据源缓存来确保在运行回测时只下载一次所需的数据。"
 
 #: ../../source/notebooks/2. 3174c2342c8c4cd795b2d52486b3cb9a Backtesting
 #: Strategy.ipynb:62 a
@@ -49,6 +56,9 @@ msgid ""
 " class which will be used to perform a backtest on our trading strategy. "
 "Here's how you can do it:"
 msgstr ""
+"下一步是设置一个新的 `Strategy "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy>`__"
+" 类实例，它将用于对我们的交易策略进行回测。以下是操作方法："
 
 #: ../../source/notebooks/2. 92ccb73adce14426b423f0e748afe13e Backtesting
 #: Strategy.ipynb:64 a
@@ -58,6 +68,9 @@ msgid ""
 " object to configure the ``Strategy``. In this case, we're setting the "
 "initial cash to ``500,000``:"
 msgstr ""
+"首先，您可以创建一个 `StrategyConfig "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig>`__"
+" 对象来配置策略。在这个例子中，我们将初始资金设为 500,000："
 
 #: ../../source/notebooks/2. 7dd3d0af33f146c48b1944836afa18d6 Backtesting
 #: Strategy.ipynb:85 a
@@ -65,26 +78,27 @@ msgid ""
 "Then, you can create a new instance of the ``Strategy`` class by passing "
 "in the following arguments:"
 msgstr ""
+"接下来，您可以通过传入以下参数来创建一个 ``Strategy`` 类的新实例："
 
 #: ../../source/notebooks/2. 28de783578734287bd8c17ba5bc32fa2 Backtesting
 #: Strategy.ipynb:87 a
 msgid "A data source: In this case, we're using Yahoo Finance as the data source."
-msgstr ""
+msgstr "数据源：在这种情况下，我们使用 Yahoo Finance 作为数据源。"
 
 #: ../../source/notebooks/2. 213b891b666a4de18eac3eee818df5ee Backtesting
 #: Strategy.ipynb:88 a
 msgid "A start date: This is the starting date for the backtest."
-msgstr ""
+msgstr "开始日期：这是回测的开始日期。"
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:89 a
 #: c1c55c3b7f734a3ca240f5b3c402734e
 msgid "An end date: This is the end date for the backtest."
-msgstr ""
+msgstr "结束日期：这是回测的结束日期。"
 
 #: ../../source/notebooks/2. 420111c97d5b414aa9e72a8dfb7b4fed Backtesting
 #: Strategy.ipynb:90 a
 msgid "The configuration object created earlier."
-msgstr ""
+msgstr "之前创建的配置对象。"
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:111 a
 #: e8d5bdac536744c0bb7b8e4f125cca6d
@@ -96,11 +110,16 @@ msgid ""
 "`StrategyConfig reference documentation "
 "<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig>`__."
 msgstr ""
+"现在，``Strategy`` 实例已准备好在使用指定的配置选项运行回测之前，从 Yahoo Finance"
+" 下载 2017 年 3 月 1 日至 2022 年 3 月 1 日之间的数据。"
+"如果您需要修改其他配置选项，可以参考 `StrategyConfig "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig>`__"
+" 参考文档。"
 
 #: ../../source/notebooks/2. 218d76241f6a4ab89522dc9d10f3f36a Backtesting
 #: Strategy.ipynb:114 a
 msgid "Defining Strategy Rules"
-msgstr ""
+msgstr "定义策略规则"
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:116 a
 #: c98fa0488add414e9cf142052e8b5f52
@@ -108,6 +127,7 @@ msgid ""
 "In this section, you will learn how to implement a basic trading strategy"
 " in **PyBroker** with the following rules:"
 msgstr ""
+"在本节中，您将学习如何在 ``PyBroker`` 中实现一个基本的交易策略，包括以下规则："
 
 #: ../../source/notebooks/2. 39e45b1d794d46aba14e66d1ae304edd Backtesting
 #: Strategy.ipynb:118 a
@@ -115,6 +135,7 @@ msgid ""
 "Buy shares in a stock if the last close price is less than the low of the"
 " previous bar and there is no open long position in that stock."
 msgstr ""
+"如果最后收盘价低于前一根K线的最低价，并且该股票没有未平仓的多头头寸，则购买该股票的股份。"
 
 #: ../../source/notebooks/2. 8b4125074fd540dd8d32cf8558fbba78 Backtesting
 #: Strategy.ipynb:119 a
@@ -122,11 +143,13 @@ msgid ""
 "Set the limit price of the buy order to 0.01 less than the last close "
 "price."
 msgstr ""
+"将买单的限价设置为比最后收盘价低 0.01 的价格。"
 
 #: ../../source/notebooks/2. 4bee6e0b8b1c4913ae64197358d7292f Backtesting
 #: Strategy.ipynb:120 a
 msgid "Hold the position for 3 days before liquidating it at market price."
 msgstr ""
+"持有头寸 3 天后以市价平仓。"
 
 #: ../../source/notebooks/2. 65ecdaa54b2f418e8376a2a6de8873c6 Backtesting
 #: Strategy.ipynb:121 a
@@ -135,6 +158,7 @@ msgid ""
 "Trade the rules on AAPL and MSFT, allocating up to 25% of the portfolio "
 "to each."
 msgstr ""
+"在 AAPL 和 MSFT 上执行这些规则，为每只股票分配最多 25% 的投资组合。"
 
 #: ../../source/notebooks/2. 4d99911ad79f45639637c0bf96dc5315 Backtesting
 #: Strategy.ipynb:123 a
@@ -143,6 +167,8 @@ msgid ""
 "**PyBroker** will call separately for AAPL and MSFT on every bar of data."
 " Each bar corresponds to a single day of data:"
 msgstr ""
+"为实现这一目标，您将定义一个 ``buy_low`` 函数，**PyBroker** 将在"
+"每条数据的每个K线上分别为 AAPL 和 MSFT 调用该函数。每个 K 线对应一天的数据："
 
 #: ../../source/notebooks/2. 6cf338808fc84c88a1efe63d46d52cb9 Backtesting
 #: Strategy.ipynb:156 a
@@ -155,6 +181,11 @@ msgid ""
 "most recent bar of the current ticker symbol. The latest close price is "
 "retrieved with ``ctx.close[-1]``."
 msgstr ""
+"这里有很多内容需要解释！``buy_low`` 函数将接收一个包含当前"
+"股票代码（AAPL 或 MSFT）数据的 `ExecContext "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
+"（``ctx``）。ExecContext 将包含当前股票代码最近 K 线之前的所有收盘价。"
+"通过 ``ctx.close[-1]`` 获取最新的收盘价。"
 
 #: ../../source/notebooks/2. 1c6ae959c8d445e3ab8d29adb03e869e Backtesting
 #: Strategy.ipynb:158 a
@@ -168,6 +199,12 @@ msgid ""
 " In this case, the number of shares to buy will be equal to 25% of the "
 "portfolio."
 msgstr ""
+"``buy_low`` 函数将使用 ``ExecContext`` 来下达买单。"
+"购买的股份数量通过 `ctx.buy_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buy_shares>`__，"
+"设置，它是通过 `ctx.calc_target_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.calc_target_shares>`__"
+" 计算的。在这种情况下，要购买的股份数量将等于投资组合的 25%。"
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:161 a
 #: e65ff3414efc47e6b37d49c2cc7ec91e
@@ -185,6 +222,14 @@ msgid ""
 "price "
 "<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.PriceType.MIDDLE>`__."
 msgstr ""
+"订单的限价通过 `buy_limit_price "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buy_limit_price>`__"
+" 设置。如果满足条件，买单将在下一根 K 线成交。"
+"订单成交的时间可以通过 `StrategyConfig.buy_delay "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.buy_delay>`__"
+" 进行配置，成交价可以通过 `ExecContext.buy_fill_price "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buy_fill_price>`__"
+" 设置。默认情况下，买单在下一根 K 线（``buy_delay=1``）成交，成交价等于该 K 线的最低价和最高价之间的中点。"
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:164 a
 #: ad7445203eae48f78457910b45d3b911
@@ -198,6 +243,12 @@ msgid ""
 " which is configurable and defaults to the midpoint between the bar's low"
 " and high price."
 msgstr ""
+"最后，`ctx.hold_bars "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.hold_bars>`__"
+" 指定在平仓之前持有头寸的 K 线数。平仓时，股票以市价出售，"
+"市价等于 `ExecContext.sell_fill_price "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_fill_price>`__"
+"，这是可配置的，默认值为K线最低价和最高价之间的中点。"
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:167 a
 #: b62ed284e0344cf7b0bc693d287d760c
@@ -206,11 +257,14 @@ msgid ""
 "will use `add_execution "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__:"
 msgstr ""
+"要将 ``buy_low`` 规则添加到 AAPL 和 MSFT 的 ``策略`` 中，您需要使用 `add_execution "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__"
+"："
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:189 a
 #: a0978d47b697402fa369c93eb02cd15c
 msgid "Adding a Second Execution"
-msgstr ""
+msgstr "添加第二个执行逻辑"
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:191 a
 #: fefac784301f457f9e158045103ba7bd
@@ -219,6 +273,8 @@ msgid ""
 "the same ``Strategy`` instance. In other words, you are not restricted to"
 " using only one set of trading rules for a single group of tickers."
 msgstr ""
+"在同一个 ``Strategy`` 实例中，您可以为不同的股票代码使用不同的交易规则。"
+"换句话说，您并不局限于对一组股票代码只使用一套交易规则。"
 
 #: ../../source/notebooks/2. 57f3d18f87b3417d9389825f0e7fe223 Backtesting
 #: Strategy.ipynb:193 a
@@ -227,11 +283,13 @@ msgid ""
 "in a function called ``short_high``, which is similar to the previous set"
 " of rules:"
 msgstr ""
+"为了说明这一点，提供了一个名为 ``short_high`` 的函数，"
+"其中包含一个做空策略的新规则集，这与之前的规则集类似："
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:224 a
 #: ac08ff6312564223ae0e85f0ff8d6a1c
 msgid "The rules in ``short_high`` will be traded on ``TSLA``:"
-msgstr ""
+msgstr "``short_high`` 中的规则将应用于 ``TSLA``："
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:245 a
 #: ffc35bc2e19748cc901bf5d8d9fb7a33
@@ -240,11 +298,14 @@ msgid ""
 "`ExecContext#foreign "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.foreign>`__)"
 msgstr ""
+"（注意，您还可以通过调用 `ExecContext#foreign "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.foreign>`__"
+" 获取另一个股票代码的 K 线数据）"
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:257 a
 #: e370f38723a248f1b845758799e2237b
 msgid "Running a Backtest"
-msgstr ""
+msgstr "运行回测"
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:259 a
 #: dcf062a546a1450bb8872d633a32bc79
@@ -253,6 +314,9 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`__"
 " method on the ``Strategy`` instance. Here is an example:"
 msgstr ""
+"要运行回测，请在 Strategy 实例上调用 `backtest "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`__"
+" 方法。以下是一个例子："
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:376 a
 #: db2bfc8947414f9babf1c04d40571d76
@@ -265,6 +329,12 @@ msgid ""
 "portfolio, you can plot the market value using `Matplotlib "
 "<https://matplotlib.org/>`__:"
 msgstr ""
+"这很快！``backtest`` 方法将返回一个 `TestResult "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.TestResult>`__"
+" 实例。您可以通过此实例访问有关回测的各种信息和指标。"
+"例如，要查看投资组合的每日余额，您可以使用 `Matplotlib "
+"<https://matplotlib.org/>`__"
+" 绘制市值："
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:434 a
 #: c0426da0b328449ab9ab4e2413e8862c
@@ -273,6 +343,7 @@ msgid ""
 " trades that were made for every entry and exit, and all of the orders "
 "that were placed:"
 msgstr ""
+"您还可以访问每个持有头寸的每日余额、每次进出场的交易以及下达的所有订单："
 
 #: ../../source/notebooks/2. 28b83449bb414b9b91c56139521ac55f Backtesting
 #: Strategy.ipynb:1339 a
@@ -282,11 +353,14 @@ msgid ""
 "these metrics mean on the reference documentation "
 "<https://www.pybroker.com/en/latest/reference/pybroker.eval.html#pybroker.eval.EvalMetrics>`__."
 msgstr ""
+"此外，``result.metrics_df`` 包含一个使用回测收益率计算得出的指标 DataFrame。"
+"`您可以在参考文档中了解这些指标的含义 "
+"<https://www.pybroker.com/en/latest/reference/pybroker.eval.html#pybroker.eval.EvalMetrics>`__。"
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:1728 a
 #: f94a46e09a30478ca64537a1aabf1b29
 msgid "Filtering Backtest Data"
-msgstr ""
+msgstr "筛选回测数据"
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:1730 a
 #: c95f77c8ba024194813a367adbdccf21
@@ -295,6 +369,8 @@ msgid ""
 "bars. For example, you can limit the strategy to trade only on Mondays by"
 " filtering the data to only contain bars for Mondays:"
 msgstr ""
+"您可以筛选用于回测的数据，仅包括特定的 K 线。例如，您可以通过筛选"
+"仅包含周一的数据来限制策略仅在周一交易："
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:2074 a
 #: c1b0fb985f8d4988a2162ed05c9c117a
@@ -302,6 +378,7 @@ msgid ""
 "The data doesn't need to be downloaded again from Yahoo Finance because "
 "caching is enabled and the cached data only needs to be filtered."
 msgstr ""
+"由于启用了缓存，因此无需再次从 Yahoo Finance 下载数据，只需对缓存的数据进行筛选即可。"
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:2076 a
 #: a2cbae47dbe84cdf996a8f1f09ffff48
@@ -311,6 +388,9 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`__"
 " argument."
 msgstr ""
+"您还可以使用 `between_time "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`__"
+" 参数按时间范围筛选数据，例如 9:30-10:30 AM。"
 
 #: ../../source/notebooks/2. 7ac6cbdc517b4d0e9bea780ea0b807c2 Backtesting
 #: Strategy.ipynb:2078 a
@@ -321,6 +401,9 @@ msgid ""
 " to use bootstrapping to further evaluate our trading strategies "
 "<https://www.pybroker.com/en/latest/notebooks/3.%20Evaluating%20with%20Bootstrap%20Metrics.html>`__."
 msgstr ""
+"尽管之前的指标表明我们拥有一个盈利的策略，但我们可能被随机性误导。"
+"`在下一篇文章中，我们将讨论如何使用自助法进一步评估我们的交易策略 "
+"<https://www.pybroker.com/en/latest/notebooks/3.%20Evaluating%20with%20Bootstrap%20Metrics.html>`__。"
 
 #~ msgid ""
 #~ "We're all set to test a basic "
