@@ -22,7 +22,7 @@ msgstr ""
 #: ../../source/notebooks/4. 4df90d73630f4349836b0d74b0fec2e4 Position Ranking
 #: Sizing.ipynb:9 and
 msgid "Ranking and Position Sizing"
-msgstr "排序和仓位大小"
+msgstr "排名和仓位调整"
 
 #: ../../source/notebooks/4. 63d542e96a7c4b04a3c2d6730b2a483e Position Ranking
 #: Sizing.ipynb:11 and
@@ -32,11 +32,14 @@ msgid ""
 "symbols in your trading strategy. With these features, you can easily "
 "optimize your strategy and manage risk more effectively."
 msgstr ""
+"在本文档中，我们将学习有关 **PyBroker** 的特性，"
+"这些特性使您能够对股票代码进行排名并为交易策略中的一组代码设置仓位大小。"
+"通过这些功能，您可以轻松优化策略并更有效地管理风险。"
 
 #: ../../source/notebooks/4. Position Ranking Sizing.ipynb:61 and
 #: c5b45f318d5d4d4ca168834b20487c4c
 msgid "Ranking Ticker Symbols"
-msgstr ""
+msgstr "给股票排序"
 
 #: ../../source/notebooks/4. Position Ranking Sizing.ipynb:63 and
 #: b4bc7175fe54493fb095e5c7e8f39f3b
@@ -45,6 +48,8 @@ msgid ""
 "placing buy orders. Let's begin with an example of how to rank ticker "
 "symbols based on volume when placing buy orders."
 msgstr ""
+"在本节中，我们将学习如何在下买单时对股票代码进行排名。"
+"让我们从一个示例开始，说明如何根据成交量对下买单时的股票代码进行排名。"
 
 #: ../../source/notebooks/4. 27070ae976bb46e191205e9ba6cfff5f Position Ranking
 #: Sizing.ipynb:89 and
@@ -55,6 +60,9 @@ msgid ""
 " ``ctx.score`` is set to ``ctx.volume[-1]``, which is the most recent "
 "trading volume."
 msgstr ""
+"``buy_highest_volume`` 函数根据股票代码的最近交易量进行排名，"
+"并为 2 个时间段分配 100% 的投资组合。"
+"``ctx.score`` 被设置为 ``ctx.volume[-1]``，即最近的交易量。"
 
 #: ../../source/notebooks/4. 2f4d4a61c8db4c8397c8cf280d916637 Position Ranking
 #: Sizing.ipynb:112 and
@@ -70,11 +78,18 @@ msgid ""
 " object and specify the ticker symbols to trade: ``['T', 'F', 'GM', "
 "'PFE']``."
 msgstr ""
+"要将同时持有的多头仓位数量限制为 ``1``，我们在 `StrategyConfig "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig>`__"
+" 中将 `max_long_positions "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.max_long_positions>`__"
+" 设置为 ``1``。在此示例中，我们将 ``buy_highest_volume`` 函数添加到 `Strategy "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy>`__"
+" 对象中，并指定要交易的股票代码：``['T', 'F', 'GM', 'PFE']``。"
 
 #: ../../source/notebooks/4. Position Ranking Sizing.ipynb:584
 #: a9efbe2bc1e246c2bba769782bd07001 and
 msgid "Setting Position Sizes"
-msgstr ""
+msgstr "设置仓位大小"
 
 #: ../../source/notebooks/4. 5fda3b3fb7b84c9393393c71a31b3375 Position Ranking
 #: Sizing.ipynb:586 and
@@ -83,6 +98,8 @@ msgid ""
 " illustrate this, let's take a simple buy and hold strategy that starts "
 "trading after 100 days and holds positions for 30 days:"
 msgstr ""
+"在 **PyBroker** 中，您可以根据多个股票代码设置仓位大小。"
+"为了说明这一点，我们来看一个简单的买入并持有策略，该策略在 100 天后开始交易，持有仓位 30 天："
 
 #: ../../source/notebooks/4. 44d8e3e100314645864b7bc43251431a Position Ranking
 #: Sizing.ipynb:613 and
@@ -92,6 +109,9 @@ msgid ""
 " want to size positions so that more shares are allocated to tickers with"
 " lower volatility to decrease the portfolio's overall volatility."
 msgstr ""
+"这将在每个 ``['T', 'F', 'GM', 'PFE']`` 中购买 ``100`` 股。"
+"但是，如果您不想使用相等的仓位大小怎么办？例如，"
+"您可能希望为波动性较低的股票代码分配更多的份额，以降低投资组合的整体波动性。"
 
 #: ../../source/notebooks/4. 36e659300efe474cba8f695ca7793483 Position Ranking
 #: Sizing.ipynb:615 and
@@ -101,6 +121,9 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_pos_size_handler>`__"
 " function that calculates the position size for each ticker:"
 msgstr ""
+"要为每个股票代码自定义仓位大小，我们可以定义一个 `pos_size_handler "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_pos_size_handler>`__"
+" 函数来计算每个股票代码的仓位大小："
 
 #: ../../source/notebooks/4. 95e28821e9ea46a9a55d933ca979002f Position Ranking
 #: Sizing.ipynb:655 and
@@ -113,6 +136,13 @@ msgid ""
 " is set on the `ExecContext "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__:"
 msgstr ""
+"每当在 `ExecContext "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
+" 上设置 `buy_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buy_shares>`__"
+" 或 `sell_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_shares>`__"
+" 时，处理程序都会在生成买入或卖出信号的每个数据点上运行："
 
 #: ../../source/notebooks/4. 8446b8cd2831467f812e289d18410684 Position Ranking
 #: Sizing.ipynb:1230 and
@@ -122,6 +152,9 @@ msgid ""
 "<https://en.wikipedia.org/wiki/Modern_portfolio_theory>`__ to determine "
 "portfolio allocations."
 msgstr ""
+"使用这种方法可以实现很多可能性，例如使用 `均值-方差优化 "
+"<https://en.wikipedia.org/wiki/Modern_portfolio_theory>`__"
+" 来确定投资组合分配。"
 
 #: ../../source/notebooks/4. Position Ranking Sizing.ipynb:1232
 #: a0815053562c411fa03b3bda9f04f4ed and
@@ -130,6 +163,8 @@ msgid ""
 " in PyBroker "
 "<https://www.pybroker.com/en/latest/notebooks/5.%20Writing%20Indicators.html>`__."
 msgstr ""
+"`在下一篇文档中，我们将讨论如何在 PyBroker 中实现自定义指标 "
+"<https://www.pybroker.com/en/latest/notebooks/5.%20Writing%20Indicators.html>`__。"
 
 #~ msgid ""
 #~ "In this section, we will learn "
