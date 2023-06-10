@@ -310,19 +310,19 @@ def max_drawdown(changes: NDArray[np.float_]) -> float:
     return -dd
 
 
-def calmar_ratio(changes: NDArray[np.float_], annual_bars: int) -> float:
+def calmar_ratio(changes: NDArray[np.float_], bars_per_year: int) -> float:
     """Computes the Calmar Ratio.
 
     Args:
         changes: Array of differences between each bar and the previous bar.
-        annual_bars: Number of bars per annum.
+        bars_per_year: Number of bars per annum.
     """
     if not len(changes):
         return 0
     max_dd = np.abs(max_drawdown(changes))
     if max_dd == 0:
         return 0
-    return np.mean(changes) * annual_bars / max_dd
+    return np.mean(changes) * bars_per_year / max_dd
 
 
 @njit
@@ -645,21 +645,21 @@ def total_return_percent(initial_value: float, pnl: float) -> float:
 
 
 def annual_total_return_percent(
-    initial_value: float, pnl: float, annual_bars: int, total_bars: int
+    initial_value: float, pnl: float, bars_per_year: int, total_bars: int
 ) -> float:
     """Computes annualized total return as percentage.
 
     Args:
         initial_value: Initial value.
         pnl: Total profit and loss (PnL).
-        annual_bars: Number of bars per annum.
+        bars_per_year: Number of bars per annum.
         total_bars: Total number of bars of the return.
     """
     if initial_value == 0 or total_bars == 0:
         return 0
     return (
         np.power(
-            (pnl + initial_value) / initial_value, annual_bars / total_bars
+            (pnl + initial_value) / initial_value, bars_per_year / total_bars
         )
         - 1
     ) * 100
@@ -860,7 +860,7 @@ class EvaluateMixin:
         calc_bootstrap: bool,
         bootstrap_sample_size: int,
         bootstrap_samples: int,
-        annual_bars: Optional[int],
+        bars_per_year: Optional[int],
     ) -> EvalResult:
         """Computes evaluation metrics.
 
@@ -871,9 +871,10 @@ class EvaluateMixin:
             calc_bootstrap: ``True`` to calculate randomized bootstrap metrics.
             bootstrap_sample_size: Size of each random bootstrap sample.
             bootstrap_samples: Number of random bootstrap samples to use.
-            annual_bars: Number of observations per years that will be used to
-                annualize evaluation metrics. For example, a value of ``252``
-                would be used to annualize the Sharpe Ratio for daily returns.
+            bars_per_year: Number of observations per years that will be used
+                to annualize evaluation metrics. For example, a value of
+                ``252`` would be used to annualize the Sharpe Ratio for daily
+                returns.
 
         Returns:
             :class:`.EvalResult` containing evaluation metrics.
@@ -921,7 +922,7 @@ class EvaluateMixin:
             largest_loss_num_bars=largest_loss_bars,
             largest_loss_pct=largest_loss_pct,
             fees=fees,
-            annual_bars=annual_bars,
+            bars_per_year=bars_per_year,
         )
         logger = StaticScope.instance().logger
         if not calc_bootstrap:
@@ -937,7 +938,7 @@ class EvaluateMixin:
             bar_changes,
             bootstrap_sample_size,
             bootstrap_samples,
-            annual_bars,
+            bars_per_year,
         )
         dd_result = self._calc_drawdown_conf(
             bar_changes,
@@ -979,13 +980,13 @@ class EvaluateMixin:
         largest_loss_num_bars: int,
         largest_loss_pct: float,
         fees: NDArray[np.float_],
-        annual_bars: Optional[int],
+        bars_per_year: Optional[int],
     ) -> EvalMetrics:
         total_fees = fees[-1] if len(fees) else 0
         max_dd = max_drawdown(bar_changes)
         max_dd_pct = max_drawdown_percent(bar_returns)
-        sharpe = sharpe_ratio(bar_changes, annual_bars)
-        sortino = sortino_ratio(bar_changes, annual_bars)
+        sharpe = sharpe_ratio(bar_changes, bars_per_year)
+        sortino = sortino_ratio(bar_changes, bars_per_year)
         pf = profit_factor(bar_changes)
         r2 = r_squared(market_values)
         ui = ulcer_index(market_values)
@@ -1040,18 +1041,18 @@ class EvaluateMixin:
         annual_std_error = None
         annual_volatility_pct = None
         calmar = None
-        if annual_bars is not None:
+        if bars_per_year is not None:
             annual_return_pct = annual_total_return_percent(
                 initial_value=market_values[0],
                 pnl=total_pnl,
-                annual_bars=annual_bars,
+                bars_per_year=bars_per_year,
                 total_bars=len(market_values),
             )
-            annual_std_error = std_error * np.sqrt(annual_bars)
+            annual_std_error = std_error * np.sqrt(bars_per_year)
             annual_volatility_pct = float(
-                np.std(bar_returns * 100) * np.sqrt(annual_bars)
+                np.std(bar_returns * 100) * np.sqrt(bars_per_year)
             )
-            calmar = calmar_ratio(bar_changes, annual_bars)
+            calmar = calmar_ratio(bar_changes, bars_per_year)
         return EvalMetrics(
             trade_count=len(pnls),
             initial_market_value=market_values[0],
@@ -1103,12 +1104,12 @@ class EvaluateMixin:
         changes: NDArray[np.float_],
         sample_size: int,
         samples: int,
-        annual_bars: Optional[int],
+        bars_per_year: Optional[int],
     ) -> _ConfsResult:
         pf_intervals = conf_profit_factor(changes, sample_size, samples)
         pf_conf = self._to_conf_intervals("Profit Factor", pf_intervals)
         sr_intervals = conf_sharpe_ratio(
-            changes, sample_size, samples, annual_bars
+            changes, sample_size, samples, bars_per_year
         )
         sharpe_conf = self._to_conf_intervals("Sharpe Ratio", sr_intervals)
         df = pd.DataFrame.from_records(

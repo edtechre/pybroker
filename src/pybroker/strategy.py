@@ -1465,7 +1465,7 @@ class Strategy(
             calc_bootstrap=calc_bootstrap,
             bootstrap_sample_size=self._config.bootstrap_sample_size,
             bootstrap_samples=self._config.bootstrap_samples,
-            annual_bars=self._config.annual_bars,
+            bars_per_year=self._config.bars_per_year,
         )
         metrics = [
             (k, v)

@@ -219,7 +219,7 @@ def test_max_drawdown(values, expected_dd):
 
 
 @pytest.mark.parametrize(
-    "values, annual_bars, expected_calmar",
+    "values, bars_per_year, expected_calmar",
     [
         ([0.1, 0.15, -0.05, 0.1, -0.25, -0.15, 0], 252, -9),
         ([0.1, -0.4], 252, -94.5),
@@ -228,8 +228,8 @@ def test_max_drawdown(values, expected_dd):
         ([], 252, 0),
     ],
 )
-def test_calmar_ratio(values, annual_bars, expected_calmar):
-    calmar = calmar_ratio(np.array(values), annual_bars)
+def test_calmar_ratio(values, bars_per_year, expected_calmar):
+    calmar = calmar_ratio(np.array(values), bars_per_year)
     assert truncate(calmar, 6) == expected_calmar
 
 
@@ -467,7 +467,7 @@ def test_total_return_percent(initial_value, pnl, expected_return):
 
 
 @pytest.mark.parametrize(
-    "initial_value, pnl, annual_bars, total_bars, expected_return",
+    "initial_value, pnl, bars_per_year, total_bars, expected_return",
     [
         (100, 10, 252, 756, 3.22),
         (0, 10, 252, 756, 0),
@@ -475,17 +475,17 @@ def test_total_return_percent(initial_value, pnl, expected_return):
     ],
 )
 def test_annual_total_return_percent(
-    initial_value, pnl, annual_bars, total_bars, expected_return
+    initial_value, pnl, bars_per_year, total_bars, expected_return
 ):
     return_pct = annual_total_return_percent(
-        initial_value, pnl, annual_bars, total_bars
+        initial_value, pnl, bars_per_year, total_bars
     )
     assert truncate(return_pct, 2) == expected_return
 
 
 class TestEvaluateMixin:
     @pytest.mark.parametrize(
-        "annual_bars, expected_sharpe, expected_sortino",
+        "bars_per_year, expected_sharpe, expected_sortino",
         [
             (None, 0.01710828175162464, 0.01714937872464358),
             (
@@ -505,7 +505,7 @@ class TestEvaluateMixin:
         portfolio_df,
         trades_df,
         calc_bootstrap,
-        annual_bars,
+        bars_per_year,
         expected_sharpe,
         expected_sortino,
     ):
@@ -516,7 +516,7 @@ class TestEvaluateMixin:
             calc_bootstrap,
             bootstrap_sample_size=bootstrap_sample_size,
             bootstrap_samples=bootstrap_samples,
-            annual_bars=annual_bars,
+            bars_per_year=bars_per_year,
         )
         assert result.metrics is not None
         if not calc_bootstrap:
@@ -584,7 +584,7 @@ class TestEvaluateMixin:
         assert metrics.equity_r2 == 0.8979045919638434
         assert metrics.std_error == 69646.36129687089
         assert metrics.total_fees == 0
-        if annual_bars is not None:
+        if bars_per_year is not None:
             assert metrics.calmar == 0.6819937522980625
             assert truncate(metrics.annual_return_pct, 6) == truncate(
                 5.897743691129764, 6
@@ -605,7 +605,7 @@ class TestEvaluateMixin:
             calc_bootstrap,
             bootstrap_sample_size=10,
             bootstrap_samples=100,
-            annual_bars=None,
+            bars_per_year=None,
         )
         assert result.metrics is not None
         for field in get_type_hints(EvalMetrics):
@@ -630,7 +630,7 @@ class TestEvaluateMixin:
             calc_bootstrap,
             bootstrap_sample_size=10,
             bootstrap_samples=100,
-            annual_bars=None,
+            bars_per_year=None,
         )
         assert result.metrics is not None
         for field in get_type_hints(EvalMetrics):
@@ -653,7 +653,7 @@ class TestEvaluateMixin:
             calc_bootstrap,
             bootstrap_sample_size=10,
             bootstrap_samples=100,
-            annual_bars=None,
+            bars_per_year=None,
         )
         metrics = result.metrics
         assert metrics is not None
