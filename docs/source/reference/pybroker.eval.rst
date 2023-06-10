@@ -15,4 +15,6 @@ pybroker.eval module
       avg_losing_trade_bars, avg_pnl, avg_return_pct, avg_trade_bars,
       avg_winning_trade_bars, equity_r2, largest_loss_bars, largest_win_bars,
       loss_rate, total_pnl, total_return_pct, total_fees, losing_trades,
-      winning_trades, drawdown
+      winning_trades, drawdown, annual_return_pct, annual_std_error,
+      annual_volatility_pct, calmar, largest_loss_pct, largest_win_pct,
+      sortino, unrealized_pnl
