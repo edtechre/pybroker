@@ -1465,12 +1465,14 @@ class Strategy(
             calc_bootstrap=calc_bootstrap,
             bootstrap_sample_size=self._config.bootstrap_sample_size,
             bootstrap_samples=self._config.bootstrap_samples,
-            sharpe_length=self._config.sharpe_length,
+            annual_bars=self._config.annual_bars,
         )
-        metrics_df = pd.DataFrame(
-            dataclasses.asdict(eval_result.metrics).items(),
-            columns=["name", "value"],
-        )
+        metrics = [
+            (k, v)
+            for k, v in dataclasses.asdict(eval_result.metrics).items()
+            if v is not None
+        ]
+        metrics_df = pd.DataFrame(metrics, columns=["name", "value"])
         self._logger.walkforward_completed()
         return TestResult(
             start_date=start_date,

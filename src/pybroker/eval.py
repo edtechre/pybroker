@@ -213,7 +213,9 @@ def log_profit_factor(changes: NDArray[np.float_]) -> np.floating:
 
 @njit
 def sharpe_ratio(
-    changes: NDArray[np.float_], obs: Optional[int] = None
+    changes: NDArray[np.float_],
+    obs: Optional[int] = None,
+    downside_only: bool = False,
 ) -> np.floating:
     """Computes the
     `Sharpe Ratio <https://en.wikipedia.org/wiki/Sharpe_ratio>`_.
@@ -224,15 +226,31 @@ def sharpe_ratio(
             example, a value of ``252`` would be used to annualize daily
             returns.
     """
-    if not len(changes):
+    std_changes = changes[changes < 0] if downside_only else changes
+    if not len(std_changes):
         return np.float32(0)
-    std = np.std(changes)
+    std = np.std(std_changes)
     if std == 0:
         return np.float32(0)
     sr = np.mean(changes) / std
     if obs is not None:
         sr *= np.sqrt(obs)
     return sr
+
+
+def sortino_ratio(
+    changes: NDArray[np.float_], obs: Optional[int] = None
+) -> float:
+    """Computes the
+    `Sortino Ratio <https://en.wikipedia.org/wiki/Sortino_ratio>`_.
+
+    Args:
+        changes: Array of differences between each bar and the previous bar.
+        obs: Number of observations used to annualize the Sortino Ratio. For
+            example, a value of ``252`` would be used to annualize daily
+            returns.
+    """
+    return float(sharpe_ratio(changes, obs, downside_only=True))
 
 
 def conf_profit_factor(
@@ -290,6 +308,21 @@ def max_drawdown(changes: NDArray[np.float_]) -> float:
             if loss > dd:
                 dd = loss
     return -dd
+
+
+def calmar_ratio(changes: NDArray[np.float_], annual_bars: int) -> float:
+    """Computes the Calmar Ratio.
+
+    Args:
+        changes: Array of differences between each bar and the previous bar.
+        annual_bars: Number of bars per annum.
+    """
+    if not len(changes):
+        return 0
+    max_dd = np.abs(max_drawdown(changes))
+    if max_dd == 0:
+        return 0
+    return np.mean(changes) * annual_bars / max_dd
 
 
 @njit
@@ -599,6 +632,39 @@ def max_wins_losses(pnls: NDArray[np.float_]) -> tuple[int, int]:
     return max_wins, max_losses
 
 
+def total_return_percent(initial_value: float, pnl: float) -> float:
+    """Computes total return as percentage.
+
+    Args:
+        initial_value: Initial value.
+        pnl: Total profit and loss (PnL).
+    """
+    if initial_value == 0:
+        return 0
+    return ((pnl + initial_value) / initial_value - 1) * 100
+
+
+def annual_total_return_percent(
+    initial_value: float, pnl: float, annual_bars: int, total_bars: int
+) -> float:
+    """Computes annualized total return as percentage.
+
+    Args:
+        initial_value: Initial value.
+        pnl: Total profit and loss (PnL).
+        annual_bars: Number of bars per annum.
+        total_bars: Total number of bars of the return.
+    """
+    if initial_value == 0 or total_bars == 0:
+        return 0
+    return (
+        np.power(
+            (pnl + initial_value) / initial_value, annual_bars / total_bars
+        )
+        - 1
+    ) * 100
+
+
 def r_squared(values: NDArray[np.float_]) -> float:
     """Computes R-squared of ``values``."""
     n = len(values)
@@ -651,6 +717,8 @@ class EvalMetrics:
         total_pnl: Total realized profit and loss (PnL).
         unrealized_pnl: Total unrealized profit and loss (PnL).
         total_return_pct: Total realized return measured in percentage.
+        annual_return_pct: Annualized total realized return measured in
+            percentage.
         total_profit: Total realized profit.
         total_loss: Total realized loss.
         total_fees: Total brokerage fees. See
@@ -680,6 +748,9 @@ class EvalMetrics:
         max_losses: Maximum number of consecutive losing trades.
         sharpe: `Sharpe Ratio <https://en.wikipedia.org/wiki/Sharpe_ratio>`_,
             computed per bar.
+        sortino: `Sortino Ratio
+            <https://en.wikipedia.org/wiki/Sortino_ratio>`_, computed per bar.
+        calmar: Calmar Ratio, computed per bar.
         profit_factor: Ratio of gross profit to gross loss, computed per bar.
         ulcer_index: `Ulcer Index
             <https://en.wikipedia.org/wiki/Ulcer_index>`_, computed per bar.
@@ -689,6 +760,10 @@ class EvalMetrics:
             of portfolio.
         std_error: Standard error, computed per bar on market values of
             portfolio.
+        annual_std_error: Annualized standard error, computed per bar on market
+            values of portfolio.
+        annual_volatility_pct: Annualized volatility percentage, computed per
+            bar on market values of portfolio.
     """
 
     trade_count: int = field(default=0)
@@ -697,6 +772,7 @@ class EvalMetrics:
     total_pnl: float = field(default=0)
     unrealized_pnl: float = field(default=0)
     total_return_pct: float = field(default=0)
+    annual_return_pct: Optional[float] = field(default=None)
     total_profit: float = field(default=0)
     total_loss: float = field(default=0)
     total_fees: float = field(default=0)
@@ -724,11 +800,15 @@ class EvalMetrics:
     max_wins: int = field(default=0)
     max_losses: int = field(default=0)
     sharpe: float = field(default=0)
+    sortino: float = field(default=0)
+    calmar: Optional[float] = field(default=None)
     profit_factor: float = field(default=0)
     ulcer_index: float = field(default=0)
     upi: float = field(default=0)
     equity_r2: float = field(default=0)
     std_error: float = field(default=0)
+    annual_std_error: Optional[float] = field(default=None)
+    annual_volatility_pct: Optional[float] = field(default=None)
 
 
 class ConfInterval(NamedTuple):
@@ -780,7 +860,7 @@ class EvaluateMixin:
         calc_bootstrap: bool,
         bootstrap_sample_size: int,
         bootstrap_samples: int,
-        sharpe_length: Optional[int],
+        annual_bars: Optional[int],
     ) -> EvalResult:
         """Computes evaluation metrics.
 
@@ -791,9 +871,9 @@ class EvaluateMixin:
             calc_bootstrap: ``True`` to calculate randomized bootstrap metrics.
             bootstrap_sample_size: Size of each random bootstrap sample.
             bootstrap_samples: Number of random bootstrap samples to use.
-            sharpe_length: Number of observations used to annualize the Sharpe
-                Ratio. For example, a value of ``252`` would be used to
-                annualize daily returns.
+            annual_bars: Number of observations per years that will be used to
+                annualize evaluation metrics. For example, a value of ``252``
+                would be used to annualize the Sharpe Ratio for daily returns.
 
         Returns:
             :class:`.EvalResult` containing evaluation metrics.
@@ -841,7 +921,7 @@ class EvaluateMixin:
             largest_loss_num_bars=largest_loss_bars,
             largest_loss_pct=largest_loss_pct,
             fees=fees,
-            sharpe_length=sharpe_length,
+            annual_bars=annual_bars,
         )
         logger = StaticScope.instance().logger
         if not calc_bootstrap:
@@ -857,7 +937,7 @@ class EvaluateMixin:
             bar_changes,
             bootstrap_sample_size,
             bootstrap_samples,
-            sharpe_length,
+            annual_bars,
         )
         dd_result = self._calc_drawdown_conf(
             bar_changes,
@@ -899,12 +979,13 @@ class EvaluateMixin:
         largest_loss_num_bars: int,
         largest_loss_pct: float,
         fees: NDArray[np.float_],
-        sharpe_length: Optional[int],
+        annual_bars: Optional[int],
     ) -> EvalMetrics:
         total_fees = fees[-1] if len(fees) else 0
         max_dd = max_drawdown(bar_changes)
         max_dd_pct = max_drawdown_percent(bar_returns)
-        sharpe = sharpe_ratio(bar_changes, sharpe_length)
+        sharpe = sharpe_ratio(bar_changes, annual_bars)
+        sortino = sortino_ratio(bar_changes, annual_bars)
         pf = profit_factor(bar_changes)
         r2 = r_squared(market_values)
         ui = ulcer_index(market_values)
@@ -951,10 +1032,26 @@ class EvaluateMixin:
                 avg_winning_trade_bars = float(np.mean(winning_bars))
             if len(losing_bars):
                 avg_losing_trade_bars = float(np.mean(losing_bars))
-        total_return_pct = (
-            (total_pnl + market_values[0]) / market_values[0] - 1
-        ) * 100
+        total_return_pct = total_return_percent(
+            initial_value=market_values[0], pnl=total_pnl
+        )
         unrealized_pnl = market_values[-1] - market_values[0] - total_pnl
+        annual_return_pct = None
+        annual_std_error = None
+        annual_volatility_pct = None
+        calmar = None
+        if annual_bars is not None:
+            annual_return_pct = annual_total_return_percent(
+                initial_value=market_values[0],
+                pnl=total_pnl,
+                annual_bars=annual_bars,
+                total_bars=len(market_values),
+            )
+            annual_std_error = std_error * np.sqrt(annual_bars)
+            annual_volatility_pct = float(
+                np.std(bar_returns * 100) * np.sqrt(annual_bars)
+            )
+            calmar = calmar_ratio(bar_changes, annual_bars)
         return EvalMetrics(
             trade_count=len(pnls),
             initial_market_value=market_values[0],
@@ -987,13 +1084,18 @@ class EvaluateMixin:
             total_pnl=total_pnl,
             unrealized_pnl=unrealized_pnl,
             total_return_pct=total_return_pct,
+            annual_return_pct=annual_return_pct,
             total_fees=total_fees,
             sharpe=sharpe,
+            sortino=sortino,
+            calmar=calmar,
             profit_factor=pf,
             equity_r2=r2,
             ulcer_index=ui,
             upi=upi_,
             std_error=std_error,
+            annual_std_error=annual_std_error,
+            annual_volatility_pct=annual_volatility_pct,
         )
 
     def _calc_conf_intervals(
@@ -1001,12 +1103,12 @@ class EvaluateMixin:
         changes: NDArray[np.float_],
         sample_size: int,
         samples: int,
-        sharpe_length: Optional[int],
+        annual_bars: Optional[int],
     ) -> _ConfsResult:
         pf_intervals = conf_profit_factor(changes, sample_size, samples)
         pf_conf = self._to_conf_intervals("Profit Factor", pf_intervals)
         sr_intervals = conf_sharpe_ratio(
-            changes, sample_size, samples, sharpe_length
+            changes, sample_size, samples, annual_bars
         )
         sharpe_conf = self._to_conf_intervals("Sharpe Ratio", sr_intervals)
         df = pd.DataFrame.from_records(

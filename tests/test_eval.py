@@ -25,8 +25,10 @@ import re
 from pybroker.eval import (
     EvalMetrics,
     EvaluateMixin,
+    annual_total_return_percent,
     avg_profit_loss,
     bca_boot_conf,
+    calmar_ratio,
     conf_profit_factor,
     conf_sharpe_ratio,
     drawdown_conf,
@@ -39,7 +41,9 @@ from pybroker.eval import (
     r_squared,
     relative_entropy,
     sharpe_ratio,
+    sortino_ratio,
     total_profit_loss,
+    total_return_percent,
     ulcer_index,
     upi,
     win_loss_rate,
@@ -162,16 +166,41 @@ def test_profit_factor(values, expected_pf):
 
 
 @pytest.mark.parametrize(
-    "values, expected_sharpe",
+    "values, obs, expected_sharpe",
     [
-        ([0.1, -0.2, 0.3, 0, -0.4, 0.5], 0.167443),
-        ([1, 1, 1, 1], 0),
-        ([1], 0),
-        ([], 0),
+        ([0.1, -0.2, 0.3, 0, -0.4, 0.5], None, 0.167443),
+        (
+            [0.1, -0.2, 0.3, 0, -0.4, 0.5],
+            252,
+            0.16744367165578425 * np.sqrt(252),
+        ),
+        ([1, 1, 1, 1], None, 0),
+        ([1], None, 0),
+        ([], None, 0),
     ],
 )
-def test_sharpe_ratio(values, expected_sharpe):
-    assert truncate(sharpe_ratio(np.array(values)), 6) == expected_sharpe
+def test_sharpe_ratio(values, obs, expected_sharpe):
+    sharpe = sharpe_ratio(np.array(values), obs)
+    assert truncate(sharpe, 6) == truncate(expected_sharpe, 6)
+
+
+@pytest.mark.parametrize(
+    "values, obs, expected_sortino",
+    [
+        ([0.1, -0.2, 0.3, 0, -0.4, 0.5], None, 0.499999),
+        (
+            [0.1, -0.2, 0.3, 0, -0.4, 0.5],
+            252,
+            0.4999999999999999 * np.sqrt(252),
+        ),
+        ([1, 1, 1, 1], None, 0),
+        ([1], None, 0),
+        ([], None, 0),
+    ],
+)
+def test_sortino_ratio(values, obs, expected_sortino):
+    sortino = sortino_ratio(np.array(values), obs)
+    assert truncate(sortino, 6) == truncate(expected_sortino, 6)
 
 
 @pytest.mark.parametrize(
@@ -187,6 +216,21 @@ def test_sharpe_ratio(values, expected_sharpe):
 def test_max_drawdown(values, expected_dd):
     changes = np.array(values)
     assert max_drawdown(changes) == expected_dd
+
+
+@pytest.mark.parametrize(
+    "values, annual_bars, expected_calmar",
+    [
+        ([0.1, 0.15, -0.05, 0.1, -0.25, -0.15, 0], 252, -9),
+        ([0.1, -0.4], 252, -94.5),
+        ([1, 1, 1, 1], 252, 0),
+        ([1], 252, 0),
+        ([], 252, 0),
+    ],
+)
+def test_calmar_ratio(values, annual_bars, expected_calmar):
+    calmar = calmar_ratio(np.array(values), annual_bars)
+    assert truncate(calmar, 6) == expected_calmar
 
 
 @pytest.mark.parametrize(
@@ -414,12 +458,41 @@ def test_r_squared(values, expected_r2):
     assert truncate(r2, 6) == expected_r2
 
 
+@pytest.mark.parametrize(
+    "initial_value, pnl, expected_return", [(100, 10, 10), (0, 10, 0)]
+)
+def test_total_return_percent(initial_value, pnl, expected_return):
+    return_pct = total_return_percent(initial_value, pnl)
+    assert truncate(return_pct, 2) == expected_return
+
+
+@pytest.mark.parametrize(
+    "initial_value, pnl, annual_bars, total_bars, expected_return",
+    [
+        (100, 10, 252, 756, 3.22),
+        (0, 10, 252, 756, 0),
+        (100, 10, 252, 0, 0),
+    ],
+)
+def test_annual_total_return_percent(
+    initial_value, pnl, annual_bars, total_bars, expected_return
+):
+    return_pct = annual_total_return_percent(
+        initial_value, pnl, annual_bars, total_bars
+    )
+    assert truncate(return_pct, 2) == expected_return
+
+
 class TestEvaluateMixin:
     @pytest.mark.parametrize(
-        "sharpe_length, expected_sharpe",
+        "annual_bars, expected_sharpe, expected_sortino",
         [
-            (None, 0.01710828175162464),
-            (252, 0.01710828175162464 * np.sqrt(252)),
+            (None, 0.01710828175162464, 0.01714937872464358),
+            (
+                252,
+                0.01710828175162464 * np.sqrt(252),
+                0.01714937872464358 * np.sqrt(252),
+            ),
         ],
     )
     @pytest.mark.parametrize(
@@ -432,8 +505,9 @@ class TestEvaluateMixin:
         portfolio_df,
         trades_df,
         calc_bootstrap,
-        sharpe_length,
+        annual_bars,
         expected_sharpe,
+        expected_sortino,
     ):
         mixin = EvaluateMixin()
         result = mixin.evaluate(
@@ -442,7 +516,7 @@ class TestEvaluateMixin:
             calc_bootstrap,
             bootstrap_sample_size=bootstrap_sample_size,
             bootstrap_samples=bootstrap_samples,
-            sharpe_length=sharpe_length,
+            annual_bars=annual_bars,
         )
         assert result.metrics is not None
         if not calc_bootstrap:
@@ -503,12 +577,23 @@ class TestEvaluateMixin:
         assert metrics.max_wins == 7
         assert metrics.max_losses == 7
         assert metrics.sharpe == expected_sharpe
+        assert metrics.sortino == expected_sortino
         assert metrics.profit_factor == 1.0759385033768167
         assert metrics.ulcer_index == 1.898347959437099
         assert metrics.upi == 0.01844528848501509
         assert metrics.equity_r2 == 0.8979045919638434
         assert metrics.std_error == 69646.36129687089
         assert metrics.total_fees == 0
+        if annual_bars is not None:
+            assert metrics.calmar == 0.6819937522980625
+            assert metrics.annual_return_pct == 5.897743691129764
+            assert metrics.annual_std_error == 1105601.710272446
+            assert metrics.annual_volatility_pct == 21.36797425126505
+        else:
+            assert metrics.calmar is None
+            assert metrics.annual_return_pct is None
+            assert metrics.annual_std_error is None
+            assert metrics.annual_volatility_pct is None
 
     def test_evaluate_when_portfolio_empty(self, trades_df, calc_bootstrap):
         mixin = EvaluateMixin()
@@ -518,11 +603,19 @@ class TestEvaluateMixin:
             calc_bootstrap,
             bootstrap_sample_size=10,
             bootstrap_samples=100,
-            sharpe_length=None,
+            annual_bars=None,
         )
         assert result.metrics is not None
         for field in get_type_hints(EvalMetrics):
-            assert getattr(result.metrics, field) == 0
+            if field in (
+                "calmar",
+                "annual_return_pct",
+                "annual_std_error",
+                "annual_volatility_pct",
+            ):
+                assert getattr(result.metrics, field) is None
+            else:
+                assert getattr(result.metrics, field) == 0
         assert result.bootstrap is None
 
     def test_evaluate_when_single_market_value(
@@ -535,11 +628,19 @@ class TestEvaluateMixin:
             calc_bootstrap,
             bootstrap_sample_size=10,
             bootstrap_samples=100,
-            sharpe_length=None,
+            annual_bars=None,
         )
         assert result.metrics is not None
         for field in get_type_hints(EvalMetrics):
-            assert getattr(result.metrics, field) == 0
+            if field in (
+                "calmar",
+                "annual_return_pct",
+                "annual_std_error",
+                "annual_volatility_pct",
+            ):
+                assert getattr(result.metrics, field) is None
+            else:
+                assert getattr(result.metrics, field) == 0
         assert result.bootstrap is None
 
     def test_evaluate_when_trades_empty(self, portfolio_df, calc_bootstrap):
@@ -550,7 +651,7 @@ class TestEvaluateMixin:
             calc_bootstrap,
             bootstrap_sample_size=10,
             bootstrap_samples=100,
-            sharpe_length=None,
+            annual_bars=None,
         )
         metrics = result.metrics
         assert metrics is not None
