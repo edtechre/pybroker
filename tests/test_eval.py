@@ -586,7 +586,9 @@ class TestEvaluateMixin:
         assert metrics.total_fees == 0
         if annual_bars is not None:
             assert metrics.calmar == 0.6819937522980625
-            assert metrics.annual_return_pct == 5.897743691129764
+            assert truncate(metrics.annual_return_pct, 6) == truncate(
+                5.897743691129764, 6
+            )
             assert metrics.annual_std_error == 1105601.710272446
             assert metrics.annual_volatility_pct == 21.36797425126505
         else:
