@@ -87,7 +87,7 @@ msgstr ""
 "但不支持像 ``BarData`` 这样的 Python 类实例。请注意，"
 "指标值的计算是由 Numba `向量化 "
 "<https://en.wikipedia.org/wiki/Array_programming>`__"
-"的，这意味着它是一次性对所有历史数据进行的。这种方法显著加快了回测过程。"
+" 的，这意味着它是一次性对所有历史数据进行的。这种方法显著加快了回测过程。"
 
 #: ../../source/notebooks/5. Indicators.ipynb:78 Writing
 #: d8c011e3f3544eae800669f1271fd3ae
@@ -109,6 +109,12 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.Indicator>`__"
 " instance that references the indicator function we defined."
 msgstr ""
+"这里，我们将指标函数命名为 ``cmma_20``，并将 ``回溯`` 参数指定为 ``20`` 条。"
+"指标函数中在 ``bar_data`` 之后的任何参数都将作为用户定义的参数传递给 `pybroker.indicator "
+"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.indicator>`__"
+"。一旦指标函数在 **PyBroker** 中注册，它将返回一个新的 `Indicator "
+"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.Indicator>`__"
+" 实例，该实例引用我们定义的指标函数。"
 
 #: ../../source/notebooks/5. Indicators.ipynb:104 Writing
 #: e282639b86624d05a24348ce62d31e87
@@ -117,6 +123,10 @@ msgid ""
 " **PyBroker** with some data downloaded from `Yahoo Finance "
 "<https://finance.yahoo.com>`__:"
 msgstr ""
+"以下是如何在 PyBroker 中使用已注册的指标的示例，"
+"其中数据来自于从 `Yahoo Finance "
+"<https://finance.yahoo.com>`__"
+" 下载的数据："
 
 #: ../../source/notebooks/5. 5a129e44f33a483890a56e104ec2f20b
 #: Indicators.ipynb:231 Writing
@@ -126,6 +136,10 @@ msgid ""
 " Series "
 "<https://pandas.pydata.org/docs/reference/api/pandas.Series.html>`__."
 msgstr ""
+"正如您所看到的，``Indicator`` 实例是 ``Callable`` 的。"
+"调用后，计算出的指标值将作为 `Pandas Series "
+"<https://pandas.pydata.org/docs/reference/api/pandas.Series.html>`__"
+" 返回。"
 
 #: ../../source/notebooks/5. Indicators.ipynb:233 Writing
 #: ecdd5419998841b5926daa027865b346
@@ -134,18 +148,20 @@ msgid ""
 "information content. For example, you can compute the `interquartile "
 "range (IQR) <https://en.wikipedia.org/wiki/Interquartile_range>`__:"
 msgstr ""
+"``Indicator`` 类还提供了用于衡量其信息含量的函数。例如，您可以计算 `四分位距（IQR） "
+"<https://en.wikipedia.org/wiki/Interquartile_range>`__："
 
 #: ../../source/notebooks/5. 61ba21eb01274688b4375a02804b43e3
 #: Indicators.ipynb:279 Writing
 msgid ""
 "Or compute the relative `entropy "
 "<https://en.wikipedia.org/wiki/Entropy_(information_theory)>`__:"
-msgstr ""
+msgstr "或者计算相对熵："
 
 #: ../../source/notebooks/5. Indicators.ipynb:326 Writing
 #: d9368564f55647cd93c011859da726c9
 msgid "Using the Indicator in a Strategy"
-msgstr ""
+msgstr "在策略中使用指标"
 
 #: ../../source/notebooks/5. Indicators.ipynb:328 Writing
 #: fec73844e2c948d1a3784012beb071a5
@@ -155,6 +171,8 @@ msgid ""
 "goes long when the 20-day CMMA is less than 0 — i.e. when the last close "
 "price drops below the 20-day moving average:"
 msgstr ""
+"在实现我们的指标之后，下一步是将其整合到交易策略中。以下示例展示了一个简单的策略，"
+"当 20 日 CMMA 小于 0 时进行多头建仓 — 即当最近收盘价跌破 20 日移动平均线时："
 
 #: ../../source/notebooks/5. 2155bc567ef04d97a368c23ce6144af5
 #: Indicators.ipynb:355 Writing
@@ -165,6 +183,11 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
 " and passing in the registered name of the ``cmma_20`` indicator."
 msgstr ""
+"通过在 `ExecContext "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
+" 上调用 `ctx.indicator "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.BaseContext.indicator>`__"
+" 并传入已注册的 ``cmma_20`` 指标名称，可以获取指标值。"
 
 #: ../../source/notebooks/5. Indicators.ipynb:357 Writing
 #: e104a3153d7940d29e18937c8e7aaab0
@@ -173,6 +196,9 @@ msgid ""
 " the symbol to `ExecContext#indicator() "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.indicator>`__)"
 msgstr ""
+"（注意，您还可以通过将股票代码传递给 `ExecContext#indicator() "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.indicator>`__"
+" 来获取其他股票的指标数据。）"
 
 #: ../../source/notebooks/5. 93b289a89ddb45e5a36726fb30875582
 #: Indicators.ipynb:381 Writing
@@ -182,6 +208,9 @@ msgid ""
 " along with the ``cmma_20`` indicator. We can enable caching of the "
 "computed indicator values to disk with the following:"
 msgstr ""
+"在这里，将 ``buy_cmma_cross`` 函数与 ``cmma_20`` 指标一起添加到 `Strategy "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy>`__"
+" 中。我们可以通过以下方式启用将计算出的指标值缓存到磁盘："
 
 #: ../../source/notebooks/5. 155552c6abd64a0d8f28bfb16cabd03e
 #: Indicators.ipynb:427 Writing
@@ -190,6 +219,7 @@ msgid ""
 "argument specifies that 20 bars need to pass before running the backtest "
 "execution:"
 msgstr ""
+"最后，我们可以使用以下代码运行回测。``warmup`` 参数指定在运行回测执行之前需要经过 20 个 Bar："
 
 #: ../../source/notebooks/5. Indicators.ipynb:961 Writing
 #: df96659b29a541e183ec53a5adc58e5a
@@ -198,11 +228,13 @@ msgid ""
 "there are multiple indicators added to the ``Strategy``, then "
 "**PyBroker** will compute them in parallel across multiple CPU cores."
 msgstr ""
+"当回测运行时，**PyBroker** 计算指标值。如果在 ``Strategy`` 中添加了多个指标，"
+"那么 **PyBroker** 将在多个 CPU 核心上并行计算它们。"
 
 #: ../../source/notebooks/5. 3c5b2652e7b940bfb9441b944913792e
 #: Indicators.ipynb:973 Writing
 msgid "Vectorized Helpers"
-msgstr ""
+msgstr "向量化辅助函数"
 
 #: ../../source/notebooks/5. 17cd143dc43144a2bd525d3dd62239d8
 #: Indicators.ipynb:975 Writing
@@ -213,6 +245,10 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.highv>`__,"
 " which calculates the highest value for every period of *n* bars."
 msgstr ""
+"**PyBroker** 库提供了向量化辅助函数，以简化计算指标的过程。"
+"其中一个辅助函数是 `highv "
+"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.highv>`__"
+"，它用于计算每个 *n* 条 Bar 周期的最高值。"
 
 #: ../../source/notebooks/5. Indicators.ipynb:977 Writing
 #: d318c001b634482ab87ea26be84af9ec
@@ -221,6 +257,7 @@ msgid ""
 " uses ``highv`` to calculate the *highest* high price for every period of"
 " 5 bars:"
 msgstr ""
+"在示例代码中，定义了一个名为 ``hhv`` 的指标函数，该函数使用 ``highv`` 计算每个 5 条 Bar 周期的*最高*价格："
 
 #: ../../source/notebooks/5. Indicators.ipynb:1062 Writing
 #: d6d77d4e3d334ea49346463acd0308fd
@@ -237,6 +274,17 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.cross>`__,"
 " the last of which is used to compute crossovers."
 msgstr ""
+"`pybroker.vect "
+"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html>`__"
+" 模块还包括其他向量化辅助函数，如 `lowv "
+"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.lowv>`__"
+"、`sumv "
+"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.sumv>`__"
+"、`returnv "
+"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.returnv>`__"
+" 和 `cross "
+"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.cross>`__"
+"，其中最后一个用于计算交叉点。"
 
 #: ../../source/notebooks/5. 7b15e04117174ba49183c0aaf0b241f7
 #: Indicators.ipynb:1065 Writing
@@ -251,7 +299,7 @@ msgstr ""
 #: ../../source/notebooks/5. 365f12b17e8645afb0215fe3fac216c1
 #: Indicators.ipynb:1148 Writing
 msgid "Computing Multiple Indicators"
-msgstr ""
+msgstr "计算多个指标"
 
 #: ../../source/notebooks/5. 1c108eaed9ff4cf4a61d47401a1757c3
 #: Indicators.ipynb:1150 Writing
@@ -264,11 +312,17 @@ msgid ""
 "<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__ "
 "containing both:"
 msgstr ""
+"可以使用 `IndicatorSet "
+"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.IndicatorSet>`__"
+" 来计算多个指标。通过将 ``cmma_20`` 和 ``hhv_5`` 指标添加到 ``IndicatorSet`` 中，"
+"可以一起计算它们。最终输出将是一个包含两者的 `Pandas DataFrame "
+"<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__ "
+"："
 
 #: ../../source/notebooks/5. Indicators.ipynb:1431 Writing
 #: d9cc4f6927114923985bb297c037ff27
 msgid "Using TA-Lib"
-msgstr ""
+msgstr "使用 TA-Lib"
 
 #: ../../source/notebooks/5. 1458248664a3472fa45f6f33fa9956b4
 #: Indicators.ipynb:1433 Writing
@@ -278,6 +332,10 @@ msgid ""
 "Integrating TA-Lib with **PyBroker** is straightforward. Here is an "
 "example:"
 msgstr ""
+"`TA-Lib "
+"<https://github.com/TA-Lib/ta-lib-python>`__"
+" 是一个广泛使用的技术分析库，实现了许多金融指标。将 TA-Lib 与 **PyBroker** 集成非常简单。"
+"以下是一个示例："
 
 #: ../../source/notebooks/5. 11218d14b3be4ca4bb0a664461e03ad2
 #: Indicators.ipynb:1515 Writing
@@ -286,6 +344,8 @@ msgid ""
 "indicators in PyBroker "
 "<https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html>`__."
 msgstr ""
+"`在下一个教程中，您将学习如何使用 PyBroker 中的自定义指标来训练模型 "
+"<https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html>`__。"
 
 #~ msgid ""
 #~ "This notebook explains how to create "
