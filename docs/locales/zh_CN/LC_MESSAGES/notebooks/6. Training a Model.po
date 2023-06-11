@@ -34,6 +34,10 @@ msgid ""
 " successful strategy, it is likely that a more sophisticated approach "
 "using predictive modeling will be needed."
 msgstr ""
+"在`上一篇文档 "
+"<https://www.pybroker.com/en/latest/notebooks/5.%20Writing%20Indicators.html>`__"
+" 中，我们学会了如何在 **PyBroker** 中编写股票指标。"
+"指标是开发交易策略的良好起点。但是要创建一个成功的策略，可能需要使用预测建模的更复杂方法。"
 
 #: ../../source/notebooks/6. 0aa93f7543134d8d9fbf092ecc508099 Model.ipynb:13
 #: Training a
@@ -46,6 +50,11 @@ msgid ""
 "=WBZ_Vv-iMv4>`__, which simulates how a strategy would perform during "
 "actual trading."
 msgstr ""
+"幸运的是，**PyBroker** 的主要功能之一就是能够训练和回测机器学习模型。"
+"这些模型可以利用指标作为特征来更准确地预测市场走势。"
+"一旦训练完成，可以使用一种称为向前分析（`Walkforward Analysis "
+"<https://www.youtube.com/watch?v=WBZ_Vv-iMv4>`__"
+"）的流行技术对这些模型进行回测，该技术模拟了策略在实际交易中的表现。"
 
 #: ../../source/notebooks/6. 8d6d7ca9e79a4da89f045faf596cef31 Model.ipynb:15
 #: Training a
@@ -53,6 +62,7 @@ msgid ""
 "We'll explain Walkforward Analysis more in depth later in this notebook. "
 "But first, let's get started with some needed imports!"
 msgstr ""
+"稍后我们将在本笔记本中更深入地解释向前分析。但首先，让我们从一些必要的导入开始！"
 
 #: ../../source/notebooks/6. Model.ipynb:40 Training a
 #: f1b8cd0e6e384e02ba52bf98c6eb0772
@@ -65,6 +75,14 @@ msgid ""
 " caching for all three by calling `pybroker.enable_caches "
 "<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.enable_caches>`__:"
 msgstr ""
+"与 `DataSource "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__"
+" 和 `Indicator "
+"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.Indicator>`__"
+" 数据一样，**PyBroker** 也可以将训练过的模型缓存到磁盘。"
+"您可以通过调用 `pybroker.enable_caches "
+"<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.enable_caches>`__"
+" 来启用这三者的缓存："
 
 #: ../../source/notebooks/6. 1a6248887a984de0a38a161c75176b71 Model.ipynb:61
 #: Training a
@@ -76,11 +94,18 @@ msgid ""
 "<https://numba.pydata.org/>`__. Here's the code for the CMMA indicator "
 "again:"
 msgstr ""
+"在`上一篇文档 "
+"<https://www.pybroker.com/en/latest/notebooks/5.%20Writing%20Indicators.html>`__"
+" 中，我们使用 `NumPy "
+"<https://www.numpy.org>`__"
+" 和 `Numba "
+"<https://numba.pydata.org/>`__"
+" 实现了一个计算收盘价减去移动平均价（CMMA）的指标。以下是 CMMA 指标的代码："
 
 #: ../../source/notebooks/6. 9408e4825e1042e3b704452ba09f446b Model.ipynb:105
 #: Training a
 msgid "Train and Backtest"
-msgstr ""
+msgstr "训练和回测"
 
 #: ../../source/notebooks/6. Model.ipynb:107 Training a
 #: a0f591568edf43a2aca8e306333537b0
@@ -93,6 +118,14 @@ msgid ""
 "learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html>`__"
 " model from `scikit-learn <https://scikit-learn.org/stable/>`__:"
 msgstr ""
+"接下来，我们想要构建一个模型，使用 20 天的 CMMA 预测第二天的回报。"
+"使用 `简单线性回归 "
+"<https://en.wikipedia.org/wiki/Simple_linear_regression>`__"
+" 是开始实验的好方法。下面我们从 `scikit-learn "
+"<https://scikit-learn.org/stable/>`__"
+" 导入一个 `LinearRegression "
+"<https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html>`__"
+" 模型："
 
 #: ../../source/notebooks/6. 884a719b31f04a289d33429933c3eff6 Model.ipynb:129
 #: Training a
@@ -100,6 +133,7 @@ msgid ""
 "We create a ``train_slr`` function to train the ``LinearRegression`` "
 "model:"
 msgstr ""
+"我们创建一个 ``train_slr`` 函数来训练 ``LinearRegression`` 模型："
 
 #: ../../source/notebooks/6. Model.ipynb:180 Training a
 #: b6aba54337bc41f8b7ea196a354d790e
@@ -108,6 +142,8 @@ msgid ""
 "predictor, for the ``LinearRegression`` model. The function then fits the"
 " ``LinearRegression`` model to the training data for that stock symbol."
 msgstr ""
+"``train_slr`` 函数使用 20 天的 CMMA 作为 ``LinearRegression`` 模型的输入特征或预测因子。"
+"然后，该函数将 ``LinearRegression`` 模型拟合到该股票代码的训练数据。"
 
 #: ../../source/notebooks/6. 39f75a33e4194439bbaf4cb066952c4e Model.ipynb:182
 #: Training a
@@ -118,6 +154,10 @@ msgid ""
 "The R-squared score provides a measure of how well the "
 "``LinearRegression`` model fits the testing data."
 msgstr ""
+"拟合模型后，该函数使用测试数据评估模型的准确性，具体地说，"
+"是通过计算 `R 平方 "
+"<https://en.wikipedia.org/wiki/Coefficient_of_determination>`__"
+" 得分。R 平方得分提供了一个衡量 ``LinearRegression`` 模型拟合测试数据有多好的方法。"
 
 #: ../../source/notebooks/6. 978c0323bc724454bed1265fe181bb35 Model.ipynb:184
 #: Training a
@@ -130,6 +170,10 @@ msgid ""
 "be called for each stock symbol, and the trained models will be used to "
 "predict the next day's return for each individual stock."
 msgstr ""
+"``train_slr`` 函数的最终输出是针对该股票代码的训练过的 ``LinearRegression`` 模型，"
+"以及用作预测输入数据的 ``cmma_20`` 列。"
+"回测过程中，**PyBroker** 将使用此模型预测股票的第二天回报。"
+"对于每个股票代码，都会调用 ``train_slr`` 函数，训练过的模型将用于预测每个股票的第二天回报。"
 
 #: ../../source/notebooks/6. 5585979d3fb84389978ac0db81bc5b1f Model.ipynb:186
 #: Training a
@@ -145,6 +189,13 @@ msgid ""
 "(``train_slr``), and a list of indicators to use as inputs for the model "
 "(in this case, ``cmma_20``)."
 msgstr ""
+"定义了训练模型的函数之后，需要将其注册到 **PyBroker**。"
+"这是通过使用 `pybroker.model "
+"<https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model>`__"
+" 函数创建一个新的 `ModelSource "
+"<https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.ModelSource>`__"
+" 实例来完成的。此函数的参数是模型的名称（在本例中为 ``'slr'``）、将训练模型的函数（``train_slr``）"
+"以及作为模型输入的指标列表（在本例中为 ``cmma_20``）。"
 
 #: ../../source/notebooks/6. Model.ipynb:208 Training a
 #: def06ba1f1554f4b90fc88e8df5bf16a
@@ -157,6 +208,11 @@ msgid ""
 " data source, and specifying the start and end dates for the backtest "
 "period."
 msgstr ""
+"为了创建使用训练过的模型的交易策略，需要使用 `YFinance "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance>`__"
+" 数据源创建一个新的 `Strategy "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy>`__"
+" 对象，并指定回测周期的开始和结束日期。"
 
 #: ../../source/notebooks/6. 267dadc8ccf449e6b2135a03f08cb320 Model.ipynb:231
 #: Training a
@@ -169,6 +225,11 @@ msgid ""
 "``None`` value is passed as the first argument, which means that no "
 "trading function will be used during the backtest."
 msgstr ""
+"然后在 `Strategy "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy>`__"
+" 对象上调用 `add_execution "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__"
+" 方法来指定交易执行的详细信息。在这种情况下，将 ``None`` 值作为第一个参数传递，这意味着在回测期间不会使用交易功能。"
 
 #: ../../source/notebooks/6. Model.ipynb:233 Training a
 #: bb2e2f79c4d34f64998956cb90a46b6d
@@ -179,11 +240,14 @@ msgid ""
 "specify that the model should be trained on the first half of the "
 "backtest data, and tested on the second half."
 msgstr ""
+"最后一步是在 ``Strategy`` 对象上调用 `backtest "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`__"
+" 方法进行回测，设置 ``train_size`` 为 ``0.5`` 以指定模型应该在回测数据的前半部分进行训练，并在后半部分进行测试。"
 
 #: ../../source/notebooks/6. 9c535a6a478d4777ad60def01d3dc1b8 Model.ipynb:366
 #: Training a
 msgid "Walkforward Analysis"
-msgstr ""
+msgstr "向前分析"
 
 #: ../../source/notebooks/6. Model.ipynb:368 Training a
 #: aa87fbf476b146a2a5db4e8b9e6c1b38
@@ -193,6 +257,10 @@ msgid ""
 "The algorithm partitions the backtest data into a fixed number of time "
 "windows, each containing a train-test split of data."
 msgstr ""
+"**PyBroker** 使用一种称为向前分析（`Walkforward Analysis "
+"<https://www.youtube.com/watch?v=WBZ_Vv-iMv4>`__"
+"）的强大算法来进行回测。"
+"该算法将回测数据划分为固定数量的时间窗口，每个窗口包含数据的训练-测试划分。"
 
 #: ../../source/notebooks/6. 4b6f12e93b7d4c2ca4a7ff1a3a0a42c7 Model.ipynb:370
 #: Training a
@@ -202,6 +270,8 @@ msgid ""
 " real world. The model is first trained on the earliest window and then "
 "evaluated on the test data in that window."
 msgstr ""
+"然后，向前分析算法以与现实世界中执行交易策略相同的方式“向前行进”。"
+"首先在最早的窗口上训练模型，然后在该窗口的测试数据上进行评估。"
 
 #: ../../source/notebooks/6. Model.ipynb:372 Training a
 #: f38e2d29ffab4bceb524c69da66e16fb
@@ -210,11 +280,13 @@ msgid ""
 "test data from the previous window is added to the training data. This "
 "process continues until all of the time windows are evaluated."
 msgstr ""
+"当算法向前移动以评估时间中的下一个窗口时，将前一个窗口的测试数据添加到训练数据中。"
+"这个过程持续进行，直到评估完所有的时间窗口。"
 
 #: ../../source/notebooks/6. Model.ipynb:-1 Training a
 #: d3b64beeba6249e89989b8b0527de591
 msgid "Walkforward Diagram"
-msgstr ""
+msgstr "向前分析图"
 
 #: ../../source/notebooks/6. Model.ipynb:377 Training a
 #: f93e2f371e6c4c889dfc5ad6d0859327
@@ -223,6 +295,8 @@ msgid ""
 "simulate the real-world performance of a trading strategy, and produce "
 "more reliable and accurate backtesting results."
 msgstr ""
+"通过使用这种方法，向前分析算法能够模拟交易策略在现实世界中的表现，"
+"并产生更可靠、更准确的回测结果。"
 
 #: ../../source/notebooks/6. 7dd9d26c5eda43acad3a88e0553bde68 Model.ipynb:379
 #: Training a
@@ -233,6 +307,9 @@ msgid ""
 " model that we trained earlier. The strategy is implemented as the "
 "``hold_long`` function:"
 msgstr ""
+"让我们考虑一个从我们之前训练的 `LinearRegression "
+"<https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html>`__"
+" 模型生成买卖信号的交易策略。该策略作为 ``hold_long`` 函数实现："
 
 #: ../../source/notebooks/6. 63e13f5397274f8794b080caa0f96a35 Model.ipynb:411
 #: Training a
@@ -241,6 +318,7 @@ msgid ""
 "a positive return for the next bar, and then closes the position when the"
 " model predicts a negative return."
 msgstr ""
+"``hold_long`` 函数在模型预测下一个柱状图的回报为正时开启一个多头仓位，然后在模型预测回报为负时平仓。"
 
 #: ../../source/notebooks/6. 46a8ef614dfd41e8b9fcd167de6cf48a Model.ipynb:413
 #: Training a
@@ -255,6 +333,11 @@ msgid ""
 "using ``ctx.preds('slr')[-1]``, which is the model's prediction of the "
 "next bar's return."
 msgstr ""
+"`ctx.preds('slr') "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.preds>`__"
+" 方法用于访问当前在函数中执行的股票代码（NVDA 或 AMD）的 ``'slr'`` 模型所做的预测。预测值存储在一个 `NumPy 数组 "
+"<https://numpy.org/doc/stable/reference/generated/numpy.array.html>`__"
+" 中，使用 ``ctx.preds('slr')[-1]`` 可以访问当前股票代码的最新预测，这是模型对下一个柱状图回报的预测。"
 
 #: ../../source/notebooks/6. 48061780f1bb49e2a808c91f94580be8 Model.ipynb:416
 #: Training a
@@ -262,6 +345,7 @@ msgid ""
 "Now that we have defined a trading strategy and registered the ``'slr'`` "
 "model, we can run the backtest using the Walkforward Analysis algorithm."
 msgstr ""
+"现在我们已经定义了一个交易策略并注册了 ``'slr'`` 模型，我们可以使用向前分析算法进行回测。"
 
 #: ../../source/notebooks/6. Model.ipynb:418 Training a
 #: af78b8d03db944c4b7ea515fcb6402ca
@@ -272,6 +356,9 @@ msgid ""
 "windows and train/test split ratio. In this case, we will use 3 time "
 "windows, each with a 50/50 train-test split."
 msgstr ""
+"通过在 ``Strategy`` 对象上调用 `walkforward "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`__"
+" 方法并指定所需的时间窗口数量和训练/测试划分比例来运行回测。在这种情况下，我们将使用 3 个时间窗口，每个窗口的训练-测试划分为 50/50。"
 
 #: ../../source/notebooks/6. 10fb0c43b2f1438a9045fb97b492872e Model.ipynb:420
 #: Training a
@@ -282,6 +369,8 @@ msgid ""
 "test boundary. The ``lookahead`` parameter should always be set to the "
 "number of bars in the future being predicted."
 msgstr ""
+"此外，由于我们的 ``'slr'`` 模型对未来一个柱状图的回报进行了预测，我们需要将 ``lookahead`` 参数设置为 1。"
+"这是为了确保训练数据不会泄露到测试边界。``lookahead`` 参数应始终设置为预测的未来柱状图数量。"
 
 #: ../../source/notebooks/6. 5ca0f62ecaab4e9d931793b10c5c6081 Model.ipynb:705
 #: Training a
@@ -290,6 +379,8 @@ msgid ""
 "the ``'slr'`` model is trained on a given window's training data, and "
 "then the ``hold_long`` function runs on the same window's test data."
 msgstr ""
+"在使用向前分析算法进行回测过程中，``'slr'`` 模型在给定窗口的训练数据上进行训练，"
+"然后 ``hold_long`` 函数在相同窗口的测试数据上运行。"
 
 #: ../../source/notebooks/6. Model.ipynb:707 Training a
 #: e6ba23ca13f0405ab7ee51a5bdc0c9ae
@@ -299,6 +390,8 @@ msgid ""
 "predictions to make buy or sell decisions for the current day's trading "
 "session."
 msgstr ""
+"模型在训练数据上进行训练以预测第二天的回报。然后，``hold_long`` 函数"
+"使用这些预测为当前交易日的交易会话做出买卖决策。"
 
 #: ../../source/notebooks/6. Model.ipynb:709 Training a
 #: b3c6ba22639d45dc8f2126cbcd20a33d
@@ -309,6 +402,9 @@ msgid ""
 "window in the backtest, using the results to evaluate the overall "
 "performance of the trading strategy:"
 msgstr ""
+"通过评估每个窗口测试数据上交易策略的表现，"
+"我们可以了解策略在现实交易环境中可能的表现。"
+"这个过程在回测的每个时间窗口中重复进行，使用结果来评估交易策略的整体表现："
 
 #: ../../source/notebooks/6. Model.ipynb:1343 Training a
 #: cbb96b76dd0c47298cdece1609c53f4f
@@ -320,6 +416,9 @@ msgid ""
 "strategy needs to be improved, we have gained a good understanding of how"
 " to train and evaluate a model in **PyBroker**."
 msgstr ""
+"总之，我们现在已经完成了使用 **PyBroker** 对线性回归模型进行训练和回测的过程，并借助向前分析。"
+"我们看到的指标是基于回测中所有时间窗口的测试数据。尽管我们的交易策略需要改进，"
+"但我们已经很好地理解了如何在 **PyBroker** 中训练和评估模型。"
 
 #: ../../source/notebooks/6. Model.ipynb:1345 Training a
 #: da6d4a6b6b7740e8bbe0deb080957dda
@@ -331,6 +430,10 @@ msgid ""
 "assumptions here for the sake of brevity and recommend that you perform "
 "this exercise on your own."
 msgstr ""
+"请注意，在进行回归分析之前，验证某些假设（如`同方差性 "
+"<https://en.wikipedia.org/wiki/Homoscedasticity_and_heteroscedasticity>`__"
+"、残差的正态性等）是很重要的。"
+"为了简洁起见，我在这里没有提供这些假设的细节，建议您自行进行这个练习。"
 
 #: ../../source/notebooks/6. Model.ipynb:1347 Training a
 #: ad0f4262a7044ce79f08f7315ab76926
@@ -342,6 +445,9 @@ msgid ""
 "approaches to find the best performing model for our specific trading "
 "goals."
 msgstr ""
+"我们在 **PyBroker** 中构建模型不仅限于线性回归模型。"
+"我们可以训练其他类型的模型，如梯度提升机、神经网络或任何我们选择的其他架构。"
+"这种灵活性使我们可以探索和尝试各种模型和方法，以找到最适合我们特定交易目标的最佳表现模型。"
 
 #: ../../source/notebooks/6. 9b49b29165ea478d989178d403c359e1 Model.ipynb:1349
 #: Training a
@@ -357,6 +463,13 @@ msgid ""
 " to customize how predictions are made (by default, the model's "
 "``predict`` function is called)."
 msgstr ""
+"PyBroker 还提供了定制选项，例如为我们的模型指定一个 `input_data_fn "
+"<https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model>`__"
+"，以便我们可以自定义其输入数据的构建方式。"
+"当构建用于自回归模型（如 ARMA 或 RNN）的输入时，需要使用多个过去的值进行预测，此时就需要这样做。"
+"同样，我们可以指定自己的 `predict_fn "
+"<https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model>`__"
+" 来自定义预测的方式（默认情况下，会调用模型的 ``预测`` 函数）。"
 
 #: ../../source/notebooks/6. 1797cd0b4f7e4372a23b71105968e4e8 Model.ipynb:1352
 #: Training a
@@ -365,6 +478,8 @@ msgid ""
 "and trading strategies in **PyBroker**, and begin exploring the vast "
 "possibilities that this framework offers!"
 msgstr ""
+"有了这些知识，您可以开始在 **PyBroker** 中构建和测试自己的模型和交易策略，"
+"并开始探索这个框架所提供的广泛可能性！"
 
 #~ msgid ""
 #~ "We'll explain Walkforward Analysis more "
