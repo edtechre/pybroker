@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-02 21:23+0800\n"
+"POT-Creation-Date: 2023-06-11 17:27+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -19,23 +19,23 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.12.1\n"
 
-#: ../../source/notebooks/FAQs.ipynb:9 545d3c5230b148509ba6ea0baca531a3
+#: ../../source/notebooks/FAQs.ipynb:9 365619b372a8499c921bda9bab223a00
 msgid "FAQs"
 msgstr "问答"
 
-#: ../../source/notebooks/FAQs.ipynb:12 4e41873d311940cd8a715754489a742c
+#: ../../source/notebooks/FAQs.ipynb:12 6ee9e050326f4f558f54454040c0ccc8
 msgid "How to..."
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:24 38ef7a82e9634856a7f7b3d20e674559
+#: ../../source/notebooks/FAQs.ipynb:24 69c42e50140b4490a4ba181903df284a
 msgid "... get your version of PyBroker?"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:73 db394ecf91204056aba0ad6b52708e8b
+#: ../../source/notebooks/FAQs.ipynb:73 2f21c510dbca4c2398a0862552cc52e8
 msgid "... get data for another symbol?"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:254 e5d0f4fecdb744caaeca5b4f027bdd84
+#: ../../source/notebooks/FAQs.ipynb:254 53931f124aa84f6ca3093b5a6b2d4da9
 msgid ""
 "You can also retrieve models, predictions, and other data for other "
 "symbols. `For more information, refer to the ExecContext reference "
@@ -43,11 +43,11 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:266 a8f0028e724b472c9fd5b6c3a116c341
+#: ../../source/notebooks/FAQs.ipynb:266 4f7f214d45d440a2bcbb4c2088d47689
 msgid "... set a limit price?"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:268 ee97b844c11d46bf8768cc7065d98d56
+#: ../../source/notebooks/FAQs.ipynb:268 eba92de27ad34c0f891b7b2f4d96033e
 msgid ""
 "Set `buy_limit_price "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buy_limit_price>`__"
@@ -55,11 +55,11 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_limit_price>`__:"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:609 21e73abb3af74e50a422a9ede45ed0ad
+#: ../../source/notebooks/FAQs.ipynb:609 14f192df75c24fd3a230eeb485f18d78
 msgid "... set the fill price?"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:611 e19f89186f52473fa02ec11fff816352
+#: ../../source/notebooks/FAQs.ipynb:611 8be36f95449c479a9516bc6b16f3f08a
 msgid ""
 "Set `buy_fill_price "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buy_fill_price>`__"
@@ -70,31 +70,31 @@ msgid ""
 " for options."
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:954 ff4959e091804adc98b047f4d5e08127
+#: ../../source/notebooks/FAQs.ipynb:954 1cc1bb86e15f426ba37a7f59172aa62b
 msgid "... get current positions?"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:1087 f876353a15474db580f28e042a7bbcc2
+#: ../../source/notebooks/FAQs.ipynb:1087 7902a708477c420ba2c7c20604bba023
 msgid ""
 "`See the Position class for more information. "
 "<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.Position>`__"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:1099 174798f72a72425daab25f86116606d2
+#: ../../source/notebooks/FAQs.ipynb:1099 3abdb22c33294de385fb45839351309b
 msgid "... use custom column data?"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:1101 45aaf440fa874a5dac9561b508b42ed9
+#: ../../source/notebooks/FAQs.ipynb:1101 964aed03a3f748c899de0db93e9a7421
 msgid ""
 "Register your custom columns with `pybroker.register_columns "
 "<https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.register_columns>`__:"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:1447 f2b158986d3749d88e8c9afe99b50d2c
+#: ../../source/notebooks/FAQs.ipynb:1447 26b006607fae4b1c9ef4693a2d0504bd
 msgid "... place an order more than one bar ahead?"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:1449 6cedda46e9504a31ac8132f3307a0239
+#: ../../source/notebooks/FAQs.ipynb:1449 1c8488995b76445cbc2dcdb2612c0b35
 msgid ""
 "Use the `buy_delay "
 "<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.buy_delay>`__"
@@ -103,11 +103,11 @@ msgid ""
 " configuration options:"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:1790 4d2944bff84e4da9b9df39e55d5fdcde
+#: ../../source/notebooks/FAQs.ipynb:1790 809073828094445d926ab5b39493bd6d
 msgid "... cancel pending orders?"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:1792 b6e18dc5d2084e06b44cb211bec5ea6d
+#: ../../source/notebooks/FAQs.ipynb:1792 5d233ee94c714af6907c76b627ab0b8c
 msgid ""
 "See the `cancel_pending_order "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.cancel_pending_order>`__"
@@ -116,22 +116,22 @@ msgid ""
 " methods."
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:2110 ff7f7729013548d2a1173b3c38f549b5
+#: ../../source/notebooks/FAQs.ipynb:2110 4f471fcb838e4299abb08f98a324d0da
 msgid "... persist data across bars?"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:2112 9708dc6c848647bf80a0dca57bd505b9
+#: ../../source/notebooks/FAQs.ipynb:2112 220d0530014347ffa2c7ca0e14efc963
 msgid ""
 "Use the `ExecContext#session "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.session>`__"
 " dictionary:"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:2241 86c6aa6bb2684e97ba5dc20389643d15
+#: ../../source/notebooks/FAQs.ipynb:2241 0826d8e912654e2dbbf717fdd2a99f33
 msgid "... exit a position?"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:2243 93f4ebee05aa45aea5298c6d88534e49
+#: ../../source/notebooks/FAQs.ipynb:2243 615998d8c8a54ed8b240a275aa52b79e
 msgid ""
 "Use `sell_all_shares() "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_all_shares>`__"
@@ -140,11 +140,11 @@ msgid ""
 " to liquidate a position:"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:2630 bedfb6ed3fe944feb4b5f64b3089b041
+#: ../../source/notebooks/FAQs.ipynb:2630 2404a354d3064f83be96941c9d09acca
 msgid "... process multiple symbols at once?"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:2632 d8c7173ac9fe4809a9cbba2a0e2e0906
+#: ../../source/notebooks/FAQs.ipynb:2632 1939525815ba4d5aacc47ad3c07bb676
 msgid ""
 "Use `set_before_exec "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_before_exec>`__"
@@ -152,27 +152,27 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_after_exec>`__:"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:3119 19b09fc6fecc431fb752f3db14ba05ac
+#: ../../source/notebooks/FAQs.ipynb:3119 9e7324ffe12e4c29a6ff3ca5ef881b7f
 msgid "... annualize the Sharpe Ratio?"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:3121 d45758ef1966440cb24feb64355dc5f4
+#: ../../source/notebooks/FAQs.ipynb:3121 245968297d2f4409bbe76b2e7ae2f53e
 msgid ""
-"Set the `sharpe_length "
-"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.sharpe_length>`__"
+"Set the `bars_per_year "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.bars_per_year>`__"
 " configuration option. For example, setting a value of ``252`` would be "
 "used to annualize daily returns."
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:3278 5b32bcb43fae4bd3b60e6c3cd8210a57
+#: ../../source/notebooks/FAQs.ipynb:3278 1bea4dc57c2646be98a33526ae63e7b0
 msgid "... get and set a global parameter?"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:3331 83d49a20ea704ed1b2dc10b9f656f67f
+#: ../../source/notebooks/FAQs.ipynb:3331 89bc5e1e557941efade334a9b565b557
 msgid "... apply random slippage?"
 msgstr ""
 
-#: ../../source/notebooks/FAQs.ipynb:3333 a21eb9f31de3469ea4079cb1e1ba59f9
+#: ../../source/notebooks/FAQs.ipynb:3333 9576621a9e31424ebc5b681ed38f89d6
 msgid ""
 "Set a `RandomSlippageModel "
 "<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.RandomSlippageModel>`__:"
@@ -266,5 +266,21 @@ msgstr ""
 #~ msgstr ""
 
 #~ msgid "… apply random slippage?"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Set the `sharpe_length "
+#~ "<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.sharpe_length>`__"
+#~ " configuration option. For example, setting"
+#~ " a value of ``252`` would be "
+#~ "used to annualize daily returns."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Set the `annual_bars "
+#~ "<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.annual_bars>`__"
+#~ " configuration option. For example, setting"
+#~ " a value of ``252`` would be "
+#~ "used to annualize daily returns."
 #~ msgstr ""
 
