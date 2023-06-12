@@ -22,7 +22,7 @@ msgstr ""
 #: ../../source/notebooks/10. 2d5cd18e34144c27aec8413c2d2e118e Rotational
 #: Trading.ipynb:9
 msgid "Rotational Trading"
-msgstr "轮换交易"
+msgstr "轮动交易"
 
 #: ../../source/notebooks/10. Rotational Trading.ipynb:11
 #: d29fb3c9399848389720ffa3b644cdc1
@@ -32,6 +32,9 @@ msgid ""
 " excellent tool for backtesting such strategies. So, let's dive in and "
 "get started with testing our rotational trading strategy!"
 msgstr ""
+"轮动交易涉及购买表现最好的资产，同时出售表现不佳的资产。"
+"您可能已经猜到了，**PyBroker** 是回测此类策略的极佳工具。"
+"那么，让我们深入了解，并开始测试我们的轮动交易策略！"
 
 #: ../../source/notebooks/10. 03c324fd77c7443b9c35f584a03799ff Rotational
 #: Trading.ipynb:33
@@ -42,22 +45,28 @@ msgid ""
 "start, we'll define a 20-day ROC indicator using `TA-Lib "
 "<https://github.com/TA-Lib/ta-lib-python>`__:"
 msgstr ""
+"我们的策略将涉及对`价格涨幅（ROC） "
+"<https://www.investopedia.com/terms/p/pricerateofchange.asp>`__"
+" 最高的股票进行排名和购买。"
+"首先，我们将使用 `TA-Lib "
+"<https://github.com/TA-Lib/ta-lib-python>`__"
+" 定义一个 20 天的 ROC 指标："
 
 #: ../../source/notebooks/10. 36867753bf90445aa0afdaec2a632ca2 Rotational
 #: Trading.ipynb:57
 msgid "Next, let's define the rules of our strategy:"
-msgstr ""
+msgstr "接下来，让我们定义策略的规则："
 
 #: ../../source/notebooks/10. Rotational Trading.ipynb:59
 #: c91b24130c2b439cb410557c7380ef17
 msgid "Buy the two stocks with the highest 20-day ROC."
-msgstr ""
+msgstr "购买 20 天涨幅（ROC）最高的两只股票。"
 
 #: ../../source/notebooks/10. Rotational Trading.ipynb:60
 #: a50c829a21694563b41797da970543ea
 #, python-format
 msgid "Allocate 50% of our capital to each stock."
-msgstr ""
+msgstr "将我们的资本的 50% 分配给每只股票。"
 
 #: ../../source/notebooks/10. 5b18698b301c4fad96bdd21dfbe5bac8 Rotational
 #: Trading.ipynb:61
@@ -65,16 +74,17 @@ msgid ""
 "If either of the stocks is no longer ranked among the top five 20-day "
 "ROCs, then we will liquidate that stock."
 msgstr ""
+"如果其中一只股票不再位于前五名的 20 天涨幅（ROC）中，则我们将清盘该股票。"
 
 #: ../../source/notebooks/10. Rotational Trading.ipynb:62
 #: c9196bd6710040ec8fc3bc4e934b0ecc
 msgid "Trade these rules daily."
-msgstr ""
+msgstr "每天交易这些规则。"
 
 #: ../../source/notebooks/10. 0c34df40dc8a4f62bd0e6d88987e8850 Rotational
 #: Trading.ipynb:64
 msgid "Let’s set up our config and some parameters for the above rules:"
-msgstr ""
+msgstr "为了实现上述规则，让我们设置配置和一些参数："
 
 #: ../../source/notebooks/10. 4c54863eea784636a8d9eff4fe349061 Rotational
 #: Trading.ipynb:112
@@ -83,6 +93,8 @@ msgid ""
 "ranks each stock by their 20-day ROC in descending order, from highest to"
 " lowest."
 msgstr ""
+"为了继续我们的策略，我们将实现一个排名函数，"
+"根据每只股票的 20 天涨幅（ROC）降序 ``排列``，从最高到最低。"
 
 #: ../../source/notebooks/10. 4f66c1af95ba4e7689fea8f981fa495e Rotational
 #: Trading.ipynb:146
@@ -90,6 +102,7 @@ msgid ""
 "The ``top_symbols`` global parameter contains the symbols of the stocks "
 "with the top five highest 20-day ROCs."
 msgstr ""
+"``top_symbols`` 全局参数包含了 20 天涨幅（ROC）最高的前五名股票的符号。"
 
 #: ../../source/notebooks/10. Rotational Trading.ipynb:148
 #: d7c903d2dde24f21823cdfd8ff97c036
@@ -98,6 +111,8 @@ msgid ""
 " with implementing a ``rotate`` function to manage the rotational "
 "trading."
 msgstr ""
+"现在我们已经有了一个根据 ROC 对股票进行排名的方法，"
+"我们可以继续实现一个 ``轮动`` 函数来管理轮动交易。"
 
 #: ../../source/notebooks/10. 545cbe0c71ed4dbd9533a1794e2d6a20 Rotational
 #: Trading.ipynb:176
@@ -108,6 +123,11 @@ msgid ""
 "placing buy orders, see the `Ranking and Position Sizing notebook "
 "<https://www.pybroker.com/en/latest/notebooks/4.%20Ranking%20and%20Position%20Sizing.html>`__."
 msgstr ""
+"如果目前持有的股票不再位于前五名的 20 天涨幅（ROC）中，"
+"我们将清盘该股票。否则，我们将根据它们的 20 天涨幅（ROC）对所有股票进行排名，"
+"并购买排名最高的前两名。有关在下达买入订单时的排名信息，请参阅 `排名和仓位文档 "
+"<https://www.pybroker.com/en/latest/notebooks/4.%20Ranking%20and%20Position%20Sizing.html>`__"
+"。"
 
 #: ../../source/notebooks/10. 21c5e35fa7904298a7a28b955b93d31b Rotational
 #: Trading.ipynb:178
@@ -118,6 +138,9 @@ msgid ""
 "``rotate`` function. For this backtest, we will use a universe of 10 "
 "stocks:"
 msgstr ""
+"我们将使用 `set_before_exec "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_before_exec>`__"
+" 方法在运行 ``轮动`` 函数之前使用 ``rank`` 执行我们的排名。对于这次回测，我们将使用 10 只股票组成的股票池："
 
 #~ msgid ""
 #~ "Rotational trading involves purchasing the "

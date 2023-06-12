@@ -25,15 +25,15 @@ msgstr "问答"
 
 #: ../../source/notebooks/FAQs.ipynb:12 6ee9e050326f4f558f54454040c0ccc8
 msgid "How to..."
-msgstr ""
+msgstr "如何..."
 
 #: ../../source/notebooks/FAQs.ipynb:24 69c42e50140b4490a4ba181903df284a
 msgid "... get your version of PyBroker?"
-msgstr ""
+msgstr "... 获取 PyBroker 的版本？"
 
 #: ../../source/notebooks/FAQs.ipynb:73 2f21c510dbca4c2398a0862552cc52e8
 msgid "... get data for another symbol?"
-msgstr ""
+msgstr "... 从另外一个标的获取数据？"
 
 #: ../../source/notebooks/FAQs.ipynb:254 53931f124aa84f6ca3093b5a6b2d4da9
 msgid ""
@@ -42,10 +42,14 @@ msgid ""
 "documentation. "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
 msgstr ""
+"你还可以检索其他符号的模型、预测和其他数据。"
+"`有关更多信息，请参阅 ExecContext "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
+" 参考文档。"
 
 #: ../../source/notebooks/FAQs.ipynb:266 4f7f214d45d440a2bcbb4c2088d47689
 msgid "... set a limit price?"
-msgstr ""
+msgstr "... 设置限价"
 
 #: ../../source/notebooks/FAQs.ipynb:268 eba92de27ad34c0f891b7b2f4d96033e
 msgid ""
@@ -54,10 +58,15 @@ msgid ""
 " or `sell_limit_price "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_limit_price>`__:"
 msgstr ""
+"设置 `买入限价（buy_limit_price） "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buy_limit_price>`__"
+"或 `卖出限价（sell_limit_price） "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_limit_price>`__"
+"："
 
 #: ../../source/notebooks/FAQs.ipynb:609 14f192df75c24fd3a230eeb485f18d78
 msgid "... set the fill price?"
-msgstr ""
+msgstr "... 设置成交价格"
 
 #: ../../source/notebooks/FAQs.ipynb:611 8be36f95449c479a9516bc6b16f3f08a
 msgid ""
@@ -69,30 +78,43 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.PriceType>`__"
 " for options."
 msgstr ""
+"设置 `买入成交价格（buy_fill_price） "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buy_fill_price>`__"
+"和 `卖出成交价格（sell_fill_price）"
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_fill_price>`__"
+"。请参阅 `PriceType "
+"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.PriceType>`__"
+" 以查看选项。"
 
 #: ../../source/notebooks/FAQs.ipynb:954 1cc1bb86e15f426ba37a7f59172aa62b
 msgid "... get current positions?"
-msgstr ""
+msgstr "... 获取当前仓位"
 
 #: ../../source/notebooks/FAQs.ipynb:1087 7902a708477c420ba2c7c20604bba023
 msgid ""
 "`See the Position class for more information. "
 "<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.Position>`__"
 msgstr ""
+"`有关更多信息，请参阅 Position 类 "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.Position>`__"
+"。"
 
 #: ../../source/notebooks/FAQs.ipynb:1099 3abdb22c33294de385fb45839351309b
 msgid "... use custom column data?"
-msgstr ""
+msgstr "使用自定义列数据"
 
 #: ../../source/notebooks/FAQs.ipynb:1101 964aed03a3f748c899de0db93e9a7421
 msgid ""
 "Register your custom columns with `pybroker.register_columns "
 "<https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.register_columns>`__:"
 msgstr ""
+"使用 `pybroker.register_columns "
+"<https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.register_columns>`__"
+" 注册您的自定义列："
 
 #: ../../source/notebooks/FAQs.ipynb:1447 26b006607fae4b1c9ef4693a2d0504bd
 msgid "... place an order more than one bar ahead?"
-msgstr ""
+msgstr "... 在超过一个K线之后下单"
 
 #: ../../source/notebooks/FAQs.ipynb:1449 1c8488995b76445cbc2dcdb2612c0b35
 msgid ""
@@ -102,10 +124,15 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.sell_delay>`__"
 " configuration options:"
 msgstr ""
+"使用 `buy_delay "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.buy_delay>`__"
+" 和 `sell_delay "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.sell_delay>`__"
+" 配置选项："
 
 #: ../../source/notebooks/FAQs.ipynb:1790 809073828094445d926ab5b39493bd6d
 msgid "... cancel pending orders?"
-msgstr ""
+msgstr "... 取消未完成的订单"
 
 #: ../../source/notebooks/FAQs.ipynb:1792 5d233ee94c714af6907c76b627ab0b8c
 msgid ""
@@ -115,10 +142,15 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.cancel_all_pending_orders>`__"
 " methods."
 msgstr ""
+"请参阅 `cancel_pending_order "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.cancel_pending_order>`__"
+" 和 `cancel_all_pending_orders "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.cancel_all_pending_orders>`__"
+" 方法。"
 
 #: ../../source/notebooks/FAQs.ipynb:2110 4f471fcb838e4299abb08f98a324d0da
 msgid "... persist data across bars?"
-msgstr ""
+msgstr "... 如何在多个K线之间保持数据？"
 
 #: ../../source/notebooks/FAQs.ipynb:2112 220d0530014347ffa2c7ca0e14efc963
 msgid ""
@@ -126,10 +158,13 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.session>`__"
 " dictionary:"
 msgstr ""
+"使用 `ExecContext#session "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.session>`__"
+" 字典："
 
 #: ../../source/notebooks/FAQs.ipynb:2241 0826d8e912654e2dbbf717fdd2a99f33
 msgid "... exit a position?"
-msgstr ""
+msgstr "如何平仓？"
 
 #: ../../source/notebooks/FAQs.ipynb:2243 615998d8c8a54ed8b240a275aa52b79e
 msgid ""
@@ -139,10 +174,15 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.cover_all_shares>`__"
 " to liquidate a position:"
 msgstr ""
+"使用 `sell_all_shares() "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_all_shares>`__"
+" 或 `cover_all_shares() "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.cover_all_shares>`__"
+" 来清空仓位："
 
 #: ../../source/notebooks/FAQs.ipynb:2630 2404a354d3064f83be96941c9d09acca
 msgid "... process multiple symbols at once?"
-msgstr ""
+msgstr "如何同时处理多个标的？"
 
 #: ../../source/notebooks/FAQs.ipynb:2632 1939525815ba4d5aacc47ad3c07bb676
 msgid ""
@@ -151,10 +191,15 @@ msgid ""
 " or `set_after_exec "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_after_exec>`__:"
 msgstr ""
+"使用 `set_before_exec "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_before_exec>`__"
+" 或 `set_after_exec "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_after_exec>`__"
+"："
 
 #: ../../source/notebooks/FAQs.ipynb:3119 9e7324ffe12e4c29a6ff3ca5ef881b7f
 msgid "... annualize the Sharpe Ratio?"
-msgstr ""
+msgstr "... 如何对夏普比率进行年化？"
 
 #: ../../source/notebooks/FAQs.ipynb:3121 245968297d2f4409bbe76b2e7ae2f53e
 msgid ""
@@ -163,20 +208,26 @@ msgid ""
 " configuration option. For example, setting a value of ``252`` would be "
 "used to annualize daily returns."
 msgstr ""
+"设置 `bars_per_year "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.bars_per_year>`__"
+" 配置选项。例如，设置为 ``252`` 的值将用于对每日回报进行年化。"
 
 #: ../../source/notebooks/FAQs.ipynb:3278 1bea4dc57c2646be98a33526ae63e7b0
 msgid "... get and set a global parameter?"
-msgstr ""
+msgstr "... 如何获取和设置全局参数？"
 
 #: ../../source/notebooks/FAQs.ipynb:3331 89bc5e1e557941efade334a9b565b557
 msgid "... apply random slippage?"
-msgstr ""
+msgstr "... 如何应用随机滑点？"
 
 #: ../../source/notebooks/FAQs.ipynb:3333 9576621a9e31424ebc5b681ed38f89d6
 msgid ""
 "Set a `RandomSlippageModel "
 "<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.RandomSlippageModel>`__:"
 msgstr ""
+"设置一个 `RandomSlippageModel "
+"<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.RandomSlippageModel>`__"
+"："
 
 #~ msgid "How to..."
 #~ msgstr ""

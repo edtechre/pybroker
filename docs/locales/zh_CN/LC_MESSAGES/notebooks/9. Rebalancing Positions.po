@@ -22,7 +22,7 @@ msgstr ""
 #: ../../source/notebooks/9. Positions.ipynb:9 Rebalancing
 #: eb08a3a307d144ff929bbd9a58d73e16
 msgid "Rebalancing Positions"
-msgstr "再平衡头寸"
+msgstr "重新平衡仓位"
 
 #: ../../source/notebooks/9. 9095ecdf7f8f43fc882b7f08d14fd091
 #: Positions.ipynb:11 Rebalancing
@@ -34,11 +34,17 @@ msgid ""
 "<https://en.wikipedia.org/wiki/Portfolio_optimization>`__, as this "
 "notebook will demonstrate."
 msgstr ""
+"**PyBroker** 可用于模拟重新平衡投资组合。"
+"这意味着 **PyBroker** 可以模拟调整投资组合的资产配置，"
+"以匹配期望的目标配置。此外，"
+"我们的投资组合还可以通过 `投资组合优化 "
+"<https://en.wikipedia.org/wiki/Portfolio_optimization>`__"
+" 来重新平衡，正如本文档将展示的那样。"
 
 #: ../../source/notebooks/9. 384dcdcdd97245ef85848bb35f426970
 #: Positions.ipynb:62 Rebalancing
 msgid "Equal Position Sizing"
-msgstr ""
+msgstr "等额仓位配置"
 
 #: ../../source/notebooks/9. Positions.ipynb:64 Rebalancing
 #: d827d91657104b32852ab0833fb29727
@@ -47,6 +53,8 @@ msgid ""
 "beginning of every month to make sure that each asset in our portfolio "
 "has a roughly equal allocation."
 msgstr ""
+"假设我们希望在每个月的开始重新平衡一个仅做多的投资组合，"
+"以确保投资组合中的每个资产都具有大致相等的配置。"
 
 #: ../../source/notebooks/9. 538a089f90f44553bc54fff8fd13209f
 #: Positions.ipynb:66 Rebalancing
@@ -54,6 +62,7 @@ msgid ""
 "We first start by writing a helper function to detect when the current "
 "bar's date is the start of a new month:"
 msgstr ""
+"首先，我们编写一个辅助函数来检测当前 K 线的日期是否为新月的开始："
 
 #: ../../source/notebooks/9. Positions.ipynb:91 Rebalancing
 #: fd5963eaf65f4f5c9ec5c526191df1f0
@@ -61,6 +70,7 @@ msgid ""
 "Next, we implement a function that will either buy or sell enough shares "
 "in an asset to reach a target allocation."
 msgstr ""
+"接下来，我们实现一个函数，该函数将购买或出售足够数量的资产份额，以达到目标配置。"
 
 #: ../../source/notebooks/9. 44f5ee4e54334dfdbc8a8e0255e1f70a
 #: Positions.ipynb:125 Rebalancing
@@ -69,6 +79,8 @@ msgid ""
 "sell some shares of the asset, while if the current allocation is below "
 "the target level, the function will buy some shares of the asset."
 msgstr ""
+"如果当前配置高于目标水平，函数将出售该资产的部分份额；"
+"如果当前配置低于目标水平，函数将购买该资产的部分份额。"
 
 #: ../../source/notebooks/9. 1400bbf09af245bc95c807fc26df14e8
 #: Positions.ipynb:127 Rebalancing
@@ -76,6 +88,8 @@ msgid ""
 "Following that, we write a ``rebalance`` function to set each asset to an"
 " equal target allocation at the beginning of each month:"
 msgstr ""
+"在此之后，我们编写一个 ``重新`` 平衡函数，"
+"在每个月开始时将每个资产设置为相等的目标配置："
 
 #: ../../source/notebooks/9. Positions.ipynb:152 Rebalancing
 #: ed10fb3146994f39b680b1e5506364d4
@@ -87,11 +101,16 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_after_exec>`__"
 " method:"
 msgstr ""
+"现在我们已经实现了重新平衡函数，"
+"下一步是使用投资组合中的五种不同股票来对我们的再平衡策略进行回测。"
+"为了在每个数据条上同时处理所有股票，我们将使用 `Strategy#set_after_exec "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_after_exec>`__"
+" 方法："
 
 #: ../../source/notebooks/9. Positions.ipynb:508 Rebalancing
 #: fcdbadbe6a9c4f3e9db4e62ffdf5a984
 msgid "Portfolio Optimization"
-msgstr ""
+msgstr "投资组合优化"
 
 #: ../../source/notebooks/9. 4fd4d901ee6d444b87ca5bb09082a1a7
 #: Positions.ipynb:510 Rebalancing
@@ -102,6 +121,10 @@ msgid ""
 "instance, we can use portfolio optimization with the goal of allocating "
 "assets in a way to minimize risk."
 msgstr ""
+"`投资组合优化 "
+"<https://en.wikipedia.org/wiki/Portfolio_optimization>`__"
+" 可以指导我们的重新平衡以满足投资组合的某些目标。"
+"例如，我们可以使用投资组合优化来以最小化风险的方式配置资产。"
 
 #: ../../source/notebooks/9. 6150f80553034e9fa9bd0dbb7c40332f
 #: Positions.ipynb:512 Rebalancing
@@ -113,6 +136,12 @@ msgid ""
 "<https://www.investopedia.com/terms/c/conditional_value_at_risk.asp>`__ "
 "based on the past year of returns:"
 msgstr ""
+"`Riskfolio-Lib "
+"<https://riskfolio-lib.readthedocs.io/>`__"
+" 是一个用于进行投资组合优化的流行 Python 库。下面展示了如何使用它根据过去一年的收益"
+"构建一个最小风险投资组合，通过最小化投资组合的`条件风险价值（CVar） "
+"<https://www.investopedia.com/terms/c/conditional_value_at_risk.asp>`__"
+" ："
 
 #: ../../source/notebooks/9. Positions.ipynb:564 Rebalancing
 #: d6f06bf1473041f9a8b6a5f730d2a5e7
@@ -121,6 +150,9 @@ msgid ""
 "://riskfolio-lib.readthedocs.io/>`__ on the official documentation. Now, "
 "let's move on to backtesting the strategy!"
 msgstr ""
+"您可以在官方文档中找到更多关于使用 `Riskfolio-Lib "
+"<https://riskfolio-lib.readthedocs.io/>`__"
+" 的信息和示例。现在，让我们继续进行策略回测！"
 
 #: ../../source/notebooks/9. Positions.ipynb:832 Rebalancing
 #: d91dfac6385a4e7c9bcac864850e1f54
@@ -129,6 +161,8 @@ msgid ""
 "allocating the entire portfolio to 3 of the 5 stocks during the first "
 "month of the backtest."
 msgstr ""
+"在上面，我们可以观察到，在回测的第一个月，"
+"投资组合优化将整个投资组合分配给了 5 只股票中的 3 只。"
 
 #~ msgid ""
 #~ "Let's assume that we want to "
