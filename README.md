@@ -116,7 +116,7 @@ snippets:
 
 [The full reference documentation is hosted at **www.pybroker.com**.](https://www.pybroker.com)
 
-(For Chinese users: [中文文档](https://www.pybroker.com/zh_CN/latest/))
+(For Chinese users: [中文文档](https://www.pybroker.com/zh_CN/latest/), courtesy of [Albert King](https://github.com/albertandking).)
 
 ## Contact
 
