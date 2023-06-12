@@ -25,7 +25,7 @@ msgstr "问答"
 
 #: ../../source/notebooks/FAQs.ipynb:12 6ee9e050326f4f558f54454040c0ccc8
 msgid "How to..."
-msgstr "如何..."
+msgstr "如何 ..."
 
 #: ../../source/notebooks/FAQs.ipynb:24 69c42e50140b4490a4ba181903df284a
 msgid "... get your version of PyBroker?"
@@ -101,7 +101,7 @@ msgstr ""
 
 #: ../../source/notebooks/FAQs.ipynb:1099 3abdb22c33294de385fb45839351309b
 msgid "... use custom column data?"
-msgstr "使用自定义列数据"
+msgstr "... 使用自定义列数据"
 
 #: ../../source/notebooks/FAQs.ipynb:1101 964aed03a3f748c899de0db93e9a7421
 msgid ""
@@ -164,7 +164,7 @@ msgstr ""
 
 #: ../../source/notebooks/FAQs.ipynb:2241 0826d8e912654e2dbbf717fdd2a99f33
 msgid "... exit a position?"
-msgstr "如何平仓？"
+msgstr "... 如何平仓？"
 
 #: ../../source/notebooks/FAQs.ipynb:2243 615998d8c8a54ed8b240a275aa52b79e
 msgid ""
@@ -182,7 +182,7 @@ msgstr ""
 
 #: ../../source/notebooks/FAQs.ipynb:2630 2404a354d3064f83be96941c9d09acca
 msgid "... process multiple symbols at once?"
-msgstr "如何同时处理多个标的？"
+msgstr "... 如何同时处理多个标的？"
 
 #: ../../source/notebooks/FAQs.ipynb:2632 1939525815ba4d5aacc47ad3c07bb676
 msgid ""
