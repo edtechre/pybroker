@@ -44,7 +44,7 @@ msgid ""
 msgstr ""
 "对于我们的回测，我们将使用 `Yahoo Finance "
 "<https://finance.yahoo.com>`__"
-"作为我们的`数据源 "
+" 作为我们的 `数据源 "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__"
 "。我们还将使用数据源缓存来确保在运行回测时只下载一次所需的数据。"
 
@@ -184,7 +184,7 @@ msgstr ""
 "这里有很多内容需要解释！``buy_low`` 函数将接收一个包含当前"
 "股票代码（AAPL 或 MSFT）数据的 `ExecContext "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
-"（``ctx``）。ExecContext 将包含当前股票代码最近 K 线之前的所有收盘价。"
+" （``ctx``）。ExecContext 将包含当前股票代码最近 K 线之前的所有收盘价。"
 "通过 ``ctx.close[-1]`` 获取最新的收盘价。"
 
 #: ../../source/notebooks/2. 1c6ae959c8d445e3ab8d29adb03e869e Backtesting
