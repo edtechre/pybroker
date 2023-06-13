@@ -28,8 +28,8 @@ msgid ""
 "PyBroker supports Python 3.9+ on Windows, Mac, and Linux. You can install"
 " PyBroker using ``pip``:"
 msgstr ""
-"PyBroker 支持在 Windows，Mac 和 Linux 等操作系统的 Python 3.9及以上版本安装。"
-"你可以通过使用 ``pip`` 安装 PyBroker ："
+"PyBroker 支持在 Windows，Mac 和 Linux 等操作系统的 Python 3.9 及以上版本安装。"
+"你可以通过使用 ``pip`` 来安装 PyBroker："
 
 #: ../../source/install.rst:11 06d5859345914a0f82d6cc1b5f94c668
 msgid "Or you can clone the Git repository with:"
