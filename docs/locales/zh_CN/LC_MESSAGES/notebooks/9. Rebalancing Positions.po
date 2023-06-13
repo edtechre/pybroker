@@ -139,9 +139,9 @@ msgstr ""
 "`Riskfolio-Lib "
 "<https://riskfolio-lib.readthedocs.io/>`__"
 " 是一个用于进行投资组合优化的流行 Python 库。下面展示了如何使用它根据过去一年的收益"
-"构建一个最小风险投资组合，通过最小化投资组合的`条件风险价值（CVar） "
+"构建一个最小风险投资组合，通过最小化投资组合的 `条件风险价值（CVar） "
 "<https://www.investopedia.com/terms/c/conditional_value_at_risk.asp>`__"
-" ："
+"："
 
 #: ../../source/notebooks/9. Positions.ipynb:564 Rebalancing
 #: d6f06bf1473041f9a8b6a5f730d2a5e7
