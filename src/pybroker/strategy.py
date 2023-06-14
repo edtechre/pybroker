@@ -272,6 +272,7 @@ class BacktestMixin:
                     buy_results=pos_size_buy_results,
                     sell_results=sell_sched[date] if is_sell_sched else None,
                 )
+            portfolio.check_stops(date, price_scope)
             if is_cover_sched:
                 self._place_buy_orders(
                     date=date,
@@ -299,7 +300,6 @@ class BacktestMixin:
                     portfolio=portfolio,
                     enable_fractional_shares=enable_fractional_shares,
                 )
-            portfolio.check_stops(date, price_scope)
             portfolio.capture_bar(date, test_data)
             if before_exec_fn is not None and active_ctxs:
                 before_exec_fn(active_ctxs)
