@@ -1783,10 +1783,10 @@ def test_trigger_long_bar_stop():
 def test_trigger_long_loss_stop(percent, points, expected_fill_price):
     df = pd.DataFrame(
         [
-            [SYMBOL_1, DATE_1, 200],
-            [SYMBOL_1, DATE_2, 100],
+            [SYMBOL_1, DATE_1, 200, 300],
+            [SYMBOL_1, DATE_2, 100, 200],
         ],
-        columns=["symbol", "date", "low"],
+        columns=["symbol", "date", "low", "high"],
     )
     df = df.set_index(["symbol", "date"])
     price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)})
@@ -1872,10 +1872,10 @@ def test_trigger_long_loss_stop(percent, points, expected_fill_price):
 def test_trigger_long_profit_stop(percent, points, expected_fill_price):
     df = pd.DataFrame(
         [
-            [SYMBOL_1, DATE_1, 200],
-            [SYMBOL_1, DATE_2, 300],
+            [SYMBOL_1, DATE_1, 100, 200],
+            [SYMBOL_1, DATE_2, 200, 300],
         ],
-        columns=["symbol", "date", "high"],
+        columns=["symbol", "date", "low", "high"],
     )
     df = df.set_index(["symbol", "date"])
     price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)})
@@ -1956,7 +1956,7 @@ def test_trigger_long_profit_stop(percent, points, expected_fill_price):
 
 @pytest.mark.parametrize(
     "percent, points, expected_fill_price",
-    [(Decimal(20), None, Decimal(240)), (None, Decimal(20), Decimal(280))],
+    [(Decimal(20), None, Decimal(200)), (None, Decimal(20), Decimal(200))],
 )
 def test_trigger_long_trailing_stop(percent, points, expected_fill_price):
     df = pd.DataFrame(
@@ -2145,10 +2145,10 @@ def test_trigger_short_bar_stop():
 def test_trigger_short_loss_stop(percent, points, expected_fill_price):
     df = pd.DataFrame(
         [
-            [SYMBOL_1, DATE_1, 200],
-            [SYMBOL_1, DATE_2, 300],
+            [SYMBOL_1, DATE_1, 100, 200],
+            [SYMBOL_1, DATE_2, 200, 300],
         ],
-        columns=["symbol", "date", "high"],
+        columns=["symbol", "date", "low", "high"],
     )
     df = df.set_index(["symbol", "date"])
     price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)})
@@ -2234,10 +2234,10 @@ def test_trigger_short_loss_stop(percent, points, expected_fill_price):
 def test_trigger_short_profit_stop(percent, points, expected_fill_price):
     df = pd.DataFrame(
         [
-            [SYMBOL_1, DATE_1, 200],
-            [SYMBOL_1, DATE_2, 100],
+            [SYMBOL_1, DATE_1, 200, 300],
+            [SYMBOL_1, DATE_2, 100, 200],
         ],
-        columns=["symbol", "date", "low"],
+        columns=["symbol", "date", "low", "high"],
     )
     df = df.set_index(["symbol", "date"])
     price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)})
@@ -2318,7 +2318,7 @@ def test_trigger_short_profit_stop(percent, points, expected_fill_price):
 
 @pytest.mark.parametrize(
     "percent, points, expected_fill_price",
-    [(Decimal(20), None, Decimal(240)), (None, Decimal(20), Decimal(220))],
+    [(Decimal(20), None, Decimal(400)), (None, Decimal(20), Decimal(400))],
 )
 def test_trigger_short_trailing_stop(percent, points, expected_fill_price):
     df = pd.DataFrame(
@@ -2525,12 +2525,12 @@ def test_short_stop_limit_price(stop_type):
 def test_check_stops_when_multiple_entries():
     df = pd.DataFrame(
         [
-            [SYMBOL_1, DATE_1, 200],
-            [SYMBOL_1, DATE_2, 300],
-            [SYMBOL_1, DATE_3, 200],
-            [SYMBOL_1, DATE_4, 100],
+            [SYMBOL_1, DATE_1, 200, 300],
+            [SYMBOL_1, DATE_2, 300, 400],
+            [SYMBOL_1, DATE_3, 200, 300],
+            [SYMBOL_1, DATE_4, 100, 200],
         ],
-        columns=["symbol", "date", "low"],
+        columns=["symbol", "date", "low", "high"],
     )
     df = df.set_index(["symbol", "date"])
     sym_end_index = {SYMBOL_1: 2}
@@ -2679,10 +2679,10 @@ def test_check_stops_when_multiple_entries():
 def test_check_stops_when_multiple_stops_hit():
     df = pd.DataFrame(
         [
-            [SYMBOL_1, DATE_1, 200],
-            [SYMBOL_1, DATE_2, 100],
+            [SYMBOL_1, DATE_1, 200, 300],
+            [SYMBOL_1, DATE_2, 100, 200],
         ],
-        columns=["symbol", "date", "low"],
+        columns=["symbol", "date", "low", "high"],
     )
     df = df.set_index(["symbol", "date"])
     sym_end_index = {SYMBOL_1: 3}

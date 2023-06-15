@@ -1098,6 +1098,8 @@ class Portfolio:
     def _trigger_profit_or_loss_stop(
         self, stop: Stop, price_scope: PriceScope
     ) -> Optional[Decimal]:
+        low = price_scope.fetch(stop.symbol, PriceType.LOW)
+        high = price_scope.fetch(stop.symbol, PriceType.HIGH)
         if (
             stop.pos_type == "long"
             and (
@@ -1105,9 +1107,8 @@ class Portfolio:
                 or stop.stop_type == StopType.TRAILING
             )
         ) or (stop.pos_type == "short" and stop.stop_type == StopType.PROFIT):
-            low = price_scope.fetch(stop.symbol, PriceType.LOW)
             if low <= self._stop_data[stop.id].value:
-                return self._stop_data[stop.id].value
+                return min(self._stop_data[stop.id].value, high)
         elif (
             stop.pos_type == "long" and stop.stop_type == StopType.PROFIT
         ) or (
@@ -1117,9 +1118,8 @@ class Portfolio:
                 or stop.stop_type == StopType.TRAILING
             )
         ):
-            high = price_scope.fetch(stop.symbol, PriceType.HIGH)
             if high >= self._stop_data[stop.id].value:
-                return self._stop_data[stop.id].value
+                return max(self._stop_data[stop.id].value, low)
         return None
 
     def _trigger_trailing_stop(
