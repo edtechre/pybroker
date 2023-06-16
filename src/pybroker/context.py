@@ -577,6 +577,9 @@ class ExecContext(BaseContext):
             :class:`pybroker.portfolio.Entry`, where value is measured in
             percentage from entry price.
         stop_loss_limit: Limit price to use for the stop loss.
+        stop_loss_exit_price: Exit :class:`pybroker.common.PriceType` to use
+            for the stop loss exit. If set, the stop is checked against the
+            ``exit_price`` and exits at the ``exit_price`` when triggered.
         stop_profit: Sets profit stop on a new
             :class:`pybroker.portfolio.Entry`, where value is measured in
             points from entry price.
@@ -584,6 +587,9 @@ class ExecContext(BaseContext):
             :class:`pybroker.portfolio.Entry`, where value is measured in
             percentage from entry price.
         stop_profit_limit: Limit price to use for the profit stop.
+        stop_profit_exit_price: Exit :class:`pybroker.common.PriceType` to use
+            for the profit stop exit. If set, the stop is checked against the
+            ``exit_price`` and exits at the ``exit_price`` when triggered.
         stop_trailing: Sets a trailing stop loss on a new
             :class:`pybroker.portfolio.Entry`, where value is measured in
             points from entry price.
@@ -591,6 +597,9 @@ class ExecContext(BaseContext):
             :class:`pybroker.portfolio.Entry`, where value is measured in
             percentage from entry price.
         stop_trailing_limit: Limit price to use for the trailing stop loss.
+        stop_trailing_exit_price: Exit :class:`pybroker.common.PriceType` to
+            use for the trailing stop exit. If set, the stop is checked against
+            the ``exit_price`` and exits at the ``exit_price`` when triggered.
     """
 
     _stop_id: int = 0
@@ -657,12 +666,15 @@ class ExecContext(BaseContext):
         self.stop_loss: Optional[Union[int, float, Decimal]] = None
         self.stop_loss_pct: Optional[Union[int, float, Decimal]] = None
         self.stop_loss_limit: Optional[Union[int, float, Decimal]] = None
+        self.stop_loss_exit_price: Optional[PriceType] = None
         self.stop_profit: Optional[Union[int, float, Decimal]] = None
         self.stop_profit_pct: Optional[Union[int, float, Decimal]] = None
         self.stop_profit_limit: Optional[Union[int, float, Decimal]] = None
+        self.stop_profit_exit_price: Optional[PriceType] = None
         self.stop_trailing: Optional[Union[int, float, Decimal]] = None
         self.stop_trailing_pct: Optional[Union[int, float, Decimal]] = None
         self.stop_trailing_limit: Optional[Union[int, float, Decimal]] = None
+        self.stop_trailing_exit_price: Optional[PriceType] = None
 
         self._cover: bool = False
 
@@ -1042,6 +1054,7 @@ class ExecContext(BaseContext):
             ]
         ],
         limit_price: Optional[Union[int, float, Decimal]],
+        exit_price: Optional[PriceType],
     ):
         percent_dec, points_dec, limit_price_dec = None, None, None
         if stop_type != StopType.BAR:
@@ -1053,6 +1066,8 @@ class ExecContext(BaseContext):
                 points_dec = to_decimal(points)
         if limit_price is not None:
             limit_price_dec = to_decimal(limit_price)
+        if exit_price is not None and not isinstance(exit_price, PriceType):
+            raise ValueError("Stop exit price must be a PriceType.")
         ExecContext._stop_id += 1
         return Stop(
             id=self._stop_id,
@@ -1064,6 +1079,7 @@ class ExecContext(BaseContext):
             bars=bars,
             fill_price=fill_price,
             limit_price=limit_price_dec,
+            exit_price=exit_price,
         )
 
     def _get_stops(
@@ -1101,6 +1117,7 @@ class ExecContext(BaseContext):
                     pos_type=pos_type,
                     fill_price=fill_price,
                     limit_price=None,
+                    exit_price=None,
                 )
             )
         if self.stop_loss is not None and self.stop_loss_pct is not None:
@@ -1117,6 +1134,7 @@ class ExecContext(BaseContext):
                     pos_type=pos_type,
                     fill_price=None,
                     limit_price=self.stop_loss_limit,
+                    exit_price=self.stop_loss_exit_price,
                 )
             )
         elif self.stop_loss_pct is not None:
@@ -1129,6 +1147,7 @@ class ExecContext(BaseContext):
                     pos_type=pos_type,
                     fill_price=None,
                     limit_price=self.stop_loss_limit,
+                    exit_price=self.stop_loss_exit_price,
                 )
             )
         if self.stop_profit is not None and self.stop_profit_pct is not None:
@@ -1145,6 +1164,7 @@ class ExecContext(BaseContext):
                     pos_type=pos_type,
                     fill_price=None,
                     limit_price=self.stop_profit_limit,
+                    exit_price=self.stop_profit_exit_price,
                 )
             )
         elif self.stop_profit_pct is not None:
@@ -1157,6 +1177,7 @@ class ExecContext(BaseContext):
                     pos_type=pos_type,
                     fill_price=None,
                     limit_price=self.stop_profit_limit,
+                    exit_price=self.stop_profit_exit_price,
                 )
             )
         if (
@@ -1176,6 +1197,7 @@ class ExecContext(BaseContext):
                     pos_type=pos_type,
                     fill_price=None,
                     limit_price=self.stop_trailing_limit,
+                    exit_price=self.stop_trailing_exit_price,
                 )
             )
         elif self.stop_trailing_pct is not None:
@@ -1188,6 +1210,7 @@ class ExecContext(BaseContext):
                     pos_type=pos_type,
                     fill_price=None,
                     limit_price=self.stop_trailing_limit,
+                    exit_price=self.stop_trailing_exit_price,
                 )
             )
         if (

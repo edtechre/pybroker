@@ -54,6 +54,9 @@ class Stop(NamedTuple):
         bars: Number of bars after which to trigger the stop.
         fill_price: Price that the stop will be filled at.
         limit_price: Limit price to use for the stop.
+        exit_price: Exit :class:`pybroker.common.PriceType` to use for the
+            stop exit. If set, the stop is checked against the ``exit_price``
+            and exits at the ``exit_price`` when triggered.
     """
 
     id: int
@@ -74,6 +77,7 @@ class Stop(NamedTuple):
         ]
     ]
     limit_price: Optional[Decimal]
+    exit_price: Optional[PriceType]
 
 
 @dataclass
@@ -1098,8 +1102,6 @@ class Portfolio:
     def _trigger_profit_or_loss_stop(
         self, stop: Stop, price_scope: PriceScope
     ) -> Optional[Decimal]:
-        low = price_scope.fetch(stop.symbol, PriceType.LOW)
-        high = price_scope.fetch(stop.symbol, PriceType.HIGH)
         if (
             stop.pos_type == "long"
             and (
@@ -1107,8 +1109,15 @@ class Portfolio:
                 or stop.stop_type == StopType.TRAILING
             )
         ) or (stop.pos_type == "short" and stop.stop_type == StopType.PROFIT):
-            if low <= self._stop_data[stop.id].value:
-                return min(self._stop_data[stop.id].value, high)
+            if stop.exit_price is not None:
+                exit_price = price_scope.fetch(stop.symbol, stop.exit_price)
+                if exit_price <= self._stop_data[stop.id].value:
+                    return exit_price
+            else:
+                low = price_scope.fetch(stop.symbol, PriceType.LOW)
+                high = price_scope.fetch(stop.symbol, PriceType.HIGH)
+                if low <= self._stop_data[stop.id].value:
+                    return min(self._stop_data[stop.id].value, high)
         elif (
             stop.pos_type == "long" and stop.stop_type == StopType.PROFIT
         ) or (
@@ -1118,8 +1127,15 @@ class Portfolio:
                 or stop.stop_type == StopType.TRAILING
             )
         ):
-            if high >= self._stop_data[stop.id].value:
-                return max(self._stop_data[stop.id].value, low)
+            if stop.exit_price is not None:
+                exit_price = price_scope.fetch(stop.symbol, stop.exit_price)
+                if exit_price >= self._stop_data[stop.id].value:
+                    return exit_price
+            else:
+                low = price_scope.fetch(stop.symbol, PriceType.LOW)
+                high = price_scope.fetch(stop.symbol, PriceType.HIGH)
+                if high >= self._stop_data[stop.id].value:
+                    return max(self._stop_data[stop.id].value, low)
         return None
 
     def _trigger_trailing_stop(

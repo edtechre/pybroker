@@ -1712,6 +1712,7 @@ def test_trigger_long_bar_stop():
             bars=1,
             fill_price=PriceType.CLOSE,
             limit_price=None,
+            exit_price=None,
         ),
     )
     entry_price = Decimal(100)
@@ -1801,6 +1802,7 @@ def test_trigger_long_loss_stop(percent, points, expected_fill_price):
             bars=None,
             fill_price=None,
             limit_price=None,
+            exit_price=None,
         ),
     )
     entry_price = Decimal(200)
@@ -1890,6 +1892,7 @@ def test_trigger_long_profit_stop(percent, points, expected_fill_price):
             bars=None,
             fill_price=None,
             limit_price=None,
+            exit_price=None,
         ),
     )
     entry_price = Decimal(200)
@@ -1982,6 +1985,7 @@ def test_trigger_long_trailing_stop(percent, points, expected_fill_price):
             bars=None,
             fill_price=None,
             limit_price=None,
+            exit_price=None,
         ),
     )
     entry_price = Decimal(100)
@@ -2074,6 +2078,7 @@ def test_trigger_short_bar_stop():
             bars=1,
             fill_price=PriceType.CLOSE,
             limit_price=None,
+            exit_price=None,
         ),
     )
     entry_price = Decimal(100)
@@ -2163,6 +2168,7 @@ def test_trigger_short_loss_stop(percent, points, expected_fill_price):
             bars=None,
             fill_price=None,
             limit_price=None,
+            exit_price=None,
         ),
     )
     entry_price = Decimal(200)
@@ -2252,6 +2258,7 @@ def test_trigger_short_profit_stop(percent, points, expected_fill_price):
             bars=None,
             fill_price=None,
             limit_price=None,
+            exit_price=None,
         ),
     )
     entry_price = Decimal(200)
@@ -2344,6 +2351,7 @@ def test_trigger_short_trailing_stop(percent, points, expected_fill_price):
             bars=None,
             fill_price=None,
             limit_price=None,
+            exit_price=None,
         ),
     )
     entry_price = Decimal(300)
@@ -2441,6 +2449,62 @@ def test_long_stop_limit_price(stop_type):
             bars=None,
             fill_price=None,
             limit_price=500,
+            exit_price=None,
+        ),
+    )
+    entry_price = Decimal(100)
+    portfolio = Portfolio(CASH)
+    portfolio.buy(
+        DATE_1,
+        SYMBOL_1,
+        SHARES_1,
+        entry_price,
+        limit_price=None,
+        stops=stops,
+    )
+    portfolio.incr_bars()
+    portfolio.check_stops(DATE_2, price_scope)
+    sym_end_index[SYMBOL_1] += 1
+    portfolio.incr_bars()
+    portfolio.check_stops(DATE_3, price_scope)
+    sym_end_index[SYMBOL_1] += 1
+    portfolio.incr_bars()
+    portfolio.check_stops(DATE_4, price_scope)
+    assert portfolio.symbols == set(["SPY"])
+    assert len(portfolio.long_positions) == 1
+    assert not portfolio.short_positions
+    assert not portfolio.trades
+    assert len(portfolio.orders) == 1
+
+
+@pytest.mark.parametrize(
+    "stop_type", [StopType.LOSS, StopType.PROFIT, StopType.TRAILING]
+)
+def test_long_stop_exit_price(stop_type):
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, 75, 200, 100],
+            [SYMBOL_1, DATE_2, 250, 400, 300],
+            [SYMBOL_1, DATE_3, 290, 395, 295],
+            [SYMBOL_1, DATE_4, 200, 300, 200],
+        ],
+        columns=["symbol", "date", "open", "high", "close"],
+    )
+    df = df.set_index(["symbol", "date"])
+    sym_end_index = {SYMBOL_1: 2}
+    price_scope = PriceScope(ColumnScope(df), sym_end_index)
+    stops = (
+        Stop(
+            id=1,
+            symbol=SYMBOL_1,
+            stop_type=stop_type,
+            pos_type="long",
+            percent=10,
+            points=20,
+            bars=None,
+            fill_price=None,
+            limit_price=500,
+            exit_price=PriceType.OPEN,
         ),
     )
     entry_price = Decimal(100)
@@ -2495,6 +2559,62 @@ def test_short_stop_limit_price(stop_type):
             bars=None,
             fill_price=None,
             limit_price=50,
+            exit_price=None,
+        ),
+    )
+    entry_price = Decimal(300)
+    portfolio = Portfolio(CASH)
+    portfolio.sell(
+        DATE_1,
+        SYMBOL_1,
+        SHARES_1,
+        entry_price,
+        limit_price=None,
+        stops=stops,
+    )
+    portfolio.incr_bars()
+    portfolio.check_stops(DATE_2, price_scope)
+    sym_end_index[SYMBOL_1] += 1
+    portfolio.incr_bars()
+    portfolio.check_stops(DATE_3, price_scope)
+    sym_end_index[SYMBOL_1] += 1
+    portfolio.incr_bars()
+    portfolio.check_stops(DATE_4, price_scope)
+    assert portfolio.symbols == set(["SPY"])
+    assert not portfolio.long_positions
+    assert len(portfolio.short_positions) == 1
+    assert not portfolio.trades
+    assert len(portfolio.orders) == 1
+
+
+@pytest.mark.parametrize(
+    "stop_type", [StopType.LOSS, StopType.PROFIT, StopType.TRAILING]
+)
+def test_short_stop_exit_price(stop_type):
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, 200, 350, 300],
+            [SYMBOL_1, DATE_2, 100, 230, 200],
+            [SYMBOL_1, DATE_3, 110, 215, 210],
+            [SYMBOL_1, DATE_4, 300, 400, 400],
+        ],
+        columns=["symbol", "date", "low", "open", "close"],
+    )
+    df = df.set_index(["symbol", "date"])
+    sym_end_index = {SYMBOL_1: 2}
+    price_scope = PriceScope(ColumnScope(df), sym_end_index)
+    stops = (
+        Stop(
+            id=1,
+            symbol=SYMBOL_1,
+            stop_type=stop_type,
+            pos_type="short",
+            percent=20,
+            points=None,
+            bars=None,
+            fill_price=None,
+            limit_price=50,
+            exit_price=PriceType.OPEN,
         ),
     )
     entry_price = Decimal(300)
@@ -2554,6 +2674,7 @@ def test_check_stops_when_multiple_entries():
                 bars=None,
                 fill_price=None,
                 limit_price=None,
+                exit_price=None,
             ),
         ),
     )
@@ -2577,6 +2698,7 @@ def test_check_stops_when_multiple_entries():
                 bars=None,
                 fill_price=None,
                 limit_price=None,
+                exit_price=None,
             ),
         ),
     )
@@ -2705,6 +2827,7 @@ def test_check_stops_when_multiple_stops_hit():
                 bars=None,
                 fill_price=None,
                 limit_price=None,
+                exit_price=None,
             ),
             Stop(
                 id=2,
@@ -2716,6 +2839,7 @@ def test_check_stops_when_multiple_stops_hit():
                 bars=None,
                 fill_price=None,
                 limit_price=None,
+                exit_price=None,
             ),
         ),
     )
@@ -2749,6 +2873,7 @@ def test_remove_stop():
             bars=None,
             fill_price=None,
             limit_price=None,
+            exit_price=None,
         ),
     )
     portfolio = Portfolio(CASH)
@@ -2790,6 +2915,7 @@ def test_remove_stops_when_symbol(stop_type):
             bars=None,
             fill_price=None,
             limit_price=None,
+            exit_price=None,
         ),
     )
     portfolio = Portfolio(CASH)
@@ -2834,6 +2960,7 @@ def test_remove_stops_when_position(stop_type):
             bars=None,
             fill_price=None,
             limit_price=None,
+            exit_price=None,
         ),
     )
     portfolio = Portfolio(CASH)
@@ -2878,6 +3005,7 @@ def test_remove_stops_when_entry(stop_type):
             bars=None,
             fill_price=None,
             limit_price=None,
+            exit_price=None,
         ),
     )
     portfolio = Portfolio(CASH)

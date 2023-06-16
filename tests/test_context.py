@@ -667,6 +667,7 @@ def test_to_result_when_stop(
 ):
     stop_limit = 200
     stop_amount = 20
+    exit_price = PriceType.OPEN
     percent = None
     points = None
     if stop_attr.endswith("_pct"):
@@ -683,6 +684,7 @@ def test_to_result_when_stop(
     ctx.sell_shares = sell_shares
     setattr(ctx, stop_attr, stop_amount)
     setattr(ctx, f"{stop_attr.replace('_pct', '')}_limit", stop_limit)
+    setattr(ctx, f"{stop_attr.replace('_pct', '')}_exit_price", exit_price)
     result = ctx.to_result()
     assert result.symbol == symbol
     assert result.date == date
@@ -712,6 +714,7 @@ def test_to_result_when_stop(
     assert stop.bars is None
     assert stop.fill_price is None
     assert stop.limit_price == stop_limit
+    assert stop.exit_price == exit_price
 
 
 @pytest.mark.parametrize(
@@ -743,6 +746,20 @@ def test_to_result_when_stop_limit_and_not_stop_then_error(ctx, stop_attr):
         ),
     ):
         setattr(ctx, f"{stop_attr}_limit", 20)
+        ctx.to_result()
+
+
+@pytest.mark.parametrize(
+    "stop_attr", ["stop_loss", "stop_profit", "stop_trailing"]
+)
+def test_to_result_when_stop_exit_not_valid_then_error(ctx, stop_attr):
+    ctx.buy_shares = 100
+    with pytest.raises(
+        ValueError,
+        match=re.escape("Stop exit price must be a PriceType."),
+    ):
+        setattr(ctx, f"{stop_attr}_pct", 10)
+        setattr(ctx, f"{stop_attr}_exit_price", 20)
         ctx.to_result()
 
 
