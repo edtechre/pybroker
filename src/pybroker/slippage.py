@@ -19,26 +19,19 @@ import random
 from pybroker.context import ExecContext
 from abc import ABC, abstractmethod
 from decimal import Decimal
-from typing import NamedTuple, Optional
-
-
-class SlippageData(NamedTuple):
-    """Contains data to use for calculating slippage.
-
-    Attributes:
-        buy_shares: Number of shares to buy.
-        sell_shares: Number of shares to sell.
-    """
-
-    buy_shares: Optional[Decimal]
-    sell_shares: Optional[Decimal]
+from typing import Optional
 
 
 class SlippageModel(ABC):
     """Base class for implementing a slippage model."""
 
     @abstractmethod
-    def apply_slippage(self, data: SlippageData, ctx: ExecContext):
+    def apply_slippage(
+        self,
+        ctx: ExecContext,
+        buy_shares: Optional[Decimal] = None,
+        sell_shares: Optional[Decimal] = None,
+    ):
         """Applies slippage to ``ctx``."""
 
 
@@ -60,14 +53,15 @@ class RandomSlippageModel(SlippageModel):
         self.min_pct = min_pct / 100.0
         self.max_pct = max_pct / 100.0
 
-    def apply_slippage(self, data: SlippageData, ctx: ExecContext):
-        if data.buy_shares or data.sell_shares:
+    def apply_slippage(
+        self,
+        ctx: ExecContext,
+        buy_shares: Optional[Decimal] = None,
+        sell_shares: Optional[Decimal] = None,
+    ):
+        if buy_shares or sell_shares:
             slippage_pct = Decimal(random.uniform(self.min_pct, self.max_pct))
-            if data.buy_shares:
-                ctx.buy_shares = (
-                    data.buy_shares - slippage_pct * data.buy_shares
-                )
-            if data.sell_shares:
-                ctx.sell_shares = (
-                    data.sell_shares - slippage_pct * data.sell_shares
-                )
+            if buy_shares:
+                ctx.buy_shares = buy_shares - slippage_pct * buy_shares
+            if sell_shares:
+                ctx.sell_shares = sell_shares - slippage_pct * sell_shares

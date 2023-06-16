@@ -37,7 +37,7 @@ from pybroker.portfolio import (
     Trade,
 )
 from pybroker.scope import PendingOrder
-from pybroker.slippage import SlippageData, SlippageModel
+from pybroker.slippage import SlippageModel
 from pybroker.strategy import (
     BacktestMixin,
     Execution,
@@ -1940,7 +1940,9 @@ class TestStrategy:
 
     def test_backtest_when_slippage(self, data_source_df):
         class FakeSlippageModel(SlippageModel):
-            def apply_slippage(self, data: SlippageData, ctx: ExecContext):
+            def apply_slippage(
+                self, ctx: ExecContext, buy_shares, sell_shares
+            ):
                 ctx.buy_shares = 99
 
         def buy_exec_fn(ctx):

@@ -61,7 +61,7 @@ from pybroker.scope import (
     PriceScope,
     StaticScope,
 )
-from pybroker.slippage import SlippageData, SlippageModel
+from pybroker.slippage import SlippageModel
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime
@@ -371,8 +371,9 @@ class BacktestMixin:
     ):
         buy_shares = to_decimal(ctx.buy_shares) if ctx.buy_shares else None
         sell_shares = to_decimal(ctx.sell_shares) if ctx.sell_shares else None
-        data = SlippageData(buy_shares=buy_shares, sell_shares=sell_shares)
-        slippage_model.apply_slippage(data, ctx)
+        slippage_model.apply_slippage(
+            ctx, buy_shares=buy_shares, sell_shares=sell_shares
+        )
 
     def _exit_position(
         self,

@@ -20,7 +20,7 @@ import random
 import re
 from .fixtures import *
 from pybroker.context import ExecContext
-from pybroker.slippage import RandomSlippageModel, SlippageData
+from pybroker.slippage import RandomSlippageModel
 from unittest.mock import patch
 
 
@@ -70,16 +70,14 @@ class TestRandomSlippageModel:
 
     def test_slip_when_buy_shares(self, ctx):
         model = RandomSlippageModel(min_pct=1, max_pct=2)
-        data = SlippageData(buy_shares=100, sell_shares=None)
         with patch.object(random, "uniform", return_value="0.01"):
-            model.apply_slippage(data, ctx)
+            model.apply_slippage(ctx, buy_shares=100, sell_shares=None)
             assert ctx.buy_shares == Decimal(99)
             assert ctx.sell_shares is None
 
     def test_slip_when_sell_shares(self, ctx):
         model = RandomSlippageModel(min_pct=1, max_pct=2)
-        data = SlippageData(buy_shares=None, sell_shares=100)
         with patch.object(random, "uniform", return_value="0.01"):
-            model.apply_slippage(data, ctx)
+            model.apply_slippage(ctx, buy_shares=None, sell_shares=100)
             assert ctx.sell_shares == Decimal(99)
             assert ctx.buy_shares is None
