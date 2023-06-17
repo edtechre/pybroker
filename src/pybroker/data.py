@@ -580,7 +580,7 @@ class AKShare(DataSource):
         start_date: Union[str, datetime],
         end_date: Union[str, datetime],
         _: Optional[str] = "",
-        adjust: Optional[str] = "qfq",
+        adjust: Optional[str] = "hfq",
     ) -> pd.DataFrame:
         r"""Queries data from `AKShare <https://akshare.akfamily.xyz/>`_\ .
         The timeframe of the data is limited to per day only.
