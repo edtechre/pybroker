@@ -1223,6 +1223,15 @@ class ExecContext(BaseContext):
                 "stop_loss_limit is set."
             )
         if (
+            self.stop_loss_exit_price is not None
+            and self.stop_loss is None
+            and self.stop_loss_pct is None
+        ):
+            raise ValueError(
+                "Either stop_loss or stop_loss_pct must be set when "
+                "stop_loss_exit_price is set."
+            )
+        if (
             self.stop_profit_limit is not None
             and self.stop_profit is None
             and self.stop_profit_pct is None
@@ -1232,6 +1241,15 @@ class ExecContext(BaseContext):
                 "stop_profit_limit is set."
             )
         if (
+            self.stop_profit_exit_price is not None
+            and self.stop_profit is None
+            and self.stop_profit_pct is None
+        ):
+            raise ValueError(
+                "Either stop_profit or stop_profit_pct must be set when "
+                "stop_profit_exit_price is set."
+            )
+        if (
             self.stop_trailing_limit is not None
             and self.stop_trailing is None
             and self.stop_trailing_pct is None
@@ -1239,6 +1257,15 @@ class ExecContext(BaseContext):
             raise ValueError(
                 "Either stop_trailing or stop_trailing_pct must be set when "
                 "stop_trailing_limit is set."
+            )
+        if (
+            self.stop_trailing_exit_price is not None
+            and self.stop_trailing is None
+            and self.stop_trailing_pct is None
+        ):
+            raise ValueError(
+                "Either stop_trailing or stop_trailing_pct must be set when "
+                "stop_trailing_exit_price is set."
             )
         if pos_type == "long":
             return frozenset(stops), None

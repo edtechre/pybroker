@@ -752,6 +752,24 @@ def test_to_result_when_stop_limit_and_not_stop_then_error(ctx, stop_attr):
 @pytest.mark.parametrize(
     "stop_attr", ["stop_loss", "stop_profit", "stop_trailing"]
 )
+def test_to_result_when_stop_exit_price_and_not_stop_then_error(
+    ctx, stop_attr
+):
+    ctx.buy_shares = 100
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            f"Either {stop_attr} or {stop_attr}_pct must be set when "
+            f"{stop_attr}_exit_price is set."
+        ),
+    ):
+        setattr(ctx, f"{stop_attr}_exit_price", PriceType.CLOSE)
+        ctx.to_result()
+
+
+@pytest.mark.parametrize(
+    "stop_attr", ["stop_loss", "stop_profit", "stop_trailing"]
+)
 def test_to_result_when_stop_exit_not_valid_then_error(ctx, stop_attr):
     ctx.buy_shares = 100
     with pytest.raises(
