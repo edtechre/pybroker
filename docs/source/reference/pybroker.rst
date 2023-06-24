@@ -18,8 +18,6 @@ Submodules
    pybroker.context
    pybroker.data
    pybroker.eval
-   pybroker.ext
-   pybroker.ext.data
    pybroker.indicator
    pybroker.log
    pybroker.model
