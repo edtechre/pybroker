@@ -27,12 +27,12 @@ from datetime import datetime
 from pybroker.cache import DataSourceCacheKey
 from pybroker.common import to_seconds
 from pybroker.data import (
-    AKShare,
     Alpaca,
     AlpacaCrypto,
     DataSourceCacheMixin,
     YFinance,
 )
+from pybroker.ext.data import AKShare
 from unittest import mock
 
 API_KEY = "api_key"
