@@ -39,7 +39,7 @@ PyBroker
             alt="PyPI">
       </a>
       <a href="https://www.pybroker.com/en/latest/license.html">
-      <img src="https://img.shields.io/badge/license-Apache%202.0%20Clause-green"
+         <img src="https://img.shields.io/badge/license-Apache%202.0%20Clause-green"
             alt="Apache 2.0 with Commons Clause">
       </a>
       <a href="https://www.pybroker.com/en/latest/?badge=latest">
@@ -54,8 +54,11 @@ PyBroker
       <a href="https://github.com/edtechre/pybroker/">
          <img src="https://img.shields.io/github/stars/edtechre/pybroker?style=social" alt="Github stars">
       </a>
+      <a href="https://pepy.tech/project/lib-pybroker">
+         <img src="https://static.pepy.tech/badge/lib-pybroker" alt="Downloads">
+      </a>
       <a href="https://twitter.com/intent/follow?screen_name=libpybroker">
-         <img src="https://img.shields.io/twitter/follow/libpybroker?style=social">
+         <img src="https://img.shields.io/twitter/follow/libpybroker?style=social" alt="Twitter">
       </a>
    </section>
   

@@ -2,6 +2,15 @@
     <img src="https://github.com/edtechre/pybroker/blob/master/docs/_static/pybroker-logo.png?raw=true" alt="PyBroker">
 </h1>
 
+[![python](https://img.shields.io/badge/python-v3-brightgreen.svg)](https://www.python.org/)
+[![PyPI](https://img.shields.io/badge/pypi-v1.1.24-brightgreen.svg)](https://pypi.org/project/lib-pybroker/)
+[![Apache 2.0 with Commons Clause](https://img.shields.io/badge/license-Apache%202.0%20Clause-green)](https://www.pybroker.com/en/latest/license.html)
+[![Documentation Status](https://readthedocs.org/projects/pybroker/badge/?version=latest)](https://www.pybroker.com/en/latest/?badge=latest)
+[![Package status](https://github.com/edtechre/pybroker/actions/workflows/main.yml/badge.svg?event=push)](https://github.com/edtechre/pybroker/actions)
+[![Github stars](https://img.shields.io/github/stars/edtechre/pybroker?style=social)](https://github.com/edtechre/pybroker/)
+[![Downloads](https://static.pepy.tech/badge/lib-pybroker)](https://pepy.tech/project/lib-pybroker)
+[![Twitter](https://img.shields.io/twitter/follow/libpybroker?style=social)](https://twitter.com/intent/follow?screen_name=libpybroker)
+
 ## Algorithmic Trading in Python with Machine Learning
 
 Are you looking to enhance your trading strategies with the power of Python and
