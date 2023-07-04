@@ -252,11 +252,12 @@ class BaseContext:
         Returns:
             Number of shares given ``target_size`` and share ``price``.
         """
-        return int(
+        shares = int(
             (to_decimal(cash) if cash is not None else self._portfolio.equity)
             * to_decimal(target_size)
             / to_decimal(price)
         )
+        return max(shares, 0)
 
     def model(self, name: str, symbol: str) -> Any:
         r"""Returns a trained model.
