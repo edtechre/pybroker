@@ -51,11 +51,11 @@ PyBroker
             alt="Package status">
       </a>
       <br>
-      <a href="https://github.com/edtechre/pybroker/">
-         <img src="https://img.shields.io/github/stars/edtechre/pybroker?style=social" alt="Github stars">
-      </a>
       <a href="https://pepy.tech/project/lib-pybroker">
          <img src="https://static.pepy.tech/badge/lib-pybroker" alt="Downloads">
+      </a>
+      <a href="https://github.com/edtechre/pybroker/">
+         <img src="https://img.shields.io/github/stars/edtechre/pybroker?style=social" alt="Github stars">
       </a>
       <a href="https://twitter.com/intent/follow?screen_name=libpybroker">
          <img src="https://img.shields.io/twitter/follow/libpybroker?style=social" alt="Twitter">
