@@ -3092,8 +3092,9 @@ def test_capture_bar_when_short_position():
     assert bar.cash == cash
     assert bar.equity == bar.cash
     assert bar.margin == close_price * shares
-    assert bar.pnl == (fill_price - close_price) * shares
-    assert bar.market_value == bar.equity + bar.pnl
+    assert bar.pnl == 0
+    assert bar.unrealized_pnl == (fill_price - close_price) * shares
+    assert bar.market_value == bar.equity + bar.unrealized_pnl
     assert bar.fees == 0
     assert len(portfolio.position_bars) == 1
     pos_bar = portfolio.position_bars[0]

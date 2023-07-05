@@ -1425,6 +1425,7 @@ class Strategy(
             "margin",
             "market_value",
             "pnl",
+            "unrealized_pnl",
             "fees",
         ):
             portfolio_df[col] = quantize(portfolio_df, col)

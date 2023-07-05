@@ -202,7 +202,8 @@ class PortfolioBar(NamedTuple):
         equity: Amount of equity in :class:`.Portfolio`.
         margin: Amount of margin in :class:`.Portfolio`.
         market_value: Market value of :class:`.Portfolio`.
-        pnl: Realized + unrealized profit and loss (PnL) of
+        pnl: Realized profit and loss (PnL) of :class:`.Portfolio`.
+        unrealized_pnl: Unrealized profit and loss (PnL) of
             :class:`.Portfolio`.
         fees: Brokerage fees.
     """
@@ -213,6 +214,7 @@ class PortfolioBar(NamedTuple):
     margin: Decimal
     market_value: Decimal
     pnl: Decimal
+    unrealized_pnl: Decimal
     fees: Decimal
 
 
@@ -928,7 +930,8 @@ class Portfolio:
                 equity=self.equity,
                 market_value=self.market_value,
                 margin=self.margin,
-                pnl=self.market_value - self._initial_market_value,
+                pnl=self.equity - self._initial_market_value,
+                unrealized_pnl=self.market_value - self.equity,
                 fees=self.fees,
             )
         )
