@@ -534,7 +534,7 @@ class Portfolio:
             return None
         if shares == 0:
             return None
-        covered = self._cover(date, symbol, shares, fill_price, limit_price)
+        covered = self._cover(date, symbol, shares, fill_price)
         bought_shares = self._buy(
             date, symbol, covered.rem_shares, fill_price, limit_price, stops
         )
@@ -556,22 +556,9 @@ class Portfolio:
         symbol: str,
         shares: Decimal,
         fill_price: Decimal,
-        limit_price: Optional[Decimal],
     ) -> _OrderResult:
         if symbol not in self.short_positions:
             return _OrderResult(Decimal(), shares)
-        clamped_shares = self._clamp_shares(fill_price, shares)
-        if clamped_shares < shares:
-            self._logger.debug_buy_shares_exceed_cash(
-                date=date,
-                symbol=symbol,
-                shares=shares,
-                fill_price=fill_price,
-                limit_price=limit_price,
-                cash=self.cash,
-                clamped_shares=clamped_shares,
-            )
-            shares = clamped_shares
         rem_shares = shares
         if rem_shares <= 0:
             return _OrderResult(Decimal(), shares)
@@ -607,7 +594,7 @@ class Portfolio:
         entry_amount = shares * entry.price
         entry_pnl = entry_amount - order_amount
         self.pnl += entry_pnl
-        self.cash -= order_amount
+        self.cash += entry_pnl
         pos.shares -= shares
         entry.shares -= shares
         pnl_per_bar = entry_pnl if not entry.bars else entry_pnl / entry.bars
@@ -824,7 +811,6 @@ class Portfolio:
             and len(self.short_positions) == self._max_short_positions
         ):
             return Decimal()
-        self.cash += shares * fill_price
         if symbol not in self.short_positions:
             self.symbols.add(symbol)
             pos = Position(symbol=symbol, shares=shares, type="short")
@@ -910,12 +896,12 @@ class Portfolio:
                     pos.pnl = _calculate_pnl(close, pos.entries, "short")
                     pos.margin = close * pos.shares
                     pos.market_value = pos.margin + pos.pnl
+                    pos_margin += pos.margin
                     pos_short_shares += pos.shares
                     pos_market_value += pos.market_value
                     pos_pnl += pos.pnl
-                    pos_margin += pos.margin
-                total_market_value -= pos.margin
                 total_margin += pos.margin
+                total_market_value += pos.pnl
             if close is not None:
                 self.position_bars.append(
                     PositionBar(

@@ -399,8 +399,7 @@ def test_buy_when_existing_short_and_not_enough_cash():
     buy_order = portfolio.buy(
         DATE_2, SYMBOL_1, SHARES_1, exit_price, exit_limit
     )
-    expected_shares = SHARES_1 / (exit_price / entry_price)
-    expected_pnl = (entry_price - exit_price) * expected_shares
+    expected_pnl = (entry_price - exit_price) * SHARES_1
     assert_order(
         order=short_order,
         date=DATE_1,
@@ -418,34 +417,17 @@ def test_buy_when_existing_short_and_not_enough_cash():
         type="buy",
         limit_price=exit_limit,
         fill_price=exit_price,
-        shares=expected_shares,
+        shares=SHARES_1,
         fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
-        cash=100,
+        cash=100 + expected_pnl,
         pnl=expected_pnl,
-        symbols={SYMBOL_1},
+        symbols=set(),
         orders=[short_order, buy_order],
-        short_positions_len=1,
+        short_positions_len=0,
         long_positions_len=0,
-    )
-    pos = portfolio.short_positions[SYMBOL_1]
-    assert_position(
-        pos=pos,
-        symbol=SYMBOL_1,
-        shares=SHARES_1 - expected_shares,
-        type="short",
-        entries_len=1,
-    )
-    entry = pos.entries[0]
-    assert_entry(
-        entry=entry,
-        date=DATE_1,
-        symbol=SYMBOL_1,
-        shares=pos.shares,
-        price=5,
-        type="short",
     )
     assert len(portfolio.trades) == 1
     expected_return_pct = (entry_price / exit_price - 1) * 100
@@ -457,7 +439,7 @@ def test_buy_when_existing_short_and_not_enough_cash():
         exit_date=DATE_2,
         entry=entry_price,
         exit=exit_price,
-        shares=expected_shares,
+        shares=SHARES_1,
         pnl=expected_pnl,
         return_pct=expected_return_pct,
         agg_pnl=expected_pnl,
@@ -1032,7 +1014,7 @@ def test_short(fill_price, limit_price):
     )
     assert_portfolio(
         portfolio=portfolio,
-        cash=CASH + SHARES_1 * fill_price,
+        cash=CASH,
         pnl=0,
         symbols={SYMBOL_1},
         orders=[order],
@@ -1077,7 +1059,7 @@ def test_short_when_existing_short_position():
     )
     assert_portfolio(
         portfolio=portfolio,
-        cash=CASH + SHARES_1 * FILL_PRICE_3 + SHARES_2 * FILL_PRICE_4,
+        cash=CASH,
         pnl=0,
         symbols={SYMBOL_1},
         orders=[order_1, order_2],
@@ -1135,7 +1117,7 @@ def test_short_when_multiple_positions():
     )
     assert_portfolio(
         portfolio=portfolio,
-        cash=CASH + SHARES_1 * FILL_PRICE_3 + SHARES_2 * FILL_PRICE_4,
+        cash=CASH,
         pnl=0,
         symbols={SYMBOL_1, SYMBOL_2},
         orders=[order_1, order_2],
@@ -1204,7 +1186,7 @@ def test_short_when_existing_long_position():
     )
     assert_portfolio(
         portfolio=portfolio,
-        cash=CASH - SHARES_1 * FILL_PRICE_1 + SHARES_2 * FILL_PRICE_3,
+        cash=CASH + (FILL_PRICE_3 - FILL_PRICE_1) * SHARES_1,
         pnl=expected_pnl,
         symbols={SYMBOL_1},
         orders=[buy_order, short_order],
@@ -1261,7 +1243,7 @@ def test_short_when_not_filled_max_positions():
     assert order_2 is None
     assert_portfolio(
         portfolio=portfolio,
-        cash=CASH + SHARES_1 * FILL_PRICE_3,
+        cash=CASH,
         pnl=0,
         symbols={SYMBOL_1},
         orders=[order_1],
@@ -1388,7 +1370,7 @@ def test_cover_when_partial_shares():
     )
     assert_portfolio(
         portfolio=portfolio,
-        cash=CASH + SHARES_2 * FILL_PRICE_3 - SHARES_1 * FILL_PRICE_1,
+        cash=CASH + expected_pnl,
         pnl=expected_pnl,
         symbols={SYMBOL_1},
         orders=[sell_order, buy_order],
@@ -1460,7 +1442,7 @@ def test_cover_when_multiple_entries():
     )
     assert_portfolio(
         portfolio=portfolio,
-        cash=CASH + SHARES_1 * 2 * FILL_PRICE_3 - SHARES_2 * FILL_PRICE_1,
+        cash=CASH + expected_order_pnl,
         pnl=expected_order_pnl,
         symbols={SYMBOL_1},
         orders=[sell_order_1, sell_order_2, buy_order],
@@ -1526,43 +1508,64 @@ def test_cover_when_multiple_entries():
 
 def test_cover_when_not_enough_cash():
     portfolio = Portfolio(100)
-    short_order = portfolio.sell(DATE_1, SYMBOL_1, SHARES_1, 5, Decimal("4.9"))
+    sell_fill_price = 5
+    sell_limit_price = Decimal("4.9")
+    buy_fill_price = Decimal(1000)
+    buy_limit_price = 1001
+    short_order = portfolio.sell(
+        DATE_1, SYMBOL_1, SHARES_1, sell_fill_price, sell_limit_price
+    )
     portfolio.incr_bars()
-    buy_order = portfolio.buy(DATE_2, SYMBOL_1, SHARES_1, 1000, 1001)
-    assert buy_order is None
+    buy_order = portfolio.buy(
+        DATE_2, SYMBOL_1, SHARES_1, buy_fill_price, buy_limit_price
+    )
+    expected_pnl = (sell_fill_price - buy_fill_price) * SHARES_1
+    expected_return_pct = (sell_fill_price / buy_fill_price - 1) * 100
     assert_order(
         order=short_order,
         date=DATE_1,
         symbol=SYMBOL_1,
         type="sell",
-        limit_price=Decimal("4.9"),
-        fill_price=5,
+        limit_price=sell_limit_price,
+        fill_price=sell_fill_price,
+        shares=SHARES_1,
+        fees=0,
+    )
+    assert_order(
+        order=buy_order,
+        date=DATE_2,
+        symbol=SYMBOL_1,
+        type="buy",
+        limit_price=buy_limit_price,
+        fill_price=buy_fill_price,
         shares=SHARES_1,
         fees=0,
     )
     assert_portfolio(
         portfolio=portfolio,
-        cash=100 + SHARES_1 * 5,
-        pnl=0,
-        symbols={SYMBOL_1},
-        orders=[short_order],
-        short_positions_len=1,
+        cash=100 + expected_pnl,
+        pnl=expected_pnl,
+        symbols=set(),
+        orders=[short_order, buy_order],
+        short_positions_len=0,
         long_positions_len=0,
     )
-    pos = portfolio.short_positions[SYMBOL_1]
-    assert_position(
-        pos=pos, symbol=SYMBOL_1, shares=SHARES_1, type="short", entries_len=1
-    )
-    entry = pos.entries[0]
-    assert_entry(
-        entry=entry,
-        date=DATE_1,
-        symbol=SYMBOL_1,
-        shares=pos.shares,
-        price=5,
+    assert_trade(
+        trade=portfolio.trades[0],
         type="short",
+        symbol=SYMBOL_1,
+        entry_date=DATE_1,
+        exit_date=DATE_2,
+        entry=sell_fill_price,
+        exit=buy_fill_price,
+        shares=SHARES_1,
+        pnl=expected_pnl,
+        return_pct=expected_return_pct,
+        agg_pnl=expected_pnl,
+        bars=1,
+        pnl_per_bar=expected_pnl,
+        stop_type=None,
     )
-    assert not portfolio.trades
 
 
 def test_cover_when_not_filled_limit():
@@ -1575,7 +1578,7 @@ def test_cover_when_not_filled_limit():
     assert buy_order is None
     assert_portfolio(
         portfolio=portfolio,
-        cash=CASH + FILL_PRICE_3 * SHARES_1,
+        cash=CASH,
         pnl=0,
         symbols={SYMBOL_1},
         orders=[sell_order],
@@ -1594,7 +1597,7 @@ def test_cover_when_zero_shares():
     buy_order = portfolio.buy(DATE_2, SYMBOL_1, 0, FILL_PRICE_1, LIMIT_PRICE_1)
     assert sell_order is not None
     assert buy_order is None
-    assert portfolio.cash == CASH + SHARES_1 * FILL_PRICE_3
+    assert portfolio.cash == CASH
     assert len(portfolio.short_positions) == 1
     assert not len(portfolio.long_positions)
     assert portfolio.orders == deque([sell_order])
@@ -3086,11 +3089,11 @@ def test_capture_bar_when_short_position():
     assert len(portfolio.bars) == 1
     bar = portfolio.bars[0]
     assert bar.date == DATE_1
-    assert bar.cash == cash + shares * fill_price
+    assert bar.cash == cash
     assert bar.equity == bar.cash
     assert bar.margin == close_price * shares
     assert bar.pnl == (fill_price - close_price) * shares
-    assert bar.market_value == bar.equity - bar.margin
+    assert bar.market_value == bar.equity + bar.pnl
     assert bar.fees == 0
     assert len(portfolio.position_bars) == 1
     pos_bar = portfolio.position_bars[0]
