@@ -171,7 +171,7 @@ class IndicatorsMixin:
     def compute_indicators(
         self,
         df: pd.DataFrame,
-        indicator_syms: Collection[IndicatorSymbol],
+        indicator_syms: Iterable[IndicatorSymbol],
         cache_date_fields: Optional[CacheDateFields],
         disable_parallel: bool,
     ) -> dict[IndicatorSymbol, pd.Series]:
@@ -180,7 +180,7 @@ class IndicatorsMixin:
 
         Args:
             df: :class:`pandas.DataFrame` used to compute the indicator values.
-            indicator_syms: ``Collection`` of
+            indicator_syms: ``Iterable`` of
                 :class:`pybroker.common.IndicatorSymbol` pairs of indicators
                 to compute.
             cache_date_fields: Date fields used to key cache data. Pass
@@ -228,9 +228,9 @@ class IndicatorsMixin:
 
     def _get_cached_indicators(
         self,
-        indicator_syms: Collection[IndicatorSymbol],
+        indicator_syms: Iterable[IndicatorSymbol],
         cache_date_fields: Optional[CacheDateFields],
-    ) -> tuple[dict[IndicatorSymbol, pd.Series], Collection[IndicatorSymbol]]:
+    ) -> tuple[dict[IndicatorSymbol, pd.Series], list[IndicatorSymbol]]:
         indicator_syms = sorted(indicator_syms)
         indicator_data: dict[IndicatorSymbol, pd.Series] = {}
         if cache_date_fields is None:

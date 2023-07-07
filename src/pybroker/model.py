@@ -22,7 +22,6 @@ from numpy.typing import NDArray
 from typing import (
     Any,
     Callable,
-    Collection,
     Iterable,
     Mapping,
     NamedTuple,
@@ -92,7 +91,7 @@ class ModelLoader(ModelSource):
         load_fn: ``Callable[[symbol: str, ...], DataFrame]`` used to load and
             return a pre-trained model. This is expected to
             return either a trained model instance, or a tuple containing a
-            trained model instance and a :class:`Collection` of column names to
+            trained model instance and a :class:`Iterable` of column names to
             to be used as input for the model when making predictions.
         indicator_names: :class:`Iterable` of names of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
@@ -111,7 +110,7 @@ class ModelLoader(ModelSource):
     def __init__(
         self,
         name: str,
-        load_fn: Callable[..., Union[Any, tuple[Any, Collection[str]]]],
+        load_fn: Callable[..., Union[Any, tuple[Any, Iterable[str]]]],
         indicator_names: Iterable[str],
         input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]],
         predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]],
@@ -122,7 +121,7 @@ class ModelLoader(ModelSource):
         )
         self._load_fn = functools.partial(load_fn, **kwargs)
 
-    def __call__(self, symbol: str) -> Union[Any, tuple[Any, Collection[str]]]:
+    def __call__(self, symbol: str) -> Union[Any, tuple[Any, Iterable[str]]]:
         """Loads pre-trained model.
 
         Args:
@@ -149,7 +148,7 @@ class ModelTrainer(ModelSource):
             test_data: DataFrame, ...], DataFrame]`` used to train and return a
             model. This is expected to return either a trained model instance,
             or a tuple containing a trained model instance and a
-            :class:`Collection` of column names to to be used as input for the
+            :class:`Iterable` of column names to to be used as input for the
             model when making predictions.
         indicator_names: :class:`Iterable` of names of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
@@ -168,7 +167,7 @@ class ModelTrainer(ModelSource):
     def __init__(
         self,
         name: str,
-        train_fn: Callable[..., Union[Any, tuple[Any, Collection[str]]]],
+        train_fn: Callable[..., Union[Any, tuple[Any, Iterable[str]]]],
         indicator_names: Iterable[str],
         input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]],
         predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]],
@@ -181,7 +180,7 @@ class ModelTrainer(ModelSource):
 
     def __call__(
         self, symbol: str, train_data: pd.DataFrame, test_data: pd.DataFrame
-    ) -> Union[Any, tuple[Any, Collection[str]]]:
+    ) -> Union[Any, tuple[Any, Iterable[str]]]:
         """Trains model.
 
         Args:
@@ -203,7 +202,7 @@ class ModelTrainer(ModelSource):
 
 def model(
     name: str,
-    fn: Callable[..., Union[Any, tuple[Any, Collection[str]]]],
+    fn: Callable[..., Union[Any, tuple[Any, Iterable[str]]]],
     indicators: Optional[Iterable[Indicator]] = None,
     input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]] = None,
     predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]] = None,
@@ -221,7 +220,7 @@ def model(
             If for loading, then ``fn`` has signature
             ``Callable[[symbol: str, ...], DataFrame]``. This is expected to
             return either a trained model instance, or a tuple containing a
-            trained model instance and a :class:`Collection` of column names to
+            trained model instance and a :class:`Iterable` of column names to
             to be used as input for the model when making predictions.
         indicators: :class:`Iterable` of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
@@ -290,7 +289,7 @@ class ModelsMixin:
 
     def train_models(
         self,
-        model_syms: Collection[ModelSymbol],
+        model_syms: Iterable[ModelSymbol],
         train_data: pd.DataFrame,
         test_data: pd.DataFrame,
         indicator_data: Mapping[IndicatorSymbol, pd.Series],
@@ -300,7 +299,7 @@ class ModelsMixin:
         pairs.
 
         Args:
-            model_syms: ``Collection`` of
+            model_syms: ``Iterable`` of
                 :class:`pybroker.common.ModelSymbol` pairs of models to train.
             train_data: :class:`pandas.DataFrame` of training data.
             test_data: :class:`pandas.DataFrame` of test data.
@@ -385,9 +384,9 @@ class ModelsMixin:
 
     def _get_cached_models(
         self,
-        model_syms: Collection[ModelSymbol],
+        model_syms: Iterable[ModelSymbol],
         cache_date_fields: CacheDateFields,
-    ) -> tuple[dict[ModelSymbol, TrainedModel], Collection[ModelSymbol]]:
+    ) -> tuple[dict[ModelSymbol, TrainedModel], list[ModelSymbol]]:
         model_syms = sorted(model_syms)
         models: dict[ModelSymbol, TrainedModel] = {}
         scope = StaticScope.instance()

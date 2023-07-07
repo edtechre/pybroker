@@ -27,7 +27,6 @@ from numpy.typing import NDArray
 from typing import (
     Any,
     Callable,
-    Collection,
     Final,
     Iterable,
     Literal,
@@ -237,7 +236,7 @@ class ColumnScope:
     def fetch_dict(
         self,
         symbol: str,
-        names: Collection[str],
+        names: Iterable[str],
         end_index: Optional[int] = None,
     ) -> dict[str, Optional[NDArray]]:
         r"""Fetches a ``dict`` of column data for ``symbol``.
