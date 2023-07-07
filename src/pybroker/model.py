@@ -339,6 +339,8 @@ class ModelsMixin:
             return models
         if models:
             scope.logger.info_loaded_models(models.keys())
+        start_date = to_datetime(train_dates[0])
+        end_date = to_datetime(train_dates[-1])
         for model_sym in uncached_model_syms:
             if model_sym in models:
                 continue
@@ -361,8 +363,6 @@ class ModelsMixin:
                 model_result = source(sym, sym_train_data, sym_test_data)
                 scope.logger.info_train_model_completed(model_sym)
             elif isinstance(source, ModelLoader):
-                start_date = to_datetime(train_dates[0])
-                end_date = to_datetime(train_dates[-1])
                 model_result = source(sym, start_date, end_date)
                 scope.logger.info_loaded_model(model_sym)
             else:
