@@ -41,14 +41,34 @@ def cache_date_fields(train_data):
 
 
 @pytest.fixture()
+def start_date(train_data):
+    return to_datetime(sorted(train_data["date"].unique())[0])
+
+
+@pytest.fixture()
 def end_date(train_data):
     return to_datetime(sorted(train_data["date"].unique())[-1])
 
 
 @pytest.fixture()
-def model_syms(train_data, model_source):
+def model_loader():
+    return model(
+        "loader",
+        lambda symbol, train_start_date, train_end_date: FakeModel(
+            symbol=symbol, preds=[]
+        ),
+        [],
+        pretrained=True,
+    )
+
+
+@pytest.fixture()
+def model_syms(train_data, model_source, model_loader):
     return [
         ModelSymbol(model_source.name, sym)
+        for sym in train_data["symbol"].unique()
+    ] + [
+        ModelSymbol(model_loader.name, sym)
         for sym in train_data["symbol"].unique()
     ]
 
@@ -116,11 +136,13 @@ class TestModelSource:
         ):
             source.prepare_input_data(ind_df)
 
-    def test_model_loader_call_with_kwargs(self):
+    def test_model_loader_call_with_kwargs(self, start_date, end_date):
         load_fn = Mock()
         kwargs = {"a": 1, "b": 2}
-        ModelLoader("loader", load_fn, [], None, None, kwargs)("SPY")
-        load_fn.assert_called_once_with("SPY", **kwargs)
+        ModelLoader("loader", load_fn, [], None, None, kwargs)(
+            "SPY", start_date, end_date
+        )
+        load_fn.assert_called_once_with("SPY", start_date, end_date, **kwargs)
 
     def test_model_trainer_call_with_kwargs(self, train_data, test_data):
         train_fn = Mock()

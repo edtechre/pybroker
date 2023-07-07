@@ -14,10 +14,12 @@ from pybroker.common import (
     IndicatorSymbol,
     ModelSymbol,
     TrainedModel,
+    to_datetime,
 )
 from pybroker.indicator import Indicator
 from pybroker.scope import StaticScope
 from dataclasses import asdict
+from datetime import datetime
 from numpy.typing import NDArray
 from typing import (
     Any,
@@ -88,7 +90,8 @@ class ModelLoader(ModelSource):
 
     Args:
         name: Name of model.
-        load_fn: ``Callable[[symbol: str, ...], DataFrame]`` used to load and
+        load_fn: ``Callable[[symbol: str, train_start_date: datetime,
+            train_end_date: datetime, ...], DataFrame]`` used to load and
             return a pre-trained model. This is expected to
             return either a trained model instance, or a tuple containing a
             trained model instance and a :class:`Iterable` of column names to
@@ -121,16 +124,20 @@ class ModelLoader(ModelSource):
         )
         self._load_fn = functools.partial(load_fn, **kwargs)
 
-    def __call__(self, symbol: str) -> Union[Any, tuple[Any, Iterable[str]]]:
+    def __call__(
+        self, symbol: str, train_start_date: datetime, train_end_date: datetime
+    ) -> Union[Any, tuple[Any, Iterable[str]]]:
         """Loads pre-trained model.
 
         Args:
             symbol: Ticker symbol for loading the pre-trained model.
+            train_start_date: Start date of training window.
+            train_end_date: End date of training window.
 
         Returns:
             Pre-trained model.
         """
-        return self._load_fn(symbol)
+        return self._load_fn(symbol, train_start_date, train_end_date)
 
     def __repr__(self):
         return self.__str__()
@@ -218,7 +225,8 @@ def model(
             for training, then ``fn`` has signature ``Callable[[symbol: str,
             train_data: DataFrame, test_data: DataFrame, ...], DataFrame]``.
             If for loading, then ``fn`` has signature
-            ``Callable[[symbol: str, ...], DataFrame]``. This is expected to
+            ``Callable[[symbol: str, train_start_date: datetime,
+            train_end_date: datetime, ...], DataFrame]``. This is expected to
             return either a trained model instance, or a tuple containing a
             trained model instance and a :class:`Iterable` of column names to
             to be used as input for the model when making predictions.
@@ -353,7 +361,9 @@ class ModelsMixin:
                 model_result = source(sym, sym_train_data, sym_test_data)
                 scope.logger.info_train_model_completed(model_sym)
             elif isinstance(source, ModelLoader):
-                model_result = source(sym)
+                start_date = to_datetime(train_dates[0])
+                end_date = to_datetime(train_dates[-1])
+                model_result = source(sym, start_date, end_date)
                 scope.logger.info_loaded_model(model_sym)
             else:
                 raise TypeError(f"Invalid ModelSource type: {type(source)}")
