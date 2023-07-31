@@ -146,8 +146,8 @@ def pos_size_handler(ctx):
     signals = tuple(ctx.signals())
     ctx.set_shares(signals[0], shares=1000)
     ctx.set_shares(signals[1], shares=2000)
-    assert type(ctx.sessions["SPY"]) == dict
-    assert type(ctx.sessions["AAPL"]) == dict
+    assert isinstance(ctx.sessions["SPY"], dict)
+    assert isinstance(ctx.sessions["AAPL"], dict)
 
 
 class TestBacktestMixin:
@@ -232,8 +232,8 @@ class TestBacktestMixin:
             signals = tuple(ctx.signals())
             ctx.set_shares(signals[0], shares=10)
             ctx.set_shares(signals[1], shares=20)
-            assert type(ctx.sessions["SPY"]) == dict
-            assert type(ctx.sessions["AAPL"]) == dict
+            assert isinstance(ctx.sessions["SPY"], dict)
+            assert isinstance(ctx.sessions["AAPL"], dict)
 
         def buy_exec_fn(ctx):
             ctx.cover_fill_price = 1
@@ -1065,7 +1065,7 @@ def executions_with_indicators(executions_only, hhv_ind, llv_ind):
 @pytest.fixture()
 def executions_with_models(executions_only, model_source):
     def exec_fn(ctx):
-        assert type(ctx.model(model_source.name)) == FakeModel
+        assert isinstance(ctx.model(model_source.name), FakeModel)
 
     executions_only[0]["models"] = model_source
     executions_only[0]["fn"] = exec_fn
@@ -1084,7 +1084,7 @@ def executions_with_models_and_indicators(
 
     def exec_fn_2(ctx):
         assert len(ctx.indicator(hhv_ind.name))
-        assert type(ctx.model(model_source.name)) == FakeModel
+        assert isinstance(ctx.model(model_source.name), FakeModel)
 
     executions_only[1]["indicators"] = hhv_ind
     executions_only[1]["models"] = model_source
@@ -1182,7 +1182,7 @@ class TestStrategy:
         if all(map(lambda e: not e["fn"], executions)):
             assert result is None
             return
-        assert type(result) == TestResult
+        assert isinstance(result, TestResult)
         assert result.metrics is not None
         assert isinstance(result.metrics_df, pd.DataFrame)
         assert not result.metrics_df.empty
@@ -1325,7 +1325,7 @@ class TestStrategy:
         for exec in executions_only:
             strategy.add_execution(**exec)
         result = strategy.backtest(calc_bootstrap=True)
-        assert type(result) == TestResult
+        assert isinstance(result, TestResult)
         assert result.start_date == datetime.strptime(START_DATE, "%Y-%m-%d")
         assert result.end_date == datetime.strptime(END_DATE, "%Y-%m-%d")
         assert not result.portfolio.empty
@@ -2163,8 +2163,8 @@ class TestStrategy:
     def test_backtest_when_before_exec(self, data_source_df):
         def before_exec_fn(ctxs):
             assert len(ctxs) == 2
-            assert type(ctxs["SPY"]) == ExecContext
-            assert type(ctxs["AAPL"]) == ExecContext
+            assert isinstance(ctxs["SPY"], ExecContext)
+            assert isinstance(ctxs["AAPL"], ExecContext)
             ctxs["SPY"].session["foo"] = "bar"
 
         def exec_fn(ctx):
@@ -2192,8 +2192,8 @@ class TestStrategy:
     def test_backtest_when_before_exec_and_no_executions(self, data_source_df):
         def before_exec_fn(ctxs):
             assert len(ctxs) == 2
-            assert type(ctxs["SPY"]) == ExecContext
-            assert type(ctxs["AAPL"]) == ExecContext
+            assert isinstance(ctxs["SPY"], ExecContext)
+            assert isinstance(ctxs["AAPL"], ExecContext)
             if not ctxs["AAPL"].long_pos():
                 ctxs["AAPL"].buy_shares = 200
 
@@ -2216,8 +2216,8 @@ class TestStrategy:
     def test_backtest_when_after_exec(self, data_source_df):
         def after_exec_fn(ctxs):
             assert len(ctxs) == 2
-            assert type(ctxs["SPY"]) == ExecContext
-            assert type(ctxs["AAPL"]) == ExecContext
+            assert isinstance(ctxs["SPY"], ExecContext)
+            assert isinstance(ctxs["AAPL"], ExecContext)
             if not ctxs["AAPL"].long_pos():
                 ctxs["AAPL"].buy_shares = 300
 
@@ -2244,8 +2244,8 @@ class TestStrategy:
     def test_backtest_when_after_exec_and_no_executions(self, data_source_df):
         def after_exec_fn(ctxs):
             assert len(ctxs) == 2
-            assert type(ctxs["SPY"]) == ExecContext
-            assert type(ctxs["AAPL"]) == ExecContext
+            assert isinstance(ctxs["SPY"], ExecContext)
+            assert isinstance(ctxs["AAPL"], ExecContext)
             if not ctxs["AAPL"].long_pos():
                 ctxs["AAPL"].buy_shares = 200
 

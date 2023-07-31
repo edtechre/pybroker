@@ -202,11 +202,11 @@ class DataSource(ABC, DataSourceCacheMixin):
         start_date = to_datetime(start_date)
         end_date = to_datetime(end_date)
         verify_date_range(start_date, end_date)
-        if type(symbols) == str and not symbols:
+        if isinstance(symbols, str) and not symbols:
             raise ValueError("Symbols cannot be empty.")
         unique_syms = (
             frozenset((symbols,))
-            if type(symbols) == str
+            if isinstance(symbols, str)
             else frozenset(symbols)
         )
         if not unique_syms:

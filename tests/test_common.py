@@ -139,7 +139,7 @@ def test_to_seconds(tf, expected):
 )
 def test_to_datetime(date, expected):
     dt = to_datetime(date)
-    assert type(dt) == datetime
+    assert isinstance(dt, datetime)
     assert dt == expected
 
 

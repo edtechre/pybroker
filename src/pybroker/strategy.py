@@ -881,7 +881,7 @@ class Strategy(
         """
         symbols = (
             frozenset((symbols,))
-            if type(symbols) == str
+            if isinstance(symbols, str)
             else frozenset(symbols)
         )
         if not symbols:
@@ -1236,11 +1236,13 @@ class Strategy(
     ) -> Optional[tuple[int]]:
         if days is None:
             return None
-        days = (days,) if type(days) == str or type(days) == Day else days
+        days = (
+            (days,) if isinstance(days, str) or isinstance(days, Day) else days
+        )
         return tuple(
             sorted(
                 day.value
-                if type(day) == Day
+                if isinstance(day, Day)
                 else Day[day.upper()].value  # type: ignore[union-attr]
                 for day in set(days)  # type: ignore[arg-type]
             )

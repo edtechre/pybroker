@@ -967,7 +967,7 @@ class Portfolio:
                 which to cancel stops.
             stop_type: :class:`pybroker.common.StopType`.
         """
-        if type(val) == str:
+        if isinstance(val, str):
             if val in self.long_positions:
                 self._remove_position_stops(
                     self.long_positions[val], stop_type
