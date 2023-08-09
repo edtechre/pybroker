@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-11 17:27+0800\n"
+"POT-Creation-Date: 2023-08-09 16:35+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -42,8 +42,7 @@ msgid ""
 "documentation. "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
 msgstr ""
-"你还可以检索其他符号的模型、预测和其他数据。"
-"`有关更多信息，请参阅 ExecContext "
+"你还可以检索其他符号的模型、预测和其他数据。`有关更多信息，请参阅 ExecContext "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
 " 参考文档。"
 
@@ -61,8 +60,7 @@ msgstr ""
 "设置 `买入限价（buy_limit_price） "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buy_limit_price>`__"
 " 或 `卖出限价（sell_limit_price） "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_limit_price>`__"
-"："
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_limit_price>`__："
 
 #: ../../source/notebooks/FAQs.ipynb:609 14f192df75c24fd3a230eeb485f18d78
 msgid "... set the fill price?"
@@ -81,8 +79,8 @@ msgstr ""
 "设置 `买入成交价格（buy_fill_price） "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buy_fill_price>`__"
 " 和 `卖出成交价格（sell_fill_price） "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_fill_price>`__"
-"。请参阅 `PriceType "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_fill_price>`__。请参阅"
+" `PriceType "
 "<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.PriceType>`__"
 " 以查看选项。"
 
@@ -96,8 +94,7 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.Position>`__"
 msgstr ""
 "`有关更多信息，请参阅 Position 类 "
-"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.Position>`__"
-"。"
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.Position>`__。"
 
 #: ../../source/notebooks/FAQs.ipynb:1099 3abdb22c33294de385fb45839351309b
 msgid "... use custom column data?"
@@ -194,8 +191,7 @@ msgstr ""
 "使用 `set_before_exec "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_before_exec>`__"
 " 或 `set_after_exec "
-"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_after_exec>`__"
-"："
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_after_exec>`__："
 
 #: ../../source/notebooks/FAQs.ipynb:3119 9e7324ffe12e4c29a6ff3ca5ef881b7f
 msgid "... annualize the Sharpe Ratio?"
@@ -212,22 +208,33 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.bars_per_year>`__"
 " 配置选项。例如，设置为 ``252`` 的值将用于对每日回报进行年化。"
 
-#: ../../source/notebooks/FAQs.ipynb:3278 1bea4dc57c2646be98a33526ae63e7b0
+#: ../../source/notebooks/FAQs.ipynb:3278 602dcbfc86774d73a856c3a73acbb2a5
+msgid "... limit margin used for short selling?"
+msgstr "... 用于卖空的限制保证金"
+
+#: ../../source/notebooks/FAQs.ipynb:3280 273778af7308450ea49e4afdebe328a8
+msgid ""
+"By default, PyBroker does not limit the amount of margin that can be used"
+" for short selling. However, you can manually limit the amount of margin "
+"that can be used:"
+msgstr ""
+"默认情况下，PyBroker 并不限制可以用于卖空的保证金数量。然而，你可以手动限制可用保证金的数量："
+
+#: ../../source/notebooks/FAQs.ipynb:3664 1bea4dc57c2646be98a33526ae63e7b0
 msgid "... get and set a global parameter?"
 msgstr "... 如何获取和设置全局参数？"
 
-#: ../../source/notebooks/FAQs.ipynb:3331 89bc5e1e557941efade334a9b565b557
+#: ../../source/notebooks/FAQs.ipynb:3717 89bc5e1e557941efade334a9b565b557
 msgid "... apply random slippage?"
 msgstr "... 如何应用随机滑点？"
 
-#: ../../source/notebooks/FAQs.ipynb:3333 9576621a9e31424ebc5b681ed38f89d6
+#: ../../source/notebooks/FAQs.ipynb:3719 9576621a9e31424ebc5b681ed38f89d6
 msgid ""
 "Set a `RandomSlippageModel "
 "<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.RandomSlippageModel>`__:"
 msgstr ""
 "设置一个 `RandomSlippageModel "
-"<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.RandomSlippageModel>`__"
-"："
+"<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.RandomSlippageModel>`__："
 
 #~ msgid "How to..."
 #~ msgstr ""
