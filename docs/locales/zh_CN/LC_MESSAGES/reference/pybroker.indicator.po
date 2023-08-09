@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-02 21:23+0800\n"
+"POT-Creation-Date: 2023-08-09 16:35+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -20,27 +20,27 @@ msgstr ""
 "Generated-By: Babel 2.12.1\n"
 
 #: ../../source/reference/pybroker.indicator.rst:2
-#: fcabeadece4d442a809cae81d55381c2
+#: 8bba6309a31c444db53f7fea084965f0
 msgid "pybroker.indicator module"
 msgstr ""
 
-#: 3a5c55d04e46400c9331b234f9df323e of pybroker.indicator:1
+#: e7df6eb089574529a2605611b73a85db of pybroker.indicator:1
 msgid "Contains indicator related functionality."
 msgstr ""
 
-#: 4250d1490a534960b775dca0f2f7f3cf 824b782a2e9c4bceadf77e5884a769aa of
+#: 2e6dcfd288fe49f1b4de04cfbdb42049 ac4b5ab168a348b584347fb76dce78b3 of
 #: pybroker.indicator.Indicator:1 pybroker.indicator.IndicatorsMixin:1
 msgid "Bases: :py:class:`object`"
 msgstr ""
 
-#: 1dcdff21fed64e5fb3453258c74a6f5c of pybroker.indicator.Indicator:1
+#: e32808daa734498da786a5697923b3e1 of pybroker.indicator.Indicator:1
 msgid "Class representing an indicator."
 msgstr ""
 
-#: 3861fa99a32e45768293019ffd32ef97 5763f3819927421fb8400e762d951955
-#: 5a034142c93144b08ddc39e9d5ac63cf 967ee533c73240d9bacf3cb9a86be00c
-#: a5c9d659c8dc4195a7353b34a8d31b2d b0f888e2917540d8a2a2da2987479d4b
-#: ba015b23f99346748d4baa1f14f6de94 of pybroker.indicator.Indicator
+#: 0257f0692a3d40d2bc28287edd720f2c 12bc3cba93c74182ae5eb1693b49de18
+#: 2bc4326b1b28418386fc406801656b60 6b2e2018eaaf4b558005b03836b0918e
+#: 7d01dcf14c7848f48b13ff6d5b5a4608 de248f899cf943b4b54beb09cdaf4b77
+#: f7f7839492bd451f9b13f8b1d2e90c1a of pybroker.indicator.Indicator
 #: pybroker.indicator.IndicatorSet.__call__
 #: pybroker.indicator.IndicatorsMixin.compute_indicators
 #: pybroker.indicator.highest pybroker.indicator.indicator
@@ -48,54 +48,54 @@ msgstr ""
 msgid "Parameters"
 msgstr ""
 
-#: 995ca5f0d1e9459bbb7eab95592ac026 of pybroker.indicator.Indicator:3
+#: ab3c04bc159743e79e62e670b8b9c4af of pybroker.indicator.Indicator:3
 msgid "Name of indicator."
 msgstr ""
 
-#: 7e6da9fade854b9d8544372e02bf53ad of pybroker.indicator.Indicator:4
+#: 84e521c8f7d345c3b2fbccf11c04e0b8 of pybroker.indicator.Indicator:4
 msgid ":class:`Callable` used to compute the series of indicator values."
 msgstr ""
 
-#: a52f2f0eecde4c8db175dc50f5ea047a of pybroker.indicator.Indicator:5
+#: e4eb669ae0ab40df8c4e4ab5c768445d of pybroker.indicator.Indicator:5
 msgid "``dict`` of kwargs to pass to ``fn``."
 msgstr ""
 
-#: d13378eb6ae74f0f818ef8f2b47a665a of pybroker.indicator.Indicator.__call__:1
+#: c54599a8d4124cddb46a4cb85d3ffd63 of pybroker.indicator.Indicator.__call__:1
 msgid "Computes indicator values."
 msgstr ""
 
-#: d0b11188fbb54961ab91072099e482d3 of pybroker.indicator.Indicator.iqr:1
+#: eaebb998f4194e3b9a633653ad49f251 of pybroker.indicator.Indicator.iqr:1
 msgid ""
 "Generates indicator data with ``data`` and computes its `interquartile "
 "range (IQR) <https://en.wikipedia.org/wiki/Interquartile_range>`_."
 msgstr ""
 
-#: adb57b2cbd4047999d4c7d5cbdad5d9d of
+#: c738c13eac7440eab74c33e0eafb6705 of
 #: pybroker.indicator.Indicator.relative_entropy:1
 msgid ""
 "Generates indicator data with ``data`` and computes its relative `entropy"
 " <https://en.wikipedia.org/wiki/Entropy_(information_theory)>`_."
 msgstr ""
 
-#: 157f77a24d32440ca938c528005a79ad of pybroker.indicator.IndicatorSet:1
+#: af3a42c831b84eafa38267365d922c94 of pybroker.indicator.IndicatorSet:1
 msgid "Bases: :py:class:`~pybroker.indicator.IndicatorsMixin`"
 msgstr ""
 
-#: 3861b2ef741b43beafda94404d3787b1 of pybroker.indicator.IndicatorSet:1
+#: ce274541c1fe4a40b9b3f980f85bfa9b of pybroker.indicator.IndicatorSet:1
 msgid "Computes data for multiple indicators."
 msgstr ""
 
-#: 58d84c9f10cd45c891ac3d3fe30f28d4 of
+#: 31fcbfbbe27a445e86c469fdd35ad98a of
 #: pybroker.indicator.IndicatorSet.__call__:1
 msgid "Computes indicator data."
 msgstr ""
 
-#: 20c95b3631d3470f990f8c845aea2ed9 of
+#: c2dc32c67a05453aac92774d4923a4d9 of
 #: pybroker.indicator.IndicatorSet.__call__:3
 msgid ":class:`pandas.DataFrame` of input data."
 msgstr ""
 
-#: 9ab8b84fc8474ccc9b252dd0d98f3769 of
+#: 66125e40759a41a0a124d0e5bf837f7f of
 #: pybroker.indicator.IndicatorSet.__call__:4
 msgid ""
 "If ``True``, indicator data is computed serially. If ``False``, indicator"
@@ -103,9 +103,9 @@ msgid ""
 "``False``."
 msgstr ""
 
-#: 1c69a7f0c1034ee48ebec50b76e1462a 72ac1d4389944b69bf6c2f0efb6f9af5
-#: 7dfa3f3712c84c7ea370d04eeb34c226 8738bc99ead54cfa9862b0977f7c718b
-#: 95651fec27174ec8b5659d1f5464dafa cfd473af6a7640f5b21f0a4b1e949780 of
+#: 1c9980b0726c4afc8c922867bb71f09b 4f526e8e6a2a490eb5c123a8503242fb
+#: 7e9f4d1c888549afa60bcb983d4ca893 9bfa592041024200aa3c2f64b7bc4b21
+#: e0482047fdae4adf85edb8e85b0d499f eaa1d09d3bfa4bd2901073ea9ac2a803 of
 #: pybroker.indicator.IndicatorSet.__call__
 #: pybroker.indicator.IndicatorsMixin.compute_indicators
 #: pybroker.indicator.highest pybroker.indicator.indicator
@@ -113,52 +113,52 @@ msgstr ""
 msgid "Returns"
 msgstr ""
 
-#: fd341a2573f8474091cde8a0b12e1ae2 of
+#: 62d274b8a6a94957afbee0a8c2cf14bf of
 #: pybroker.indicator.IndicatorSet.__call__:8
 msgid ":class:`pandas.DataFrame` containing the computed indicator data."
 msgstr ""
 
-#: 52f9f1aa58a345b98a1fd231ae5e5a0a of pybroker.indicator.IndicatorSet.add:1
+#: 98549163c0044cb09905a4ca0e1d1d66 of pybroker.indicator.IndicatorSet.add:1
 msgid "Adds indicators."
 msgstr ""
 
-#: 05f3a818026e42edaf22da8b1dd32706 of pybroker.indicator.IndicatorSet.clear:1
+#: 845e718de20d497fa40b13081cb2d9e8 of pybroker.indicator.IndicatorSet.clear:1
 msgid "Removes all indicators."
 msgstr ""
 
-#: 7623ba09da854353a8674893ec8dc79b of pybroker.indicator.IndicatorSet.remove:1
+#: 1e93760c30de44738824a6d7db4bda31 of pybroker.indicator.IndicatorSet.remove:1
 msgid "Removes indicators."
 msgstr ""
 
-#: ce7fdfd0a23f426688d47cca29965134 of pybroker.indicator.IndicatorsMixin:1
+#: cf40015a33eb4309810fbfd0b1724bdd of pybroker.indicator.IndicatorsMixin:1
 msgid "Mixin implementing indicator related functionality."
 msgstr ""
 
-#: 0cbe8aaab5f142f8bf227117f00f4a03 of
+#: c6447909881142ce812df83f7d06c84f of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:1
 msgid ""
 "Computes indicator data for the provided "
 ":class:`pybroker.common.IndicatorSymbol` pairs."
 msgstr ""
 
-#: 208bce6afde841969d7875fbd44d83b8 of
+#: 79f93d6d1b724c7cbfb5144d187a1dae of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:4
 msgid ":class:`pandas.DataFrame` used to compute the indicator values."
 msgstr ""
 
-#: 43a85df031b9454fbac83b48b395a6c7 of
+#: 6f4442c626aa4b15abb35d946695cc6b of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:5
 msgid ""
-"``Collection`` of :class:`pybroker.common.IndicatorSymbol` pairs of "
+"``Iterable`` of :class:`pybroker.common.IndicatorSymbol` pairs of "
 "indicators to compute."
 msgstr ""
 
-#: 6108d31ab9de4acb8c51cb9dc0aa4922 of
+#: 722abdd905c24f1192279c1bec989d83 of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:8
 msgid "Date fields used to key cache data. Pass ``None`` to disable caching."
 msgstr ""
 
-#: f16839265b45451892e7d05fb7abb065 of
+#: d18150dfbf064a6b8b0d832e2e28221a of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:10
 msgid ""
 "If ``True``, indicator data is computed serially for all "
@@ -166,85 +166,90 @@ msgid ""
 "data is computed in parallel using multiple processes."
 msgstr ""
 
-#: a54f7cce0f874dae9d69e00416038a47 of
+#: 2aa4c3d1389a417cb591fb7215ee5c36 of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:15
 msgid ""
 "``dict`` mapping each :class:`pybroker.common.IndicatorSymbol` pair to a "
 "computed :class:`pandas.Series` of indicator values."
 msgstr ""
 
-#: 8689a2f7d4a34c37b2bb252a154db1e8 of pybroker.indicator.highest:1
+#: 6a5b038468c5406e8e4b2898e61e58cd of pybroker.indicator.highest:1
 msgid "Creates a rolling high :class:`.Indicator`."
 msgstr ""
 
-#: 27d2e6ed8a054653927409046516d059 27d817a2f8214563bd82a8806d3c7046
-#: 9da4a2d9291a45d5a72c573e97e0a94e of pybroker.indicator.highest:3
+#: 02f3c5b8d7214824bdab808673ded378 4a9b2443c7044f0b95a473c46a63ab98
+#: b4eca442bfb440238e2bc8508e3dd8a2 of pybroker.indicator.highest:3
 #: pybroker.indicator.lowest:3 pybroker.indicator.returns:3
 msgid "Indicator name."
 msgstr ""
 
-#: 3ec8f7473f5a4be19521bb15844be0f8 of pybroker.indicator.highest:4
+#: 29d49c055a384c1b9c2b24a8400253aa of pybroker.indicator.highest:4
 msgid ":class:`pybroker.common.BarData` field for computing the rolling high."
 msgstr ""
 
-#: 2763620a737d46e09f0ff3bae439c5ca 3e446ee748f94c2ebb32a0395e16566b of
+#: c0b985d690f748139938004a5910c71a e1cd405072974b36ba89de5df18ddad1 of
 #: pybroker.indicator.highest:6 pybroker.indicator.lowest:6
 msgid "Lookback period."
 msgstr ""
 
-#: 2a292ba522764a6890fd93e97252fb9f of pybroker.indicator.highest:8
+#: a29692f5480e42ebbc658f1632e6ddf1 of pybroker.indicator.highest:8
 msgid "Rolling high :class:`.Indicator`."
 msgstr ""
 
-#: 95cf008a68db4a3792127bbb938ba821 of pybroker.indicator.indicator:1
+#: 2d7cf7f034a8455488d5ecf58c0621e5 of pybroker.indicator.indicator:1
 msgid ""
 "Creates an :class:`.Indicator` instance and registers it globally with "
 "``name``."
 msgstr ""
 
-#: 2f8e7d253f5141049cf8634ca6360049 of pybroker.indicator.indicator:4
+#: d9a2b0ba6d964df782c8e72bc0e6e158 of pybroker.indicator.indicator:4
 msgid "Name for referencing the indicator globally."
 msgstr ""
 
-#: b54799a58f4a47fe94d7f2818a488985 of pybroker.indicator.indicator:5
+#: df886b5546b04067a859793da4416c66 of pybroker.indicator.indicator:5
 msgid ""
 "``Callable[[BarData, ...], NDArray[float]]`` used to compute the series "
 "of indicator values."
 msgstr ""
 
-#: 620b47a9226a47cfae668c187a464bef of pybroker.indicator.indicator:7
+#: 932c95b918e24bf89a0bca1847f4d794 of pybroker.indicator.indicator:7
 msgid "Additional arguments to pass to ``fn``."
 msgstr ""
 
-#: fa8c6a7a6c244446b7804575d6afe265 of pybroker.indicator.indicator:9
+#: 28772ec318b8479cbce05a970e189755 of pybroker.indicator.indicator:9
 msgid ":class:`.Indicator` instance."
 msgstr ""
 
-#: 5901266b1f6347e58f044e6ffee5a4c4 of pybroker.indicator.lowest:1
+#: 368ff2ee4cd542a59ac84d9eb0b048df of pybroker.indicator.lowest:1
 msgid "Creates a rolling low :class:`.Indicator`."
 msgstr ""
 
-#: d00bfe215e3648f1a157d7591cb915ed of pybroker.indicator.lowest:4
+#: 5b6ccac2801b476a8cd8571d31c0c34a of pybroker.indicator.lowest:4
 msgid ":class:`pybroker.common.BarData` field for computing the rolling low."
 msgstr ""
 
-#: a4b4c0b067ef416f9cacb032737cdde8 of pybroker.indicator.lowest:8
+#: 6c9dca1cc55c453aaa66798dc58d99f6 of pybroker.indicator.lowest:8
 msgid "Rolling low :class:`.Indicator`."
 msgstr ""
 
-#: 53ed8b9751a048259e696d76770bd644 of pybroker.indicator.returns:1
+#: 2d02eb5b9dcd42c58750a76a6cb1bf25 of pybroker.indicator.returns:1
 msgid "Creates a rolling returns :class:`.Indicator`."
 msgstr ""
 
-#: 69c7e6efe53b468d921c407139e3512a of pybroker.indicator.returns:4
+#: 0b6ea2fd8dbd430fb2ef02c22d43a746 of pybroker.indicator.returns:4
 msgid ":class:`pybroker.common.BarData` field for computing the rolling returns."
 msgstr ""
 
-#: 4af4a9e7c03b4f069146919a20e97fe1 of pybroker.indicator.returns:6
+#: a6607e4611394840a405e9a2e9d7fdb0 of pybroker.indicator.returns:6
 msgid "Returns period. Defaults to 1."
 msgstr ""
 
-#: 5391291bd06144e6b55ba50b97fa3e21 of pybroker.indicator.returns:8
+#: c54fa5c79489482b932af17291f2c785 of pybroker.indicator.returns:8
 msgid "Rolling returns :class:`.Indicator`."
 msgstr ""
+
+#~ msgid ""
+#~ "``Collection`` of :class:`pybroker.common.IndicatorSymbol`"
+#~ " pairs of indicators to compute."
+#~ msgstr ""
 
