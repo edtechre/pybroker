@@ -1,0 +1,76 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2023, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-06-27 18:02+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.12.1\n"
+
+#: ../../source/reference/pybroker.ext.data.rst:2
+#: 584c2d772ec441b6b27a4243194e26b2
+msgid "pybroker.ext.data module"
+msgstr ""
+
+#: 6384c9cc54f04396997c6b8c9aa0e6da of pybroker.ext.data:1
+msgid "Contains extension classes."
+msgstr ""
+
+#: 5192202d33704b05afe46161d79555ba of pybroker.ext.data.AKShare:1
+msgid "Bases: :py:class:`~pybroker.data.DataSource`"
+msgstr ""
+
+#: 547b3a08d273474bbb3316bbefadbc97 of pybroker.ext.data.AKShare:1
+msgid "Retrieves data from `AKShare <https://akshare.akfamily.xyz/>`_\\ ."
+msgstr ""
+
+#: 0a7ec9217bda4653bc7a9645e9aa3a4c of pybroker.ext.data.AKShare:5
+msgid "Column name of adjusted close prices."
+msgstr ""
+
+#: 2a888118a9ae4645906cc47b35dc9408 of pybroker.ext.data.AKShare.query:1
+msgid ""
+"Queries data from `AKShare <https://akshare.akfamily.xyz/>`_\\ . The "
+"timeframe of the data is limited to per day only."
+msgstr ""
+
+#: f0bc460d1a4a40e39656acd7b480f4b0 of pybroker.ext.data.AKShare.query
+msgid "Parameters"
+msgstr ""
+
+#: e98d0efa2825480e979a73c1ead7b87c of pybroker.ext.data.AKShare.query:4
+msgid "Ticker symbols of the data to query."
+msgstr ""
+
+#: 79c2257113874e2189e5fbfb8ff40cf6 of pybroker.ext.data.AKShare.query:5
+msgid "Start date of the data to query (inclusive)."
+msgstr ""
+
+#: 8ba97076eee546cc9348051251c54632 of pybroker.ext.data.AKShare.query:6
+msgid "End date of the data to query (inclusive)."
+msgstr ""
+
+#: a9d2db84599a47489eaf2e7dd6984911 of pybroker.ext.data.AKShare.query:7
+msgid "The type of adjustment to make."
+msgstr ""
+
+#: e14733d15d0f4b18b7feaaf5f8a19c27 of pybroker.ext.data.AKShare.query
+msgid "Returns"
+msgstr ""
+
+#: 18ba509e2d904bfb8e09966a9423373e of pybroker.ext.data.AKShare.query:9
+msgid ":class:`pandas.DataFrame` containing the queried data."
+msgstr ""
+

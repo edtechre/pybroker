@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-07 17:57+0800\n"
+"POT-Creation-Date: 2023-06-27 18:02+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -52,32 +52,6 @@ msgstr ""
 #: pybroker.slippage.RandomSlippageModel.apply_slippage:1
 #: pybroker.slippage.SlippageModel.apply_slippage:1
 msgid "Applies slippage to ``ctx``."
-msgstr ""
-
-#: 041b9813250c4222944d6a26fbb029cf of pybroker.slippage.SlippageData:1
-msgid "Bases: :py:class:`~typing.NamedTuple`"
-msgstr ""
-
-#: 1a1729aa35cf4dd997bfe52ba0820a73 of pybroker.slippage.SlippageData:1
-msgid "Contains data to use for calculating slippage."
-msgstr ""
-
-#: ca69509fe9e54e18a1c1431c76bade21 of pybroker.slippage.SlippageData:5
-msgid "Number of shares to buy."
-msgstr ""
-
-#: b5d3a7619aa94b4aa25c1845aac0cbcd c904584845e940ef84508d1c2d773f08 of
-#: pybroker.slippage.SlippageData
-msgid "type"
-msgstr ""
-
-#: 148e35eb073b4978a09063302cf6b7ac e2ce4c969a1c4d7787fd24315b13db38 of
-#: pybroker.slippage.SlippageData:7 pybroker.slippage.SlippageData:13
-msgid "decimal.Decimal | None"
-msgstr ""
-
-#: d14c0477f1594eba8faa38684a2cd92b of pybroker.slippage.SlippageData:11
-msgid "Number of shares to sell."
 msgstr ""
 
 #: c820922bdfc044a7bcfda2757855f9e1 of pybroker.slippage.SlippageModel:1

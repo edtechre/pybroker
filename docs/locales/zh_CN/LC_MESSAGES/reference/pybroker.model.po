@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-02 21:23+0800\n"
+"POT-Creation-Date: 2023-08-09 16:35+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -19,111 +19,107 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.12.1\n"
 
-#: ../../source/reference/pybroker.model.rst:2 561cd9630df54637a6de9ade6d374533
+#: ../../source/reference/pybroker.model.rst:2 4bf218f06c58486ca40632a1e8c3a284
 msgid "pybroker.model module"
 msgstr ""
 
-#: dedfcfa1faf24404ad82cb854b0fa879 of pybroker.model:1
+#: c944c4f0930f41efb4ed7829870a55df of pybroker.model:1
 msgid "Contains model related functionality."
 msgstr ""
 
-#: 6075b5c712a04d9582656222448e8272 of pybroker.model.CachedModel:1
+#: bcdbffa0ffd04a63be59611157e15651 of pybroker.model.CachedModel:1
 msgid "Bases: :py:class:`~typing.NamedTuple`"
 msgstr ""
 
-#: 5e37b50ec9714674a3abf620fc0374f9 of pybroker.model.CachedModel:1
+#: 76c816c8ae9741fa8f897f97febc8aff of pybroker.model.CachedModel:1
 msgid "Stores cached model data."
 msgstr ""
 
-#: f84fb2779f3c491b99e26c8a889f2db5 of pybroker.model.CachedModel:5
+#: f59aa834adbd44788e2cc9d7bc233b05 of pybroker.model.CachedModel:5
 msgid "Trained model instance."
 msgstr ""
 
-#: 0f374b96f2444c23b5c964f65122ccf0 a606db17484746dcabc2399eadd6d2c7 of
+#: 9a71b734f9ec420897e9c890e0813698 c33ed12a6d8d453faea45d54c481827f of
 #: pybroker.model.CachedModel
 msgid "type"
 msgstr ""
 
-#: 9169e868696e41d7ae1cce351e6a685c of pybroker.model.CachedModel:7
+#: 1d1376d1619747ba84c8198fb5953c2e of pybroker.model.CachedModel:7
 msgid "Any"
 msgstr ""
 
-#: c9144a538b4847fdaf143d05f286583c of pybroker.model.CachedModel:11
+#: bf57d1a8d6514986bdb6ed3d70a292b6 of pybroker.model.CachedModel:11
 msgid ""
 "Names of the columns to be used as input for the model when making "
 "predictions."
 msgstr ""
 
-#: 2a755b9e497541e79ddf1df72a84627f of pybroker.model.CachedModel:14
+#: 8119479b0fdf41359ead6a595ed6a300 of pybroker.model.CachedModel:14
 msgid "tuple[str] | None"
 msgstr ""
 
-#: ../../docstring 56ac621f7c40485d884d52d5cee35dab of
+#: ../../docstring 936b7775490a4e6c9ddd8563257ddcf1 of
 #: pybroker.model.CachedModel.input_cols:1
 msgid "Alias for field number 1"
 msgstr ""
 
-#: ../../docstring 7b4f7e50e35c44ca979003aac88903dd of
+#: ../../docstring acf6e1f6ad5146b996a9bf1898c24cf9 of
 #: pybroker.model.CachedModel.model:1
 msgid "Alias for field number 0"
 msgstr ""
 
-#: afe7e1b00feb443fa49f994d555495c1 f9da100d02264c778e19c5bf625f6f77 of
+#: b5a7b2b4047a4fdb829c0de7efb3843f f062a147e6d44cb2bafd0970e6e2c378 of
 #: pybroker.model.ModelLoader:1 pybroker.model.ModelTrainer:1
 msgid "Bases: :py:class:`~pybroker.model.ModelSource`"
 msgstr ""
 
-#: c7d16fe3e3654867be3e1763357ebc84 of pybroker.model.ModelLoader:1
+#: 0cf866016bfa4fd8a10a97ebe09132ca of pybroker.model.ModelLoader:1
 msgid "Loads a pre-trained model."
 msgstr ""
 
-#: 03ad98a0cdd449ffbdfda3badd218ce7 29473b1f128743ac8588725acfa4977b
-#: 2c6a7f7bec4c4b469864d15bb9d26618 37c50fbbfb294d838d9ac5e73e2c41e6
-#: 4713fdb7ca2e4f46bb83f5db4115d276 e227a5a854c04ae1b3ccc03b496d0b64
-#: f3fdd4d7a288423eb081563f1f1e9c13 of pybroker.model.ModelLoader
+#: 62e0aeae35b948f3a7ade91ee7e2695a 8d47ed3081c840088eb0cade8de2eb83
+#: fb4954de8bc74b7d90c13ed2898e6d33 of pybroker.model.ModelLoader
 #: pybroker.model.ModelLoader.__call__ pybroker.model.ModelSource
 #: pybroker.model.ModelTrainer pybroker.model.ModelTrainer.__call__
 #: pybroker.model.ModelsMixin.train_models pybroker.model.model
 msgid "Parameters"
 msgstr ""
 
-#: 21c05c695d9349b98fbd9060e6971cdd aee8dcf2474d4277a5733f5a2be54879
-#: b283833ffbd64103b4a60d8e6929f573 of pybroker.model.ModelLoader:3
-#: pybroker.model.ModelSource:4 pybroker.model.ModelTrainer:3
+#: 02c2df4c849a406ab9156f868a6f1374 f4c1832bce264a808a48012d6bc88d94 of
+#: pybroker.model.ModelLoader:3 pybroker.model.ModelSource:4
+#: pybroker.model.ModelTrainer:3
 msgid "Name of model."
 msgstr ""
 
-#: c5dfc7a7ea784279b3adac296efffb62 of pybroker.model.ModelLoader:4
+#: 3a777154afe047f68bdcd0b7837288a4 of pybroker.model.ModelLoader:4
 msgid ""
-"``Callable[[symbol: str, ...], DataFrame]`` used to load and return a "
-"pre-trained model. This is expected to return either a trained model "
-"instance, or a tuple containing a trained model instance and a "
-":class:`Collection` of column names to to be used as input for the model "
-"when making predictions."
+"``Callable[[symbol: str, train_start_date: datetime, train_end_date: "
+"datetime, ...], DataFrame]`` used to load and return a pre-trained model."
+" This is expected to return either a trained model instance, or a tuple "
+"containing a trained model instance and a :class:`Iterable` of column "
+"names to to be used as input for the model when making predictions."
 msgstr ""
 
-#: 37591b4c780246a1bb51d0b2e5d0fdf5 4e8652587127491c9c77d2cbff9e53f0
-#: 9acfd6321d23476aa84feec902a53d5f of pybroker.model.ModelLoader:9
-#: pybroker.model.ModelSource:5 pybroker.model.ModelTrainer:10
+#: 114da3a02cd248ad9f67d72603fe61ff e9c8def90ea54fa087d37382b8916c17 of
+#: pybroker.model.ModelLoader:10 pybroker.model.ModelSource:5
+#: pybroker.model.ModelTrainer:10
 msgid ""
 ":class:`Iterable` of names of :class:`pybroker.indicator.Indicator`\\ s "
 "used as features of the model."
 msgstr ""
 
-#: 531a30d8ed6c44678fda658e9a71e05b c3c862dff01640b6b3f1e06e7bb7b7d2
-#: da4d97218d61455580d25524270181b6 db1fd666d487427ba0c2a6864e472474 of
-#: pybroker.model.ModelLoader:12 pybroker.model.ModelSource:8
-#: pybroker.model.ModelTrainer:13 pybroker.model.model:16
+#: 8feb4a0c2073494c9e04b9409cc04c73 966653ae241f4a15b9b8db36fee5209c of
+#: pybroker.model.ModelLoader:13 pybroker.model.ModelSource:8
+#: pybroker.model.ModelTrainer:13 pybroker.model.model:17
 msgid ""
 ":class:`Callable[[DataFrame], DataFrame]` for preprocessing input data "
 "passed to the model when making predictions. If set, ``input_data_fn`` "
 "will be called with a :class:`pandas.DataFrame` containing all test data."
 msgstr ""
 
-#: 05a4469ad7044bc9bb01c456c1730055 397c65319a644f4da43551338d0586dc
-#: 613658af499b48dc8b7165d9d449796d b26f5037fb544314a70964a4e9ef3e93 of
-#: pybroker.model.ModelLoader:16 pybroker.model.ModelSource:12
-#: pybroker.model.ModelTrainer:17 pybroker.model.model:20
+#: 305c17f18829438b8dfd90b3be249868 fc55b164769345dd8384ff6d165439f8 of
+#: pybroker.model.ModelLoader:17 pybroker.model.ModelSource:12
+#: pybroker.model.ModelTrainer:17 pybroker.model.model:21
 msgid ""
 ":class:`Callable[[Model, DataFrame], ndarray]` that overrides calling the"
 " model's default ``predict`` function. If set, ``predict_fn`` will be "
@@ -131,45 +127,52 @@ msgid ""
 "all test data."
 msgstr ""
 
-#: 64a57ec9a6b043e4bffcd2e52a1c3ea7 of pybroker.model.ModelLoader:20
+#: 8d7584aa9fb4444d9bd8cbabff004391 of pybroker.model.ModelLoader:21
 msgid "``dict`` of kwargs to pass to ``load_fn``."
 msgstr ""
 
-#: 8102871f4e8643e089b0c95e1a91b4e7 of pybroker.model.ModelLoader.__call__:1
+#: 8d28358577534222abb2d390895e8a77 of pybroker.model.ModelLoader.__call__:1
 msgid "Loads pre-trained model."
 msgstr ""
 
-#: 17454a777bed4050bbe421cc5cb829fe of pybroker.model.ModelLoader.__call__:3
+#: dd8ba2d2116f4a5f8cd92b445a8a868f of pybroker.model.ModelLoader.__call__:3
 msgid "Ticker symbol for loading the pre-trained model."
 msgstr ""
 
-#: 5468af4c9e854d559a040ffe394b27e7 8a33b9f1ad9344d8bdbfc770648a6e4d
-#: c0ddc36d32dc4c9e8b9448f1f12d406a cedc20d3c4734010ae85580826a57a1c of
-#: pybroker.model.ModelLoader.__call__ pybroker.model.ModelTrainer.__call__
-#: pybroker.model.ModelsMixin.train_models pybroker.model.model
+#: 2d9b1437a67c4a2b9e9ff6d074e256c8 of pybroker.model.ModelLoader.__call__:4
+msgid "Start date of training window."
+msgstr ""
+
+#: 2d9b1437a67c4a2b9e9ff6d074e256c8 of pybroker.model.ModelLoader.__call__:5
+msgid "End date of training window."
+msgstr ""
+
+#: da2e8415075646719311f726d39d84e9 of pybroker.model.ModelLoader.__call__
+#: pybroker.model.ModelTrainer.__call__ pybroker.model.ModelsMixin.train_models
+#: pybroker.model.model
 msgid "Returns"
 msgstr ""
 
-#: e0a6875d2d5d484a8dce50966590b696 of pybroker.model.ModelLoader.__call__:5
+#: 62a5bacfd4604430ae862f51adf973fb of pybroker.model.ModelLoader.__call__:7
 msgid "Pre-trained model."
 msgstr ""
 
-#: 11c2285276a644a192b9f16b3b65674d 2ede5bf8b7f24c14add2154476135301 of
-#: pybroker.model.ModelSource:1 pybroker.model.ModelsMixin:1
+#: 99d4a873ecb749388df60fd4047541a2 of pybroker.model.ModelSource:1
+#: pybroker.model.ModelsMixin:1
 msgid "Bases: :py:class:`object`"
 msgstr ""
 
-#: 95a4086c9e284833b16d8230f2f1338d of pybroker.model.ModelSource:1
+#: 6475021dc780440e86ff76fee1263ab1 of pybroker.model.ModelSource:1
 msgid ""
 "Base class of a model source. A model source provides a model instance "
 "either by training one or by loading a pre-trained model."
 msgstr ""
 
-#: a43e90d68098453ab32e3865805142af of pybroker.model.ModelSource:16
+#: 4d73126b7dac4a7f88cab36c73eba7bb of pybroker.model.ModelSource:16
 msgid "``dict`` of additional kwargs."
 msgstr ""
 
-#: 6c5c2729147141bf881f43e81db1f158 of
+#: 7123c2d1e1864e85993f2643bf45cd73 of
 #: pybroker.model.ModelSource.prepare_input_data:1
 msgid ""
 "Prepares a :class:`pandas.DataFrame` of input data for passing to a model"
@@ -178,127 +181,175 @@ msgid ""
 " are used as input features."
 msgstr ""
 
-#: 68724faf28724edc90e50f09e3b51700 of pybroker.model.ModelTrainer:1
+#: afebdc71e82b4142a57e1c8a5deb1aa7 of pybroker.model.ModelTrainer:1
 msgid "Trains a model."
 msgstr ""
 
-#: 44279fab3a6f4931abc9a6a672098859 of pybroker.model.ModelTrainer:4
+#: 3a777154afe047f68bdcd0b7837288a4 of pybroker.model.ModelTrainer:4
 msgid ""
 "``Callable[[symbol: str, train_data: DataFrame, test_data: DataFrame, "
 "...], DataFrame]`` used to train and return a model. This is expected to "
 "return either a trained model instance, or a tuple containing a trained "
-"model instance and a :class:`Collection` of column names to to be used as"
-" input for the model when making predictions."
+"model instance and a :class:`Iterable` of column names to to be used as "
+"input for the model when making predictions."
 msgstr ""
 
-#: 34a95bba451a49c59451a5fba94fd89d of pybroker.model.ModelTrainer:21
+#: ee7574df31bf4d59818aa1aa4cc1d350 of pybroker.model.ModelTrainer:21
 msgid "``dict`` of kwargs to pass to ``train_fn``."
 msgstr ""
 
-#: 8dbbaebca5da4c2aa576b17ab1d73b49 of pybroker.model.ModelTrainer.__call__:1
+#: 29006882b99d4f66b78162fe2f9e05a5 of pybroker.model.ModelTrainer.__call__:1
 msgid "Trains model."
 msgstr ""
 
-#: b0f349ca59574b8b982357e83b270649 of pybroker.model.ModelTrainer.__call__:3
+#: 2fa6b0a3b3ac4c8c8914e25f67dc8816 of pybroker.model.ModelTrainer.__call__:3
 msgid "Ticker symbol of model (models are trained per symbol)."
 msgstr ""
 
-#: dca290a1dd914d558db1764833e061a3 of pybroker.model.ModelTrainer.__call__:4
+#: 1ae4435bba4f4a44be468ae59bab349a of pybroker.model.ModelTrainer.__call__:4
 msgid "Train data."
 msgstr ""
 
-#: 4e2e2d251b1d4e6d9e407c0108b51f49 of pybroker.model.ModelTrainer.__call__:5
+#: 0cbdd1a5b87d4f219cccc7313acf181d of pybroker.model.ModelTrainer.__call__:5
 msgid "Test data."
 msgstr ""
 
-#: 0753cc0ed6ee4ab58c937fb8162530a1 of pybroker.model.ModelTrainer.__call__:7
+#: 7c29e8bfdaef4360b720b35b7297cc1f of pybroker.model.ModelTrainer.__call__:7
 msgid "Trained model."
 msgstr ""
 
-#: 7e276d24e8614e56addf0e8ecfd68279 of pybroker.model.ModelsMixin:1
+#: 096c542096044ccabc74b97438fa9a11 of pybroker.model.ModelsMixin:1
 msgid "Mixin implementing model related functionality."
 msgstr ""
 
-#: 556bf5d75b0245ef96eba034f78b816b of
+#: 0af03f1df69d41beb7ea0a35771f255b of
 #: pybroker.model.ModelsMixin.train_models:1
 msgid "Trains models for the provided :class:`pybroker.common.ModelSymbol` pairs."
 msgstr ""
 
-#: 0dc0a83b67604da8a04ad0af3a85baca of
+#: 908fca967c7f4ee48a3fafc9d46c9e35 of
 #: pybroker.model.ModelsMixin.train_models:4
 msgid ""
-"``Collection`` of :class:`pybroker.common.ModelSymbol` pairs of models to"
-" train."
+"``Iterable`` of :class:`pybroker.common.ModelSymbol` pairs of models to "
+"train."
 msgstr ""
 
-#: 76e227b9e6cc44b0a6c1ba4031030830 of
+#: 2d9b1437a67c4a2b9e9ff6d074e256c8 of
 #: pybroker.model.ModelsMixin.train_models:6
 msgid ":class:`pandas.DataFrame` of training data."
 msgstr ""
 
-#: bd3a41360a7d4f018702b04e56673293 of
+#: c8b1ac72e21444ffb5f575d2d33382a7 of
 #: pybroker.model.ModelsMixin.train_models:7
 msgid ":class:`pandas.DataFrame` of test data."
 msgstr ""
 
-#: 6da2e65c5e7e410586a94526b5330a5f of
+#: 6f4e9b1a728d428a8f58a6bb31e3ee0d of
 #: pybroker.model.ModelsMixin.train_models:8
 msgid ""
 "``Mapping`` of :class:`pybroker.common.IndicatorSymbol` pairs to "
 "``pandas.Series`` of :class:`pybroker.indicator.Indicator` values."
 msgstr ""
 
-#: 932e841bf9634ebf8b10c350b68575ce of
+#: 89e6ea9924ac4d2ab5ea3b53bedef911 of
 #: pybroker.model.ModelsMixin.train_models:12
 msgid "Date fields used to key cache data."
 msgstr ""
 
-#: ec0570b35de74447b86407172b08256a of
+#: 8976848bbaf34a94b61cac318a0b5702 of
 #: pybroker.model.ModelsMixin.train_models:14
 msgid ""
 "``dict`` mapping each :class:`pybroker.common.ModelSymbol` pair to a "
 ":class:`pybroker.common.TrainedModel`."
 msgstr ""
 
-#: dd7637fa9bab4bdbba2cf36feb9c86e4 of pybroker.model.model:1
+#: 77f55418cf27460383fca88fb1f46049 of pybroker.model.model:1
 msgid ""
 "Creates a :class:`.ModelSource` instance and registers it globally with "
 "``name``."
 msgstr ""
 
-#: 94c1a17f0777406c99b9b22e334db8f3 of pybroker.model.model:4
+#: 657e3f4d7515438eac293f7a7ba33dc3 of pybroker.model.model:4
 msgid "Name for referencing the model globally."
 msgstr ""
 
-#: 02c42e9848774731b464db9734b05eb1 of pybroker.model.model:5
+#: 0ab5694a4d8b4f7fa20b5900b821d65c of pybroker.model.model:5
 msgid ""
 ":class:`Callable` used to either train or load a model instance. If for "
 "training, then ``fn`` has signature ``Callable[[symbol: str, train_data: "
 "DataFrame, test_data: DataFrame, ...], DataFrame]``. If for loading, then"
-" ``fn`` has signature ``Callable[[symbol: str, ...], DataFrame]``. This "
-"is expected to return either a trained model instance, or a tuple "
-"containing a trained model instance and a :class:`Collection` of column "
-"names to to be used as input for the model when making predictions."
+" ``fn`` has signature ``Callable[[symbol: str, train_start_date: "
+"datetime, train_end_date: datetime, ...], DataFrame]``. This is expected "
+"to return either a trained model instance, or a tuple containing a "
+"trained model instance and a :class:`Iterable` of column names to to be "
+"used as input for the model when making predictions."
 msgstr ""
 
-#: ab999faef5294f168b58cfa2a5fcedf0 of pybroker.model.model:13
+#: fae54e4545d341ed8be5d4749a279516 of pybroker.model.model:14
 msgid ""
 ":class:`Iterable` of :class:`pybroker.indicator.Indicator`\\ s used as "
 "features of the model."
 msgstr ""
 
-#: a03f89c4575d422ab34cefd56f61da6b of pybroker.model.model:24
+#: 93df5fbb390747a0990d715ca38b548c of pybroker.model.model:25
 msgid ""
 "If ``True``, then ``fn`` is used to load and return a pre-trained model. "
 "If ``False``, ``fn`` is used to train and return a new model. Defaults to"
 " ``False``."
 msgstr ""
 
-#: 91b6981fd0c9497b80143f64cb3fdfa5 of pybroker.model.model:27
+#: f764484ac2e54299b32420998ce9b1ea of pybroker.model.model:28
 msgid "Additional arguments to pass to ``fn``."
 msgstr ""
 
-#: 370e22a2d63644e4bb881174bff31afc of pybroker.model.model:29
+#: 6083cd7ab1294699bb099bcd46b624d0 of pybroker.model.model:30
 msgid ":class:`.ModelSource` instance."
 msgstr ""
+
+#~ msgid ""
+#~ "``Callable[[symbol: str, ...], DataFrame]`` "
+#~ "used to load and return a pre-"
+#~ "trained model. This is expected to "
+#~ "return either a trained model instance,"
+#~ " or a tuple containing a trained "
+#~ "model instance and a :class:`Collection` "
+#~ "of column names to to be used "
+#~ "as input for the model when making"
+#~ " predictions."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "``Callable[[symbol: str, train_data: DataFrame, "
+#~ "test_data: DataFrame, ...], DataFrame]`` used"
+#~ " to train and return a model. "
+#~ "This is expected to return either "
+#~ "a trained model instance, or a "
+#~ "tuple containing a trained model "
+#~ "instance and a :class:`Collection` of "
+#~ "column names to to be used as "
+#~ "input for the model when making "
+#~ "predictions."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "``Collection`` of :class:`pybroker.common.ModelSymbol` "
+#~ "pairs of models to train."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":class:`Callable` used to either train "
+#~ "or load a model instance. If for"
+#~ " training, then ``fn`` has signature "
+#~ "``Callable[[symbol: str, train_data: DataFrame, "
+#~ "test_data: DataFrame, ...], DataFrame]``. If"
+#~ " for loading, then ``fn`` has "
+#~ "signature ``Callable[[symbol: str, ...], "
+#~ "DataFrame]``. This is expected to return"
+#~ " either a trained model instance, or"
+#~ " a tuple containing a trained model"
+#~ " instance and a :class:`Collection` of "
+#~ "column names to to be used as "
+#~ "input for the model when making "
+#~ "predictions."
+#~ msgstr ""
 
