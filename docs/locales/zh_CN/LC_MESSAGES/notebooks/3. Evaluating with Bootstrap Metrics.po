@@ -3,7 +3,6 @@
 # This file is distributed under the same license as the PyBroker package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
 #
-#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
@@ -165,7 +164,6 @@ msgstr "这些置信水平是根据回测的样本外结果中的每根 K 线收
 
 #: ../../source/notebooks/3. Bootstrap Evaluating Metrics.ipynb:859
 #: a60f81e057114ef98c378f93c0fc753b with
-#, fuzzy
 msgid ""
 "We can observe that the bootstrapped max drawdown of ``-10.46%`` at a "
 "``99.9%`` confidence level is worse than the ``-4.55%`` we saw in our "

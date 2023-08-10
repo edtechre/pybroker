@@ -3,7 +3,6 @@
 # This file is distributed under the same license as the PyBroker package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
 #
-#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
@@ -107,7 +106,6 @@ msgstr "以下代码展示了取消止损单的示例："
 
 #: ../../source/notebooks/8. Applying Stops.ipynb:1852
 #: f6a50a7094b144208d18093d29c2a140
-#, fuzzy
 msgid "Setting the Stop Exit Price"
 msgstr "设定限价"
 
