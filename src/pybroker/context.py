@@ -245,7 +245,7 @@ class BaseContext:
                 shares, where the max ``target_size`` is ``1``. For example, a
                 ``target_size`` of ``0.1`` would represent 10% of cash.
             price: Share price used to calculate the number of shares.
-            cash: Cash used to calculate the number of number of shares. If
+            cash: Cash used to calculate the number of shares. If
                 ``None``, then the :class:`pybroker.portfolio.Portfolio` equity
                 is used to calculate the number of shares.
 
