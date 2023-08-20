@@ -6,55 +6,63 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+from datetime import datetime
+from typing import Iterable, Optional, Union
+
 import akshare
 import pandas as pd
 
 from pybroker.common import DataCol, to_datetime
 from pybroker.data import DataSource
-from datetime import datetime
-from typing import Final, Iterable, Optional, Union
 
 
 class AKShare(DataSource):
-    r"""Retrieves data from `AKShare <https://akshare.akfamily.xyz/>`_\ .
+    r"""Retrieves data from `AKShare <https://akshare.akfamily.xyz/>`_.
 
-    Attributes:
-        ADJ_CLOSE: Column name of adjusted close prices.
+    Args:
+        adjust: The type of adjustment to make.
+        timeframe: Timeframe of the data to query.
     """
 
-    __TIMEFRAME: Final = "1d"
+    def __init__(self, adjust: Optional[str] = "", timeframe: Optional[str] = "1d"):
+        super().__init__()
+        self.adjust = adjust
+        self.timeframe = timeframe
 
     def query(
-        self,
-        symbols: Union[str, Iterable[str]],
-        start_date: Union[str, datetime],
-        end_date: Union[str, datetime],
-        _: Optional[str] = "",
-        adjust: Optional[str] = "hfq",
+            self,
+            symbols: Union[str, Iterable[str]],
+            start_date: Union[str, datetime],
+            end_date: Union[str, datetime],
+            timeframe: Optional[str] = "1d",
+            adjust: Optional[str] = "",
     ) -> pd.DataFrame:
         r"""Queries data from `AKShare <https://akshare.akfamily.xyz/>`_\ .
-        The timeframe of the data is limited to per day only.
+        The timeframe of the data is limited to per daily, weekly and monthly.
 
         Args:
             symbols: Ticker symbols of the data to query.
             start_date: Start date of the data to query (inclusive).
             end_date: End date of the data to query (inclusive).
+            timeframe: Timeframe of the data to query.
             adjust: The type of adjustment to make.
 
         Returns:
             :class:`pandas.DataFrame` containing the queried data.
         """
+        timeframe = timeframe if timeframe != "1d" else self.timeframe
+        adjust = adjust if adjust != "" else self.adjust
         return super().query(
-            symbols, start_date, end_date, self.__TIMEFRAME, adjust
+            symbols, start_date, end_date, timeframe, adjust
         )
 
     def _fetch_data(
-        self,
-        symbols: frozenset[str],
-        start_date: datetime,
-        end_date: datetime,
-        _: Optional[str],
-        adjust: Optional[str],
+            self,
+            symbols: frozenset[str],
+            start_date: datetime,
+            end_date: datetime,
+            timeframe: Optional[str],
+            adjust: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
         start_date_str = to_datetime(start_date).strftime("%Y%m%d")
@@ -62,13 +70,19 @@ class AKShare(DataSource):
         symbols_list = list(symbols)
         symbols_simple = [item.split(".")[0] for item in symbols_list]
         result = pd.DataFrame()
+        period_timeframe_map = {
+            "": "daily",
+            "1day": "daily",
+            "1week": "weekly",
+            "1month": "monthly",
+        }
         for i in range(len(symbols_list)):
             try:
                 temp_df = akshare.stock_zh_a_hist(
-                    symbols_simple[i],
+                    symbol=symbols_simple[i],
                     start_date=start_date_str,
                     end_date=end_date_str,
-                    period="daily",
+                    period=period_timeframe_map[timeframe],
                     adjust=adjust if adjust is not None else "",
                 )
                 if not temp_df.columns.empty:
