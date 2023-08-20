@@ -24,18 +24,20 @@ class AKShare(DataSource):
         timeframe: Timeframe of the data to query.
     """
 
-    def __init__(self, adjust: Optional[str] = "", timeframe: Optional[str] = "1d"):
+    def __init__(
+        self, adjust: Optional[str] = "", timeframe: Optional[str] = "1d"
+    ):
         super().__init__()
         self.adjust = adjust
         self.timeframe = timeframe
 
     def query(
-            self,
-            symbols: Union[str, Iterable[str]],
-            start_date: Union[str, datetime],
-            end_date: Union[str, datetime],
-            timeframe: Optional[str] = "1d",
-            adjust: Optional[str] = "",
+        self,
+        symbols: Union[str, Iterable[str]],
+        start_date: Union[str, datetime],
+        end_date: Union[str, datetime],
+        timeframe: Optional[str] = "1d",
+        adjust: Optional[str] = "",
     ) -> pd.DataFrame:
         r"""Queries data from `AKShare <https://akshare.akfamily.xyz/>`_\ .
         The timeframe of the data is limited to per daily, weekly and monthly.
@@ -52,17 +54,15 @@ class AKShare(DataSource):
         """
         timeframe = timeframe if timeframe != "1d" else self.timeframe
         adjust = adjust if adjust != "" else self.adjust
-        return super().query(
-            symbols, start_date, end_date, timeframe, adjust
-        )
+        return super().query(symbols, start_date, end_date, timeframe, adjust)
 
     def _fetch_data(
-            self,
-            symbols: frozenset[str],
-            start_date: datetime,
-            end_date: datetime,
-            timeframe: Optional[str],
-            adjust: Optional[str],
+        self,
+        symbols: frozenset[str],
+        start_date: datetime,
+        end_date: datetime,
+        timeframe: Optional[str],
+        adjust: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
         start_date_str = to_datetime(start_date).strftime("%Y%m%d")
@@ -82,7 +82,9 @@ class AKShare(DataSource):
                     symbol=symbols_simple[i],
                     start_date=start_date_str,
                     end_date=end_date_str,
-                    period=period_timeframe_map[timeframe],
+                    period=period_timeframe_map[timeframe]
+                    if timeframe
+                    else "daily",
                     adjust=adjust if adjust is not None else "",
                 )
                 if not temp_df.columns.empty:
