@@ -215,10 +215,10 @@ msgstr ""
 #: Indicators.ipynb:427 Writing
 msgid ""
 "Finally, we can run the backtest with the following code. The ``warmup`` "
-"argument specifies that 20 bars need to pass before running the backtest "
+"argument specifies that 19 bars need to pass before running the backtest "
 "execution:"
 msgstr ""
-"最后，我们可以使用以下代码运行回测。``warmup`` 参数指定在运行回测执行之前需要经过 20 个 Bar："
+"最后，我们可以使用以下代码运行回测。``warmup`` 参数指定在运行回测执行之前需要经过 19 个 Bar："
 
 #: ../../source/notebooks/5. Indicators.ipynb:961 Writing
 #: df96659b29a541e183ec53a5adc58e5a
