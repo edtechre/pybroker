@@ -79,7 +79,7 @@ msgstr ""
 " 和 `Indicator "
 "<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.Indicator>`__"
 " 数据一样，**PyBroker** 也可以将训练过的模型缓存到磁盘。"
-"您可以通过调用 `pybroker.enable_caches "
+"你可以通过调用 `pybroker.enable_caches "
 "<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.enable_caches>`__"
 " 来启用这三者的缓存："
 
@@ -432,7 +432,7 @@ msgstr ""
 "请注意，在进行回归分析之前，验证某些假设（如 `同方差性 "
 "<https://en.wikipedia.org/wiki/Homoscedasticity_and_heteroscedasticity>`__"
 "、残差的正态性等）是很重要的。"
-"为了简洁起见，我在这里没有提供这些假设的细节，建议您自行进行这个练习。"
+"为了简洁起见，我在这里没有提供这些假设的细节，建议你自行进行这个练习。"
 
 #: ../../source/notebooks/6. Model.ipynb:1347 Training a
 #: ad0f4262a7044ce79f08f7315ab76926
@@ -477,7 +477,7 @@ msgid ""
 "and trading strategies in **PyBroker**, and begin exploring the vast "
 "possibilities that this framework offers!"
 msgstr ""
-"有了这些知识，您可以开始在 **PyBroker** 中构建和测试自己的模型和交易策略，"
+"有了这些知识，你可以开始在 **PyBroker** 中构建和测试自己的模型和交易策略，"
 "并开始探索这个框架所提供的广泛可能性！"
 
 #~ msgid ""

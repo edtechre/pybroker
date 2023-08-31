@@ -32,8 +32,8 @@ msgid ""
 "optimize your strategy and manage risk more effectively."
 msgstr ""
 "在本文档中，我们将学习有关 **PyBroker** 的特性，"
-"这些特性使您能够对股票代码进行排名并为交易策略中的一组代码设置仓位大小。"
-"通过这些功能，您可以轻松优化策略并更有效地管理风险。"
+"这些特性使你能够对股票代码进行排名并为交易策略中的一组代码设置仓位大小。"
+"通过这些功能，你可以轻松优化策略并更有效地管理风险。"
 
 #: ../../source/notebooks/4. Position Ranking Sizing.ipynb:61 and
 #: c5b45f318d5d4d4ca168834b20487c4c
@@ -97,7 +97,7 @@ msgid ""
 " illustrate this, let's take a simple buy and hold strategy that starts "
 "trading after 100 days and holds positions for 30 days:"
 msgstr ""
-"在 **PyBroker** 中，您可以根据多个股票代码设置仓位大小。"
+"在 **PyBroker** 中，你可以根据多个股票代码设置仓位大小。"
 "为了说明这一点，我们来看一个简单的买入并持有策略，该策略在 100 天后开始交易，持有仓位 30 天："
 
 #: ../../source/notebooks/4. 44d8e3e100314645864b7bc43251431a Position Ranking
@@ -109,8 +109,8 @@ msgid ""
 " lower volatility to decrease the portfolio's overall volatility."
 msgstr ""
 "这将在每个 ``['T', 'F', 'GM', 'PFE']`` 中购买 ``100`` 股。"
-"但是，如果您不想使用相等的仓位大小怎么办？例如，"
-"您可能希望为波动性较低的股票代码分配更多的份额，以降低投资组合的整体波动性。"
+"但是，如果你不想使用相等的仓位大小怎么办？例如，"
+"你可能希望为波动性较低的股票代码分配更多的份额，以降低投资组合的整体波动性。"
 
 #: ../../source/notebooks/4. 36e659300efe474cba8f695ca7793483 Position Ranking
 #: Sizing.ipynb:615 and
