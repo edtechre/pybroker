@@ -198,7 +198,7 @@ msgid ""
 "`The notebooks above are also available on Github "
 "<https://github.com/edtechre/pybroker/tree/master/docs/notebooks>`_."
 msgstr ""
-"`上述的教程也可以在 GitHub 上找到： "
+"`上述的教程也可以在 GitHub 上找到 "
 "<https://github.com/edtechre/pybroker/tree/master/docs/notebooks>`_。"
 
 #: ../../source/index.rst:178 9f3b44b48dad453eaadb4de309d9bb53
@@ -210,7 +210,7 @@ msgid ""
 "The following is a list of essential books that provide background "
 "information on quantitative finance and algorithmic trading:"
 msgstr ""
-"下面一系列书籍可以提供很多关于量化金融和算法交易的知识"
+"下面一系列书籍可以提供很多关于量化金融和算法交易的知识："
 
 #: ../../source/index.rst:183 2f986f703ee24f9d8eb939e9b1ca739d
 msgid ""
