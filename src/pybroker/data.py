@@ -229,7 +229,7 @@ class DataSource(ABC, DataSourceCacheMixin):
             end_date=end_date,
         )
         df = self._fetch_data(
-            unique_syms, start_date, end_date, timeframe, adjust
+            frozenset(uncached_syms), start_date, end_date, timeframe, adjust
         )
         if (
             self._scope.data_source_cache is not None
