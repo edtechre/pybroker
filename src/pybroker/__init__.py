@@ -31,6 +31,7 @@ from pybroker.indicator import (
     highest,
     indicator,
     lowest,
+    returns,
 )
 from pybroker.model import ModelLoader, ModelSource, ModelTrainer, model
 from pybroker.portfolio import Entry, Order, Position, Trade
@@ -43,7 +44,7 @@ from pybroker.scope import (
 )
 from pybroker.slippage import RandomSlippageModel
 from pybroker.strategy import Strategy, TestResult
-from pybroker.vect import cross, highv, lowv, sumv
+from pybroker.vect import cross, highv, lowv, sumv, returnv
 
 # Temporary fix for regression in Numba 0.57.0
 # https://github.com/numba/numba/issues/8940
