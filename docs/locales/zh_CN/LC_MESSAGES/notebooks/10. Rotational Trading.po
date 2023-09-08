@@ -32,7 +32,7 @@ msgid ""
 "get started with testing our rotational trading strategy!"
 msgstr ""
 "轮动交易涉及购买表现最好的资产，同时出售表现不佳的资产。"
-"您可能已经猜到了，**PyBroker** 是回测此类策略的极佳工具。"
+"你可能已经猜到了，**PyBroker** 是回测此类策略的极佳工具。"
 "那么，让我们深入了解，并开始测试我们的轮动交易策略！"
 
 #: ../../source/notebooks/10. 03c324fd77c7443b9c35f584a03799ff Rotational

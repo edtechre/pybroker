@@ -67,7 +67,7 @@ msgid ""
 " object to configure the ``Strategy``. In this case, we're setting the "
 "initial cash to ``500,000``:"
 msgstr ""
-"首先，您可以创建一个 `StrategyConfig "
+"首先，你可以创建一个 `StrategyConfig "
 "<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig>`__"
 " 对象来配置策略。在这个例子中，我们将初始资金设为 500,000："
 
@@ -77,7 +77,7 @@ msgid ""
 "Then, you can create a new instance of the ``Strategy`` class by passing "
 "in the following arguments:"
 msgstr ""
-"接下来，您可以通过传入以下参数来创建一个 ``Strategy`` 类的新实例："
+"接下来，你可以通过传入以下参数来创建一个 ``Strategy`` 类的新实例："
 
 #: ../../source/notebooks/2. 28de783578734287bd8c17ba5bc32fa2 Backtesting
 #: Strategy.ipynb:87 a
@@ -111,7 +111,7 @@ msgid ""
 msgstr ""
 "现在，``Strategy`` 实例已准备好在使用指定的配置选项运行回测之前，从 Yahoo Finance"
 " 下载 2017 年 3 月 1 日至 2022 年 3 月 1 日之间的数据。"
-"如果您需要修改其他配置选项，可以参考 `StrategyConfig "
+"如果你需要修改其他配置选项，可以参考 `StrategyConfig "
 "<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig>`__"
 " 参考文档。"
 
@@ -126,7 +126,7 @@ msgid ""
 "In this section, you will learn how to implement a basic trading strategy"
 " in **PyBroker** with the following rules:"
 msgstr ""
-"在本节中，您将学习如何在 ``PyBroker`` 中实现一个基本的交易策略，包括以下规则："
+"在本节中，你将学习如何在 ``PyBroker`` 中实现一个基本的交易策略，包括以下规则："
 
 #: ../../source/notebooks/2. 39e45b1d794d46aba14e66d1ae304edd Backtesting
 #: Strategy.ipynb:118 a
@@ -166,7 +166,7 @@ msgid ""
 "**PyBroker** will call separately for AAPL and MSFT on every bar of data."
 " Each bar corresponds to a single day of data:"
 msgstr ""
-"为实现这一目标，您将定义一个 ``buy_low`` 函数，**PyBroker** 将在"
+"为实现这一目标，你将定义一个 ``buy_low`` 函数，**PyBroker** 将在"
 "每条数据的每个K线上分别为 AAPL 和 MSFT 调用该函数。每个 K 线对应一天的数据："
 
 #: ../../source/notebooks/2. 6cf338808fc84c88a1efe63d46d52cb9 Backtesting
@@ -256,7 +256,7 @@ msgid ""
 "will use `add_execution "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__:"
 msgstr ""
-"要将 ``buy_low`` 规则添加到 AAPL 和 MSFT 的 ``策略`` 中，您需要使用 `add_execution "
+"要将 ``buy_low`` 规则添加到 AAPL 和 MSFT 的 ``策略`` 中，你需要使用 `add_execution "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__"
 "："
 
@@ -272,8 +272,8 @@ msgid ""
 "the same ``Strategy`` instance. In other words, you are not restricted to"
 " using only one set of trading rules for a single group of tickers."
 msgstr ""
-"在同一个 ``Strategy`` 实例中，您可以为不同的股票代码使用不同的交易规则。"
-"换句话说，您并不局限于对一组股票代码只使用一套交易规则。"
+"在同一个 ``Strategy`` 实例中，你可以为不同的股票代码使用不同的交易规则。"
+"换句话说，你并不局限于对一组股票代码只使用一套交易规则。"
 
 #: ../../source/notebooks/2. 57f3d18f87b3417d9389825f0e7fe223 Backtesting
 #: Strategy.ipynb:193 a
@@ -297,7 +297,7 @@ msgid ""
 "`ExecContext#foreign "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.foreign>`__)"
 msgstr ""
-"（注意，您还可以通过调用 `ExecContext#foreign "
+"（注意，你还可以通过调用 `ExecContext#foreign "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.foreign>`__"
 " 获取另一个股票代码的 K 线数据）"
 
@@ -330,8 +330,8 @@ msgid ""
 msgstr ""
 "这很快！``backtest`` 方法将返回一个 `TestResult "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.TestResult>`__"
-" 实例。您可以通过此实例访问有关回测的各种信息和指标。"
-"例如，要查看投资组合的每日余额，您可以使用 `Matplotlib "
+" 实例。你可以通过此实例访问有关回测的各种信息和指标。"
+"例如，要查看投资组合的每日余额，你可以使用 `Matplotlib "
 "<https://matplotlib.org/>`__"
 " 绘制市值："
 
@@ -342,7 +342,7 @@ msgid ""
 " trades that were made for every entry and exit, and all of the orders "
 "that were placed:"
 msgstr ""
-"您还可以访问每个持有头寸的每日余额、每次进出场的交易以及下达的所有订单："
+"你还可以访问每个持有头寸的每日余额、每次进出场的交易以及下达的所有订单："
 
 #: ../../source/notebooks/2. 28b83449bb414b9b91c56139521ac55f Backtesting
 #: Strategy.ipynb:1339 a
@@ -353,7 +353,7 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.eval.html#pybroker.eval.EvalMetrics>`__."
 msgstr ""
 "此外，``result.metrics_df`` 包含一个使用回测收益率计算得出的指标 DataFrame。"
-"`您可以在参考文档中了解这些指标的含义 "
+"`你可以在参考文档中了解这些指标的含义 "
 "<https://www.pybroker.com/en/latest/reference/pybroker.eval.html#pybroker.eval.EvalMetrics>`__。"
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:1728 a
@@ -368,7 +368,7 @@ msgid ""
 "bars. For example, you can limit the strategy to trade only on Mondays by"
 " filtering the data to only contain bars for Mondays:"
 msgstr ""
-"您可以筛选用于回测的数据，仅包括特定的 K 线。例如，您可以通过筛选"
+"你可以筛选用于回测的数据，仅包括特定的 K 线。例如，你可以通过筛选"
 "仅包含周一的数据来限制策略仅在周一交易："
 
 #: ../../source/notebooks/2. Backtesting Strategy.ipynb:2074 a
@@ -387,7 +387,7 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`__"
 " argument."
 msgstr ""
-"您还可以使用 `between_time "
+"你还可以使用 `between_time "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`__"
 " 参数按时间范围筛选数据，例如 9:30-10:30 AM。"
 

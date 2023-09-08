@@ -46,7 +46,7 @@ msgstr ""
 " 构建的 `DataSource "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__"
 "，你可以立即使用，无需进行任何额外设置。"
-"但是，如果您有特定需求或想使用其他数据源，**PyBroker** 也允许您创建自己的 ``DataSource`` 类。"
+"但是，如果你有特定需求或想使用其他数据源，**PyBroker** 也允许你创建自己的 ``DataSource`` 类。"
 
 #: ../../source/notebooks/7. 1d5cf91391d943f9889d2a59955bd0d5 Creating Custom
 #: Data Source.ipynb:15 a
@@ -138,7 +138,7 @@ msgid ""
 "<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__ "
 "to a ``Strategy`` instead."
 msgstr ""
-"如果您不需要实现自己的 `DataSource "
+"如果你不需要实现自己的 `DataSource "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__"
 " 的灵活性，那么可以将 `Pandas DataFrame "
 "<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__"

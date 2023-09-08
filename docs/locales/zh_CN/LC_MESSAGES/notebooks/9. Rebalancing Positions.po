@@ -149,7 +149,7 @@ msgid ""
 "://riskfolio-lib.readthedocs.io/>`__ on the official documentation. Now, "
 "let's move on to backtesting the strategy!"
 msgstr ""
-"您可以在官方文档中找到更多关于使用 `Riskfolio-Lib "
+"你可以在官方文档中找到更多关于使用 `Riskfolio-Lib "
 "<https://riskfolio-lib.readthedocs.io/>`__"
 " 的信息和示例。现在，让我们继续进行策略回测！"
 

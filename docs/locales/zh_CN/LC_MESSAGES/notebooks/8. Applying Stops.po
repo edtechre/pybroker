@@ -137,7 +137,7 @@ msgid ""
 "documentation. "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
 msgstr ""
-"`要了解有关在 PyBroker 中设置止损的各种属性的更多信息，您可以查阅 ExecContext 参考文档。 "
+"`要了解有关在 PyBroker 中设置止损的各种属性的更多信息，你可以查阅 ExecContext 参考文档。 "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
 
 #~ msgid ""

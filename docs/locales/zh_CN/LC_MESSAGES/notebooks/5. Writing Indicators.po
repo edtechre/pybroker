@@ -343,7 +343,7 @@ msgid ""
 "indicators in PyBroker "
 "<https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html>`__."
 msgstr ""
-"`在下一个教程中，您将学习如何使用 PyBroker 中的自定义指标来训练模型 "
+"`在下一个教程中，你将学习如何使用 PyBroker 中的自定义指标来训练模型 "
 "<https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html>`__。"
 
 #~ msgid ""
