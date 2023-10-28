@@ -1054,7 +1054,7 @@ class Strategy(
                 executions.
 
         Returns:
-            :class:`.BacktestResult` containing portfolio balances, order
+            :class:`.TestResult` containing portfolio balances, order
             history, and evaluation metrics.
         """
         return self.walkforward(
@@ -1143,7 +1143,7 @@ class Strategy(
                 executions.
 
         Returns:
-            :class:`.BacktestResult` containing portfolio balances, order
+            :class:`.TestResult` containing portfolio balances, order
             history, and evaluation metrics.
         """
         if warmup is not None and warmup < 1:
