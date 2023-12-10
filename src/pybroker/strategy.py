@@ -154,7 +154,11 @@ class BacktestMixin:
         Returns:
             :class:`.TestResult` of the backtest.
         """
-        test_dates = test_data[DataCol.DATE.value].unique()
+        # TODO pandas 2.1.0
+        try:
+            test_dates = test_data[DataCol.DATE.value].unique().to_numpy()
+        except AttributeError:
+            test_dates = test_data[DataCol.DATE.value].unique()
         test_dates.sort()
         test_syms = test_data[DataCol.SYMBOL.value].unique()
         test_data = (
@@ -190,10 +194,17 @@ class BacktestMixin:
                 )
                 if exec.fn is not None:
                     exec_fns[sym] = exec.fn
-        sym_exec_dates = {
-            sym: frozenset(test_data.loc[pd.IndexSlice[sym, :]].index.values)
-            for sym in exec_ctxs.keys()
-        }
+        # TODO pandas 2.1.0
+        try:
+            sym_exec_dates = {
+                sym: frozenset(test_data.loc[pd.IndexSlice[sym, :]].index.to_numpy())
+                for sym in exec_ctxs.keys()
+            }
+        except AttributeError:
+            sym_exec_dates = {
+                sym: frozenset(test_data.loc[pd.IndexSlice[sym, :]].index)
+                for sym in exec_ctxs.keys()
+            }
         cover_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
         buy_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
         sell_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
@@ -644,7 +655,11 @@ class WalkforwardMixin:
             raise ValueError("DataFrame is empty.")
         date_col = DataCol.DATE.value
         dates = df[[date_col]]
-        window_dates = df[date_col].unique()
+        # TODO pandas 2.1.0
+        try:
+            window_dates = df[date_col].unique().to_numpy()
+        except AttributeError:
+            window_dates = df[date_col].unique()
         window_dates.sort()
         error_msg = f"""
         Invalid params for {len(window_dates)} dates:
