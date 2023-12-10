@@ -197,7 +197,9 @@ class BacktestMixin:
         # TODO pandas 2.1.0
         try:
             sym_exec_dates = {
-                sym: frozenset(test_data.loc[pd.IndexSlice[sym, :]].index.to_numpy())
+                sym: frozenset(
+                    test_data.loc[pd.IndexSlice[sym, :]].index.to_numpy()
+                )
                 for sym in exec_ctxs.keys()
             }
         except AttributeError:
