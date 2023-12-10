@@ -571,7 +571,8 @@ class TestYFinance:
 
 class TestAKShare:
     @pytest.mark.usefixtures("setup_ds_cache")
-    def test_query(self):
+    @pytest.mark.parametrize("timeframe", [None, "", "1d", "1w"])
+    def test_query(self, timeframe):
         symbols = ["A"]
         ak = AKShare()
         expected_df = pd.DataFrame(
@@ -588,7 +589,7 @@ class TestAKShare:
         with mock.patch.object(
             akshare, "stock_zh_a_hist", return_value=expected_df
         ):
-            df = ak.query(symbols, START_DATE, END_DATE)
+            df = ak.query(symbols, START_DATE, END_DATE, timeframe)
         assert set(df.columns) == {
             "date",
             "open",
@@ -626,6 +627,38 @@ class TestAKShare:
             return_value=pd.DataFrame(columns=columns),
         ):
             df = ak.query(["A"], START_DATE, END_DATE)
+        assert df.empty
+        assert set(df.columns) == set(
+            (
+                "date",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "symbol",
+            )
+        )
+
+    @pytest.mark.usefixtures("setup_ds_cache")
+    def test_query_when_unsupported_timeframe_then_empty(self):
+        symbols = ["A"]
+        ak = AKShare()
+        expected_df = pd.DataFrame(
+            {
+                "日期": [END_DATE],
+                "开盘": [1],
+                "收盘": [2],
+                "最高": [3],
+                "最低": [4],
+                "成交量": [5],
+                "symbol": symbols,
+            }
+        )
+        with mock.patch.object(
+            akshare, "stock_zh_a_hist", return_value=expected_df
+        ):
+            df = ak.query(symbols, START_DATE, END_DATE, "2d")
         assert df.empty
         assert set(df.columns) == set(
             (
