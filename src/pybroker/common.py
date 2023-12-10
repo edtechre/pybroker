@@ -24,7 +24,6 @@ _tf_abbr: Final = {
     "h": "hour",
     "d": "day",
     "w": "week",
-    "mo": "month",
 }
 _CENTS: Final = Decimal(".01")
 
@@ -225,7 +224,6 @@ def parse_timeframe(timeframe: str) -> list[tuple[int, str]]:
     - ``"h"``/``"hour"``: hours
     - ``"d"``/``"day"``: days
     - ``"w"``/``"week"``: weeks
-    - ``"mo"``/``"month"``: months
 
     An example timeframe string is ``1h 30m``.
 
@@ -261,7 +259,6 @@ def to_seconds(timeframe: Optional[str]) -> int:
     - ``"h"``/``"hour"``: hours
     - ``"d"``/``"day"``: days
     - ``"w"``/``"week"``: weeks
-    - ``"mo"``/``"month"``: months
 
     An example timeframe string is ``1h 30m``.
 

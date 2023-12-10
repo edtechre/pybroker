@@ -397,7 +397,7 @@ class TestAlpaca:
         ):
             alpaca.query(empty_symbols, START_DATE, END_DATE, TIMEFRAME)
 
-    @pytest.mark.parametrize("timeframe", ["1mo 2d", "30s"])
+    @pytest.mark.parametrize("timeframe", ["1w 2d", "30s"])
     def test_query_when_invalid_timeframe_then_error(self, symbols, timeframe):
         alpaca = Alpaca(API_KEY, API_SECRET)
         with pytest.raises(
@@ -482,7 +482,7 @@ class TestAlpacaCrypto:
                 )
             )
 
-    @pytest.mark.parametrize("timeframe", ["1mo 2d", "30s"])
+    @pytest.mark.parametrize("timeframe", ["1w 2d", "30s"])
     def test_query_when_invalid_timeframe_then_error(self, symbols, timeframe):
         crypto = AlpacaCrypto(API_KEY, API_SECRET)
         with pytest.raises(

@@ -77,7 +77,6 @@ def test_bar_data_get_custom_data_when_no_attr_then_error():
         ("10week", [(10, "week")]),
         ("3d 20m", [(3, "day"), (20, "min")]),
         ("30s", [(30, "sec")]),
-        ("2mo", [(2, "month")]),
     ],
 )
 def test_parse_timeframe_success(tf, expected):

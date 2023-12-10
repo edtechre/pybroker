@@ -1023,7 +1023,6 @@ class Strategy(
                 - ``"h"``/``"hour"``: hours
                 - ``"d"``/``"day"``: days
                 - ``"w"``/``"week"``: weeks
-                - ``"mo"``/``"month"``: months
 
                 An example timeframe string is ``1h 30m``.
             between_time: ``tuple[str, str]`` of times of day e.g.
@@ -1112,7 +1111,6 @@ class Strategy(
                 - ``"h"``/``"hour"``: hours
                 - ``"d"``/``"day"``: days
                 - ``"w"``/``"week"``: weeks
-                - ``"mo"``/``"month"``: months
 
                 An example timeframe string is ``1h 30m``.
             between_time: ``tuple[str, str]`` of times of day e.g.
