@@ -344,7 +344,12 @@ class Portfolio:
         self._entry_id: int = 0
         self._trade_id: int = 0
 
-    def _calculate_fees(self, fill_price: Decimal, shares: Decimal, type: Literal["buy", "sell"]) -> Decimal:
+    def _calculate_fees(
+        self,
+        fill_price: Decimal,
+        shares: Decimal,
+        type: Literal["buy", "sell"],
+    ) -> Decimal:
         fees = Decimal()
         if self._fee_mode is None or self._fee_amount is None:
             return fees
