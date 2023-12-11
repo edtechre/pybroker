@@ -344,27 +344,12 @@ class Portfolio:
         self._entry_id: int = 0
         self._trade_id: int = 0
 
-    def _calculate_fees(
-        self,
-        fill_price: Decimal,
-        shares: Decimal,
-        type: Literal["buy", "sell"],
-    ) -> Decimal:
+    def _calculate_fees(self, fill_price: Decimal, shares: Decimal) -> Decimal:
         fees = Decimal()
         if self._fee_mode is None or self._fee_amount is None:
             return fees
         if self._fee_mode == FeeMode.ORDER_PERCENT:
             fees = self._fee_amount / Decimal(100) * fill_price * shares
-        elif self._fee_mode == FeeMode.C_ORDER_PERCENT:
-            if type == "buy":
-                fees = self._fee_amount / Decimal(100) * fill_price * shares
-                if fees < Decimal(5.0):
-                    fees = Decimal(5.0)
-            else:
-                fees = self._fee_amount / Decimal(100) * fill_price * shares
-                if fees < Decimal(5.0):
-                    fees = Decimal(5.0)
-                fees = fees + Decimal(0.0001) * fill_price * shares
         elif self._fee_mode == FeeMode.PER_ORDER:
             fees = self._fee_amount
         elif self._fee_mode == FeeMode.PER_SHARE:
@@ -417,7 +402,7 @@ class Portfolio:
         shares: Decimal,
     ) -> Order:
         self._order_id += 1
-        fees = self._calculate_fees(fill_price, shares, type)
+        fees = self._calculate_fees(fill_price, shares)
         order = Order(
             id=self._order_id,
             date=date,

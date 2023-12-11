@@ -144,7 +144,6 @@ class FeeMode(Enum):
     """
 
     ORDER_PERCENT = "order_percent"
-    C_ORDER_PERCENT = "c_order_percent"
     PER_ORDER = "per_order"
     PER_SHARE = "per_share"
 
