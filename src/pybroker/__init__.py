@@ -44,7 +44,7 @@ from pybroker.scope import (
 )
 from pybroker.slippage import RandomSlippageModel
 from pybroker.strategy import Strategy, TestResult
-from pybroker.vect import cross, highv, lowv, sumv, returnv
+from pybroker.vect import cross, highv, lowv, returnv, sumv
 
 # Temporary fix for regression in Numba 0.57.0
 # https://github.com/numba/numba/issues/8940
