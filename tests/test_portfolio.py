@@ -3024,6 +3024,104 @@ def test_remove_stops_when_entry(stop_type):
     assert not len(portfolio.trades)
 
 
+def test_long_stop_when_no_pos():
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, 75, 200, 100],
+            [SYMBOL_1, DATE_2, 250, 400, 300],
+            [SYMBOL_1, DATE_3, 290, 395, 295],
+            [SYMBOL_1, DATE_4, 200, 300, 200],
+        ],
+        columns=["symbol", "date", "open", "high", "close"],
+    )
+    df = df.set_index(["symbol", "date"])
+    sym_end_index = {SYMBOL_1: 2}
+    price_scope = PriceScope(ColumnScope(df), sym_end_index)
+    stops = (
+        Stop(
+            id=1,
+            symbol=SYMBOL_1,
+            stop_type=StopType.LOSS,
+            pos_type="long",
+            percent=10,
+            points=20,
+            bars=None,
+            fill_price=None,
+            limit_price=500,
+            exit_price=PriceType.OPEN,
+        ),
+    )
+    entry_price = Decimal(100)
+    portfolio = Portfolio(CASH)
+    portfolio.buy(
+        DATE_1,
+        SYMBOL_1,
+        SHARES_1,
+        entry_price,
+        limit_price=None,
+        stops=stops,
+    )
+    portfolio.sell(DATE_1, SYMBOL_1, SHARES_1, entry_price)
+    portfolio.incr_bars()
+    portfolio.check_stops(DATE_2, price_scope)
+    sym_end_index[SYMBOL_1] += 1
+    portfolio.incr_bars()
+    portfolio.check_stops(DATE_3, price_scope)
+    sym_end_index[SYMBOL_1] += 1
+    portfolio.incr_bars()
+    portfolio.check_stops(DATE_4, price_scope)
+    assert len(portfolio.orders) == 2
+
+
+def test_short_stop_when_no_pos():
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, 200, 350, 300],
+            [SYMBOL_1, DATE_2, 100, 230, 200],
+            [SYMBOL_1, DATE_3, 110, 215, 210],
+            [SYMBOL_1, DATE_4, 300, 400, 400],
+        ],
+        columns=["symbol", "date", "low", "open", "close"],
+    )
+    df = df.set_index(["symbol", "date"])
+    sym_end_index = {SYMBOL_1: 2}
+    price_scope = PriceScope(ColumnScope(df), sym_end_index)
+    stops = (
+        Stop(
+            id=1,
+            symbol=SYMBOL_1,
+            stop_type=StopType.LOSS,
+            pos_type="short",
+            percent=20,
+            points=None,
+            bars=None,
+            fill_price=None,
+            limit_price=50,
+            exit_price=PriceType.OPEN,
+        ),
+    )
+    entry_price = Decimal(300)
+    portfolio = Portfolio(CASH)
+    portfolio.sell(
+        DATE_1,
+        SYMBOL_1,
+        SHARES_1,
+        entry_price,
+        limit_price=None,
+        stops=stops,
+    )
+    portfolio.buy(DATE_1, SYMBOL_1, SHARES_1, entry_price)
+    portfolio.incr_bars()
+    portfolio.check_stops(DATE_2, price_scope)
+    sym_end_index[SYMBOL_1] += 1
+    portfolio.incr_bars()
+    portfolio.check_stops(DATE_3, price_scope)
+    sym_end_index[SYMBOL_1] += 1
+    portfolio.incr_bars()
+    portfolio.check_stops(DATE_4, price_scope)
+    assert len(portfolio.orders) == 2
+
+
 def test_win_loss_rate():
     portfolio = Portfolio(CASH)
     portfolio.buy(DATE_1, SYMBOL_1, SHARES_1, FILL_PRICE_1, LIMIT_PRICE_1)

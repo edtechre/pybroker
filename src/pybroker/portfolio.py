@@ -39,6 +39,7 @@ class Stop(NamedTuple):
     Attributes:
         id: Unique identifier.
         symbol: Symbol of the stop.
+        stop_type: :class:`.StopType`.
         pos_type: Type of  :class:`.Position`, either ``long`` or ``short``.
         percent: Percent from entry price.
         points: Cash amount from entry price.
@@ -1024,6 +1025,13 @@ class Portfolio:
         entry: Entry,
         stop: Stop,
     ) -> bool:
+        if stop.pos_type == "long" and stop.symbol not in self.long_positions:
+            return False
+        if (
+            stop.pos_type == "short"
+            and stop.symbol not in self.short_positions
+        ):
+            return False
         if stop.stop_type == StopType.BAR:
             fill_price = self._trigger_bar_stop(stop, price_scope, entry)
         elif (
