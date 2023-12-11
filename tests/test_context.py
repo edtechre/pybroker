@@ -461,6 +461,36 @@ def test_calc_target_shares(ctx):
     assert ctx.calc_target_shares(0.5, 33.50) == 50_000 // 33.5
 
 
+def test_calc_target_shares_when_enable_fractional_shares(
+    col_scope,
+    ind_scope,
+    input_scope,
+    pred_scope,
+    pending_order_scope,
+    portfolio,
+    trained_models,
+    sym_end_index,
+    session,
+    symbol,
+):
+    ctx = ExecContext(
+        symbol=symbol,
+        config=StrategyConfig(enable_fractional_shares=True),
+        portfolio=portfolio,
+        col_scope=col_scope,
+        ind_scope=ind_scope,
+        input_scope=input_scope,
+        pred_scope=pred_scope,
+        pending_order_scope=pending_order_scope,
+        models=trained_models,
+        sym_end_index=sym_end_index,
+        session=session,
+    )
+    assert ctx.calc_target_shares(0.5, 33.50) == Decimal("50_000") / Decimal(
+        "33.5"
+    )
+
+
 def test_calc_target_shares_with_cash(ctx):
     assert ctx.calc_target_shares(1 / 3, 20, 10_000) == 166
 

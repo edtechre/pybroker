@@ -236,7 +236,7 @@ class BaseContext:
 
     def calc_target_shares(
         self, target_size: float, price: float, cash: Optional[float] = None
-    ) -> int:
+    ) -> Union[Decimal, int]:
         r"""Calculates the number of shares given a ``target_size`` allocation
         and share ``price``.
 
@@ -250,14 +250,18 @@ class BaseContext:
                 is used to calculate the number of shares.
 
         Returns:
-            Number of shares given ``target_size`` and share ``price``.
+            Number of shares given ``target_size`` and share ``price``. If
+            :attr:`pybroker.config.StrategyConfig.enable_fractional_shares` is
+            ``True``, then a Decimal is returned.
         """
-        shares = int(
+        shares = (
             (to_decimal(cash) if cash is not None else self._portfolio.equity)
             * to_decimal(target_size)
             / to_decimal(price)
         )
-        return max(shares, 0)
+        if self.config.enable_fractional_shares:
+            return shares.max(0)
+        return max(int(shares), 0)
 
     def model(self, name: str, symbol: str) -> Any:
         r"""Returns a trained model.
@@ -972,7 +976,7 @@ class ExecContext(BaseContext):
         target_size: float,
         price: Optional[float] = None,
         cash: Optional[float] = None,
-    ) -> int:
+    ) -> Union[Decimal, int]:
         r"""Calculates the number of shares given a ``target_size`` allocation
         and share ``price``.
 
@@ -988,7 +992,9 @@ class ExecContext(BaseContext):
                 is used to calculate the number of shares.
 
         Returns:
-            Number of shares given ``target_size`` and share ``price``.
+            Number of shares given ``target_size`` and share ``price``. If
+            :attr:`pybroker.config.StrategyConfig.enable_fractional_shares` is
+            ``True``, then a Decimal is returned.
         """
         price = self.close[-1] if price is None else price
         return super().calc_target_shares(target_size, price, cash)
