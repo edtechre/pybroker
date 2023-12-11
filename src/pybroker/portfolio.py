@@ -25,12 +25,15 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import (
     Callable,
+    Final,
     Iterable,
     Literal,
     NamedTuple,
     Optional,
     Union,
 )
+
+_DECIMAL_100: Final = Decimal(100)
 
 
 class Stop(NamedTuple):
@@ -350,7 +353,7 @@ class Portfolio:
         if self._fee_mode is None or self._fee_amount is None:
             return fees
         if self._fee_mode == FeeMode.ORDER_PERCENT:
-            fees = self._fee_amount / Decimal(100) * fill_price * shares
+            fees = self._fee_amount / _DECIMAL_100 * fill_price * shares
         elif self._fee_mode == FeeMode.PER_ORDER:
             fees = self._fee_amount
         elif self._fee_mode == FeeMode.PER_SHARE:
