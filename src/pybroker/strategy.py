@@ -156,7 +156,7 @@ class BacktestMixin:
                 executions.
 
         Returns:
-            Dictionary of :class:`pandas.DataFrame`s containing bar data,
+            Dictionary of :class:`pandas.DataFrame`\ s containing bar data,
             indicator data, and model predictions for each symbol when
             :attr:`pybroker.config.StrategyConfig.return_signals` is ``True``.
         """
@@ -774,8 +774,8 @@ class TestResult:
         metrics: Evaluation metrics.
         metrics_df: :class:`pandas.DataFrame` of evaluation metrics.
         bootstrap: Randomized bootstrap evaluation metrics.
-        signals: Dictionary of :class:`pandas.DataFrame`s containing bar data,
-            indicator data, and model predictions for each symbol when
+        signals: Dictionary of :class:`pandas.DataFrame`\ s containing bar
+            data, indicator data, and model predictions for each symbol when
             :attr:`pybroker.config.StrategyConfig.return_signals` is ``True``.
     """
 
