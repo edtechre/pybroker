@@ -760,7 +760,7 @@ class WalkforwardMixin:
 
 @dataclass(frozen=True)
 class TestResult:
-    """Contains the results of backtesting a :class:`.Strategy`.
+    r"""Contains the results of backtesting a :class:`.Strategy`.
 
     Attributes:
         start_date: Starting date of backtest.

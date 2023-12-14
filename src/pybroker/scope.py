@@ -751,7 +751,7 @@ def get_signals(
     ind_scope: IndicatorScope,
     pred_scope: PredictionScope,
 ) -> dict[str, pd.DataFrame]:
-    """Retrieves dictionary of :class:`pandas.DataFrame`\ s
+    r"""Retrieves dictionary of :class:`pandas.DataFrame`\ s
     containing bar data, indicator data, and model predictions for each symbol.
     """
     static_scope = StaticScope.instance()
