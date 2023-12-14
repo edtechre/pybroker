@@ -6,7 +6,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
-from pybroker.common import BarData, FeeMode, PriceType
+from pybroker.common import BarData, FeeInfo, FeeMode, PriceType
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Callable, Optional, Union
@@ -24,6 +24,9 @@ class StrategyConfig:
             - ``ORDER_PERCENT``: Fee is a percentage of order amount.
             - ``PER_ORDER``: Fee is a constant amount per order.
             - ``PER_SHARE``: Fee is a constant amount per share in order.
+            - ``Callable[[FeeInfo], Decimal]]``: Fees are calculated using a
+                custom ``Callable`` that is passed
+                :class:`pybroker.common.FeeInfo`.
             - ``None``: Fees are disabled (default).
         fee_amount: Brokerage fee amount.
         enable_fractional_shares: Whether to enable trading fractional shares.
@@ -62,7 +65,9 @@ class StrategyConfig:
     """
 
     initial_cash: float = field(default=100_000)
-    fee_mode: Optional[FeeMode] = field(default=None)
+    fee_mode: Optional[Union[FeeMode, Callable[[FeeInfo], Decimal]]] = field(
+        default=None
+    )
     fee_amount: float = field(default=0)
     enable_fractional_shares: bool = field(default=False)
     max_long_positions: Optional[int] = field(default=None)

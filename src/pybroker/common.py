@@ -15,7 +15,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from enum import Enum
 from joblib import Parallel
 from numpy.typing import NDArray
-from typing import Any, Callable, Final, NamedTuple, Optional, Union
+from typing import Any, Callable, Final, Literal, NamedTuple, Optional, Union
 
 _tf_pattern: Final = re.compile(r"(\d+)([A-Za-z]+)")
 _tf_abbr: Final = {
@@ -146,6 +146,20 @@ class FeeMode(Enum):
     ORDER_PERCENT = "order_percent"
     PER_ORDER = "per_order"
     PER_SHARE = "per_share"
+
+
+class FeeInfo(NamedTuple):
+    """Contains info for custom fee calculations.
+
+    Attributes:
+        shares: Number of shares in order.
+        fill_price: Fill price of order.
+        order_type: Type of order, either "buy" or "sell".
+    """
+
+    shares: Decimal
+    fill_price: Decimal
+    order_type: Literal["buy", "sell"]
 
 
 class BarData:
