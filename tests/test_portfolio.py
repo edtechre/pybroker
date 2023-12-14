@@ -732,6 +732,15 @@ def test_sell_when_all_shares_and_fractional():
     )
 
 
+def calc_fees(fee_info):
+    assert fee_info.shares == SHARES_1
+    if fee_info.order_type == "buy":
+        assert fee_info.fill_price == FILL_PRICE_1
+    else:
+        assert fee_info.fill_price == FILL_PRICE_3
+    return Decimal("9.99")
+
+
 @pytest.mark.parametrize(
     "fee_mode, expected_buy_fees, expected_sell_fees",
     [
@@ -746,6 +755,7 @@ def test_sell_when_all_shares_and_fractional():
             SHARES_1,
         ),
         (FeeMode.PER_ORDER, Decimal("1"), Decimal("1")),
+        (calc_fees, Decimal("9.99"), Decimal("9.99")),
     ],
 )
 def test_buy_and_sell_when_fees(

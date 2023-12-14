@@ -14,6 +14,7 @@ import pandas as pd
 from pybroker.common import (
     BarData,
     DataCol,
+    FeeInfo,
     FeeMode,
     PriceType,
     StopType,
@@ -312,7 +313,9 @@ class Portfolio:
     def __init__(
         self,
         cash: float,
-        fee_mode: Optional[FeeMode] = None,
+        fee_mode: Optional[
+            Union[FeeMode, Callable[[FeeInfo], Decimal], None]
+        ] = None,
         fee_amount: Optional[float] = None,
         enable_fractional_shares: bool = False,
         max_long_positions: Optional[int] = None,
@@ -348,11 +351,26 @@ class Portfolio:
         self._entry_id: int = 0
         self._trade_id: int = 0
 
-    def _calculate_fees(self, fill_price: Decimal, shares: Decimal) -> Decimal:
+    def _calculate_fees(
+        self,
+        fill_price: Decimal,
+        shares: Decimal,
+        order_type: Literal["buy", "sell"],
+    ) -> Decimal:
         fees = Decimal()
         if self._fee_mode is None or self._fee_amount is None:
             return fees
-        if self._fee_mode == FeeMode.ORDER_PERCENT:
+        if callable(self._fee_mode):
+            fees = to_decimal(
+                self._fee_mode(
+                    FeeInfo(
+                        shares=shares,
+                        fill_price=fill_price,
+                        order_type=order_type,
+                    )
+                )
+            )
+        elif self._fee_mode == FeeMode.ORDER_PERCENT:
             fees = self._fee_amount / _DECIMAL_100 * fill_price * shares
         elif self._fee_mode == FeeMode.PER_ORDER:
             fees = self._fee_amount
@@ -406,7 +424,7 @@ class Portfolio:
         shares: Decimal,
     ) -> Order:
         self._order_id += 1
-        fees = self._calculate_fees(fill_price, shares)
+        fees = self._calculate_fees(fill_price, shares, type)
         order = Order(
             id=self._order_id,
             date=date,
