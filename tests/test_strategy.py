@@ -20,6 +20,7 @@ from pybroker.common import DataCol, PriceType, to_datetime
 from pybroker.config import StrategyConfig
 from pybroker.context import ExecContext
 from pybroker.data import DataSource
+from pybroker.eval import EvalMetrics
 from pybroker.portfolio import (
     Order,
     Portfolio,
@@ -1179,23 +1180,31 @@ class TestStrategy:
             calc_bootstrap=calc_bootstrap,
             disable_parallel=disable_parallel,
         )
+        if date_range[0] is None:
+            expected_start_date = datetime.strptime(START_DATE, "%Y-%m-%d")
+        else:
+            expected_start_date = pd.to_datetime(date_range[0])
+        if date_range[1] is None:
+            expected_end_date = datetime.strptime(END_DATE, "%Y-%m-%d")
+        else:
+            expected_end_date = pd.to_datetime(date_range[1])
         if all(map(lambda e: not e["fn"], executions)):
-            assert result is None
+            assert result.start_date == expected_start_date
+            assert result.end_date == expected_end_date
+            assert result.portfolio.empty
+            assert result.positions.empty
+            assert result.orders.empty
+            assert result.trades.empty
+            assert result.metrics == EvalMetrics()
+            assert result.bootstrap is None
+            assert result.signals is None
             return
         assert isinstance(result, TestResult)
         assert result.metrics is not None
         assert isinstance(result.metrics_df, pd.DataFrame)
         assert not result.metrics_df.empty
-        if date_range[0] is None:
-            assert result.start_date == datetime.strptime(
-                START_DATE, "%Y-%m-%d"
-            )
-        else:
-            assert result.start_date == pd.to_datetime(date_range[0])
-        if date_range[1] is None:
-            assert result.end_date == datetime.strptime(END_DATE, "%Y-%m-%d")
-        else:
-            assert result.end_date == pd.to_datetime(date_range[1])
+        assert result.start_date == expected_start_date
+        assert result.end_date == expected_end_date
         assert isinstance(result.portfolio, pd.DataFrame)
         assert not result.portfolio.empty
         assert isinstance(result.positions, pd.DataFrame)
@@ -1206,7 +1215,8 @@ class TestStrategy:
         else:
             assert result.bootstrap is None
 
-    def test_walkforward_results(self, data_source_df):
+    @pytest.mark.parametrize("return_signals", [True, False])
+    def test_walkforward_results(self, data_source_df, return_signals):
         def exec_fn(ctx):
             if not ctx.long_pos():
                 ctx.buy_shares = 100
@@ -1214,7 +1224,8 @@ class TestStrategy:
         data_source_df = data_source_df[
             data_source_df["date"] <= to_datetime(END_DATE)
         ]
-        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        config = StrategyConfig(return_signals=return_signals)
+        strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
         strategy.add_execution(exec_fn, ["AAPL", "SPY"])
         result = strategy.walkforward(windows=3, calc_bootstrap=False)
         dates = set()
@@ -1235,6 +1246,12 @@ class TestStrategy:
         )
         assert len(result.orders) == 2
         assert not len(result.trades)
+        if return_signals:
+            assert len(result.signals) == 2
+            assert not result.signals["AAPL"].empty
+            assert not result.signals["SPY"].empty
+        else:
+            assert result.signals is None
 
     def test_walkforward_when_no_executions_then_error(self, data_source_df):
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
@@ -1649,7 +1666,12 @@ class TestStrategy:
             config,
         )
         result = strategy._to_test_result(
-            START_DATE, END_DATE, portfolio, calc_bootstrap=False
+            START_DATE,
+            END_DATE,
+            portfolio,
+            calc_bootstrap=False,
+            train_only=False,
+            signals=None,
         )
         assert np.issubdtype(
             result.positions["long_shares"].dtype, expected_shares_type
@@ -1680,11 +1702,14 @@ class TestStrategy:
             END_DATE,
             portfolio,
             calc_bootstrap=False,
+            train_only=False,
+            signals=None,
         )
         assert result.portfolio.empty
         assert result.positions.empty
         assert result.orders.empty
         assert result.trades.empty
+        assert result.signals is None
 
     def test_backtest_when_exit_long_on_last_bar(self, data_source_df):
         def buy_exec_fn(ctx):

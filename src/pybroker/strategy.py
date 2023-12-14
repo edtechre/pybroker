@@ -51,6 +51,7 @@ from pybroker.scope import (
     PredictionScope,
     PriceScope,
     StaticScope,
+    get_signals,
 )
 from pybroker.slippage import SlippageModel
 from collections import defaultdict, deque
@@ -122,10 +123,11 @@ class BacktestMixin:
         portfolio: Portfolio,
         pos_size_handler: Optional[Callable[[PosSizeContext], None]],
         exit_dates: Mapping[str, np.datetime64],
+        train_only: bool = False,
         slippage_model: Optional[SlippageModel] = None,
         enable_fractional_shares: bool = False,
         warmup: Optional[int] = None,
-    ):
+    ) -> dict[str, pd.DataFrame]:
         r"""Backtests a ``set`` of :class:`.Execution`\ s that implement
         trading logic.
 
@@ -146,13 +148,17 @@ class BacktestMixin:
             pos_size_handler: :class:`Callable` that sets position sizes when
                 placing orders for buy and sell signals.
             exit_dates: :class:`Mapping` of symbols to exit dates.
+            train_only: Whether the backtest is run with trading rules or
+                only trains models.
             enable_fractional_shares: Whether to enable trading fractional
                 shares.
             warmup: Number of bars that need to pass before running the
                 executions.
 
         Returns:
-            :class:`.TestResult` of the backtest.
+            Dictionary of :class:`pandas.DataFrame`s containing bar data,
+            indicator data, and model predictions for each symbol when
+            :attr:`pybroker.config.StrategyConfig.return_signals` is ``True``.
         """
         test_dates = test_data[DataCol.DATE.value].unique()
         test_dates.sort()
@@ -162,12 +168,16 @@ class BacktestMixin:
             .set_index([DataCol.SYMBOL.value, DataCol.DATE.value])
             .sort_index()
         )
-        sym_end_index: dict[str, int] = defaultdict(int)
         col_scope = ColumnScope(test_data)
-        price_scope = PriceScope(col_scope, sym_end_index)
         ind_scope = IndicatorScope(indicator_data, test_dates)
         input_scope = ModelInputScope(col_scope, ind_scope, models)
         pred_scope = PredictionScope(models, input_scope)
+        if train_only:
+            if config.return_signals:
+                return get_signals(test_syms, col_scope, ind_scope, pred_scope)
+            return {}
+        sym_end_index: dict[str, int] = defaultdict(int)
+        price_scope = PriceScope(col_scope, sym_end_index)
         pending_order_scope = PendingOrderScope()
         exec_ctxs: dict[str, ExecContext] = {}
         exec_fns: dict[str, Callable[[ExecContext], None]] = {}
@@ -354,6 +364,11 @@ class BacktestMixin:
             portfolio.incr_bars()
             if i % 10 == 0 or i == len(test_dates) - 1:
                 logger.backtest_executions_loading(i + 1)
+        return (
+            get_signals(test_syms, col_scope, ind_scope, pred_scope)
+            if config.return_signals
+            else {}
+        )
 
     def _apply_slippage(
         self,
@@ -759,6 +774,9 @@ class TestResult:
         metrics: Evaluation metrics.
         metrics_df: :class:`pandas.DataFrame` of evaluation metrics.
         bootstrap: Randomized bootstrap evaluation metrics.
+        signals: Dictionary of :class:`pandas.DataFrame`s containing bar data,
+            indicator data, and model predictions for each symbol when
+            :attr:`pybroker.config.StrategyConfig.return_signals` is ``True``.
     """
 
     start_date: datetime
@@ -770,6 +788,7 @@ class TestResult:
     metrics: EvalMetrics
     metrics_df: pd.DataFrame
     bootstrap: Optional[BootstrapResult]
+    signals: Optional[dict[str, pd.DataFrame]]
 
 
 class Strategy(
@@ -1003,7 +1022,7 @@ class Strategy(
         calc_bootstrap: bool = False,
         disable_parallel: bool = False,
         warmup: Optional[int] = None,
-    ) -> Optional[TestResult]:
+    ) -> TestResult:
         """Backtests the trading strategy by running executions that were added
         with :meth:`.add_execution`.
 
@@ -1085,7 +1104,7 @@ class Strategy(
         calc_bootstrap: bool = False,
         disable_parallel: bool = False,
         warmup: Optional[int] = None,
-    ) -> Optional[TestResult]:
+    ) -> TestResult:
         """Backtests the trading strategy using `Walkforward Analysis
         <https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis>`_.
         Backtesting data supplied by the :class:`pybroker.data.DataSource` is
@@ -1206,7 +1225,7 @@ class Strategy(
                 self._config.max_long_positions,
                 self._config.max_short_positions,
             )
-            self._run_walkforward(
+            signals = self._run_walkforward(
                 portfolio=portfolio,
                 df=df,
                 indicator_data=indicator_data,
@@ -1222,9 +1241,13 @@ class Strategy(
             )
             if train_only:
                 self._logger.walkforward_completed()
-                return None
             return self._to_test_result(
-                start_dt, end_dt, portfolio, calc_bootstrap
+                start_dt,
+                end_dt,
+                portfolio,
+                calc_bootstrap,
+                train_only,
+                signals if self._config.return_signals else None,
             )
         finally:
             scope.unfreeze_data_cols()
@@ -1265,7 +1288,7 @@ class Strategy(
         shuffle: bool,
         train_only: bool,
         warmup: Optional[int],
-    ):
+    ) -> dict[str, pd.DataFrame]:
         sessions: dict[str, dict] = defaultdict(dict)
         exit_dates: dict[str, np.datetime64] = {}
         if self._config.exit_on_last_bar:
@@ -1277,6 +1300,7 @@ class Strategy(
                     if len(sym_dates):
                         sym_dates.sort()
                         exit_dates[sym] = sym_dates[-1]
+        signals: dict[str, pd.DataFrame] = {}
         for train_idx, test_idx in self.walkforward_split(
             df=df,
             windows=windows,
@@ -1310,23 +1334,31 @@ class Strategy(
                         days=days,
                     ),
                 )
-            if not train_only and not test_data.empty:
-                self.backtest_executions(
-                    config=self._config,
-                    executions=self._executions,
-                    before_exec_fn=self._before_exec_fn,
-                    after_exec_fn=self._after_exec_fn,
-                    sessions=sessions,
-                    models=models,
-                    indicator_data=indicator_data,
-                    test_data=test_data,
-                    portfolio=portfolio,
-                    pos_size_handler=self._pos_size_handler,
-                    exit_dates=exit_dates,
-                    slippage_model=self._slippage_model,
-                    enable_fractional_shares=self._fractional_shares_enabled(),
-                    warmup=warmup,
-                )
+            if test_data.empty:
+                return signals
+            split_signals = self.backtest_executions(
+                config=self._config,
+                executions=self._executions,
+                before_exec_fn=self._before_exec_fn,
+                after_exec_fn=self._after_exec_fn,
+                sessions=sessions,
+                models=models,
+                indicator_data=indicator_data,
+                test_data=test_data,
+                portfolio=portfolio,
+                pos_size_handler=self._pos_size_handler,
+                exit_dates=exit_dates,
+                train_only=train_only,
+                slippage_model=self._slippage_model,
+                enable_fractional_shares=self._fractional_shares_enabled(),
+                warmup=warmup,
+            )
+            for sym, signals_df in split_signals.items():
+                if sym in signals:
+                    signals[sym] = pd.concat([signals[sym], signals_df])
+                else:
+                    signals[sym] = signals_df
+        return signals
 
     def _filter_dates(
         self,
@@ -1403,7 +1435,22 @@ class Strategy(
         end_date: datetime,
         portfolio: Portfolio,
         calc_bootstrap: bool,
+        train_only: bool,
+        signals: Optional[dict[str, pd.DataFrame]],
     ) -> TestResult:
+        if train_only:
+            return TestResult(
+                start_date=start_date,
+                end_date=end_date,
+                portfolio=pd.DataFrame(),
+                positions=pd.DataFrame(),
+                orders=pd.DataFrame(),
+                trades=pd.DataFrame(),
+                metrics=EvalMetrics(),
+                metrics_df=pd.DataFrame(),
+                bootstrap=None,
+                signals=signals,
+            )
         pos_df = pd.DataFrame.from_records(
             portfolio.position_bars, columns=PositionBar._fields
         )
@@ -1477,4 +1524,5 @@ class Strategy(
             metrics=eval_result.metrics,
             metrics_df=metrics_df,
             bootstrap=eval_result.bootstrap,
+            signals=signals,
         )

@@ -22,6 +22,7 @@ from pybroker.scope import (
     enable_progress_bar,
     disable_logging,
     disable_progress_bar,
+    get_signals,
     param,
     register_columns,
     unregister_columns,
@@ -484,3 +485,34 @@ class TestPendingOrderScope:
             [pending_orders[0]]
         )
         assert not tuple(pending_order_scope.orders("FOO"))
+
+
+def test_get_signals(
+    symbols,
+    scope,
+    col_scope,
+    ind_scope,
+    pred_scope,
+    data_source_df,
+    ind_data,
+    preds,
+):
+    dfs = get_signals(symbols, col_scope, ind_scope, pred_scope)
+    assert set(dfs.keys()) == set(symbols)
+    for sym in symbols:
+        for col in scope.all_data_cols:
+            if col not in data_source_df.columns:
+                continue
+            assert np.array_equal(
+                dfs[sym][col].values,
+                data_source_df[data_source_df["symbol"] == sym][col].values,
+            )
+        assert np.array_equal(
+            dfs[sym][f"{MODEL_NAME}_pred"].values, preds[sym], equal_nan=True
+        )
+    for ind_name, sym in ind_data:
+        assert np.array_equal(
+            dfs[sym][ind_name].values,
+            ind_data[IndicatorSymbol(ind_name, sym)].values,
+            equal_nan=True,
+        )

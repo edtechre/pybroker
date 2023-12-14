@@ -56,6 +56,9 @@ class StrategyConfig:
         bars_per_year: Number of observations per year that will be used to
             annualize evaluation metrics. For example, a value of ``252`` would
             be used to annualize the Sharpe Ratio for daily returns.
+        return_signals: When ``True`` then bar data, indicator data, and model
+            predictions are returned with
+            :class:`pybroker.strategy.TestResult`. Defaults to ``False``.
     """
 
     initial_cash: float = field(default=100_000)
@@ -76,3 +79,4 @@ class StrategyConfig:
         PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
     ] = field(default=PriceType.MIDDLE)
     bars_per_year: Optional[int] = field(default=None)
+    return_signals: bool = field(default=False)

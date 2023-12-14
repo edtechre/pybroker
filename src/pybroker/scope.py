@@ -743,3 +743,36 @@ class PendingOrderScope:
             if symbol not in self._sym_orders:
                 return []
             return self._sym_orders[symbol]
+
+
+def get_signals(
+    symbols: Iterable[str],
+    col_scope: ColumnScope,
+    ind_scope: IndicatorScope,
+    pred_scope: PredictionScope,
+) -> dict[str, pd.DataFrame]:
+    """Retrieves dictionary of :class:`pandas.DataFrame`s
+    containing bar data, indicator data, and model predictions for each symbol.
+    """
+    static_scope = StaticScope.instance()
+    cols = static_scope.all_data_cols
+    inds = static_scope._indicators.keys()
+    models = static_scope._model_sources.keys()
+    dates = col_scope._df.index.get_level_values(1)
+    dfs: dict[str, pd.DataFrame] = {}
+    for sym in symbols:
+        data = {DataCol.DATE.value: dates}
+        for col in cols:
+            data[col] = col_scope.fetch(sym, col)
+        for ind in inds:
+            try:
+                data[ind] = ind_scope.fetch(sym, ind)
+            except ValueError:
+                continue
+        for model in models:
+            try:
+                data[f"{model}_pred"] = pred_scope.fetch(sym, model)
+            except ValueError:
+                continue
+        dfs[sym] = pd.DataFrame(data)
+    return dfs
