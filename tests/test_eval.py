@@ -6,7 +6,6 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
-import joblib
 import math
 import numpy as np
 import os
@@ -68,15 +67,15 @@ def calc_bootstrap(request):
 
 @pytest.fixture()
 def portfolio_df():
-    return joblib.load(
-        os.path.join(os.path.dirname(__file__), "testdata/portfolio_df.joblib")
+    return pd.read_pickle(
+        os.path.join(os.path.dirname(__file__), "testdata/portfolio_df.pkl")
     )
 
 
 @pytest.fixture()
 def trades_df():
-    return joblib.load(
-        os.path.join(os.path.dirname(__file__), "testdata/trades_df.joblib")
+    return pd.read_pickle(
+        os.path.join(os.path.dirname(__file__), "testdata/trades_df.pkl")
     )
 
 

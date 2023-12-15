@@ -7,7 +7,6 @@ This code is licensed under Apache 2.0 with Commons Clause license
 """
 
 import akshare
-import joblib
 import os
 import pandas as pd
 import pytest
@@ -48,8 +47,8 @@ ALPACA_CRYPTO_COLS = ALPACA_COLS + ["trade_count"]
 
 @pytest.fixture()
 def alpaca_df():
-    df = joblib.load(
-        os.path.join(os.path.dirname(__file__), "testdata/daily_1.joblib")
+    df = pd.read_pickle(
+        os.path.join(os.path.dirname(__file__), "testdata/daily_1.pkl")
     )
     df["date"] = df["date"].dt.tz_localize("US/Eastern")
     return df.assign(vwap=1)[ALPACA_COLS]
@@ -57,8 +56,8 @@ def alpaca_df():
 
 @pytest.fixture()
 def alpaca_crypto_df():
-    df = joblib.load(
-        os.path.join(os.path.dirname(__file__), "testdata/daily_1.joblib")
+    df = pd.read_pickle(
+        os.path.join(os.path.dirname(__file__), "testdata/daily_1.pkl")
     )
     df["date"] = df["date"].dt.tz_localize("US/Eastern")
     return df.assign(vwap=1, trade_count=1)[ALPACA_CRYPTO_COLS]
@@ -76,17 +75,15 @@ def crypto_bars_df(alpaca_crypto_df):
 
 @pytest.fixture()
 def yfinance_df():
-    return joblib.load(
-        os.path.join(os.path.dirname(__file__), "testdata/yfinance.joblib")
+    return pd.read_pickle(
+        os.path.join(os.path.dirname(__file__), "testdata/yfinance.pkl")
     )
 
 
 @pytest.fixture()
 def yfinance_single_df():
-    return joblib.load(
-        os.path.join(
-            os.path.dirname(__file__), "testdata/yfinance_single.joblib"
-        )
+    return pd.read_pickle(
+        os.path.join(os.path.dirname(__file__), "testdata/yfinance_single.pkl")
     )
 
 

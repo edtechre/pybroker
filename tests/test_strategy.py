@@ -6,7 +6,6 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
-import joblib
 import numpy as np
 import os
 import pandas as pd
@@ -1129,8 +1128,8 @@ class FakeDataSource(DataSource):
     def _fetch_data(
         self, symbols, start_date, end_date, timeframe, adjustment
     ):
-        return joblib.load(
-            os.path.join(os.path.dirname(__file__), "testdata/daily_1.joblib")
+        return pd.read_pickle(
+            os.path.join(os.path.dirname(__file__), "testdata/daily_1.pkl")
         )
 
 
