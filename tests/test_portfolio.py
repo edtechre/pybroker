@@ -733,6 +733,7 @@ def test_sell_when_all_shares_and_fractional():
 
 
 def calc_fees(fee_info):
+    assert fee_info.symbol == SYMBOL_1
     assert fee_info.shares == SHARES_1
     if fee_info.order_type == "buy":
         assert fee_info.fill_price == FILL_PRICE_1

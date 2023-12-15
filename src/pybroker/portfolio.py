@@ -353,6 +353,7 @@ class Portfolio:
 
     def _calculate_fees(
         self,
+        symbol: str,
         fill_price: Decimal,
         shares: Decimal,
         order_type: Literal["buy", "sell"],
@@ -364,6 +365,7 @@ class Portfolio:
             fees = to_decimal(
                 self._fee_mode(
                     FeeInfo(
+                        symbol=symbol,
                         shares=shares,
                         fill_price=fill_price,
                         order_type=order_type,
@@ -424,7 +426,7 @@ class Portfolio:
         shares: Decimal,
     ) -> Order:
         self._order_id += 1
-        fees = self._calculate_fees(fill_price, shares, type)
+        fees = self._calculate_fees(symbol, fill_price, shares, type)
         order = Order(
             id=self._order_id,
             date=date,

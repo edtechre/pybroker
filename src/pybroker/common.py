@@ -152,11 +152,13 @@ class FeeInfo(NamedTuple):
     """Contains info for custom fee calculations.
 
     Attributes:
+        symbol: Trading symbol.
         shares: Number of shares in order.
         fill_price: Fill price of order.
         order_type: Type of order, either "buy" or "sell".
     """
 
+    symbol: str
     shares: Decimal
     fill_price: Decimal
     order_type: Literal["buy", "sell"]
