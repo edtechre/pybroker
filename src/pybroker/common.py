@@ -15,7 +15,16 @@ from decimal import Decimal, ROUND_HALF_UP
 from enum import Enum
 from joblib import Parallel
 from numpy.typing import NDArray
-from typing import Any, Callable, Final, Literal, NamedTuple, Optional, Union
+from typing import (
+    Any,
+    Callable,
+    Final,
+    Literal,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Union,
+)
 
 _tf_pattern: Final = re.compile(r"(\d+)([A-Za-z]+)")
 _tf_abbr: Final = {
@@ -345,3 +354,15 @@ def default_parallel() -> Parallel:
     the number of CPUs on the host machine.
     """
     return Parallel(n_jobs=os.cpu_count(), prefer="processes", backend="loky")
+
+
+def get_unique_sorted_dates(col: pd.Series) -> Sequence[np.datetime64]:
+    """Returns sorted unique values from a DataFrame column of dates.
+    Guarantees compatability between Pandas 1 and 2.
+    """
+    result = col.unique()
+    # TODO: Remove after Pandas 1.0 is no longer supported.
+    if hasattr(result, "to_numpy"):
+        result = result.to_numpy()
+    result.sort()
+    return result

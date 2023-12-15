@@ -14,6 +14,7 @@ from pybroker.common import (
     IndicatorSymbol,
     ModelSymbol,
     TrainedModel,
+    get_unique_sorted_dates,
     to_datetime,
 )
 from pybroker.indicator import Indicator
@@ -324,10 +325,8 @@ class ModelsMixin:
         if train_data.empty or not model_syms:
             return {}
         scope = StaticScope.instance()
-        train_dates = train_data[DataCol.DATE.value].unique()
-        train_dates.sort()
-        test_dates = test_data[DataCol.DATE.value].unique()
-        test_dates.sort()
+        train_dates = get_unique_sorted_dates(train_data[DataCol.DATE.value])
+        test_dates = get_unique_sorted_dates(test_data[DataCol.DATE.value])
         scope.logger.train_split_start(train_dates)
         scope.logger.info_train_split_start(model_syms)
         models, uncached_model_syms = self._get_cached_models(

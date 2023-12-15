@@ -17,6 +17,7 @@ from pybroker.common import (
     IndicatorSymbol,
     ModelSymbol,
     PriceType,
+    get_unique_sorted_dates,
     quantize,
     to_datetime,
     to_decimal,
@@ -160,8 +161,7 @@ class BacktestMixin:
             indicator data, and model predictions for each symbol when
             :attr:`pybroker.config.StrategyConfig.return_signals` is ``True``.
         """
-        test_dates = test_data[DataCol.DATE.value].unique()
-        test_dates.sort()
+        test_dates = get_unique_sorted_dates(test_data[DataCol.DATE.value])
         test_syms = test_data[DataCol.SYMBOL.value].unique()
         test_data = (
             test_data.reset_index(drop=True)
@@ -659,8 +659,7 @@ class WalkforwardMixin:
             raise ValueError("DataFrame is empty.")
         date_col = DataCol.DATE.value
         dates = df[[date_col]]
-        window_dates = df[date_col].unique()
-        window_dates.sort()
+        window_dates = get_unique_sorted_dates(df[date_col])
         error_msg = f"""
         Invalid params for {len(window_dates)} dates:
         windows: {windows}
@@ -1327,8 +1326,9 @@ class Strategy(
                     for model_name in execution.model_names
                     if sym in execution.symbols
                 }
-                train_dates = train_data[DataCol.DATE.value].unique()
-                train_dates.sort()
+                train_dates = get_unique_sorted_dates(
+                    train_data[DataCol.DATE.value]
+                )
                 models = self.train_models(
                     model_syms=model_syms,
                     train_data=train_data,
