@@ -1022,6 +1022,7 @@ class Strategy(
         calc_bootstrap: bool = False,
         disable_parallel: bool = False,
         warmup: Optional[int] = None,
+        portfolio: Optional[Portfolio] = None,
     ) -> TestResult:
         """Backtests the trading strategy by running executions that were added
         with :meth:`.add_execution`.
@@ -1070,6 +1071,8 @@ class Strategy(
                 Defaults to ``False``.
             warmup: Number of bars that need to pass before running the
                 executions.
+            portfolio: Custom :class:`pybroker.portfolio.Portfolio` to use for
+                backtests.
 
         Returns:
             :class:`.TestResult` containing portfolio balances, order
@@ -1088,6 +1091,7 @@ class Strategy(
             calc_bootstrap=calc_bootstrap,
             disable_parallel=disable_parallel,
             warmup=warmup,
+            portfolio=portfolio,
         )
 
     def walkforward(
@@ -1104,6 +1108,7 @@ class Strategy(
         calc_bootstrap: bool = False,
         disable_parallel: bool = False,
         warmup: Optional[int] = None,
+        portfolio: Optional[Portfolio] = None,
     ) -> TestResult:
         """Backtests the trading strategy using `Walkforward Analysis
         <https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis>`_.
@@ -1158,6 +1163,8 @@ class Strategy(
                 Defaults to ``False``.
             warmup: Number of bars that need to pass before running the
                 executions.
+            portfolio: Custom :class:`pybroker.portfolio.Portfolio` to use for
+                backtests.
 
         Returns:
             :class:`.TestResult` containing portfolio balances, order
@@ -1217,14 +1224,15 @@ class Strategy(
                 and self._after_exec_fn is None
                 and all(map(lambda e: e.fn is None, self._executions))
             )
-            portfolio = Portfolio(
-                self._config.initial_cash,
-                self._config.fee_mode,
-                self._config.fee_amount,
-                self._fractional_shares_enabled(),
-                self._config.max_long_positions,
-                self._config.max_short_positions,
-            )
+            if portfolio is None:
+                portfolio = Portfolio(
+                    self._config.initial_cash,
+                    self._config.fee_mode,
+                    self._config.fee_amount,
+                    self._fractional_shares_enabled(),
+                    self._config.max_long_positions,
+                    self._config.max_short_positions,
+                )
             signals = self._run_walkforward(
                 portfolio=portfolio,
                 df=df,
