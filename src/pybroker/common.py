@@ -295,7 +295,7 @@ def to_seconds(timeframe: Optional[str]) -> int:
     )
 
 
-def quantize(df: pd.DataFrame, col: str) -> pd.Series:
+def quantize(df: pd.DataFrame, col: str, round: bool) -> pd.Series:
     """Quantizes a :class:`pandas.DataFrame` column by rounding values to the
     nearest cent.
 
@@ -305,7 +305,9 @@ def quantize(df: pd.DataFrame, col: str) -> pd.Series:
     if col not in df.columns:
         raise ValueError(f"Column {col!r} not found in DataFrame.")
     df = df[~df[col].isna()]
-    values = df[col].apply(lambda d: d.quantize(_CENTS, ROUND_HALF_UP))
+    values = df[col]
+    if round:
+        values = values.apply(lambda d: d.quantize(_CENTS, ROUND_HALF_UP))
     return values.astype(float)
 
 

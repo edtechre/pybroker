@@ -1694,6 +1694,94 @@ class TestStrategy:
         assert result.orders["shares"].values[0] == expected_long_shares
         assert result.trades["shares"].values[0] == expected_long_shares
 
+    def test_to_result_when_round_test_result_is_false(self, data_source_df):
+        portfolio = Portfolio(100_000)
+        portfolio.bars = deque(
+            (
+                PortfolioBar(
+                    date=np.datetime64(START_DATE),
+                    cash=Decimal(100_000),
+                    equity=Decimal(100_000),
+                    margin=Decimal(),
+                    market_value=Decimal(100_000),
+                    pnl=Decimal("1000.111"),
+                    unrealized_pnl=Decimal(),
+                    fees=Decimal(),
+                ),
+            )
+        )
+        portfolio.position_bars = deque(
+            (
+                PositionBar(
+                    symbol="SPY",
+                    date=np.datetime64(START_DATE),
+                    long_shares=Decimal("3.144"),
+                    short_shares=Decimal("0.111"),
+                    close=Decimal(100),
+                    equity=Decimal(100_000),
+                    market_value=Decimal(100_000),
+                    margin=Decimal(),
+                    unrealized_pnl=Decimal(100),
+                ),
+            )
+        )
+        portfolio.orders = deque(
+            (
+                Order(
+                    id=1,
+                    type="buy",
+                    symbol="SPY",
+                    date=np.datetime64(START_DATE),
+                    shares=Decimal("3.144"),
+                    limit_price=Decimal(100),
+                    fill_price=Decimal(99),
+                    fees=Decimal(),
+                ),
+            )
+        )
+        portfolio.trades = deque(
+            (
+                Trade(
+                    id=1,
+                    type="long",
+                    symbol="SPY",
+                    entry_date=np.datetime64(START_DATE),
+                    exit_date=np.datetime64(END_DATE),
+                    entry=Decimal(100),
+                    exit=Decimal(101),
+                    shares=Decimal("3.144"),
+                    pnl=Decimal(1000),
+                    return_pct=Decimal("10.33"),
+                    agg_pnl=Decimal(1000),
+                    bars=2,
+                    pnl_per_bar=Decimal(500),
+                    stop=None,
+                ),
+            )
+        )
+        config = StrategyConfig(
+            enable_fractional_shares=True, round_test_result=False
+        )
+        strategy = Strategy(
+            data_source_df,
+            START_DATE,
+            END_DATE,
+            config,
+        )
+        result = strategy._to_test_result(
+            START_DATE,
+            END_DATE,
+            portfolio,
+            calc_bootstrap=False,
+            train_only=False,
+            signals=None,
+        )
+        assert result.positions["long_shares"].values[0] == 3.144
+        assert result.positions["short_shares"].values[0] == 0.111
+        assert result.portfolio["pnl"].values[0] == 1000.111
+        assert result.orders["shares"].values[0] == 3.144
+        assert result.trades["shares"].values[0] == 3.144
+
     def test_to_test_result_when_empty(self, data_source_df):
         portfolio = Portfolio(100_000)
         strategy = Strategy(data_source_df, START_DATE, END_DATE)

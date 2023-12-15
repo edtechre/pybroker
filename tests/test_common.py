@@ -157,8 +157,22 @@ def test_quantize():
         ],
         columns=["a", "b"],
     )
-    df["a"] = quantize(df, "a")
+    df["a"] = quantize(df, "a", True)
     assert (df["a"].values == [1.00, 0.1, 0.33, 1]).all()
+
+
+def test_quantize_when_round_is_false():
+    df = pd.DataFrame(
+        [
+            [Decimal("0.9999"), Decimal("1.22222")],
+            [Decimal("0.1"), Decimal("0.22")],
+            [Decimal("0.33"), Decimal("0.2222")],
+            [Decimal(1), Decimal("0.1")],
+        ],
+        columns=["a", "b"],
+    )
+    df["a"] = quantize(df, "a", False)
+    assert (df["a"].values == [0.9999, 0.1, 0.33, 1]).all()
 
 
 def test_quantize_when_column_not_found_then_error():
@@ -174,7 +188,7 @@ def test_quantize_when_column_not_found_then_error():
     with pytest.raises(
         ValueError, match=re.escape("Column 'c' not found in DataFrame.")
     ):
-        quantize(df, "c")
+        quantize(df, "c", True)
 
 
 @pytest.mark.parametrize(
