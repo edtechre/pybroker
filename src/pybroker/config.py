@@ -24,7 +24,7 @@ class StrategyConfig:
             - ``ORDER_PERCENT``: Fee is a percentage of order amount.
             - ``PER_ORDER``: Fee is a constant amount per order.
             - ``PER_SHARE``: Fee is a constant amount per share in order.
-            - ``Callable[[FeeInfo], Decimal]]``: Fees are calculated using a
+            - ``Callable[[FeeInfo], Decimal]``: Fees are calculated using a
                 custom ``Callable`` that is passed
                 :class:`pybroker.common.FeeInfo`.
             - ``None``: Fees are disabled (default).
