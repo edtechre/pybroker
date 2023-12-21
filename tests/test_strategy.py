@@ -211,7 +211,9 @@ class TestBacktestMixin:
             assert kwargs["symbol"] == "SPY"
             assert kwargs["shares"] == expected_buy_shares
             assert kwargs["fill_price"] == Decimal(
-                str(buy_df[buy_df["date"] == date]["close"].values[0])
+                str(
+                    round(buy_df[buy_df["date"] == date]["close"].values[0], 2)
+                )
             )
             assert kwargs["limit_price"] == 100
         sell_df = data_source_df[data_source_df["symbol"] == "AAPL"]
@@ -223,7 +225,11 @@ class TestBacktestMixin:
             assert kwargs["symbol"] == "AAPL"
             assert kwargs["shares"] == expected_sell_shares
             assert kwargs["fill_price"] == Decimal(
-                str(sell_df[sell_df["date"] == date]["close"].values[0])
+                str(
+                    round(
+                        sell_df[sell_df["date"] == date]["close"].values[0], 2
+                    )
+                )
             )
             assert kwargs["limit_price"] == 50.5
 
@@ -337,7 +343,9 @@ class TestBacktestMixin:
             assert kwargs["symbol"] == "SPY"
             assert kwargs["shares"] == 200
             assert kwargs["fill_price"] == Decimal(
-                str(buy_df[buy_df["date"] == date]["close"].values[0])
+                str(
+                    round(buy_df[buy_df["date"] == date]["close"].values[0], 2)
+                )
             )
             assert kwargs["limit_price"] == 100
 
@@ -379,7 +387,11 @@ class TestBacktestMixin:
             assert kwargs["symbol"] == "AAPL"
             assert kwargs["shares"] == 100
             assert kwargs["fill_price"] == Decimal(
-                str(sell_df[sell_df["date"] == date]["close"].values[0])
+                str(
+                    round(
+                        sell_df[sell_df["date"] == date]["close"].values[0], 2
+                    )
+                )
             )
             assert kwargs["limit_price"] == 50.5
 
@@ -622,9 +634,12 @@ class TestBacktestMixin:
             assert kwargs["shares"] == 200
             assert kwargs["fill_price"] == Decimal(
                 str(
-                    df[(df["date"] == date) & (df["symbol"] == sym)][
-                        "close"
-                    ].values[0]
+                    round(
+                        df[(df["date"] == date) & (df["symbol"] == sym)][
+                            "close"
+                        ].values[0],
+                        2,
+                    )
                 )
             )
             assert kwargs["limit_price"] is None
@@ -672,9 +687,12 @@ class TestBacktestMixin:
             assert kwargs["shares"] == 200
             assert kwargs["fill_price"] == Decimal(
                 str(
-                    df[(df["date"] == date) & (df["symbol"] == sym)][
-                        "close"
-                    ].values[0]
+                    round(
+                        df[(df["date"] == date) & (df["symbol"] == sym)][
+                            "close"
+                        ].values[0],
+                        2,
+                    )
                 )
             )
             assert kwargs["limit_price"] is None
@@ -783,7 +801,7 @@ class TestBacktestMixin:
         "price_type, expected_fill_price",
         [
             (50, 50),
-            (Decimal(111.1), Decimal(111.1)),
+            (Decimal("111.1"), Decimal("111.1")),
             (lambda _symbol, _bar_data: 60, 60),
             (PriceType.OPEN, 200),
             (PriceType.HIGH, 400),

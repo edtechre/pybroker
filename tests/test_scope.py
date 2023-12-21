@@ -418,21 +418,22 @@ class TestPredictionScope:
 
 class TestPriceScope:
     @pytest.mark.parametrize(
-        "price, expected_price",
+        "price, round_fill_price, expected_price",
         [
-            (50, 50),
-            (111.1, Decimal("111.1")),
-            (np.float32(99.98), Decimal("99.98")),
-            (lambda _symbol, _bar_data: 60, 60),
-            (PriceType.OPEN, 200),
-            (PriceType.HIGH, 400),
-            (PriceType.LOW, 100),
-            (PriceType.CLOSE, 300),
-            (PriceType.MIDDLE, round((100 + (400 - 100) / 2.0), 2)),
-            (PriceType.AVERAGE, round((200 + 100 + 400 + 300) / 4.0, 2)),
+            (50, True, 50),
+            (111.1, True, Decimal("111.1")),
+            (np.float32(99.98), True, Decimal("99.98")),
+            (lambda _symbol, _bar_data: 60, True, 60),
+            (PriceType.OPEN, True, 200),
+            (PriceType.HIGH, True, 400),
+            (PriceType.LOW, True, 100),
+            (PriceType.CLOSE, True, 300),
+            (PriceType.MIDDLE, True, round((100 + (400 - 100) / 2.0), 2)),
+            (PriceType.MIDDLE, False, (100 + (400 - 100) / 2.0)),
+            (PriceType.AVERAGE, True, round((200 + 100 + 400 + 300) / 4.0, 2)),
         ],
     )
-    def test_fetch(self, price, expected_price):
+    def test_fetch(self, price, round_fill_price, expected_price):
         df = pd.DataFrame(
             {
                 "date": [
@@ -448,7 +449,7 @@ class TestPriceScope:
             }
         )
         col_scope = ColumnScope(df.set_index(["symbol", "date"]))
-        price_scope = PriceScope(col_scope, {"SPY": 2})
+        price_scope = PriceScope(col_scope, {"SPY": 2}, round_fill_price)
         assert price_scope.fetch("SPY", price) == expected_price
 
 

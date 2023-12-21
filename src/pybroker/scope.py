@@ -514,9 +514,11 @@ class PriceScope:
         self,
         col_scope: ColumnScope,
         sym_end_index: Mapping[str, int],
+        round_fill_price: bool,
     ):
         self._col_scope = col_scope
         self._sym_end_index = sym_end_index
+        self._round_fill_price = round_fill_price
 
     def fetch(
         self,
@@ -532,6 +534,7 @@ class PriceScope:
     ) -> Decimal:
         end_index = self._sym_end_index[symbol]
         price_type = type(price)
+        fill_price = None
         if price_type == PriceType:
             if price == PriceType.OPEN:
                 open_ = self._col_scope.fetch(
@@ -539,28 +542,28 @@ class PriceScope:
                 )
                 if open_ is None:
                     raise ValueError("Open price not found.")
-                return to_decimal(open_[-1])
+                fill_price = open_[-1]
             elif price == PriceType.HIGH:
                 high = self._col_scope.fetch(
                     symbol, DataCol.HIGH.value, end_index
                 )
                 if high is None:
                     raise ValueError("High price not found.")
-                return to_decimal(high[-1])
+                fill_price = high[-1]
             elif price == PriceType.LOW:
                 low = self._col_scope.fetch(
                     symbol, DataCol.LOW.value, end_index
                 )
                 if low is None:
                     raise ValueError("Low price not found.")
-                return to_decimal(low[-1])
+                fill_price = low[-1]
             elif price == PriceType.CLOSE:
                 close = self._col_scope.fetch(
                     symbol, DataCol.CLOSE.value, end_index
                 )
                 if close is None:
                     raise ValueError("Close price not found.")
-                return to_decimal(close[-1])
+                fill_price = close[-1]
             elif price == PriceType.MIDDLE:
                 low = self._col_scope.fetch(
                     symbol, DataCol.LOW.value, end_index
@@ -572,9 +575,8 @@ class PriceScope:
                 )
                 if high is None:
                     raise ValueError("High price not found.")
-                return to_decimal(
-                    round((low[-1] + (high[-1] - low[-1]) / 2.0), 2)
-                )
+
+                fill_price = low[-1] + (high[-1] - low[-1]) / 2.0
             elif price == PriceType.AVERAGE:
                 open_ = self._col_scope.fetch(
                     symbol, DataCol.OPEN.value, end_index
@@ -596,11 +598,7 @@ class PriceScope:
                 )
                 if close is None:
                     raise ValueError("Close price not found.")
-                return to_decimal(
-                    round(
-                        (open_[-1] + low[-1] + high[-1] + close[-1]) / 4.0, 2
-                    )
-                )
+                fill_price = (open_[-1] + low[-1] + high[-1] + close[-1]) / 4.0
             else:
                 raise ValueError(f"Unknown price: {price_type}")
         elif (
@@ -609,14 +607,17 @@ class PriceScope:
             or isinstance(price, np.floating)
             or isinstance(price, Decimal)
         ):
-            return to_decimal(price)  # type: ignore[arg-type]
+            fill_price = price
         elif callable(price):
             bar_data = self._col_scope.bar_data_from_data_columns(
                 symbol, self._sym_end_index[symbol]
             )
-            return to_decimal(price(symbol, bar_data))
+            fill_price = price(symbol, bar_data)
         else:
             raise ValueError(f"Unknown price: {price_type}")
+        if self._round_fill_price:
+            fill_price = round(fill_price, 2)
+        return to_decimal(fill_price)
 
 
 class PendingOrder(NamedTuple):
