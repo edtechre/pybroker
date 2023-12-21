@@ -31,6 +31,8 @@ class StrategyConfig:
         fee_amount: Brokerage fee amount.
         enable_fractional_shares: Whether to enable trading fractional shares.
             Set to ``True`` for crypto trading. Defaults to ``False``.
+        round_fill_price: Whether to round fill prices to the nearest cent.
+            Defaults to ``True``.
         max_long_positions: Maximum number of long positions that can be held
             at any time in :class:`pybroker.portfolio.Portfolio`. Unlimited
             when ``None``. Defaults to ``None``.
@@ -73,6 +75,7 @@ class StrategyConfig:
     )
     fee_amount: float = field(default=0)
     enable_fractional_shares: bool = field(default=False)
+    round_fill_price: bool = field(default=True)
     max_long_positions: Optional[int] = field(default=None)
     max_short_positions: Optional[int] = field(default=None)
     buy_delay: int = field(default=1)

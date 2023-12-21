@@ -127,6 +127,7 @@ class BacktestMixin:
         train_only: bool = False,
         slippage_model: Optional[SlippageModel] = None,
         enable_fractional_shares: bool = False,
+        round_fill_price: bool = True,
         warmup: Optional[int] = None,
     ) -> dict[str, pd.DataFrame]:
         r"""Backtests a ``set`` of :class:`.Execution`\ s that implement
@@ -153,6 +154,7 @@ class BacktestMixin:
                 only trains models.
             enable_fractional_shares: Whether to enable trading fractional
                 shares.
+            round_fill_price: Whether to round fill prices to the nearest cent.
             warmup: Number of bars that need to pass before running the
                 executions.
 
@@ -177,7 +179,7 @@ class BacktestMixin:
                 return get_signals(test_syms, col_scope, ind_scope, pred_scope)
             return {}
         sym_end_index: dict[str, int] = defaultdict(int)
-        price_scope = PriceScope(col_scope, sym_end_index)
+        price_scope = PriceScope(col_scope, sym_end_index, round_fill_price)
         pending_order_scope = PendingOrderScope()
         exec_ctxs: dict[str, ExecContext] = {}
         exec_fns: dict[str, Callable[[ExecContext], None]] = {}
@@ -1359,6 +1361,7 @@ class Strategy(
                 train_only=train_only,
                 slippage_model=self._slippage_model,
                 enable_fractional_shares=self._fractional_shares_enabled(),
+                round_fill_price=self._config.round_fill_price,
                 warmup=warmup,
             )
             for sym, signals_df in split_signals.items():

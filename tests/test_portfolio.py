@@ -1705,7 +1705,7 @@ def test_trigger_long_bar_stop():
         columns=["symbol", "date", "close"],
     )
     df = df.set_index(["symbol", "date"])
-    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)})
+    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)}, True)
     stops = (
         Stop(
             id=1,
@@ -1795,7 +1795,7 @@ def test_trigger_long_loss_stop(percent, points, expected_fill_price):
         columns=["symbol", "date", "low", "high"],
     )
     df = df.set_index(["symbol", "date"])
-    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)})
+    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)}, True)
     stops = (
         Stop(
             id=1,
@@ -1885,7 +1885,7 @@ def test_trigger_long_profit_stop(percent, points, expected_fill_price):
         columns=["symbol", "date", "low", "high"],
     )
     df = df.set_index(["symbol", "date"])
-    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)})
+    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)}, True)
     stops = (
         Stop(
             id=1,
@@ -1978,7 +1978,7 @@ def test_trigger_long_trailing_stop(percent, points, expected_fill_price):
     )
     df = df.set_index(["symbol", "date"])
     sym_end_index = {SYMBOL_1: 2}
-    price_scope = PriceScope(ColumnScope(df), sym_end_index)
+    price_scope = PriceScope(ColumnScope(df), sym_end_index, True)
     stops = (
         Stop(
             id=1,
@@ -2071,7 +2071,7 @@ def test_trigger_short_bar_stop():
         columns=["symbol", "date", "close"],
     )
     df = df.set_index(["symbol", "date"])
-    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)})
+    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)}, True)
     stops = (
         Stop(
             id=1,
@@ -2161,7 +2161,7 @@ def test_trigger_short_loss_stop(percent, points, expected_fill_price):
         columns=["symbol", "date", "low", "high"],
     )
     df = df.set_index(["symbol", "date"])
-    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)})
+    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)}, True)
     stops = (
         Stop(
             id=1,
@@ -2251,7 +2251,7 @@ def test_trigger_short_profit_stop(percent, points, expected_fill_price):
         columns=["symbol", "date", "low", "high"],
     )
     df = df.set_index(["symbol", "date"])
-    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)})
+    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)}, True)
     stops = (
         Stop(
             id=1,
@@ -2344,7 +2344,7 @@ def test_trigger_short_trailing_stop(percent, points, expected_fill_price):
     )
     df = df.set_index(["symbol", "date"])
     sym_end_index = {SYMBOL_1: 2}
-    price_scope = PriceScope(ColumnScope(df), sym_end_index)
+    price_scope = PriceScope(ColumnScope(df), sym_end_index, True)
     stops = (
         Stop(
             id=1,
@@ -2442,7 +2442,7 @@ def test_long_stop_limit_price(stop_type):
     )
     df = df.set_index(["symbol", "date"])
     sym_end_index = {SYMBOL_1: 2}
-    price_scope = PriceScope(ColumnScope(df), sym_end_index)
+    price_scope = PriceScope(ColumnScope(df), sym_end_index, True)
     stops = (
         Stop(
             id=1,
@@ -2497,7 +2497,7 @@ def test_long_stop_exit_price(stop_type):
     )
     df = df.set_index(["symbol", "date"])
     sym_end_index = {SYMBOL_1: 2}
-    price_scope = PriceScope(ColumnScope(df), sym_end_index)
+    price_scope = PriceScope(ColumnScope(df), sym_end_index, True)
     stops = (
         Stop(
             id=1,
@@ -2552,7 +2552,7 @@ def test_short_stop_limit_price(stop_type):
     )
     df = df.set_index(["symbol", "date"])
     sym_end_index = {SYMBOL_1: 2}
-    price_scope = PriceScope(ColumnScope(df), sym_end_index)
+    price_scope = PriceScope(ColumnScope(df), sym_end_index, True)
     stops = (
         Stop(
             id=1,
@@ -2607,7 +2607,7 @@ def test_short_stop_exit_price(stop_type):
     )
     df = df.set_index(["symbol", "date"])
     sym_end_index = {SYMBOL_1: 2}
-    price_scope = PriceScope(ColumnScope(df), sym_end_index)
+    price_scope = PriceScope(ColumnScope(df), sym_end_index, True)
     stops = (
         Stop(
             id=1,
@@ -2659,7 +2659,7 @@ def test_check_stops_when_multiple_entries():
     )
     df = df.set_index(["symbol", "date"])
     sym_end_index = {SYMBOL_1: 2}
-    price_scope = PriceScope(ColumnScope(df), sym_end_index)
+    price_scope = PriceScope(ColumnScope(df), sym_end_index, True)
     entry_price_1 = Decimal(200)
     portfolio = Portfolio(CASH)
     portfolio.buy(
@@ -2813,7 +2813,7 @@ def test_check_stops_when_multiple_stops_hit():
     )
     df = df.set_index(["symbol", "date"])
     sym_end_index = {SYMBOL_1: 3}
-    price_scope = PriceScope(ColumnScope(df), sym_end_index)
+    price_scope = PriceScope(ColumnScope(df), sym_end_index, True)
     portfolio = Portfolio(CASH)
     portfolio.buy(
         DATE_1,
@@ -2866,7 +2866,7 @@ def test_remove_stop():
         columns=["symbol", "date", "low"],
     )
     df = df.set_index(["symbol", "date"])
-    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)})
+    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)}, True)
     stops = (
         Stop(
             id=1,
@@ -2908,7 +2908,7 @@ def test_remove_stops_when_symbol(stop_type):
         columns=["symbol", "date", "low"],
     )
     df = df.set_index(["symbol", "date"])
-    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)})
+    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)}, True)
     stops = (
         Stop(
             id=1,
@@ -2953,7 +2953,7 @@ def test_remove_stops_when_position(stop_type):
         columns=["symbol", "date", "low"],
     )
     df = df.set_index(["symbol", "date"])
-    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)})
+    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)}, True)
     stops = (
         Stop(
             id=1,
@@ -2998,7 +2998,7 @@ def test_remove_stops_when_entry(stop_type):
         columns=["symbol", "date", "low"],
     )
     df = df.set_index(["symbol", "date"])
-    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)})
+    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)}, True)
     stops = (
         Stop(
             id=1,
@@ -3047,7 +3047,7 @@ def test_long_stop_when_no_pos():
     )
     df = df.set_index(["symbol", "date"])
     sym_end_index = {SYMBOL_1: 2}
-    price_scope = PriceScope(ColumnScope(df), sym_end_index)
+    price_scope = PriceScope(ColumnScope(df), sym_end_index, True)
     stops = (
         Stop(
             id=1,
@@ -3096,7 +3096,7 @@ def test_short_stop_when_no_pos():
     )
     df = df.set_index(["symbol", "date"])
     sym_end_index = {SYMBOL_1: 2}
-    price_scope = PriceScope(ColumnScope(df), sym_end_index)
+    price_scope = PriceScope(ColumnScope(df), sym_end_index, True)
     stops = (
         Stop(
             id=1,
