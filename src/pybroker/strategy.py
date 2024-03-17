@@ -1230,6 +1230,7 @@ class Strategy(
                     self._config.initial_cash,
                     self._config.fee_mode,
                     self._config.fee_amount,
+                    self._config.subtract_fees,
                     self._fractional_shares_enabled(),
                     self._config.max_long_positions,
                     self._config.max_short_positions,

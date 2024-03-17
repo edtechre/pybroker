@@ -793,6 +793,39 @@ def test_buy_and_sell_when_fees(
     assert portfolio.fees == expected_buy_fees + expected_sell_fees
 
 
+def test_subtract_fees():
+    portfolio = Portfolio(
+        3, FeeMode.PER_ORDER, fee_amount=1, subtract_fees=True
+    )
+    order = portfolio.buy(DATE_1, SYMBOL_1, shares=1, fill_price=1)
+    assert_order(
+        order=order,
+        date=DATE_1,
+        symbol=SYMBOL_1,
+        type="buy",
+        limit_price=None,
+        fill_price=1,
+        shares=1,
+        fees=1,
+    )
+    assert portfolio.cash == 1
+    order = portfolio.buy(DATE_2, SYMBOL_1, shares=1, fill_price=1)
+    assert_order(
+        order=order,
+        date=DATE_2,
+        symbol=SYMBOL_1,
+        type="buy",
+        limit_price=None,
+        fill_price=1,
+        shares=1,
+        fees=1,
+    )
+    assert portfolio.cash == -1
+    order = portfolio.buy(DATE_2, SYMBOL_1, shares=1, fill_price=1)
+    assert order is None
+    assert portfolio.cash == -1
+
+
 def test_sell_when_partial_shares():
     portfolio = Portfolio(CASH)
     buy_order = portfolio.buy(

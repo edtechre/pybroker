@@ -293,6 +293,8 @@ class Portfolio:
             the amount of equity held in cash and long positions added together
             with the unrealized PnL of all open short positions.
         fees: Current brokerage fees.
+        fee_amount: Brokerage fee amount.
+        subtract_fees: Whether to subtract fees from the cash balance.
         enable_fractional_shares: Whether to enable trading fractional shares.
         orders: ``deque`` of all filled orders, sorted in ascending
             chronological order.
@@ -318,6 +320,7 @@ class Portfolio:
             Union[FeeMode, Callable[[FeeInfo], Decimal], None]
         ] = None,
         fee_amount: Optional[float] = None,
+        subtract_fees: bool = False,
         enable_fractional_shares: bool = False,
         max_long_positions: Optional[int] = None,
         max_short_positions: Optional[int] = None,
@@ -328,6 +331,7 @@ class Portfolio:
         self._fee_amount: Optional[Decimal] = (
             None if fee_amount is None else to_decimal(fee_amount)
         )
+        self._subtract_fees = subtract_fees
         self._enable_fractional_shares = enable_fractional_shares
         self.equity: Decimal = self.cash
         self.market_value: Decimal = self.cash
@@ -440,6 +444,8 @@ class Portfolio:
         )
         self.orders.append(order)
         self.fees += fees
+        if self._subtract_fees:
+            self.cash -= fees
         return order
 
     def _add_trade(
@@ -519,6 +525,8 @@ class Portfolio:
                 del self._stop_data[stop.id]
 
     def _clamp_shares(self, fill_price: Decimal, shares: Decimal) -> Decimal:
+        if self.cash < 0:
+            return Decimal()
         max_shares = (
             Decimal(self.cash / fill_price)
             if self._enable_fractional_shares
