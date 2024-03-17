@@ -125,6 +125,7 @@ class Position:
             chronological order.
         bars: Current number of bars since entry.
     """
+
     symbol: str
     shares: Decimal
     type: Literal["long", "short"]
@@ -1104,9 +1105,11 @@ class Portfolio:
         if entry.bars >= stop.bars:
             return price_scope.fetch(
                 stop.symbol,
-                PriceType.MIDDLE
-                if stop.fill_price is None
-                else stop.fill_price,
+                (
+                    PriceType.MIDDLE
+                    if stop.fill_price is None
+                    else stop.fill_price
+                ),
             )
         return None
 

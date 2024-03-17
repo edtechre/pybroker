@@ -158,13 +158,11 @@ def test_enable_and_disable_all_caches(scope, cache_dir, cache_path):
 @pytest.mark.usefixtures("setup_teardown")
 def test_clear_all_caches(scope, cache_dir):
     enable_caches("test", cache_dir)
-    with mock.patch.object(
-        scope, "data_source_cache"
-    ) as data_source_cache, mock.patch.object(
-        scope, "indicator_cache"
-    ) as ind_cache, mock.patch.object(
-        scope, "model_cache"
-    ) as model_cache:
+    with (
+        mock.patch.object(scope, "data_source_cache") as data_source_cache,
+        mock.patch.object(scope, "indicator_cache") as ind_cache,
+        mock.patch.object(scope, "model_cache") as model_cache,
+    ):
         clear_caches()
         data_source_cache.clear.assert_called_once()
         ind_cache.clear.assert_called_once()

@@ -94,9 +94,10 @@ def symbols(alpaca_df):
 
 @pytest.fixture()
 def mock_cache(scope):
-    with mock.patch.object(
-        scope, "data_source_cache"
-    ) as cache, mock.patch.object(cache, "get", return_value=None):
+    with (
+        mock.patch.object(scope, "data_source_cache") as cache,
+        mock.patch.object(cache, "get", return_value=None),
+    ):
         yield cache
 
 
