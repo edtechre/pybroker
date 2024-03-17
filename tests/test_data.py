@@ -13,7 +13,6 @@ import pytest
 import re
 import yfinance
 from .fixtures import *  # noqa: F401
-from .util import *  # noqa: F401
 from datetime import datetime
 from pybroker.cache import DataSourceCacheKey
 from pybroker.common import to_seconds

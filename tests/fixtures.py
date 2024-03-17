@@ -35,6 +35,7 @@ from pybroker.scope import (
     StaticScope,
 )
 from pybroker.vect import highv, lowv, sumv
+from typing import NamedTuple
 
 MODEL_NAME = "fake_model"
 
@@ -46,6 +47,16 @@ class FakeModel:
 
     def predict(self, _):
         return self._preds
+
+
+class LazyFixture(NamedTuple):
+    name: str
+
+
+def get_fixture(request, param):
+    if isinstance(param, LazyFixture):
+        return request.getfixturevalue(param.name)
+    return param
 
 
 @pytest.fixture()

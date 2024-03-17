@@ -12,7 +12,6 @@ import pandas as pd
 import pytest
 import re
 from .fixtures import *  # noqa: F401
-from .util import *  # noqa: F401
 from collections import defaultdict, deque
 from datetime import datetime
 from decimal import Decimal

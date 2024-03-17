@@ -10,7 +10,6 @@ import pandas as pd
 import pytest
 import re
 from .fixtures import *  # noqa: F401
-from .util import *  # noqa: F401
 from unittest.mock import Mock
 from pybroker.cache import CacheDateFields
 from pybroker.common import ModelSymbol, TrainedModel, to_datetime
