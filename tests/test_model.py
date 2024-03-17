@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 import re
 from .fixtures import *  # noqa: F401
+from .util import *  # noqa: F401
 from unittest.mock import Mock
 from pybroker.cache import CacheDateFields
 from pybroker.common import ModelSymbol, TrainedModel, to_datetime
@@ -179,7 +180,7 @@ class TestModelsMixin:
         "param_test_data",
         [
             pd.DataFrame(columns=["symbol", "date"]),
-            pytest.lazy_fixture("test_data"),
+            "test_data",
         ],
     )
     def test_train_models(
@@ -189,7 +190,9 @@ class TestModelsMixin:
         param_test_data,
         ind_data,
         cache_date_fields,
+        request,
     ):
+        param_test_data = get_fixture(request, param_test_data)
         mixin = ModelsMixin()
         models = mixin.train_models(
             model_syms,
