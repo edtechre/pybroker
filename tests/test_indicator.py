@@ -215,7 +215,9 @@ class TestIndicatorSet:
         with pytest.raises(ValueError, match="No indicators were added."):
             ind_set(data_source_df)
 
-    @pytest.mark.parametrize("df", [pd.DataFrame(), "data_source_df"])
+    @pytest.mark.parametrize(
+        "df", [pd.DataFrame(), LazyFixture("data_source_df")]
+    )
     def test_call(self, df, hhv_ind, llv_ind, disable_parallel, request):
         df = get_fixture(request, df)
         ind_set = IndicatorSet()

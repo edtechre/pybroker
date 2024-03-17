@@ -180,7 +180,7 @@ class TestModelsMixin:
         "param_test_data",
         [
             pd.DataFrame(columns=["symbol", "date"]),
-            "test_data",
+            LazyFixture("test_data"),
         ],
     )
     def test_train_models(

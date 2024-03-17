@@ -139,7 +139,7 @@ class TestDataSourceCacheMixin:
             assert sym_df.equals(alpaca_df[alpaca_df["symbol"] == sym])
 
     @pytest.mark.usefixtures("scope")
-    @pytest.mark.parametrize("query_symbols", [[], "symbols"])
+    @pytest.mark.parametrize("query_symbols", [[], LazyFixture("symbols")])
     def test_get_cached_when_empty(self, mock_cache, query_symbols, request):
         query_symbols = get_fixture(request, query_symbols)
         cache_mixin = DataSourceCacheMixin()
@@ -503,11 +503,11 @@ class TestYFinance:
         "param_symbols, expected_df, expected_rows",
         [
             (
-                "symbols",
-                "yfinance_df",
+                LazyFixture("symbols"),
+                LazyFixture("yfinance_df"),
                 2020,
             ),
-            (["SPY"], "yfinance_single_df", 505),
+            (["SPY"], LazyFixture("yfinance_single_df"), 505),
         ],
     )
     @pytest.mark.usefixtures("setup_ds_cache")

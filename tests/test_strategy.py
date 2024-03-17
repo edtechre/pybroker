@@ -1174,16 +1174,16 @@ END_DATE = "2021-12-31"
 class TestStrategy:
     @pytest.mark.parametrize(
         "data_source",
-        [FakeDataSource(), "data_source_df"],
+        [FakeDataSource(), LazyFixture("data_source_df")],
     )
     @pytest.mark.parametrize(
         "executions",
         [
-            "executions_train_only",
-            "executions_only",
-            "executions_with_indicators",
-            "executions_with_models",
-            "executions_with_models_and_indicators",
+            LazyFixture("executions_train_only"),
+            LazyFixture("executions_only"),
+            LazyFixture("executions_with_indicators"),
+            LazyFixture("executions_with_models"),
+            LazyFixture("executions_with_models_and_indicators"),
         ],
     )
     def test_walkforward(
