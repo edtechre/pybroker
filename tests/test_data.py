@@ -13,6 +13,7 @@ import pytest
 import re
 import yfinance
 from .fixtures import *  # noqa: F401
+from .util import *  # noqa: F401
 from datetime import datetime
 from pybroker.cache import DataSourceCacheKey
 from pybroker.common import to_seconds
@@ -138,10 +139,9 @@ class TestDataSourceCacheMixin:
             assert sym_df.equals(alpaca_df[alpaca_df["symbol"] == sym])
 
     @pytest.mark.usefixtures("scope")
-    @pytest.mark.parametrize(
-        "query_symbols", [[], pytest.lazy_fixture("symbols")]
-    )
-    def test_get_cached_when_empty(self, mock_cache, query_symbols):
+    @pytest.mark.parametrize("query_symbols", [[], "symbols"])
+    def test_get_cached_when_empty(self, mock_cache, query_symbols, request):
+        query_symbols = get_fixture(request, query_symbols)
         cache_mixin = DataSourceCacheMixin()
         df, uncached_syms = cache_mixin.get_cached(
             query_symbols, TIMEFRAME, START_DATE, END_DATE, ADJUST
@@ -503,15 +503,17 @@ class TestYFinance:
         "param_symbols, expected_df, expected_rows",
         [
             (
-                pytest.lazy_fixture("symbols"),
-                pytest.lazy_fixture("yfinance_df"),
+                "symbols",
+                "yfinance_df",
                 2020,
             ),
-            (["SPY"], pytest.lazy_fixture("yfinance_single_df"), 505),
+            (["SPY"], "yfinance_single_df", 505),
         ],
     )
     @pytest.mark.usefixtures("setup_ds_cache")
-    def test_query(self, param_symbols, expected_df, expected_rows):
+    def test_query(self, param_symbols, expected_df, expected_rows, request):
+        param_symbols = get_fixture(request, param_symbols)
+        expected_df = get_fixture(request, expected_df)
         yf = YFinance()
         with mock.patch.object(yfinance, "download", return_value=expected_df):
             df = yf.query(param_symbols, START_DATE, END_DATE)

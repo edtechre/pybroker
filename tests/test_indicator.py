@@ -12,6 +12,7 @@ import pytest
 import re
 from pybroker.cache import CacheDateFields
 from .fixtures import *  # noqa: F401
+from .util import *  # noqa: F401
 from pybroker.common import BarData, DataCol, IndicatorSymbol, to_datetime
 from pybroker.indicator import (
     Indicator,
@@ -214,10 +215,9 @@ class TestIndicatorSet:
         with pytest.raises(ValueError, match="No indicators were added."):
             ind_set(data_source_df)
 
-    @pytest.mark.parametrize(
-        "df", [pd.DataFrame(), pytest.lazy_fixture("data_source_df")]
-    )
-    def test_call(self, df, hhv_ind, llv_ind, disable_parallel):
+    @pytest.mark.parametrize("df", [pd.DataFrame(), "data_source_df"])
+    def test_call(self, df, hhv_ind, llv_ind, disable_parallel, request):
+        df = get_fixture(request, df)
         ind_set = IndicatorSet()
         ind_set.add([hhv_ind, llv_ind])
         result = ind_set(df, disable_parallel)

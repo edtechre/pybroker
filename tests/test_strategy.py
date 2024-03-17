@@ -11,7 +11,8 @@ import os
 import pandas as pd
 import pytest
 import re
-from .fixtures import *
+from .fixtures import *  # noqa: F401
+from .util import *  # noqa: F401
 from collections import defaultdict, deque
 from datetime import datetime
 from decimal import Decimal
@@ -1081,18 +1082,33 @@ def executions_with_indicators(executions_only, hhv_ind, llv_ind):
 
 
 @pytest.fixture()
-def executions_with_models(executions_only, model_source):
-    def exec_fn(ctx):
-        assert isinstance(ctx.model(model_source.name), FakeModel)
+def exec_model_source(scope, data_source_df, indicators):
+    return model(
+        MODEL_NAME,
+        lambda sym, *_: FakeModel(
+            sym,
+            np.full(
+                data_source_df[data_source_df["symbol"] == sym].shape[0], 100
+            ),
+        ),
+        indicators,
+        pretrained=False,
+    )
 
-    executions_only[0]["models"] = model_source
+
+@pytest.fixture()
+def executions_with_models(executions_only, exec_model_source):
+    def exec_fn(ctx):
+        assert isinstance(ctx.model(exec_model_source.name), FakeModel)
+
+    executions_only[0]["models"] = exec_model_source
     executions_only[0]["fn"] = exec_fn
     return executions_only
 
 
 @pytest.fixture()
 def executions_with_models_and_indicators(
-    executions_only, model_source, hhv_ind, llv_ind
+    executions_only, exec_model_source, hhv_ind, llv_ind
 ):
     def exec_fn_1(ctx):
         assert len(ctx.indicator(llv_ind.name))
@@ -1102,10 +1118,10 @@ def executions_with_models_and_indicators(
 
     def exec_fn_2(ctx):
         assert len(ctx.indicator(hhv_ind.name))
-        assert isinstance(ctx.model(model_source.name), FakeModel)
+        assert isinstance(ctx.model(exec_model_source.name), FakeModel)
 
     executions_only[1]["indicators"] = hhv_ind
-    executions_only[1]["models"] = model_source
+    executions_only[1]["models"] = exec_model_source
     executions_only[1]["fn"] = exec_fn_2
     return executions_only
 
@@ -1158,16 +1174,16 @@ END_DATE = "2021-12-31"
 class TestStrategy:
     @pytest.mark.parametrize(
         "data_source",
-        [FakeDataSource(), pytest.lazy_fixture("data_source_df")],
+        [FakeDataSource(), "data_source_df"],
     )
     @pytest.mark.parametrize(
         "executions",
         [
-            pytest.lazy_fixture("executions_train_only"),
-            pytest.lazy_fixture("executions_only"),
-            pytest.lazy_fixture("executions_with_indicators"),
-            pytest.lazy_fixture("executions_with_models"),
-            pytest.lazy_fixture("executions_with_models_and_indicators"),
+            "executions_train_only",
+            "executions_only",
+            "executions_with_indicators",
+            "executions_with_models",
+            "executions_with_models_and_indicators",
         ],
     )
     def test_walkforward(
@@ -1179,7 +1195,10 @@ class TestStrategy:
         between_time,
         calc_bootstrap,
         disable_parallel,
+        request,
     ):
+        data_source = get_fixture(request, data_source)
+        executions = get_fixture(request, executions)
         config = StrategyConfig(
             bootstrap_samples=100, bootstrap_sample_size=10
         )
