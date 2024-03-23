@@ -269,24 +269,20 @@ def _calculate_pnl_mae_mfe(
     low: Optional[Decimal],
     high: Optional[Decimal],
 ):
+    if pos.type != "long" and pos.type != "short":
+        raise ValueError(f"Unknown position type: {pos.type}")
     pnl = Decimal()
     for entry in pos.entries:
-        if pos.type == "long":
-            pnl += (close - entry.price) * entry.shares
-        elif pos.type == "short":
-            pnl += (entry.price - close) * entry.shares
-        else:
-            raise ValueError(f"Unknown position type: {pos.type}")
-        if low is None and high is None:
-            continue
         loss = Decimal()
         profit = Decimal()
         if pos.type == "long":
+            pnl += (close - entry.price) * entry.shares
             if low is not None:
                 loss = low - entry.price
             if high is not None:
                 profit = high - entry.price
         elif pos.type == "short":
+            pnl += (entry.price - close) * entry.shares
             if high is not None:
                 loss = entry.price - high
             if low is not None:
