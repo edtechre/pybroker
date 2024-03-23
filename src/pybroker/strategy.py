@@ -1510,6 +1510,8 @@ class Strategy(
             "return_pct",
             "agg_pnl",
             "pnl_per_bar",
+            "mae",
+            "mfe",
         ):
             trades_df[col] = quantize(
                 trades_df, col, self._config.round_test_result
