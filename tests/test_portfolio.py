@@ -67,6 +67,8 @@ def assert_trade(
     bars,
     pnl_per_bar,
     stop_type,
+    mae,
+    mfe,
 ):
     assert trade.type == type
     assert trade.symbol == symbol
@@ -84,6 +86,8 @@ def assert_trade(
         assert trade.stop is None
     else:
         assert trade.stop == stop_type.value
+    assert trade.mae == mae
+    assert trade.mfe == mfe
 
 
 def assert_portfolio(
@@ -383,6 +387,8 @@ def test_buy_when_existing_short_position():
         bars=1,
         pnl_per_bar=expected_pnl,
         stop_type=None,
+        mae=0,
+        mfe=FILL_PRICE_3 - FILL_PRICE_1,
     )
 
 
@@ -446,6 +452,8 @@ def test_buy_when_existing_short_and_not_enough_cash():
         bars=1,
         pnl_per_bar=expected_pnl,
         stop_type=None,
+        mae=entry_price - exit_price,
+        mfe=0,
     )
 
 
@@ -605,6 +613,8 @@ def test_sell_when_all_shares(fill_price, limit_price):
         bars=1,
         pnl_per_bar=expected_pnl,
         stop_type=None,
+        mae=0,
+        mfe=fill_price - FILL_PRICE_1,
     )
 
 
@@ -656,6 +666,8 @@ def test_sell_when_all_shares_and_multiple_bars():
         bars=2,
         pnl_per_bar=expected_pnl / 2,
         stop_type=None,
+        mae=0,
+        mfe=FILL_PRICE_3 - FILL_PRICE_1,
     )
 
 
@@ -729,6 +741,8 @@ def test_sell_when_all_shares_and_fractional():
         bars=1,
         pnl_per_bar=expected_pnl,
         stop_type=None,
+        mae=0,
+        mfe=FILL_PRICE_3 - FILL_PRICE_1,
     )
 
 
@@ -891,6 +905,8 @@ def test_sell_when_partial_shares():
         bars=1,
         pnl_per_bar=expected_pnl,
         stop_type=None,
+        mae=0,
+        mfe=FILL_PRICE_3 - FILL_PRICE_1,
     )
 
 
@@ -964,6 +980,8 @@ def test_sell_when_multiple_entries():
         bars=1,
         pnl_per_bar=expected_trade_pnl_1,
         stop_type=None,
+        mae=0,
+        mfe=FILL_PRICE_3 - FILL_PRICE_1,
     )
     expected_trade_pnl_2 = (FILL_PRICE_3 - FILL_PRICE_1) * (
         SHARES_2 - SHARES_1
@@ -983,6 +1001,8 @@ def test_sell_when_multiple_entries():
         bars=1,
         pnl_per_bar=expected_trade_pnl_2,
         stop_type=None,
+        mae=0,
+        mfe=FILL_PRICE_3 - FILL_PRICE_1,
     )
 
 
@@ -1271,6 +1291,8 @@ def test_short_when_existing_long_position():
         bars=1,
         pnl_per_bar=expected_pnl,
         stop_type=None,
+        mae=0,
+        mfe=FILL_PRICE_3 - FILL_PRICE_1,
     )
 
 
@@ -1387,6 +1409,8 @@ def test_cover_when_all_shares(fill_price, limit_price):
         bars=1,
         pnl_per_bar=expected_pnl,
         stop_type=None,
+        mae=0,
+        mfe=FILL_PRICE_3 - fill_price,
     )
 
 
@@ -1455,6 +1479,8 @@ def test_cover_when_partial_shares():
         bars=1,
         pnl_per_bar=expected_pnl,
         stop_type=None,
+        mae=0,
+        mfe=FILL_PRICE_3 - FILL_PRICE_1,
     )
 
 
@@ -1528,6 +1554,8 @@ def test_cover_when_multiple_entries():
         bars=1,
         pnl_per_bar=expected_trade_pnl_1,
         stop_type=None,
+        mae=0,
+        mfe=FILL_PRICE_3 - FILL_PRICE_1,
     )
     expected_trade_pnl_2 = (FILL_PRICE_3 - FILL_PRICE_1) * (
         SHARES_2 - SHARES_1
@@ -1547,6 +1575,8 @@ def test_cover_when_multiple_entries():
         bars=1,
         pnl_per_bar=expected_trade_pnl_2,
         stop_type=None,
+        mae=0,
+        mfe=FILL_PRICE_3 - FILL_PRICE_1,
     )
 
 
@@ -1609,6 +1639,8 @@ def test_cover_when_not_enough_cash():
         bars=1,
         pnl_per_bar=expected_pnl,
         stop_type=None,
+        mae=sell_fill_price - buy_fill_price,
+        mfe=0,
     )
 
 
@@ -1680,6 +1712,8 @@ def test_exit_position():
         pnl_per_bar=long_pnl,
         agg_pnl=long_pnl,
         stop_type=None,
+        mae=0,
+        mfe=FILL_PRICE_2 - FILL_PRICE_1,
     )
     assert len(portfolio.orders) == 3
     assert_order(
@@ -1714,6 +1748,8 @@ def test_exit_position():
         pnl_per_bar=short_pnl,
         agg_pnl=short_pnl + long_pnl,
         stop_type=None,
+        mae=FILL_PRICE_3 - FILL_PRICE_4,
+        mfe=0,
     )
     assert len(portfolio.orders) == 4
     assert_order(
@@ -1791,6 +1827,8 @@ def test_trigger_long_bar_stop():
         bars=1,
         pnl_per_bar=expected_pnl,
         stop_type=StopType.BAR,
+        mae=0,
+        mfe=expected_fill_price - entry_price,
     )
     assert len(portfolio.orders) == 2
     assert_order(
@@ -1881,6 +1919,8 @@ def test_trigger_long_loss_stop(percent, points, expected_fill_price):
         bars=1,
         pnl_per_bar=expected_pnl,
         stop_type=StopType.LOSS,
+        mae=expected_fill_price - entry_price,
+        mfe=0,
     )
     assert len(portfolio.orders) == 2
     assert_order(
@@ -1971,6 +2011,8 @@ def test_trigger_long_profit_stop(percent, points, expected_fill_price):
         bars=1,
         pnl_per_bar=expected_pnl,
         stop_type=StopType.PROFIT,
+        mae=0,
+        mfe=expected_fill_price - entry_price,
     )
     assert len(portfolio.orders) == 2
     assert_order(
@@ -2070,6 +2112,8 @@ def test_trigger_long_trailing_stop(percent, points, expected_fill_price):
         bars=3,
         pnl_per_bar=expected_pnl / 3,
         stop_type=StopType.TRAILING,
+        mae=0,
+        mfe=expected_fill_price - entry_price,
     )
     assert len(portfolio.orders) == 2
     assert_order(
@@ -2157,6 +2201,8 @@ def test_trigger_short_bar_stop():
         bars=1,
         pnl_per_bar=expected_pnl,
         stop_type=StopType.BAR,
+        mae=entry_price - expected_fill_price,
+        mfe=0,
     )
     assert len(portfolio.orders) == 2
     assert_order(
@@ -2247,6 +2293,8 @@ def test_trigger_short_loss_stop(percent, points, expected_fill_price):
         bars=1,
         pnl_per_bar=expected_pnl,
         stop_type=StopType.LOSS,
+        mae=entry_price - expected_fill_price,
+        mfe=0,
     )
     assert len(portfolio.orders) == 2
     assert_order(
@@ -2337,6 +2385,8 @@ def test_trigger_short_profit_stop(percent, points, expected_fill_price):
         bars=1,
         pnl_per_bar=expected_pnl,
         stop_type=StopType.PROFIT,
+        mae=0,
+        mfe=entry_price - expected_fill_price,
     )
     assert len(portfolio.orders) == 2
     assert_order(
@@ -2436,6 +2486,8 @@ def test_trigger_short_trailing_stop(percent, points, expected_fill_price):
         bars=3,
         pnl_per_bar=expected_pnl / 3,
         stop_type=StopType.TRAILING,
+        mae=entry_price - expected_fill_price,
+        mfe=0,
     )
     assert len(portfolio.orders) == 2
     assert_order(
@@ -2776,6 +2828,8 @@ def test_check_stops_when_multiple_entries():
         bars=1,
         pnl_per_bar=expected_pnl_2,
         stop_type=StopType.LOSS,
+        mae=expected_fill_price_1 - entry_price_1,
+        mfe=0,
     )
     assert_trade(
         trade=portfolio.trades[1],
@@ -2792,6 +2846,8 @@ def test_check_stops_when_multiple_entries():
         bars=3,
         pnl_per_bar=expected_pnl_1 / 3,
         stop_type=StopType.LOSS,
+        mae=expected_fill_price_2 - entry_price_2,
+        mfe=0,
     )
     assert len(portfolio.orders) == 4
     assert_order(
@@ -3218,16 +3274,26 @@ def test_capture_bar_when_short_position():
     fill_price = Decimal("16.72")
     shares = 100
     close_price = Decimal("16.7")
+    low_price = Decimal("15.00")
+    high_price = Decimal("18.00")
     portfolio = Portfolio(cash)
     portfolio.sell(DATE_1, SYMBOL_1, shares, fill_price)
     df = pd.DataFrame(
         [
-            [SYMBOL_1, DATE_1, close_price],
+            [SYMBOL_1, DATE_1, close_price, low_price, high_price],
         ],
-        columns=["symbol", "date", "close"],
+        columns=["symbol", "date", "close", "low", "high"],
     )
     df = df.set_index(["symbol", "date"])
     portfolio.capture_bar(DATE_1, df)
+    pos = portfolio.short_positions[SYMBOL_1]
+    assert pos.pnl == (fill_price - close_price) * shares
+    assert pos.equity == 0
+    assert pos.margin == close_price * shares
+    assert pos.market_value == pos.margin + pos.pnl
+    assert pos.close == close_price
+    assert pos.entries[0].mae == fill_price - high_price
+    assert pos.entries[0].mfe == fill_price - low_price
     assert len(portfolio.bars) == 1
     bar = portfolio.bars[0]
     assert bar.date == DATE_1
@@ -3256,16 +3322,26 @@ def test_capture_bar_when_long_position():
     fill_price = Decimal("16.72")
     shares = 100
     close_price = Decimal("16.7")
+    low_price = Decimal("15.00")
+    high_price = Decimal("18.00")
     portfolio = Portfolio(cash)
     portfolio.buy(DATE_1, SYMBOL_1, shares, fill_price)
     df = pd.DataFrame(
         [
-            [SYMBOL_1, DATE_1, close_price],
+            [SYMBOL_1, DATE_1, close_price, low_price, high_price],
         ],
-        columns=["symbol", "date", "close"],
+        columns=["symbol", "date", "close", "low", "high"],
     )
     df = df.set_index(["symbol", "date"])
     portfolio.capture_bar(DATE_1, df)
+    pos = portfolio.long_positions[SYMBOL_1]
+    assert pos.pnl == (close_price - fill_price) * shares
+    assert pos.equity == close_price * shares
+    assert pos.margin == 0
+    assert pos.market_value == pos.equity
+    assert pos.close == close_price
+    assert pos.entries[0].mae == low_price - fill_price
+    assert pos.entries[0].mfe == high_price - fill_price
     assert len(portfolio.bars) == 1
     bar = portfolio.bars[0]
     assert bar.date == DATE_1
@@ -3286,3 +3362,49 @@ def test_capture_bar_when_long_position():
     assert pos_bar.margin == 0
     assert pos_bar.unrealized_pnl == (close_price - fill_price) * shares
     assert pos_bar.market_value == pos_bar.equity
+
+
+def test_mae_mfe_when_short_position():
+    cash = 100_000
+    fill_price = Decimal("16.72")
+    shares = 100
+    close_price = Decimal("16.7")
+    low_price = Decimal("15.00")
+    high_price = Decimal("18.00")
+    portfolio = Portfolio(cash)
+    portfolio.sell(DATE_1, SYMBOL_1, shares, fill_price)
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, close_price, low_price, high_price],
+        ],
+        columns=["symbol", "date", "close", "low", "high"],
+    )
+    df = df.set_index(["symbol", "date"])
+    portfolio.capture_bar(DATE_1, df)
+    portfolio.buy(DATE_1, SYMBOL_1, shares, fill_price)
+    assert len(portfolio.trades) == 1
+    assert portfolio.trades[0].mae == fill_price - high_price
+    assert portfolio.trades[0].mfe == fill_price - low_price
+
+
+def test_mae_mfe_when_long_position():
+    cash = 100_000
+    fill_price = Decimal("16.72")
+    shares = 100
+    close_price = Decimal("16.7")
+    low_price = Decimal("15.00")
+    high_price = Decimal("18.00")
+    portfolio = Portfolio(cash)
+    portfolio.buy(DATE_1, SYMBOL_1, shares, fill_price)
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, close_price, low_price, high_price],
+        ],
+        columns=["symbol", "date", "close", "low", "high"],
+    )
+    df = df.set_index(["symbol", "date"])
+    portfolio.capture_bar(DATE_1, df)
+    portfolio.sell(DATE_1, SYMBOL_1, shares, fill_price)
+    assert len(portfolio.trades) == 1
+    assert portfolio.trades[0].mae == low_price - fill_price
+    assert portfolio.trades[0].mfe == high_price - fill_price

@@ -89,6 +89,8 @@ class Entry:
         type: Type of  :class:`.Position`, either ``long`` or ``short``.
         bars: Current number of bars since entry.
         stops: Stops set on the entry.
+        mae: Maximum adverse excursion (MAE).
+        mfe: Maximum favorable excursion (MFE).
     """
 
     id: int
@@ -99,6 +101,8 @@ class Entry:
     type: Literal["long", "short"]
     bars: int = field(default=0)
     stops: set[Stop] = field(default_factory=set)
+    mae: Decimal = field(default_factory=Decimal)
+    mfe: Decimal = field(default_factory=Decimal)
 
 
 @dataclass
@@ -157,6 +161,8 @@ class Trade(NamedTuple):
         bars: Number of bars the trade was held.
         pnl_per_bar: Profit and loss (PnL) per bar held.
         stop: Type of stop that was triggered, if any.
+        mae: Maximum adverse excursion (MAE).
+        mfe: Maximum favorable excursion (MFE).
     """
 
     id: int
@@ -173,6 +179,8 @@ class Trade(NamedTuple):
     bars: int
     pnl_per_bar: Decimal
     stop: Optional[Literal["bar", "loss", "profit", "trailing"]]
+    mae: Decimal
+    mfe: Decimal
 
 
 class Order(NamedTuple):
@@ -255,21 +263,39 @@ class _OrderResult(NamedTuple):
     rem_shares: Decimal
 
 
-def _calculate_pnl(
-    price: Decimal,
-    entries: Iterable[Entry],
-    entry_type: Literal["short", "long"],
-) -> Decimal:
-    if entry_type == "long":
-        return Decimal(
-            sum((price - entry.price) * entry.shares for entry in entries)
-        )
-    elif entry_type == "short":
-        return Decimal(
-            sum((entry.price - price) * entry.shares for entry in entries)
-        )
-    else:
-        raise ValueError(f"Unknown entry_type: {entry_type}")
+def _calculate_pnl_mae_mfe(
+    pos: Position,
+    close: Decimal,
+    low: Optional[Decimal],
+    high: Optional[Decimal],
+):
+    pnl = Decimal()
+    for entry in pos.entries:
+        if pos.type == "long":
+            pnl += (close - entry.price) * entry.shares
+        elif pos.type == "short":
+            pnl += (entry.price - close) * entry.shares
+        else:
+            raise ValueError(f"Unknown position type: {pos.type}")
+        if low is None and high is None:
+            continue
+        loss = Decimal()
+        profit = Decimal()
+        if pos.type == "long":
+            if low is not None:
+                loss = low - entry.price
+            if high is not None:
+                profit = high - entry.price
+        elif pos.type == "short":
+            if high is not None:
+                loss = entry.price - high
+            if low is not None:
+                profit = entry.price - low
+        if loss < 0 and loss < entry.mae:
+            entry.mae = loss
+        if profit > 0 and profit > entry.mfe:
+            entry.mfe = profit
+    pos.pnl = pnl
 
 
 class Portfolio:
@@ -463,6 +489,8 @@ class Portfolio:
         bars: int,
         pnl_per_bar: Decimal,
         stop_type: Optional[StopType],
+        mae: Decimal,
+        mfe: Decimal,
     ):
         self._trade_id += 1
         trade = Trade(
@@ -480,6 +508,8 @@ class Portfolio:
             bars=bars,
             pnl_per_bar=pnl_per_bar,
             stop=None if stop_type is None else stop_type.value,
+            mae=mae,
+            mfe=mfe,
         )
         self.trades.append(trade)
         if pnl > 0:
@@ -634,6 +664,9 @@ class Portfolio:
         entry.shares -= shares
         pnl_per_bar = entry_pnl if not entry.bars else entry_pnl / entry.bars
         return_pct = ((entry.price / fill_price) - 1) * 100
+        pnl = entry.price - fill_price
+        mae = pnl if pnl < 0 and pnl < entry.mae else entry.mae
+        mfe = pnl if pnl > 0 and pnl > entry.mfe else entry.mfe
         self._add_trade(
             type=entry.type,
             symbol=entry.symbol,
@@ -648,6 +681,8 @@ class Portfolio:
             bars=entry.bars,
             pnl_per_bar=pnl_per_bar,
             stop_type=stop_type,
+            mae=mae,
+            mfe=mfe,
         )
 
     def _buy(
@@ -798,6 +833,9 @@ class Portfolio:
         entry.shares -= shares
         pnl_per_bar = entry_pnl if not entry.bars else entry_pnl / entry.bars
         return_pct = ((fill_price / entry.price) - 1) * 100
+        pnl = fill_price - entry.price
+        mae = pnl if pnl < 0 and pnl < entry.mae else entry.mae
+        mfe = pnl if pnl > 0 and pnl > entry.mfe else entry.mfe
         self._add_trade(
             type=entry.type,
             symbol=entry.symbol,
@@ -812,6 +850,8 @@ class Portfolio:
             bars=entry.bars,
             pnl_per_bar=pnl_per_bar,
             stop_type=stop_type,
+            mae=mae,
+            mfe=mfe,
         )
 
     def _update_position(self, pos: Position):
@@ -903,8 +943,12 @@ class Portfolio:
         for sym in self.symbols:
             index = (sym, date)
             close = None
+            low = None
+            high = None
             if index in df.index:
                 close = to_decimal(df.loc[index][DataCol.CLOSE.value])
+                low = to_decimal(df.loc[index][DataCol.LOW.value])
+                high = to_decimal(df.loc[index][DataCol.HIGH.value])
             pos_long_shares = Decimal()
             pos_short_shares = Decimal()
             pos_equity = Decimal()
@@ -914,10 +958,12 @@ class Portfolio:
             if sym in self.long_positions:
                 pos = self.long_positions[sym]
                 if close is not None:
+                    _calculate_pnl_mae_mfe(
+                        pos, close=close, low=low, high=high
+                    )
                     pos.equity = pos.shares * close
                     pos.market_value = pos.equity
                     pos.close = close
-                    pos.pnl = _calculate_pnl(close, pos.entries, "long")
                     pos_long_shares += pos.shares
                     pos_equity += pos.equity
                     pos_market_value += pos.market_value
@@ -927,8 +973,10 @@ class Portfolio:
             if sym in self.short_positions:
                 pos = self.short_positions[sym]
                 if close is not None:
+                    _calculate_pnl_mae_mfe(
+                        pos, close=close, low=low, high=high
+                    )
                     pos.close = close
-                    pos.pnl = _calculate_pnl(close, pos.entries, "short")
                     pos.margin = close * pos.shares
                     pos.market_value = pos.margin + pos.pnl
                     pos_margin += pos.margin

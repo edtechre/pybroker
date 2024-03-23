@@ -1688,6 +1688,8 @@ class TestStrategy:
                     bars=2,
                     pnl_per_bar=Decimal(500),
                     stop=None,
+                    mae=Decimal(-10),
+                    mfe=Decimal(10),
                 ),
             )
         )
@@ -1791,6 +1793,8 @@ class TestStrategy:
                     bars=2,
                     pnl_per_bar=Decimal(500),
                     stop=None,
+                    mae=Decimal(-10),
+                    mfe=Decimal(10),
                 ),
             )
         )

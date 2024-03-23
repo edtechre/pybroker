@@ -97,6 +97,8 @@ def trades(dates, symbols):
         bars=1,
         pnl_per_bar=Decimal(100),
         stop=None,
+        mae=Decimal(-10),
+        mfe=Decimal(10),
     )
 
 
