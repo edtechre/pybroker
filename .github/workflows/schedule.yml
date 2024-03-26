@@ -60,6 +60,8 @@ jobs:
       matrix:
         python:
           - version: "3.12"
+            toxenv: "py312"
+          - version: "3.11"
             toxenv: "py311"
           - version: "3.10"
             toxenv: "py310"
