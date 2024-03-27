@@ -454,7 +454,7 @@ class Logger:
     def _warn(self, msg: str, *args):
         if self._disabled:
             return
-        logging.warn(msg, *args)
+        logging.warning(msg, *args)
 
     def _format_order(
         self,
