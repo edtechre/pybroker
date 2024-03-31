@@ -5,7 +5,8 @@ build-backend = "setuptools.build_meta"
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
 exclude = [
-    "src/pybroker/__init__.py",
+    "src/pybroker/__init__.py",  # exclude __init__.py file
+    "tests",  # exclude tests fold
     ".bzr",
     ".direnv",
     ".eggs",
@@ -46,7 +47,7 @@ target-version = "py312"
 # Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
 # McCabe complexity (`C901`) by default.
 select = ["E4", "E7", "E9", "F"]
-ignore = []
+ignore = ["E402"]  # Module level import not at top of file
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
