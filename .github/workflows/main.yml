@@ -18,7 +18,7 @@ jobs:
         run: python -m pip install tox
 
       - name: Run ruff
-        run: tox -e format
+        run: tox -e format -- --format
 
   lint:
     name: Lint
@@ -34,7 +34,7 @@ jobs:
         run: python -m pip install tox
 
       - name: Run ruff
-        run: tox -e lint
+        run: tox -e lint -- check
 
   typecheck:
     name: Type check
