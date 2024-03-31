@@ -5,6 +5,7 @@ build-backend = "setuptools.build_meta"
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
 exclude = [
+    "src/pybroker/__init__.py",
     ".bzr",
     ".direnv",
     ".eggs",
