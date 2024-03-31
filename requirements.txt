@@ -1,6 +1,5 @@
 akshare>=1.10.1
 alpaca-py>=0.7.2
-black>=22.10.0
 diskcache>=5.4.0
 flake8>=5.0.4
 flake8-bugbear>=22.10.25
@@ -23,3 +22,4 @@ Sphinx>=5.3.0
 sphinx_rtd_theme>=1.1.1
 sphinx-intl>=2.1.0
 yfinance>=0.1.84
+ruff>=0.3.4
