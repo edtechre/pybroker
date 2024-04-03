@@ -425,9 +425,9 @@ class BacktestMixin:
                 if id < len(buy_results):
                     buy_results[id].buy_shares = to_decimal(shares)
                 else:
-                    sell_results[id - len(buy_results)].sell_shares = (
-                        to_decimal(shares)
-                    )
+                    sell_results[
+                        id - len(buy_results)
+                    ].sell_shares = to_decimal(shares)
             elif buy_results is not None:
                 if id >= len(buy_results):
                     raise ValueError(f"Invalid ExecSignal id: {id}")
@@ -1272,11 +1272,7 @@ class Strategy(
         )
         return tuple(
             sorted(
-                (
-                    day.value
-                    if isinstance(day, Day)
-                    else Day[day.upper()].value
-                )  # type: ignore[union-attr]
+                (day.value if isinstance(day, Day) else Day[day.upper()].value)  # type: ignore[union-attr]
                 for day in set(days)  # type: ignore[arg-type]
             )
         )  # type: ignore[return-value]

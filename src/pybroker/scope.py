@@ -259,9 +259,7 @@ class ColumnScope:
             if symbol in self._sym_cols and name in self._sym_cols[symbol]:
                 result[name] = self._sym_cols[symbol][name]
                 if result[name] is not None:
-                    result[name] = result[name][
-                        :end_index
-                    ]  # type: ignore[index]
+                    result[name] = result[name][:end_index]  # type: ignore[index]
                 continue
             if symbol in sym_dfs:
                 sym_df = sym_dfs[symbol]

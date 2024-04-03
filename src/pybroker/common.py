@@ -216,7 +216,7 @@ class BarData:
 
 
 def to_datetime(
-    date: Union[str, datetime, np.datetime64, pd.Timestamp]
+    date: Union[str, datetime, np.datetime64, pd.Timestamp],
 ) -> datetime:
     """Converts ``date`` to :class:`datetime`."""
     if isinstance(date, pd.Timestamp):
