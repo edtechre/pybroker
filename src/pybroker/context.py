@@ -41,6 +41,7 @@ from typing import (
     Iterator,
     Literal,
     Mapping,
+    MutableMapping,
     NamedTuple,
     Optional,
     Union,
@@ -612,7 +613,7 @@ class ExecContext(BaseContext):
         pending_order_scope: PendingOrderScope,
         models: Mapping[ModelSymbol, TrainedModel],
         sym_end_index: Mapping[str, int],
-        session: Mapping,
+        session: MutableMapping,
     ):
         super().__init__(
             config=config,
