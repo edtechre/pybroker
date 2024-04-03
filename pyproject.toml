@@ -5,8 +5,6 @@ build-backend = "setuptools.build_meta"
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
 exclude = [
-    "src/pybroker/__init__.py",  # exclude __init__.py file
-    "tests",  # exclude tests fold
     ".bzr",
     ".direnv",
     ".eggs",
@@ -41,6 +39,12 @@ indent-width = 4
 
 # Assume Python 3.12
 target-version = "py312"
+
+[tool.ruff.lint.per-file-ignores]
+"src/pybroker/*.py" = ["E203", "E402"]
+"src/pybroker/__init__.py" = ["F401", "E402"]
+"tests/*.py" = ["E203", "E402"]
+"tests/test_*" = ["E203", "E402", "F403", "F405"]
 
 [tool.ruff.lint]
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
