@@ -830,6 +830,7 @@ class ExecContext(BaseContext):
         if pos is None:
             return
         self.sell_shares = pos.shares
+        self._portfolio.remove_stops(pos)
 
     def cover_all_shares(self):
         """Covers all short shares of :attr:`.ExecContext.symbol`."""
