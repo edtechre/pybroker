@@ -503,7 +503,8 @@ class YFinance(DataSource):
         _adjust: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
-        df = yfinance.download(list(symbols), start=start_date, end=end_date)
+        yf_progress_bar_flag = (self._logger.disable_flag and self._logger.progress_bar_flag)
+        df = yfinance.download(list(symbols), start=start_date, end=end_date, progress=yf_progress_bar_flag)
         if df.columns.empty:
             return pd.DataFrame(
                 columns=[
