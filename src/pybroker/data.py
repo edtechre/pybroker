@@ -38,12 +38,12 @@ class DataSourceCacheMixin:
     """
 
     def get_cached(
-            self,
-            symbols: Iterable[str],
-            timeframe: str,
-            start_date: Union[str, datetime, pd.Timestamp, np.datetime64],
-            end_date: Union[str, datetime, pd.Timestamp, np.datetime64],
-            adjust: Optional[str],
+        self,
+        symbols: Iterable[str],
+        timeframe: str,
+        start_date: Union[str, datetime, pd.Timestamp, np.datetime64],
+        end_date: Union[str, datetime, pd.Timestamp, np.datetime64],
+        adjust: Optional[str],
     ) -> tuple[pd.DataFrame, Iterable[str]]:
         """Retrieves cached data from disk when caching is enabled with
         :meth:`pybroker.cache.enable_data_source_cache`.
@@ -108,12 +108,12 @@ class DataSourceCacheMixin:
         return df, uncached_syms
 
     def set_cached(
-            self,
-            timeframe: str,
-            start_date: Union[str, datetime, pd.Timestamp, np.datetime64],
-            end_date: Union[str, datetime, pd.Timestamp, np.datetime64],
-            adjust: Optional[str],
-            data: pd.DataFrame,
+        self,
+        timeframe: str,
+        start_date: Union[str, datetime, pd.Timestamp, np.datetime64],
+        end_date: Union[str, datetime, pd.Timestamp, np.datetime64],
+        adjust: Optional[str],
+        data: pd.DataFrame,
     ):
         """Stores data to disk cache when caching is enabled with
         :meth:`pybroker.cache.enable_data_source_cache`.
@@ -169,12 +169,12 @@ class DataSource(ABC, DataSourceCacheMixin):
         self._logger = self._scope.logger
 
     def query(
-            self,
-            symbols: Union[str, Iterable[str]],
-            start_date: Union[str, datetime],
-            end_date: Union[str, datetime],
-            timeframe: Optional[str] = "",
-            adjust: Optional[str] = None,
+        self,
+        symbols: Union[str, Iterable[str]],
+        start_date: Union[str, datetime],
+        end_date: Union[str, datetime],
+        timeframe: Optional[str] = "",
+        adjust: Optional[str] = None,
     ) -> pd.DataFrame:
         """Queries data. Cached data is returned if caching is enabled by
         calling :meth:`pybroker.cache.enable_data_source_cache`.
@@ -232,9 +232,9 @@ class DataSource(ABC, DataSourceCacheMixin):
             frozenset(uncached_syms), start_date, end_date, timeframe, adjust
         )
         if (
-                self._scope.data_source_cache is not None
-                and not cached_df.columns.empty
-                and set(cached_df.columns) != set(df.columns)
+            self._scope.data_source_cache is not None
+            and not cached_df.columns.empty
+            and set(cached_df.columns) != set(df.columns)
         ):
             self._logger.info_invalidate_data_source_cache()
             self._scope.data_source_cache.clear()
@@ -249,12 +249,12 @@ class DataSource(ABC, DataSourceCacheMixin):
 
     @abstractmethod
     def _fetch_data(
-            self,
-            symbols: frozenset[str],
-            start_date: datetime,
-            end_date: datetime,
-            timeframe: Optional[str],
-            adjust: Optional[str],
+        self,
+        symbols: frozenset[str],
+        start_date: datetime,
+        end_date: datetime,
+        timeframe: Optional[str],
+        adjust: Optional[str],
     ) -> pd.DataFrame:
         """:meta public:
         Override this method to return data from a custom
@@ -292,7 +292,7 @@ class DataSource(ABC, DataSourceCacheMixin):
 
 
 def _parse_alpaca_timeframe(
-        timeframe: Optional[str],
+    timeframe: Optional[str],
 ) -> tuple[int, TimeFrameUnit]:
     if timeframe is None:
         raise ValueError("Timeframe needs to be specified for Alpaca.")
@@ -323,23 +323,23 @@ class Alpaca(DataSource):
         self._api = alpaca_stock.StockHistoricalDataClient(api_key, api_secret)
 
     def query(
-            self,
-            symbols: Union[str, Iterable[str]],
-            start_date: Union[str, datetime],
-            end_date: Union[str, datetime],
-            timeframe: Optional[str] = "1d",
-            adjust: Optional[str] = None,
+        self,
+        symbols: Union[str, Iterable[str]],
+        start_date: Union[str, datetime],
+        end_date: Union[str, datetime],
+        timeframe: Optional[str] = "1d",
+        adjust: Optional[str] = None,
     ) -> pd.DataFrame:
         _parse_alpaca_timeframe(timeframe)
         return super().query(symbols, start_date, end_date, timeframe, adjust)
 
     def _fetch_data(
-            self,
-            symbols: frozenset[str],
-            start_date: datetime,
-            end_date: datetime,
-            timeframe: Optional[str],
-            adjust: Optional[str],
+        self,
+        symbols: frozenset[str],
+        start_date: datetime,
+        end_date: datetime,
+        timeframe: Optional[str],
+        adjust: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
         amount, unit = _parse_alpaca_timeframe(timeframe)
@@ -417,23 +417,23 @@ class AlpacaCrypto(DataSource):
         )
 
     def query(
-            self,
-            symbols: Union[str, Iterable[str]],
-            start_date: Union[str, datetime],
-            end_date: Union[str, datetime],
-            timeframe: Optional[str] = "1d",
-            _: Optional[str] = None,
+        self,
+        symbols: Union[str, Iterable[str]],
+        start_date: Union[str, datetime],
+        end_date: Union[str, datetime],
+        timeframe: Optional[str] = "1d",
+        _: Optional[str] = None,
     ) -> pd.DataFrame:
         _parse_alpaca_timeframe(timeframe)
         return super().query(symbols, start_date, end_date, timeframe, _)
 
     def _fetch_data(
-            self,
-            symbols: frozenset[str],
-            start_date: datetime,
-            end_date: datetime,
-            timeframe: Optional[str],
-            _: Optional[str],
+        self,
+        symbols: frozenset[str],
+        start_date: datetime,
+        end_date: datetime,
+        timeframe: Optional[str],
+        _: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
         amount, unit = _parse_alpaca_timeframe(timeframe)
@@ -474,12 +474,12 @@ class YFinance(DataSource):
         self._scope.register_custom_cols(self.ADJ_CLOSE)
 
     def query(
-            self,
-            symbols: Union[str, Iterable[str]],
-            start_date: Union[str, datetime],
-            end_date: Union[str, datetime],
-            _timeframe: Optional[str] = "",
-            _adjust: Optional[str] = None,
+        self,
+        symbols: Union[str, Iterable[str]],
+        start_date: Union[str, datetime],
+        end_date: Union[str, datetime],
+        _timeframe: Optional[str] = "",
+        _adjust: Optional[str] = None,
     ) -> pd.DataFrame:
         r"""Queries data from `Yahoo Finance <https://finance.yahoo.com/>`_\ .
         The timeframe of the data is limited to per day only.
@@ -497,22 +497,22 @@ class YFinance(DataSource):
         )
 
     def _fetch_data(
-            self,
-            symbols: frozenset[str],
-            start_date: datetime,
-            end_date: datetime,
-            _timeframe: Optional[str],
-            _adjust: Optional[str],
+        self,
+        symbols: frozenset[str],
+        start_date: datetime,
+        end_date: datetime,
+        _timeframe: Optional[str],
+        _adjust: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
         yf_progress_bar_flag = (
-                self._logger.disable_flag and self._logger.progress_bar_flag
+            self._logger.disable_flag and self._logger.progress_bar_flag
         )
         df = yfinance.download(
             list(symbols),
             start=start_date,
             end=end_date,
-            progress=yf_progress_bar_flag
+            progress=yf_progress_bar_flag,
         )
         if df.columns.empty:
             return pd.DataFrame(
