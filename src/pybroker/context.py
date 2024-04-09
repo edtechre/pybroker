@@ -838,6 +838,7 @@ class ExecContext(BaseContext):
         if pos is None:
             return
         self.cover_shares = pos.shares
+        self._portfolio.remove_stops(pos)
 
     def foreign(
         self, symbol: str, col: Optional[str] = None
