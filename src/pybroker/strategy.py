@@ -780,6 +780,8 @@ class TestResult:
         signals: Dictionary of :class:`pandas.DataFrame`\ s containing bar
             data, indicator data, and model predictions for each symbol when
             :attr:`pybroker.config.StrategyConfig.return_signals` is ``True``.
+        stops: :class:`pandas.DataFrame` containing stop data per-bar when
+            :attr:`pybroker.config.StrategyConfig.return_stops` is ``True``.
     """
 
     start_date: datetime
