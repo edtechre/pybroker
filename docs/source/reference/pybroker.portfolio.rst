@@ -10,3 +10,4 @@ pybroker.portfolio module
       unrealized_pnl, close, entries, long_shares, short_shares, bars,
       cumulative_pnl, entry_date, exit_date, return_pct, pnl_per_bar, fees,
       agg_pnl, entry, exit, stops, stop, percent, points, pos_type, stop_type
+      curr_value, curr_bars, stop_id, exit_price

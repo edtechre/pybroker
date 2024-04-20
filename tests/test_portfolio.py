@@ -3222,6 +3222,134 @@ def test_short_stop_when_no_pos():
     assert len(portfolio.orders) == 2
 
 
+def test_capture_stops():
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, 200, 300],
+            [SYMBOL_1, DATE_2, 200, 300],
+        ],
+        columns=["symbol", "date", "low", "high"],
+    )
+    df = df.set_index(["symbol", "date"])
+    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)}, True)
+    stops = (
+        Stop(
+            id=1,
+            symbol=SYMBOL_1,
+            stop_type=StopType.LOSS,
+            pos_type="long",
+            percent=5,
+            points=None,
+            bars=None,
+            fill_price=None,
+            limit_price=None,
+            exit_price=None,
+        ),
+        Stop(
+            id=2,
+            symbol=SYMBOL_1,
+            stop_type=StopType.TRAILING,
+            pos_type="long",
+            percent=None,
+            points=5,
+            bars=None,
+            fill_price=None,
+            limit_price=Decimal(200),
+            exit_price=None,
+        ),
+        Stop(
+            id=3,
+            symbol=SYMBOL_1,
+            stop_type=StopType.BAR,
+            pos_type="long",
+            percent=None,
+            points=None,
+            bars=5,
+            fill_price=None,
+            limit_price=None,
+            exit_price=Decimal(200),
+        ),
+        Stop(
+            id=4,
+            symbol=SYMBOL_1,
+            stop_type=StopType.PROFIT,
+            pos_type="long",
+            percent=10,
+            points=None,
+            bars=None,
+            fill_price=Decimal(210),
+            limit_price=None,
+            exit_price=None,
+        ),
+    )
+    portfolio = Portfolio(CASH, record_stops=True)
+    portfolio.buy(
+        DATE_1,
+        SYMBOL_1,
+        SHARES_1,
+        fill_price=Decimal(200),
+        limit_price=None,
+        stops=stops,
+    )
+    portfolio.incr_bars()
+    portfolio.check_stops(DATE_2, price_scope)
+    stops = {stop.stop_id: stop for stop in portfolio._stop_records}
+    print(portfolio._stop_records)
+
+    assert len(stops) == 4
+    assert stops[1].date == DATE_2
+    assert stops[1].symbol == SYMBOL_1
+    assert stops[1].stop_type == StopType.LOSS.value
+    assert stops[1].pos_type == "long"
+    assert stops[1].curr_value == 190
+    assert stops[1].bars is None
+    assert stops[1].limit_price is None
+    assert stops[1].percent == 5
+    assert stops[1].points is None
+    assert stops[1].curr_bars is None
+    assert stops[1].exit_price is None
+    assert stops[1].fill_price is None
+
+    assert stops[2].date == DATE_2
+    assert stops[2].symbol == SYMBOL_1
+    assert stops[2].stop_type == StopType.TRAILING.value
+    assert stops[2].pos_type == "long"
+    assert stops[2].curr_value == 295
+    assert stops[2].bars is None
+    assert stops[2].limit_price == 200
+    assert stops[2].percent is None
+    assert stops[2].points == 5
+    assert stops[2].curr_bars is None
+    assert stops[2].exit_price is None
+    assert stops[2].fill_price is None
+
+    assert stops[3].date == DATE_2
+    assert stops[3].symbol == SYMBOL_1
+    assert stops[3].stop_type == StopType.BAR.value
+    assert stops[3].pos_type == "long"
+    assert stops[3].curr_value is None
+    assert stops[3].bars == 5
+    assert stops[3].limit_price is None
+    assert stops[3].percent is None
+    assert stops[3].points is None
+    assert stops[3].curr_bars == 1
+    assert stops[3].exit_price == 200
+    assert stops[3].fill_price is None
+
+    assert stops[4].date == DATE_2
+    assert stops[4].symbol == SYMBOL_1
+    assert stops[4].stop_type == StopType.PROFIT.value
+    assert stops[4].pos_type == "long"
+    assert stops[4].curr_value == 220
+    assert stops[4].bars is None
+    assert stops[4].limit_price is None
+    assert stops[4].percent == 10
+    assert stops[4].points is None
+    assert stops[4].curr_bars is None
+    assert stops[4].exit_price is None
+    assert stops[4].fill_price == 220
+
+
 def test_win_loss_rate():
     portfolio = Portfolio(CASH)
     portfolio.buy(DATE_1, SYMBOL_1, SHARES_1, FILL_PRICE_1, LIMIT_PRICE_1)

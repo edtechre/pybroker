@@ -76,6 +76,42 @@ class Stop(NamedTuple):
     exit_price: Optional[PriceType]
 
 
+class StopRecord(NamedTuple):
+    """Records per-bar data about a stop.
+
+    Attributes:
+        date: Date of the bar.
+        symbol: Symbol of the stop.
+        stop_id: Unique identifier.
+        stop_type: :class:`.StopType`.
+        pos_type: Type of  :class:`.Position`, either ``long`` or ``short``.
+        curr_value: Current value of the stop.
+        curr_bars: Current bars of the stop.
+        percent: Percent from entry price.
+        points: Cash amount from entry price.
+        bars: Number of bars after which to trigger the stop.
+        fill_price: Price that the stop will be filled at.
+        limit_price: Limit price to use for the stop.
+        exit_price: Exit :class:`pybroker.common.PriceType` to use for the
+            stop exit. If set, the stop is checked against the ``exit_price``
+            and exits at the ``exit_price`` when triggered.
+    """
+
+    date: np.datetime64
+    symbol: str
+    stop_id: int
+    stop_type: str
+    pos_type: Literal["long", "short"]
+    curr_value: Optional[Decimal]
+    curr_bars: Optional[int]
+    percent: Optional[Decimal]
+    points: Optional[Decimal]
+    bars: Optional[int]
+    fill_price: Optional[Decimal]
+    limit_price: Optional[Decimal]
+    exit_price: Optional[PriceType]
+
+
 @dataclass
 class Entry:
     """Contains information about an entry into a :class:`.Position`.
@@ -100,7 +136,7 @@ class Entry:
     price: Decimal
     type: Literal["long", "short"]
     bars: int = field(default=0)
-    stops: set[Stop] = field(default_factory=set)
+    stops: list[Stop] = field(default_factory=list)
     mae: Decimal = field(default_factory=Decimal)
     mfe: Decimal = field(default_factory=Decimal)
 
@@ -303,10 +339,14 @@ class Portfolio:
         cash: Starting cash balance.
         fee_mode: Brokerage fee mode.
         fee_amount: Brokerage fee amount.
+        subtract_fees: Whether to subtract fees from the cash balance after an
+            order is filled.
+        enable_fractional_shares: Whether to enable trading fractional shares.
         max_long_positions: Maximum number of long :class:`.Position`\ s that
             can be held at a time. If ``None``, then unlimited.
         max_short_positions: Maximum number of short :class:`.Position`\ s that
             can be held at a time. If ``None``, then unlimited.
+        record_stops: Whether to record stop data per-bar.
 
     Attributes:
         cash: Current cash balance.
@@ -346,6 +386,7 @@ class Portfolio:
         enable_fractional_shares: bool = False,
         max_long_positions: Optional[int] = None,
         max_short_positions: Optional[int] = None,
+        record_stops: Optional[bool] = False,
     ):
         self.cash: Decimal = to_decimal(cash)
         self._initial_market_value = self.cash
@@ -360,6 +401,7 @@ class Portfolio:
         self.fees = Decimal()
         self._max_long_positions = max_long_positions
         self._max_short_positions = max_short_positions
+        self._record_stops = record_stops
         self.orders: deque[Order] = deque()
         self.trades: deque[Trade] = deque()
         self.margin: Decimal = Decimal()
@@ -377,6 +419,7 @@ class Portfolio:
         self._order_id: int = 0
         self._entry_id: int = 0
         self._trade_id: int = 0
+        self._stop_records: list[StopRecord] = []
 
     def _calculate_fees(
         self,
@@ -525,7 +568,7 @@ class Portfolio:
         for stop in stops:
             if stop.id in self._stop_data:
                 raise ValueError(f"Duplicate stop ID: {stop.id}")
-            entry.stops.add(stop)
+            entry.stops.append(stop)
             if stop.stop_type == StopType.BAR:
                 continue
             amount = self._get_stop_amount(stop, entry.price)
@@ -1085,13 +1128,45 @@ class Portfolio:
         ):
             for entry in pos.entries:
                 for stop in entry.stops:
-                    if self._trigger_stop(date, price_scope, pos, entry, stop):
+                    triggered, fill_price = self._trigger_stop(
+                        date, price_scope, pos, entry, stop
+                    )
+                    if self._record_stops:
+                        self._capture_stop(date, entry, stop, fill_price)
+                    if triggered:
                         executed.append((pos, entry))
                         break
+
         for pos, entry in executed:
             pos.entries.remove(entry)
             self._remove_stop_data(entry)
             self._update_position(pos)
+
+    def _capture_stop(
+        self,
+        date: np.datetime64,
+        entry: Entry,
+        stop: Stop,
+        fill_price: Optional[Decimal],
+    ):
+        stop_record = StopRecord(
+            date=date,
+            stop_id=stop.id,
+            symbol=stop.symbol,
+            stop_type=stop.stop_type.value,
+            pos_type=stop.pos_type,
+            curr_value=self._stop_data[stop.id].value
+            if stop.id in self._stop_data
+            else None,
+            curr_bars=entry.bars if stop.stop_type == StopType.BAR else None,
+            bars=stop.bars,
+            percent=stop.percent,
+            points=stop.points,
+            limit_price=stop.limit_price,
+            exit_price=stop.exit_price,
+            fill_price=fill_price,
+        )
+        self._stop_records.append(stop_record)
 
     def _trigger_stop(
         self,
@@ -1100,14 +1175,15 @@ class Portfolio:
         pos: Position,
         entry: Entry,
         stop: Stop,
-    ) -> bool:
+    ) -> tuple[bool, Optional[Decimal]]:
+        fill_price = None
         if stop.pos_type == "long" and stop.symbol not in self.long_positions:
-            return False
+            return False, fill_price
         if (
             stop.pos_type == "short"
             and stop.symbol not in self.short_positions
         ):
-            return False
+            return False, fill_price
         if stop.stop_type == StopType.BAR:
             fill_price = self._trigger_bar_stop(stop, price_scope, entry)
         elif (
@@ -1120,19 +1196,19 @@ class Portfolio:
         else:
             raise ValueError(f"Unknown stop type: {stop.stop_type}")
         if fill_price is None:
-            return False
+            return False, fill_price
         order_type: Literal["buy", "sell"]
         stop_shares = entry.shares
         if stop.pos_type == "long":
             if stop.limit_price is not None and fill_price < stop.limit_price:
-                return False
+                return False, fill_price
             self._exit_long(
                 date, pos, entry, entry.shares, fill_price, stop.stop_type
             )
             order_type = "sell"
         elif stop.pos_type == "short":
             if stop.limit_price is not None and fill_price > stop.limit_price:
-                return False
+                return False, fill_price
             self._exit_short(
                 date, pos, entry, entry.shares, fill_price, stop.stop_type
             )
@@ -1147,7 +1223,7 @@ class Portfolio:
             fill_price=fill_price,
             shares=stop_shares,
         )
-        return True
+        return True, fill_price
 
     def _trigger_bar_stop(
         self, stop: Stop, price_scope: PriceScope, entry: Entry

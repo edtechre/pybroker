@@ -66,6 +66,8 @@ class StrategyConfig:
         return_signals: When ``True`` then bar data, indicator data, and model
             predictions are returned with
             :class:`pybroker.strategy.TestResult`. Defaults to ``False``.
+        return_stops: When ``True`` then stops values are returned with
+            :class:`pybroker.strategy.TestResult`. Defaults to ``False``.
         round_test_result: When ``True``, round values in
             :class:`pybroker.strategy.TestResult` up to the nearest cent.
             Defaults to ``True``.
@@ -94,4 +96,5 @@ class StrategyConfig:
     ] = field(default=PriceType.MIDDLE)
     bars_per_year: Optional[int] = field(default=None)
     return_signals: bool = field(default=False)
+    return_stops: bool = field(default=False)
     round_test_result: bool = field(default=True)

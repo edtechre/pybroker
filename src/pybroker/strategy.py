@@ -42,6 +42,7 @@ from pybroker.portfolio import (
     Portfolio,
     PortfolioBar,
     PositionBar,
+    StopRecord,
     Trade,
 )
 from pybroker.scope import (
@@ -791,6 +792,7 @@ class TestResult:
     metrics_df: pd.DataFrame
     bootstrap: Optional[BootstrapResult]
     signals: Optional[dict[str, pd.DataFrame]]
+    stops: Optional[pd.DataFrame]
 
 
 class Strategy(
@@ -1235,6 +1237,7 @@ class Strategy(
                     self._fractional_shares_enabled(),
                     self._config.max_long_positions,
                     self._config.max_short_positions,
+                    self._config.return_stops,
                 )
             signals = self._run_walkforward(
                 portfolio=portfolio,
@@ -1461,6 +1464,7 @@ class Strategy(
                 metrics_df=pd.DataFrame(),
                 bootstrap=None,
                 signals=signals,
+                stops=None,
             )
         pos_df = pd.DataFrame.from_records(
             portfolio.position_bars, columns=PositionBar._fields
@@ -1532,6 +1536,11 @@ class Strategy(
             if v is not None
         ]
         metrics_df = pd.DataFrame(metrics, columns=["name", "value"])
+        stops_df = None
+        if self._config.return_stops:
+            stops_df = pd.DataFrame.from_records(
+                portfolio._stop_records, columns=StopRecord._fields
+            )
         self._logger.walkforward_completed()
         return TestResult(
             start_date=start_date,
@@ -1544,4 +1553,5 @@ class Strategy(
             metrics_df=metrics_df,
             bootstrap=eval_result.bootstrap,
             signals=signals,
+            stops=stops_df,
         )

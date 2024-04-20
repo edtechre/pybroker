@@ -1251,15 +1251,22 @@ class TestStrategy:
             assert result.bootstrap is None
 
     @pytest.mark.parametrize("return_signals", [True, False])
-    def test_walkforward_results(self, data_source_df, return_signals):
+    @pytest.mark.parametrize("return_stops", [True, False])
+    def test_walkforward_results(
+        self, data_source_df, return_signals, return_stops
+    ):
         def exec_fn(ctx):
             if not ctx.long_pos():
                 ctx.buy_shares = 100
+                ctx.stop_trailing = 100
+                ctx.stop_profit_pct = 100
 
         data_source_df = data_source_df[
             data_source_df["date"] <= to_datetime(END_DATE)
         ]
-        config = StrategyConfig(return_signals=return_signals)
+        config = StrategyConfig(
+            return_signals=return_signals, return_stops=return_stops
+        )
         strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
         strategy.add_execution(exec_fn, ["AAPL", "SPY"])
         result = strategy.walkforward(windows=3, calc_bootstrap=False)
@@ -1287,6 +1294,25 @@ class TestStrategy:
             assert not result.signals["SPY"].empty
         else:
             assert result.signals is None
+        if return_stops:
+            assert not result.stops.empty
+            assert set(result.stops.columns) == {
+                "date",
+                "symbol",
+                "stop_id",
+                "stop_type",
+                "pos_type",
+                "curr_value",
+                "curr_bars",
+                "percent",
+                "points",
+                "bars",
+                "fill_price",
+                "limit_price",
+                "exit_price",
+            }
+        else:
+            assert result.stops is None
 
     def test_walkforward_when_no_executions_then_error(self, data_source_df):
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
