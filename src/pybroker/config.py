@@ -63,10 +63,10 @@ class StrategyConfig:
         bars_per_year: Number of observations per year that will be used to
             annualize evaluation metrics. For example, a value of ``252`` would
             be used to annualize the Sharpe Ratio for daily returns.
-        return_signals: When ``True`` then bar data, indicator data, and model
+        return_signals: When ``True``, then bar data, indicator data, and model
             predictions are returned with
             :class:`pybroker.strategy.TestResult`. Defaults to ``False``.
-        return_stops: When ``True`` then stops values are returned with
+        return_stops: When ``True``, then stop values are returned with
             :class:`pybroker.strategy.TestResult`. Defaults to ``False``.
         round_test_result: When ``True``, round values in
             :class:`pybroker.strategy.TestResult` up to the nearest cent.
