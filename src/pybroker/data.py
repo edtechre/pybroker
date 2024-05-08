@@ -505,8 +505,8 @@ class YFinance(DataSource):
         _adjust: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
-        yf_progress_bar_flag = (
-            self._logger.disable_flag and self._logger.progress_bar_flag
+        yf_progress_bar_flag = not (
+            self._logger._disabled or self._logger.progress_bar_disabled
         )
         df = yfinance.download(
             list(symbols),
