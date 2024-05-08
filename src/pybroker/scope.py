@@ -171,7 +171,7 @@ class StaticScope:
         self, name: str, value: Optional[Any] = _EMPTY_PARAM
     ) -> Optional[Any]:
         """Get or set a global parameter."""
-        if value == _EMPTY_PARAM:
+        if value is _EMPTY_PARAM:
             return self._params.get(name, None)
         self._params[name] = value
         return value
