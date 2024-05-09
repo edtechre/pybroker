@@ -57,11 +57,6 @@ class Logger:
             self._progress_bar = None
             self._out("")
 
-    @property
-    def progress_bar_disabled(self):
-        """Disables Progress Bar flag"""
-        return self._progress_bar_disabled
-
     def disable(self):
         """Disables logging."""
         self._disabled = True

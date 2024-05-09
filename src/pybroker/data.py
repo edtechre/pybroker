@@ -505,14 +505,15 @@ class YFinance(DataSource):
         _adjust: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
-        yf_progress_bar_flag = not (
-            self._logger._disabled or self._logger.progress_bar_disabled
+        show_yf_progress_bar = (
+            not self._logger._disabled
+            and not self._logger._progress_bar_disabled
         )
         df = yfinance.download(
             list(symbols),
             start=start_date,
             end=end_date,
-            progress=yf_progress_bar_flag,
+            progress=show_yf_progress_bar,
         )
         if df.columns.empty:
             return pd.DataFrame(
