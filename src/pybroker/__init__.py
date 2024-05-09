@@ -38,6 +38,8 @@ from pybroker.portfolio import Entry, Order, Position, Trade
 from pybroker.scope import (
     disable_logging,
     enable_logging,
+    disable_progress_bar,
+    enable_progress_bar,
     param,
     register_columns,
     unregister_columns,

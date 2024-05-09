@@ -6,12 +6,20 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
-import alpaca.data.historical.stock as alpaca_stock
-import alpaca.data.historical.crypto as alpaca_crypto
 import itertools
+from abc import ABC, abstractmethod
+from datetime import datetime
+from typing import Final, Iterable, Optional, Union
+
+import alpaca.data.historical.crypto as alpaca_crypto
+import alpaca.data.historical.stock as alpaca_stock
 import numpy as np
 import pandas as pd
 import yfinance
+from alpaca.data.enums import Adjustment
+from alpaca.data.requests import CryptoBarsRequest, StockBarsRequest
+from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
+
 from pybroker.cache import DataSourceCacheKey
 from pybroker.common import (
     DataCol,
@@ -22,12 +30,6 @@ from pybroker.common import (
     verify_date_range,
 )
 from pybroker.scope import StaticScope
-from abc import ABC, abstractmethod
-from alpaca.data.enums import Adjustment
-from alpaca.data.requests import CryptoBarsRequest, StockBarsRequest
-from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
-from datetime import datetime
-from typing import Final, Iterable, Optional, Union
 
 
 class DataSourceCacheMixin:
@@ -503,7 +505,15 @@ class YFinance(DataSource):
         _adjust: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
-        df = yfinance.download(list(symbols), start=start_date, end=end_date)
+        yf_progress_bar_flag = not (
+            self._logger._disabled or self._logger.progress_bar_disabled
+        )
+        df = yfinance.download(
+            list(symbols),
+            start=start_date,
+            end=end_date,
+            progress=yf_progress_bar_flag,
+        )
         if df.columns.empty:
             return pd.DataFrame(
                 columns=[
