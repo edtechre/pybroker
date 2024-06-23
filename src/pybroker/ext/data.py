@@ -95,9 +95,8 @@ class AKShare(DataSource):
 
 
 class YQuery(DataSource):
-    r"""Retrieves data from `Yahoo Finance <https://finance.yahoo.com/>`_   
-    using `Yahooquery <https://github.com/dpguthrie/yahooquery>`_\ .
-    """
+    r"""Retrieves data from Yahoo Finance using
+    `Yahooquery <https://github.com/dpguthrie/yahooquery>`_\ ."""
 
     _tf_to_period = {
         "": "1d",
