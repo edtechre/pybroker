@@ -2192,14 +2192,14 @@ class TestStrategy:
         assert len(result.orders) == 4
         buy_order = result.orders.iloc[0]
         assert buy_order["type"] == "buy"
-        assert buy_order["symbol"] == "SPY"
+        assert buy_order["symbol"] == "AAPL"
         assert buy_order["date"] == dates[1]
         assert buy_order["shares"] == 100
         assert np.isnan(buy_order["limit_price"])
         assert buy_order["fees"] == 0
         buy_order = result.orders.iloc[1]
         assert buy_order["type"] == "buy"
-        assert buy_order["symbol"] == "AAPL"
+        assert buy_order["symbol"] == "SPY"
         assert buy_order["date"] == dates[1]
         assert buy_order["shares"] == 100
         assert np.isnan(buy_order["limit_price"])

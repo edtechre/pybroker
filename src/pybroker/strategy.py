@@ -166,7 +166,7 @@ class BacktestMixin:
             :attr:`pybroker.config.StrategyConfig.return_signals` is ``True``.
         """
         test_dates = get_unique_sorted_dates(test_data[DataCol.DATE.value])
-        test_syms = test_data[DataCol.SYMBOL.value].unique()
+        test_syms = sorted(test_data[DataCol.SYMBOL.value].unique())
         test_data = (
             test_data.reset_index(drop=True)
             .set_index([DataCol.SYMBOL.value, DataCol.DATE.value])
