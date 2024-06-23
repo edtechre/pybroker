@@ -9,7 +9,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 import itertools
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Final, Iterable, Optional, Union
+from typing import Any, Final, Iterable, Optional, Union
 
 import alpaca.data.historical.crypto as alpaca_crypto
 import alpaca.data.historical.stock as alpaca_stock
@@ -43,7 +43,7 @@ class DataSourceCacheMixin:
         timeframe: str,
         start_date: Union[str, datetime, pd.Timestamp, np.datetime64],
         end_date: Union[str, datetime, pd.Timestamp, np.datetime64],
-        adjust: Optional[str],
+        adjust: Optional[Any],
     ) -> tuple[pd.DataFrame, Iterable[str]]:
         """Retrieves cached data from disk when caching is enabled with
         :meth:`pybroker.cache.enable_data_source_cache`.
@@ -112,7 +112,7 @@ class DataSourceCacheMixin:
         timeframe: str,
         start_date: Union[str, datetime, pd.Timestamp, np.datetime64],
         end_date: Union[str, datetime, pd.Timestamp, np.datetime64],
-        adjust: Optional[str],
+        adjust: Optional[Any],
         data: pd.DataFrame,
     ):
         """Stores data to disk cache when caching is enabled with
@@ -174,7 +174,7 @@ class DataSource(ABC, DataSourceCacheMixin):
         start_date: Union[str, datetime],
         end_date: Union[str, datetime],
         timeframe: Optional[str] = "",
-        adjust: Optional[str] = None,
+        adjust: Optional[Any] = None,
     ) -> pd.DataFrame:
         """Queries data. Cached data is returned if caching is enabled by
         calling :meth:`pybroker.cache.enable_data_source_cache`.
@@ -254,7 +254,7 @@ class DataSource(ABC, DataSourceCacheMixin):
         start_date: datetime,
         end_date: datetime,
         timeframe: Optional[str],
-        adjust: Optional[str],
+        adjust: Optional[Any],
     ) -> pd.DataFrame:
         """:meta public:
         Override this method to return data from a custom
@@ -328,7 +328,7 @@ class Alpaca(DataSource):
         start_date: Union[str, datetime],
         end_date: Union[str, datetime],
         timeframe: Optional[str] = "1d",
-        adjust: Optional[str] = None,
+        adjust: Optional[Any] = None,
     ) -> pd.DataFrame:
         _parse_alpaca_timeframe(timeframe)
         return super().query(symbols, start_date, end_date, timeframe, adjust)
@@ -339,7 +339,7 @@ class Alpaca(DataSource):
         start_date: datetime,
         end_date: datetime,
         timeframe: Optional[str],
-        adjust: Optional[str],
+        adjust: Optional[Any],
     ) -> pd.DataFrame:
         """:meta private:"""
         amount, unit = _parse_alpaca_timeframe(timeframe)
@@ -460,7 +460,7 @@ class AlpacaCrypto(DataSource):
 
 
 class YFinance(DataSource):
-    r"""Retrieves data from `Yahoo Finance <https://finance.yahoo.com/>`_\ .
+    r"""Retrieves data from `Yahoo Finance <https://finance.yahoo.com/>`_.
 
     Attributes:
         ADJ_CLOSE: Column name of adjusted close prices.
@@ -479,9 +479,9 @@ class YFinance(DataSource):
         start_date: Union[str, datetime],
         end_date: Union[str, datetime],
         _timeframe: Optional[str] = "",
-        _adjust: Optional[str] = None,
+        _adjust: Optional[Any] = None,
     ) -> pd.DataFrame:
-        r"""Queries data from `Yahoo Finance <https://finance.yahoo.com/>`_\ .
+        r"""Queries data from `Yahoo Finance <https://finance.yahoo.com/>`_.
         The timeframe of the data is limited to per day only.
 
         Args:
@@ -502,7 +502,7 @@ class YFinance(DataSource):
         start_date: datetime,
         end_date: datetime,
         _timeframe: Optional[str],
-        _adjust: Optional[str],
+        _adjust: Optional[Any],
     ) -> pd.DataFrame:
         """:meta private:"""
         show_yf_progress_bar = (

@@ -23,7 +23,9 @@ from pybroker.data import (
     YFinance,
 )
 from pybroker.ext.data import AKShare
+from pybroker.ext.data import YQuery
 from unittest import mock
+from yahooquery import Ticker
 
 API_KEY = "api_key"
 API_SECRET = "api_secret"
@@ -670,3 +672,98 @@ class TestAKShare:
                 "symbol",
             )
         )
+
+
+class TestYQuery:
+    @pytest.mark.usefixtures("setup_ds_cache")
+    @pytest.mark.parametrize("timeframe", [None, "", "1h", "1d", "5d", "1w"])
+    def test_query(self, timeframe):
+        yq = YQuery()
+        symbols = ["A"]
+        expected_df = pd.DataFrame(
+            {
+                "date": [END_DATE],
+                "open": [1],
+                "high": [2],
+                "low": [3],
+                "close": [4],
+                "volume": [5],
+                "symbol": symbols,
+            }
+        )
+        with mock.patch.object(Ticker, "history", return_value=expected_df):
+            df = yq.query(symbols, START_DATE, END_DATE, timeframe)
+        assert set(df.columns) == {
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "symbol",
+        }
+        assert df.shape[0] == expected_df.shape[0]
+        assert set(df["symbol"].unique()) == set(symbols)
+        assert (df["date"].unique() == expected_df["date"].unique()).all()
+
+    @pytest.mark.parametrize(
+        "columns",
+        [
+            [],
+            [
+                "date",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "symbol",
+            ],
+        ],
+    )
+    @pytest.mark.usefixtures("setup_ds_cache")
+    def test_query_when_empty_result(self, columns):
+        yq = YQuery()
+        with mock.patch.object(
+            Ticker, "history", return_value=pd.DataFrame(columns=columns)
+        ):
+            df = yq.query(["A"], START_DATE, END_DATE)
+        assert df.empty
+        assert set(df.columns) == set(
+            (
+                "date",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "symbol",
+            )
+        )
+
+    @pytest.mark.usefixtures("setup_ds_cache")
+    def test_query_when_unsupported_timeframe_then_error(self):
+        yq = YQuery()
+        symbols = ["A"]
+        expected_df = pd.DataFrame(
+            {
+                "date": [END_DATE],
+                "open": [1],
+                "high": [2],
+                "low": [3],
+                "close": [4],
+                "volume": [5],
+                "symbol": symbols,
+            }
+        )
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "Unsupported timeframe: '90min'.\n"
+                "Supported timeframes: ['', '1hour', '1day', '5day', '1week']."
+            ),
+        ):
+            with mock.patch.object(
+                Ticker, "history", return_value=expected_df
+            ):
+                yq.query(symbols, START_DATE, END_DATE, "90m")
