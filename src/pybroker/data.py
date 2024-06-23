@@ -460,7 +460,7 @@ class AlpacaCrypto(DataSource):
 
 
 class YFinance(DataSource):
-    r"""Retrieves data from `Yahoo Finance <https://finance.yahoo.com/>`_.
+    r"""Retrieves data from `Yahoo Finance <https://finance.yahoo.com/>`_\ .
 
     Attributes:
         ADJ_CLOSE: Column name of adjusted close prices.
@@ -481,7 +481,7 @@ class YFinance(DataSource):
         _timeframe: Optional[str] = "",
         _adjust: Optional[Any] = None,
     ) -> pd.DataFrame:
-        r"""Queries data from `Yahoo Finance <https://finance.yahoo.com/>`_.
+        r"""Queries data from `Yahoo Finance <https://finance.yahoo.com/>`_\ .
         The timeframe of the data is limited to per day only.
 
         Args:
