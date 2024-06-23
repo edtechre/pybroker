@@ -91,3 +91,80 @@ class AKShare(DataSource):
             ]
         ]
         return result
+
+
+class YQuery(DataSource):
+    r"""Retrieves data from Yahoo Finance using
+    `Yahooquery <https://github.com/dpguthrie/yahooquery>`_\ ."""
+
+    _tf_to_period = {
+        "": "1d",
+        "1hour": "1h",
+        "1day": "1d",
+        "5day": "5d",
+        "1week": "1wk",
+    }
+
+    def __init__(self, proxies: Optional[dict] = None):
+        super().__init__()
+        self.proxies = proxies
+
+    def _fetch_data(
+        self,
+        symbols: frozenset[str],
+        start_date: datetime,
+        end_date: datetime,
+        timeframe: Optional[str],
+        adjust: Optional[bool],
+    ) -> pd.DataFrame:
+        """:meta private:"""
+        show_yf_progress_bar = (
+            not self._logger._disabled
+            and not self._logger._progress_bar_disabled
+        )
+        ticker = Ticker(
+            symbols,
+            asynchronous=True,
+            progress=show_yf_progress_bar,
+            proxies=self.proxies,
+        )
+        timeframe = self._format_timeframe(timeframe)
+        if timeframe not in self._tf_to_period:
+            raise ValueError(
+                f"Unsupported timeframe: '{timeframe}'.\n"
+                f"Supported timeframes: {list(self._tf_to_period.keys())}."
+            )
+        df = ticker.history(
+            start=start_date,
+            end=end_date,
+            interval=self._tf_to_period[timeframe],
+            adj_ohlc=adjust,
+        )
+        if df.columns.empty:
+            return pd.DataFrame(
+                columns=[
+                    DataCol.SYMBOL.value,
+                    DataCol.DATE.value,
+                    DataCol.OPEN.value,
+                    DataCol.HIGH.value,
+                    DataCol.LOW.value,
+                    DataCol.CLOSE.value,
+                    DataCol.VOLUME.value,
+                ]
+            )
+        if df.empty:
+            return df
+        df = df.reset_index()
+        df[DataCol.DATE.value] = pd.to_datetime(df[DataCol.DATE.value])
+        df = df[
+            [
+                DataCol.SYMBOL.value,
+                DataCol.DATE.value,
+                DataCol.OPEN.value,
+                DataCol.HIGH.value,
+                DataCol.LOW.value,
+                DataCol.CLOSE.value,
+                DataCol.VOLUME.value,
+            ]
+        ]
+        return df

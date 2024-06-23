@@ -72,7 +72,7 @@ class Indicator:
     def __init__(
         self,
         name: str,
-        fn: Callable[..., NDArray[np.float_]],
+        fn: Callable[..., NDArray[np.float64]],
         kwargs: dict[str, Any],
     ):
         self.name = name
@@ -114,7 +114,7 @@ class Indicator:
 
 
 def indicator(
-    name: str, fn: Callable[..., NDArray[np.float_]], **kwargs
+    name: str, fn: Callable[..., NDArray[np.float64]], **kwargs
 ) -> Indicator:
     r"""Creates an :class:`.Indicator` instance and registers it globally with
     ``name``.
@@ -141,12 +141,12 @@ def _decorate_indicator_fn(ind_name: str):
         symbol: str,
         ind_name: str,
         date: NDArray[np.datetime64],
-        open: NDArray[np.float_],
-        high: NDArray[np.float_],
-        low: NDArray[np.float_],
-        close: NDArray[np.float_],
-        volume: Optional[NDArray[np.float_]],
-        vwap: Optional[NDArray[np.float_]],
+        open: NDArray[np.float64],
+        high: NDArray[np.float64],
+        low: NDArray[np.float64],
+        close: NDArray[np.float64],
+        volume: Optional[NDArray[np.float64]],
+        vwap: Optional[NDArray[np.float64]],
         custom_col_data: Mapping[str, Optional[NDArray]],
     ) -> tuple[IndicatorSymbol, pd.Series]:
         bar_data = BarData(

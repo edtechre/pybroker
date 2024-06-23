@@ -338,11 +338,11 @@ class IndicatorScope:
     ):
         self._indicator_data = indicator_data
         self._filter_dates = filter_dates
-        self._sym_inds: dict[IndicatorSymbol, NDArray[np.float_]] = {}
+        self._sym_inds: dict[IndicatorSymbol, NDArray[np.float64]] = {}
 
     def fetch(
         self, symbol: str, name: str, end_index: Optional[int] = None
-    ) -> NDArray[np.float_]:
+    ) -> NDArray[np.float64]:
         """Fetches :class:`pybroker.indicator.Indicator` data.
 
         Args:

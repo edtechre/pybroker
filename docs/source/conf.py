@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath("notebooks/"))
 nitpick_ignore = [("py:class", "type")]
 
 project = "PyBroker"
-copyright = "2023, Edward West"
+copyright = "2024, Edward West"
 author = "Edward West"
 release = "1.0"
 

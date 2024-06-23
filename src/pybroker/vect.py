@@ -12,7 +12,7 @@ from numpy.typing import NDArray
 
 
 @njit
-def _verify_input(array: NDArray[np.float_], n: int):
+def _verify_input(array: NDArray[np.float64], n: int):
     if n <= 0:
         raise ValueError("n needs to be >= 1.")
     if n > len(array):
@@ -20,7 +20,7 @@ def _verify_input(array: NDArray[np.float_], n: int):
 
 
 @njit
-def lowv(array: NDArray[np.float_], n: int) -> NDArray[np.float_]:
+def lowv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
     """Calculates the lowest values for every ``n`` period in ``array``.
 
     Args:
@@ -42,7 +42,7 @@ def lowv(array: NDArray[np.float_], n: int) -> NDArray[np.float_]:
 
 
 @njit
-def highv(array: NDArray[np.float_], n: int) -> NDArray[np.float_]:
+def highv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
     """Calculates the highest values for every ``n`` period in ``array``.
 
     Args:
@@ -64,7 +64,7 @@ def highv(array: NDArray[np.float_], n: int) -> NDArray[np.float_]:
 
 
 @njit
-def sumv(array: NDArray[np.float_], n: int) -> NDArray[np.float_]:
+def sumv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
     """Calculates the sums for every ``n`` period in ``array``.
 
     Args:
@@ -85,7 +85,7 @@ def sumv(array: NDArray[np.float_], n: int) -> NDArray[np.float_]:
 
 
 @njit
-def returnv(array: NDArray[np.float_], n: int = 1) -> NDArray[np.float_]:
+def returnv(array: NDArray[np.float64], n: int = 1) -> NDArray[np.float64]:
     """Calculates returns.
 
     Args:
@@ -105,7 +105,7 @@ def returnv(array: NDArray[np.float_], n: int = 1) -> NDArray[np.float_]:
 
 
 @njit
-def cross(a: NDArray[np.float_], b: NDArray[np.float_]) -> NDArray[np.bool_]:
+def cross(a: NDArray[np.float64], b: NDArray[np.float64]) -> NDArray[np.bool_]:
     """Checks for crossover of ``a`` above ``b``.
 
     Args:

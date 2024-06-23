@@ -192,12 +192,12 @@ class BarData:
     def __init__(
         self,
         date: NDArray[np.datetime64],
-        open: NDArray[np.float_],
-        high: NDArray[np.float_],
-        low: NDArray[np.float_],
-        close: NDArray[np.float_],
-        volume: Optional[NDArray[np.float_]],
-        vwap: Optional[NDArray[np.float_]],
+        open: NDArray[np.float64],
+        high: NDArray[np.float64],
+        low: NDArray[np.float64],
+        close: NDArray[np.float64],
+        volume: Optional[NDArray[np.float64]],
+        vwap: Optional[NDArray[np.float64]],
         **kwargs,
     ):
         self.date = date
