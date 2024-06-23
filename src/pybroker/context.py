@@ -280,7 +280,7 @@ class BaseContext:
             raise ValueError(f"Model {name!r} not found for {symbol}.")
         return self._models[model_sym].instance
 
-    def indicator(self, name: str, symbol: str) -> NDArray[np.float_]:
+    def indicator(self, name: str, symbol: str) -> NDArray[np.float64]:
         r"""Returns indicator data.
 
         Args:
@@ -704,7 +704,7 @@ class ExecContext(BaseContext):
         )
 
     @property
-    def open(self) -> NDArray[np.float_]:
+    def open(self) -> NDArray[np.float64]:
         """Current bar's open price."""
         self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
@@ -714,7 +714,7 @@ class ExecContext(BaseContext):
         )
 
     @property
-    def high(self) -> NDArray[np.float_]:
+    def high(self) -> NDArray[np.float64]:
         """Current bar's high price."""
         self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
@@ -724,7 +724,7 @@ class ExecContext(BaseContext):
         )
 
     @property
-    def low(self) -> NDArray[np.float_]:
+    def low(self) -> NDArray[np.float64]:
         """Current bar's low price."""
         self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
@@ -734,7 +734,7 @@ class ExecContext(BaseContext):
         )
 
     @property
-    def close(self) -> NDArray[np.float_]:
+    def close(self) -> NDArray[np.float64]:
         """Current bar's close price."""
         self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
@@ -744,7 +744,7 @@ class ExecContext(BaseContext):
         )
 
     @property
-    def volume(self) -> Optional[NDArray[np.float_]]:
+    def volume(self) -> Optional[NDArray[np.float64]]:
         """Current bar's volume."""
         self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
@@ -754,7 +754,7 @@ class ExecContext(BaseContext):
         )
 
     @property
-    def vwap(self) -> Optional[NDArray[np.float_]]:
+    def vwap(self) -> Optional[NDArray[np.float64]]:
         """Current bar's volume-weighted average price (VWAP)."""
         self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
@@ -887,7 +887,7 @@ class ExecContext(BaseContext):
 
     def indicator(
         self, name: str, symbol: Optional[str] = None
-    ) -> NDArray[np.float_]:
+    ) -> NDArray[np.float64]:
         r"""Returns indicator data.
 
         Args:

@@ -66,10 +66,10 @@ class BootConfIntervals(NamedTuple):
 
 @njit
 def bca_boot_conf(
-    x: NDArray[np.float_],
+    x: NDArray[np.float64],
     n: int,
     n_boot: int,
-    fn: Callable[[NDArray[np.float_]], float],
+    fn: Callable[[NDArray[np.float64]], float],
 ) -> BootConfIntervals:
     """Computes confidence intervals for a user-defined parameter using the
     `bias corrected and accelerated (BCa) bootstrap method.
@@ -169,7 +169,7 @@ def bca_boot_conf(
 
 @njit
 def profit_factor(
-    changes: NDArray[np.float_], use_log: bool = False
+    changes: NDArray[np.float64], use_log: bool = False
 ) -> np.floating:
     """Computes the profit factor, which is the ratio of gross profit to gross
     loss.
@@ -181,7 +181,7 @@ def profit_factor(
     wins = changes[changes > 0]
     losses = changes[changes < 0]
     if not len(wins) and not len(losses):
-        return np.float32(0)
+        return np.float64(0)
     numer = denom = 1.0e-10
     numer += np.sum(wins)
     denom -= np.sum(losses)
@@ -192,7 +192,7 @@ def profit_factor(
 
 
 @njit
-def log_profit_factor(changes: NDArray[np.float_]) -> np.floating:
+def log_profit_factor(changes: NDArray[np.float64]) -> np.floating:
     """Computes the log transformed profit factor, which is the ratio of gross
     profit to gross loss.
 
@@ -204,7 +204,7 @@ def log_profit_factor(changes: NDArray[np.float_]) -> np.floating:
 
 @njit
 def sharpe_ratio(
-    changes: NDArray[np.float_],
+    changes: NDArray[np.float64],
     obs: Optional[int] = None,
     downside_only: bool = False,
 ) -> np.floating:
@@ -219,10 +219,10 @@ def sharpe_ratio(
     """
     std_changes = changes[changes < 0] if downside_only else changes
     if not len(std_changes):
-        return np.float32(0)
+        return np.float64(0)
     std = np.std(std_changes)
     if std == 0:
-        return np.float32(0)
+        return np.float64(0)
     sr = np.mean(changes) / std
     if obs is not None:
         sr *= np.sqrt(obs)
@@ -230,7 +230,7 @@ def sharpe_ratio(
 
 
 def sortino_ratio(
-    changes: NDArray[np.float_], obs: Optional[int] = None
+    changes: NDArray[np.float64], obs: Optional[int] = None
 ) -> float:
     """Computes the
     `Sortino Ratio <https://en.wikipedia.org/wiki/Sortino_ratio>`_.
@@ -245,7 +245,7 @@ def sortino_ratio(
 
 
 def conf_profit_factor(
-    x: NDArray[np.float_], n: int, n_boot: int
+    x: NDArray[np.float64], n: int, n_boot: int
 ) -> BootConfIntervals:
     """Computes confidence intervals for :func:`.profit_factor`."""
     intervals = bca_boot_conf(x, n, n_boot, log_profit_factor)
@@ -260,7 +260,7 @@ def conf_profit_factor(
 
 
 def conf_sharpe_ratio(
-    x: NDArray[np.float_], n: int, n_boot: int, obs: Optional[int] = None
+    x: NDArray[np.float64], n: int, n_boot: int, obs: Optional[int] = None
 ) -> BootConfIntervals:
     """Computes confidence intervals for :func:`.sharpe_ratio`."""
     intervals = bca_boot_conf(x, n, n_boot, sharpe_ratio)
@@ -278,7 +278,7 @@ def conf_sharpe_ratio(
 
 
 @njit
-def max_drawdown(changes: NDArray[np.float_]) -> float:
+def max_drawdown(changes: NDArray[np.float64]) -> float:
     """Computes maximum drawdown, measured in cash.
 
     Args:
@@ -301,7 +301,7 @@ def max_drawdown(changes: NDArray[np.float_]) -> float:
     return -dd
 
 
-def calmar_ratio(changes: NDArray[np.float_], bars_per_year: int) -> float:
+def calmar_ratio(changes: NDArray[np.float64], bars_per_year: int) -> float:
     """Computes the Calmar Ratio.
 
     Args:
@@ -317,7 +317,7 @@ def calmar_ratio(changes: NDArray[np.float_], bars_per_year: int) -> float:
 
 
 @njit
-def max_drawdown_percent(returns: NDArray[np.float_]) -> float:
+def max_drawdown_percent(returns: NDArray[np.float64]) -> float:
     """Computes maximum drawdown, measured in percentage loss.
 
     Args:
@@ -342,7 +342,7 @@ def max_drawdown_percent(returns: NDArray[np.float_]) -> float:
 
 
 @njit
-def _dd_conf(q: float, boot: NDArray[np.float_]) -> float:
+def _dd_conf(q: float, boot: NDArray[np.float64]) -> float:
     k = int((q * (len(boot) + 1)) - 1)
     k = max(k, 0)
     return boot[k]
@@ -379,7 +379,7 @@ class DrawdownMetrics(NamedTuple):
 
 
 @njit
-def _dd_confs(boot: NDArray[np.float_]) -> DrawdownConfs:
+def _dd_confs(boot: NDArray[np.float64]) -> DrawdownConfs:
     boot.sort()
     boot = boot[::-1]
     return DrawdownConfs(
@@ -392,8 +392,8 @@ def _dd_confs(boot: NDArray[np.float_]) -> DrawdownConfs:
 
 @njit
 def drawdown_conf(
-    changes: NDArray[np.float_],
-    returns: NDArray[np.float_],
+    changes: NDArray[np.float64],
+    returns: NDArray[np.float64],
     n: int,
     n_boot: int,
 ) -> DrawdownMetrics:
@@ -434,7 +434,7 @@ def drawdown_conf(
 
 
 @njit
-def relative_entropy(values: NDArray[np.float_]) -> float:
+def relative_entropy(values: NDArray[np.float64]) -> float:
     """Computes the relative `entropy
     <https://en.wikipedia.org/wiki/Entropy_(information_theory)>`_.
     """
@@ -465,7 +465,7 @@ def relative_entropy(values: NDArray[np.float_]) -> float:
     return -sum_ / np.log(n_bins)
 
 
-def iqr(values: NDArray[np.float_]) -> float:
+def iqr(values: NDArray[np.float64]) -> float:
     """Computes the `interquartile range (IQR)
     <https://en.wikipedia.org/wiki/Interquartile_range>`_ of ``values``."""
     x = values[~np.isnan(values)]
@@ -476,7 +476,7 @@ def iqr(values: NDArray[np.float_]) -> float:
 
 
 @njit
-def ulcer_index(values: NDArray[np.float_], period: int = 14) -> float:
+def ulcer_index(values: NDArray[np.float64], period: int = 14) -> float:
     """Computes the
     `Ulcer Index <https://en.wikipedia.org/wiki/Ulcer_index>`_ of ``values``.
     """
@@ -496,7 +496,7 @@ def ulcer_index(values: NDArray[np.float_], period: int = 14) -> float:
 
 @njit
 def upi(
-    values: NDArray[np.float_], period: int = 14, ui: Optional[float] = None
+    values: NDArray[np.float64], period: int = 14, ui: Optional[float] = None
 ) -> float:
     """Computes the `Ulcer Performance Index
     <https://en.wikipedia.org/wiki/Ulcer_index>`_ of ``values``.
@@ -513,7 +513,7 @@ def upi(
     return float(np.mean(r) / ui)
 
 
-def win_loss_rate(pnls: NDArray[np.float_]) -> tuple[float, float]:
+def win_loss_rate(pnls: NDArray[np.float64]) -> tuple[float, float]:
     """Computes the win rate and loss rate as percentages.
 
     Args:
@@ -531,7 +531,7 @@ def win_loss_rate(pnls: NDArray[np.float_]) -> tuple[float, float]:
     return win_rate, loss_rate
 
 
-def winning_losing_trades(pnls: NDArray[np.float_]) -> tuple[int, int]:
+def winning_losing_trades(pnls: NDArray[np.float64]) -> tuple[int, int]:
     """Returns the number of winning and losing trades.
 
     Args:
@@ -546,7 +546,7 @@ def winning_losing_trades(pnls: NDArray[np.float_]) -> tuple[int, int]:
     return len(pnls[pnls > 0]), len(pnls[pnls < 0])
 
 
-def total_profit_loss(pnls: NDArray[np.float_]) -> tuple[float, float]:
+def total_profit_loss(pnls: NDArray[np.float64]) -> tuple[float, float]:
     """Computes total profit and loss.
 
     Args:
@@ -563,7 +563,7 @@ def total_profit_loss(pnls: NDArray[np.float_]) -> tuple[float, float]:
     )
 
 
-def avg_profit_loss(pnls: NDArray[np.float_]) -> tuple[float, float]:
+def avg_profit_loss(pnls: NDArray[np.float64]) -> tuple[float, float]:
     """Computes the average profit and average loss per trade.
 
     Args:
@@ -581,7 +581,7 @@ def avg_profit_loss(pnls: NDArray[np.float_]) -> tuple[float, float]:
     )
 
 
-def largest_win_loss(pnls: NDArray[np.float_]) -> tuple[float, float]:
+def largest_win_loss(pnls: NDArray[np.float64]) -> tuple[float, float]:
     """Computes the largest profit and largest loss of all trades.
 
     Args:
@@ -599,7 +599,7 @@ def largest_win_loss(pnls: NDArray[np.float_]) -> tuple[float, float]:
 
 
 @njit
-def max_wins_losses(pnls: NDArray[np.float_]) -> tuple[int, int]:
+def max_wins_losses(pnls: NDArray[np.float64]) -> tuple[int, int]:
     """Computes the max consecutive wins and max consecutive losses.
 
     Args:
@@ -656,7 +656,7 @@ def annual_total_return_percent(
     ) * 100
 
 
-def r_squared(values: NDArray[np.float_]) -> float:
+def r_squared(values: NDArray[np.float64]) -> float:
     """Computes R-squared of ``values``."""
     n = len(values)
     if not n:
@@ -947,22 +947,22 @@ class EvaluateMixin:
         logger.calc_bootstrap_metrics_completed()
         return EvalResult(metrics, bootstrap)
 
-    def _calc_bar_returns(self, df: pd.DataFrame) -> NDArray[np.float32]:
+    def _calc_bar_returns(self, df: pd.DataFrame) -> NDArray[np.float64]:
         prev_market_value = df["market_value"].shift(1)
         returns = (df["market_value"] - prev_market_value) / prev_market_value
         return returns.dropna().to_numpy()
 
-    def _calc_bar_changes(self, df: pd.DataFrame) -> NDArray[np.float32]:
+    def _calc_bar_changes(self, df: pd.DataFrame) -> NDArray[np.float64]:
         changes = df["market_value"] - df["market_value"].shift(1)
         return changes.dropna().to_numpy()
 
     def _calc_eval_metrics(
         self,
-        market_values: NDArray[np.float_],
-        bar_changes: NDArray[np.float_],
-        bar_returns: NDArray[np.float_],
-        pnls: NDArray[np.float_],
-        return_pcts: NDArray[np.float_],
+        market_values: NDArray[np.float64],
+        bar_changes: NDArray[np.float64],
+        bar_returns: NDArray[np.float64],
+        pnls: NDArray[np.float64],
+        return_pcts: NDArray[np.float64],
         bars: NDArray[np.int_],
         winning_bars: NDArray[np.int_],
         losing_bars: NDArray[np.int_],
@@ -970,7 +970,7 @@ class EvaluateMixin:
         largest_win_pct: float,
         largest_loss_num_bars: int,
         largest_loss_pct: float,
-        fees: NDArray[np.float_],
+        fees: NDArray[np.float64],
         bars_per_year: Optional[int],
     ) -> EvalMetrics:
         total_fees = fees[-1] if len(fees) else 0
@@ -1092,7 +1092,7 @@ class EvaluateMixin:
 
     def _calc_conf_intervals(
         self,
-        changes: NDArray[np.float_],
+        changes: NDArray[np.float64],
         sample_size: int,
         samples: int,
         bars_per_year: Optional[int],
@@ -1124,8 +1124,8 @@ class EvaluateMixin:
 
     def _calc_drawdown_conf(
         self,
-        changes: NDArray[np.float_],
-        returns: NDArray[np.float_],
+        changes: NDArray[np.float64],
+        returns: NDArray[np.float64],
         sample_size: int,
         samples: int,
     ) -> _DrawdownResult:
