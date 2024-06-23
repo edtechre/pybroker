@@ -254,7 +254,8 @@ def parse_timeframe(timeframe: str) -> list[tuple[int, str]]:
 
     Returns:
         ``list`` of ``tuple[int, str]``, where each tuple contains an ``int``
-        value and ``str`` unit.
+        value and ``str`` unit of one of the following: ``sec``, ``min``,
+        ``hour``, ``day``, ``week``.
     """
     parts = _tf_pattern.findall(timeframe)
     if not parts or len(parts) != len(timeframe.split()):
