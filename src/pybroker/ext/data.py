@@ -11,6 +11,7 @@ from typing import Optional
 
 import akshare
 import pandas as pd
+from yahooquery import Ticker
 
 from pybroker.common import DataCol, to_datetime
 from pybroker.data import DataSource
