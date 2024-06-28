@@ -236,7 +236,7 @@ def to_decimal(value: Union[int, float, Decimal]) -> Decimal:
     value_type = type(value)
     if value_type == Decimal:
         return value  # type: ignore[return-value]
-    elif value_type == int:
+    elif value_type is int:
         return Decimal(value)
     return Decimal(str(value))
 

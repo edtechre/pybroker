@@ -600,8 +600,8 @@ class PriceScope:
             else:
                 raise ValueError(f"Unknown price: {price_type}")
         elif (
-            price_type == float
-            or price_type == int
+            price_type is float
+            or price_type is int
             or isinstance(price, np.floating)
             or isinstance(price, Decimal)
         ):
