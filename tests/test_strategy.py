@@ -1643,7 +1643,7 @@ class TestStrategy:
     @pytest.mark.parametrize(
         "enable_fractional_shares, expected_shares_type,"
         "expected_short_shares, expected_long_shares",
-        [(True, np.float64, 0.1, 3.14), (False, np.int_, 0, 3)],
+        [(True, np.float_, 0.1, 3.14), (False, np.int_, 0, 3)],
     )
     def test_to_test_result_when_fractional_shares(
         self,
