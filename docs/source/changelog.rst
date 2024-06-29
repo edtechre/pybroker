@@ -2,6 +2,12 @@
 Changelog
 #########
 
+1.2.0
+=====
+
+* Upgrades to NumPy 2.
+
+
 1.1.0
 =====
 
