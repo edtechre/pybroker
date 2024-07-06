@@ -126,7 +126,7 @@ snippets:
 
 ## Contact
 
-<img src="https://github.com/edtechre/pybroker/blob/master/docs/_static/email-image.png?raw=true" alt="PyBroker">
+<img src="https://github.com/edtechre/pybroker/blob/master/docs/_static/email-image.png?raw=true">
 
 ## AI-Powered Stock News
 
