@@ -130,4 +130,4 @@ snippets:
 
 ## AI-Powered Stock News
 
-Stay informed with AI-powered news on top trending stocks. Discover [www.trendninja.ai](https://www.trendninja.ai) for the latest updates!
+Stay informed with AI-powered news on top trending stocks. See [www.trendninja.ai](https://www.trendninja.ai) for the latest updates!
