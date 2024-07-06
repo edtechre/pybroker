@@ -202,3 +202,10 @@ Contact
 =======
 
 .. image:: _static/email-image.png
+
+.. toctree::
+   :caption: AI-Powered Stock News
+
+   TrendNinja.AI <https://www.trendninja.ai>
+
+Stay informed with AI-powered news on top trending stocks. See `www.trendninja.ai <https://www.trendninja.ai>`_ for the latest updates!
