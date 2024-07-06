@@ -127,3 +127,7 @@ snippets:
 ## Contact
 
 <img src="https://github.com/edtechre/pybroker/blob/master/docs/_static/email-image.png?raw=true">
+
+## AI-Powered Stock News
+
+Stay informed with AI-powered news on top trending stocks. [Discover www.trendninja.ai for the latest updates!](https://www.trendinja.ai)
