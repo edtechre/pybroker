@@ -1,4 +1,4 @@
-<img src="https://github.com/edtechre/pybroker/blob/master/docs/_static/pybroker-logo.png?raw=true" alt="PyBroker">
+<img src="https://github.com/edtechre/pybroker/blob/master/docs/_static/pybroker-logo.svg?raw=true" alt="PyBroker">
 
 [![python](https://img.shields.io/badge/python-v3-brightgreen.svg)](https://www.python.org/)
 [![Apache 2.0 with Commons Clause](https://img.shields.io/badge/license-Apache%202.0%20Clause-green)](https://www.pybroker.com/en/latest/license.html)
