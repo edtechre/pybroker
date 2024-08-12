@@ -101,7 +101,7 @@ class TestWalkforwardMixin:
         )
         dates = sorted(dates)
         assert len(results) == windows
-        for train_idx, test_idx in results:
+        for i, (train_idx, test_idx) in enumerate(results):
             assert len(dates) - (len(train_idx) + len(test_idx) * windows) >= 0
             assert not (set(train_idx) & set(test_idx))
             assert len(train_idx) or len(test_idx)
@@ -112,6 +112,8 @@ class TestWalkforwardMixin:
                 assert dates[train_end_index - 2] != dates[test_start_index]
             if train_size == 0.5:
                 assert len(train_idx) == len(test_idx)
+            if len(test_idx) and i == len(results) - 1:
+                assert dates[dates_length - 1] == dates[sorted(test_idx)[-1]]
 
     @pytest.mark.parametrize(
         "dates_length, windows, lookahead, train_size",

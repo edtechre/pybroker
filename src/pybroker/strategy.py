@@ -698,12 +698,14 @@ class WalkforwardMixin:
                 raise ValueError(error_msg)
             train_length = int(res * train_size)
             test_length = int(res * (1 - train_size))
-            train_start = 0
-            train_end = train_length
+            train_start = (
+                len(window_dates) - lookahead - train_length - test_length - 1
+            )
+            train_end = train_start + train_length
             test_start = train_end + lookahead
             if test_start >= len(window_dates):
                 raise ValueError(error_msg)
-            test_end = test_start + test_length
+            test_end = len(window_dates) - 1
             train_idx = dates[
                 (dates[date_col] >= window_dates[train_start])
                 & (dates[date_col] <= window_dates[train_end])
