@@ -314,7 +314,11 @@ class BacktestMixin:
             if after_exec_fn is not None and active_ctxs:
                 after_exec_fn(active_ctxs)
             for ctx in active_ctxs.values():
-                if slippage_model and (ctx.buy_shares or ctx.sell_shares):
+                if (
+                    slippage_model
+                    and not ctx._exiting_pos
+                    and (ctx.buy_shares or ctx.sell_shares)
+                ):
                     self._apply_slippage(slippage_model, ctx)
                 result = ctx.to_result()
                 if result is None:

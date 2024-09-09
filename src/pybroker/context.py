@@ -674,6 +674,7 @@ class ExecContext(BaseContext):
         self.stop_trailing_exit_price: Optional[PriceType] = None
 
         self._cover: bool = False
+        self._exiting_pos: bool = False
 
     def _verify_symbol(self):
         if self.symbol is None:
@@ -831,6 +832,7 @@ class ExecContext(BaseContext):
             return
         self.sell_shares = pos.shares
         self._portfolio.remove_stops(pos)
+        self._exiting_pos = True
 
     def cover_all_shares(self):
         """Covers all short shares of :attr:`.ExecContext.symbol`."""
@@ -839,6 +841,7 @@ class ExecContext(BaseContext):
             return
         self.cover_shares = pos.shares
         self._portfolio.remove_stops(pos)
+        self._exiting_pos = True
 
     def foreign(
         self, symbol: str, col: Optional[str] = None
@@ -1397,6 +1400,7 @@ def set_exec_ctx_data(ctx: ExecContext, date: np.datetime64):
     ctx._dt = None
     ctx._foreign.clear()
     ctx._cover = False
+    ctx._exiting_pos = False
     ctx.buy_fill_price = None
     ctx.buy_shares = None
     ctx.buy_limit_price = None

@@ -2158,6 +2158,52 @@ class TestStrategy:
             assert row["fees"].item() == 0
         assert (result.trades["stop"] == "bar").all()
 
+    def test_backtest_when_slippage_and_sell_all_shares(self, data_source_df):
+        class FakeSlippageModel(SlippageModel):
+            def apply_slippage(
+                self, ctx: ExecContext, buy_shares, sell_shares
+            ):
+                if sell_shares:
+                    ctx.sell_shares = 90
+
+        def buy_exec_fn(ctx):
+            if not ctx.long_pos():
+                ctx.buy_shares = 100
+            elif ctx.bars == 2:
+                ctx.sell_all_shares()
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.set_slippage_model(FakeSlippageModel())
+        strategy.add_execution(buy_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        orders = result.orders
+        sell_orders = orders[orders["type"] == "sell"]
+        assert len(sell_orders) == 1
+        assert sell_orders.iloc[0]["shares"] == 100
+
+    def test_backtest_when_slippage_and_cover_all_shares(self, data_source_df):
+        class FakeSlippageModel(SlippageModel):
+            def apply_slippage(
+                self, ctx: ExecContext, buy_shares, sell_shares
+            ):
+                if buy_shares:
+                    ctx.buy_shares = 90
+
+        def buy_exec_fn(ctx):
+            if not ctx.short_pos():
+                ctx.sell_shares = 100
+            elif ctx.bars == 2:
+                ctx.cover_all_shares()
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.set_slippage_model(FakeSlippageModel())
+        strategy.add_execution(buy_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        orders = result.orders
+        buy_orders = orders[orders["type"] == "buy"]
+        assert len(buy_orders) == 1
+        assert buy_orders.iloc[0]["shares"] == 100
+
     def test_backtest_when_stop_loss(self, data_source_df):
         def exec_fn(ctx):
             if ctx.bars == 1:
