@@ -1257,8 +1257,8 @@ class Portfolio:
                     return exit_price
             else:
                 low = price_scope.fetch(stop.symbol, PriceType.LOW)
-                high = price_scope.fetch(stop.symbol, PriceType.HIGH)
                 if low <= self._stop_data[stop.id].value:
+                    high = price_scope.fetch(stop.symbol, PriceType.HIGH)
                     return min(self._stop_data[stop.id].value, high)
         elif (
             stop.pos_type == "long" and stop.stop_type == StopType.PROFIT
@@ -1274,9 +1274,9 @@ class Portfolio:
                 if exit_price >= self._stop_data[stop.id].value:
                     return exit_price
             else:
-                low = price_scope.fetch(stop.symbol, PriceType.LOW)
                 high = price_scope.fetch(stop.symbol, PriceType.HIGH)
                 if high >= self._stop_data[stop.id].value:
+                    low = price_scope.fetch(stop.symbol, PriceType.LOW)
                     return max(self._stop_data[stop.id].value, low)
         return None
 
