@@ -259,6 +259,7 @@ def test_portfolio_field(ctx, portfolio, field, port_field):
 def test_sell_all_shares(ctx_with_pos):
     ctx_with_pos.sell_all_shares()
     assert ctx_with_pos.sell_shares == 200
+    assert ctx_with_pos._exiting_pos is True
 
 
 def test_sell_all_shares_when_no_position(ctx):
@@ -269,6 +270,7 @@ def test_sell_all_shares_when_no_position(ctx):
 def test_cover_all_shares(ctx_with_pos):
     ctx_with_pos.cover_all_shares()
     assert ctx_with_pos.buy_shares == 100
+    assert ctx_with_pos._exiting_pos is True
 
 
 def test_cover_all_shares_when_no_position(ctx):
@@ -843,6 +845,7 @@ def test_set_exec_ctx_data(ctx, sym_end_index):
     date = np.datetime64("2020-01-01")
     ctx._foreign = {"SPY": np.random.rand(100)}
     ctx._cover = True
+    ctx._exiting_pos = True
     ctx.buy_fill_price = PriceType.AVERAGE
     ctx.buy_shares = 100
     ctx.buy_limit_price = 99
@@ -865,6 +868,7 @@ def test_set_exec_ctx_data(ctx, sym_end_index):
     assert ctx.bars == sym_end_index[ctx.symbol]
     assert not ctx._foreign
     assert ctx._cover is False
+    assert ctx._exiting_pos is False
     assert ctx.buy_fill_price is None
     assert ctx.buy_shares is None
     assert ctx.buy_limit_price is None
