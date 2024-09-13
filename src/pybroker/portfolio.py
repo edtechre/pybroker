@@ -1155,9 +1155,11 @@ class Portfolio:
             symbol=stop.symbol,
             stop_type=stop.stop_type.value,
             pos_type=stop.pos_type,
-            curr_value=self._stop_data[stop.id].value
-            if stop.id in self._stop_data
-            else None,
+            curr_value=(
+                self._stop_data[stop.id].value
+                if stop.id in self._stop_data
+                else None
+            ),
             curr_bars=entry.bars if stop.stop_type == StopType.BAR else None,
             bars=stop.bars,
             percent=stop.percent,

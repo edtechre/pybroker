@@ -14,14 +14,42 @@ from pybroker.cache import CacheDateFields
 from .fixtures import *  # noqa: F401
 from pybroker.common import BarData, DataCol, IndicatorSymbol, to_datetime
 from pybroker.indicator import (
+    _to_bar_data,
     Indicator,
     IndicatorsMixin,
     IndicatorSet,
+    adx,
+    aroon_diff,
+    aroon_down,
+    aroon_up,
+    close_minus_ma,
+    cubic_deviation,
+    cubic_trend,
+    delta_on_balance_volume,
+    detrended_rsi,
     highest,
     indicator,
+    intraday_intensity,
+    laguerre_rsi,
+    linear_deviation,
+    linear_trend,
     lowest,
+    macd,
+    money_flow,
+    normalized_negative_volume_index,
+    normalized_on_balance_volume,
+    normalized_positive_volume_index,
+    price_change_oscillator,
+    price_intensity,
+    price_volume_fit,
+    quadratic_deviation,
+    quadratic_trend,
+    reactivity,
     returns,
-    _to_bar_data,
+    stochastic,
+    stochastic_rsi,
+    volume_weighted_ma_ratio,
+    volume_momentum,
 )
 from pybroker.vect import lowv
 
@@ -276,9 +304,123 @@ def test_wrappers(fn, values, period, expected):
         vwap=None,
     )
     indicator = fn("my_indicator", "close", period)
+    assert isinstance(indicator, Indicator)
     assert indicator.name == "my_indicator"
     series = indicator(bar_data)
     assert np.array_equal(series.index.to_numpy(), dates)
     assert np.array_equal(
         np.round(series.values, 6), np.round(expected, 6), equal_nan=True
     )
+
+
+@pytest.mark.parametrize(
+    "fn, args",
+    [
+        (
+            detrended_rsi,
+            {
+                "field": "close",
+                "short_length": 5,
+                "long_length": 10,
+                "reg_length": 20,
+            },
+        ),
+        (macd, {"short_length": 5, "long_length": 10, "smoothing": 2.0}),
+        (
+            stochastic,
+            {
+                "lookback": 10,
+                "smoothing": 2,
+            },
+        ),
+        (
+            stochastic_rsi,
+            {
+                "field": "close",
+                "rsi_lookback": 10,
+                "sto_lookback": 10,
+                "smoothing": 2.0,
+            },
+        ),
+        (
+            linear_trend,
+            {"field": "close", "lookback": 10, "atr_length": 20, "scale": 0.5},
+        ),
+        (
+            quadratic_trend,
+            {"field": "close", "lookback": 10, "atr_length": 20, "scale": 0.5},
+        ),
+        (
+            cubic_trend,
+            {"field": "close", "lookback": 10, "atr_length": 20, "scale": 0.5},
+        ),
+        (
+            adx,
+            {
+                "lookback": 10,
+            },
+        ),
+        (
+            aroon_up,
+            {
+                "lookback": 10,
+            },
+        ),
+        (
+            aroon_down,
+            {
+                "lookback": 10,
+            },
+        ),
+        (
+            aroon_diff,
+            {
+                "lookback": 10,
+            },
+        ),
+        (close_minus_ma, {"lookback": 10, "atr_length": 20, "scale": 0.5}),
+        (linear_deviation, {"field": "close", "lookback": 10, "scale": 0.5}),
+        (
+            quadratic_deviation,
+            {"field": "close", "lookback": 10, "scale": 0.5},
+        ),
+        (cubic_deviation, {"field": "close", "lookback": 10, "scale": 0.5}),
+        (price_intensity, {"smoothing": 1.0, "scale": 0.5}),
+        (
+            price_change_oscillator,
+            {"short_length": 5, "multiplier": 3, "scale": 0.5},
+        ),
+        (intraday_intensity, {"lookback": 10, "smoothing": 1.0}),
+        (money_flow, {"lookback": 10, "smoothing": 1.0}),
+        (reactivity, {"lookback": 10, "smoothing": 1.0, "scale": 0.5}),
+        (price_volume_fit, {"lookback": 10, "scale": 0.5}),
+        (volume_weighted_ma_ratio, {"lookback": 10, "scale": 0.5}),
+        (normalized_on_balance_volume, {"lookback": 10, "scale": 0.5}),
+        (
+            delta_on_balance_volume,
+            {"lookback": 10, "delta_length": 5, "scale": 0.5},
+        ),
+        (normalized_positive_volume_index, {"lookback": 10, "scale": 0.5}),
+        (normalized_negative_volume_index, {"lookback": 10, "scale": 0.5}),
+        (volume_momentum, {"short_length": 5, "multiplier": 2, "scale": 2.0}),
+        (laguerre_rsi, {"fe_length": 20}),
+    ],
+)
+def test_indicators(fn, args):
+    dates = pd.date_range(start="1/1/2018", end="1/1/2019").to_numpy()
+    n = len(dates)
+    bar_data = BarData(
+        date=dates,
+        open=np.random.rand(n),
+        high=np.random.rand(n),
+        low=np.random.rand(n),
+        close=np.random.rand(n),
+        volume=np.random.rand(n),
+        vwap=None,
+    )
+    indicator = fn(fn.__name__, **args)
+    assert isinstance(indicator, Indicator)
+    assert indicator.name == fn.__name__
+    series = indicator(bar_data)
+    assert len(series) == n
+    assert np.array_equal(series.index.to_numpy(), dates)

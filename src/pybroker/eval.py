@@ -9,39 +9,12 @@ This code is licensed under Apache 2.0 with Commons Clause license
 import numpy as np
 import pandas as pd
 from pybroker.scope import StaticScope
-from pybroker.vect import highv
+from pybroker.vect import highv, inverse_normal_cdf, normal_cdf
 from collections import deque
 from dataclasses import dataclass, field
 from numba import njit
 from numpy.typing import NDArray
 from typing import Callable, NamedTuple, Optional
-
-
-@njit
-def normal_cdf(z: float) -> float:
-    """Computes the CDF of the standard normal distribution."""
-    zz = np.fabs(z)
-    pdf = np.exp(-0.5 * zz * zz) / np.sqrt(2 * np.pi)
-    t = 1 / (1 + zz * 0.2316419)
-    poly = (
-        (((1.330274429 * t - 1.821255978) * t + 1.781477937) * t - 0.356563782)
-        * t
-        + 0.319381530
-    ) * t
-    return 1 - pdf * poly if z > 0 else pdf * poly
-
-
-@njit
-def inverse_normal_cdf(p: float) -> float:
-    """Computes the inverse CDF of the standard normal distribution."""
-    pp = p if p <= 0.5 else 1 - p
-    if pp == 0:
-        pp = 1.0e-10
-    t = np.sqrt(np.log(1 / (pp * pp)))
-    numer = (0.010328 * t + 0.802853) * t + 2.515517
-    denom = ((0.001308 * t + 0.189269) * t + 1.432788) * t + 1
-    x = t - numer / denom
-    return -x if p <= 0.5 else x
 
 
 class BootConfIntervals(NamedTuple):

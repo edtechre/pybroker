@@ -289,7 +289,7 @@ def test_ulcer_index(values, period, expected_ui):
     "values, period", [([100, 101, 102], 0), ([100, 101, 102], -1)]
 )
 def test_ulcer_index_when_invalid_period_then_error(values, period):
-    with pytest.raises(ValueError, match=re.escape("n needs to be >= 1.")):
+    with pytest.raises(AssertionError, match=re.escape("n needs to be >= 1.")):
         ulcer_index(np.array(values), period)
 
 
@@ -326,7 +326,7 @@ def test_upi(values, period, ui, expected_upi):
     "values, period", [([100, 101, 102], 0), ([100, 101, 102], -1)]
 )
 def test_upi_when_invalid_period_then_error(values, period):
-    with pytest.raises(ValueError, match=re.escape("n needs to be >= 1.")):
+    with pytest.raises(AssertionError, match=re.escape("n needs to be >= 1.")):
         upi(np.array(values), period)
 
 
