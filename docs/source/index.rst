@@ -172,7 +172,20 @@ To learn how to use PyBroker, see the notebooks under the *User Guide*:
    :caption: Reference
 
    Configuration Options <reference/pybroker.config>
+
+.. toctree::
+   :maxdepth: 2
+
+   Indicators <reference/pybroker.indicator>
+
+.. toctree::
+   :maxdepth: 4
+
    Modules <reference/modules>
+
+.. toctree::
+   :maxdepth: 1
+
    Index <genindex>
 
 Recommended Reading
