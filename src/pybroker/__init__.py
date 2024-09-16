@@ -52,4 +52,4 @@ from pybroker.vect import cross, highv, lowv, returnv, sumv
 # https://github.com/numba/numba/issues/8940
 from numba.np.unsafe import ndarray
 
-__version__ = "1.2.3"
+__version__ = "1.2.4"
