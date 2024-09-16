@@ -5,7 +5,7 @@ Changelog
 1.2.3
 =====
 
-* Adds built-in indicators to the [indicator module](https://www.pybroker.com/en/latest/reference/pybroker.indicator.html).
+* Adds built-in indicators to the `indicator module <https://www.pybroker.com/en/latest/reference/pybroker.indicator.html>`_.
 
 
 1.1.0
