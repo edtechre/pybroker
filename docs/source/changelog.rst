@@ -2,10 +2,10 @@
 Changelog
 #########
 
-1.2.0
+1.2.3
 =====
 
-* Upgrades to NumPy 2.
+* Adds built-in indicators to the [indicator module](https://www.pybroker.com/en/latest/reference/pybroker.indicator.html).
 
 
 1.1.0
