@@ -856,16 +856,22 @@ class EvaluateMixin:
         pnls = trades_df["pnl"].to_numpy()
         return_pcts = trades_df["return_pct"].to_numpy()
         bars = trades_df["bars"].to_numpy()
-        winning_bars = trades_df[trades_df["pnl"] > 0]["bars"].to_numpy()
-        losing_bars = trades_df[trades_df["pnl"] < 0]["bars"].to_numpy()
-        largest_win = trades_df[trades_df["pnl"] == trades_df["pnl"].max()]
+        winning_trades = trades_df[trades_df["pnl"] > 0]
+        winning_bars = winning_trades["bars"].to_numpy()
+        losing_trades = trades_df[trades_df["pnl"] < 0]
+        losing_bars = losing_trades["bars"].to_numpy()
+        largest_win = winning_trades[
+            winning_trades["pnl"] == winning_trades["pnl"].max()
+        ]
         largest_win_pct = (
             0 if largest_win.empty else largest_win["return_pct"].values[0]
         )
         largest_win_bars = (
             0 if largest_win.empty else largest_win["bars"].values[0]
         )
-        largest_loss = trades_df[trades_df["pnl"] == trades_df["pnl"].min()]
+        largest_loss = losing_trades[
+            losing_trades["pnl"] == losing_trades["pnl"].min()
+        ]
         largest_loss_pct = (
             0 if largest_loss.empty else largest_loss["return_pct"].values[0]
         )
