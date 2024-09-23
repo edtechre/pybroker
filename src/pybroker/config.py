@@ -98,3 +98,4 @@ class StrategyConfig:
     return_signals: bool = field(default=False)
     return_stops: bool = field(default=False)
     round_test_result: bool = field(default=True)
+    adjust: Optional[any] = field(default=None)

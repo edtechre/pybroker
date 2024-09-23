@@ -830,11 +830,13 @@ class Strategy(
         start_date: Union[str, datetime],
         end_date: Union[str, datetime],
         config: Optional[StrategyConfig] = None,
+        adjust: Optional[any] = None,
     ):
         self._verify_data_source(data_source)
         self._data_source = data_source
         self._start_date = to_datetime(start_date)
         self._end_date = to_datetime(end_date)
+        self._adjust = adjust
         verify_date_range(self._start_date, self._end_date)
         if config is not None:
             self._verify_config(config)
@@ -1442,7 +1444,7 @@ class Strategy(
         }
         if isinstance(self._data_source, DataSource):
             df = self._data_source.query(
-                unique_syms, self._start_date, self._end_date, timeframe
+                unique_syms, self._start_date, self._end_date, timeframe, adjust=self._adjust
             )
         else:
             df = _between(self._data_source, self._start_date, self._end_date)
