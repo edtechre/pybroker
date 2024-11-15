@@ -53,11 +53,11 @@ def _to_bar_data(df: pd.DataFrame) -> BarData:
                 df[col.value].to_numpy() if col.value in df.columns else None
             )
             for col in (DataCol.VOLUME, DataCol.VWAP)
-        },
+        },  # type: ignore[arg-type]
         **{
             col: df[col].to_numpy() if col in df.columns else None
             for col in StaticScope.instance().custom_data_cols
-        },
+        },  # type: ignore[arg-type]
     )
 
 
