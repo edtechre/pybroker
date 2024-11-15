@@ -422,10 +422,10 @@ class AlpacaCrypto(DataSource):
         start_date: Union[str, datetime],
         end_date: Union[str, datetime],
         timeframe: Optional[str] = "1d",
-        _: Optional[str] = None,
+        _adjust: Optional[str] = None,
     ) -> pd.DataFrame:
         _parse_alpaca_timeframe(timeframe)
-        return super().query(symbols, start_date, end_date, timeframe, _)
+        return super().query(symbols, start_date, end_date, timeframe, _adjust)
 
     def _fetch_data(
         self,
@@ -433,7 +433,7 @@ class AlpacaCrypto(DataSource):
         start_date: datetime,
         end_date: datetime,
         timeframe: Optional[str],
-        _: Optional[str],
+        _adjust: Optional[str],
     ) -> pd.DataFrame:
         """:meta private:"""
         amount, unit = _parse_alpaca_timeframe(timeframe)

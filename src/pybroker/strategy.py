@@ -62,6 +62,7 @@ from datetime import datetime
 from decimal import Decimal
 from numpy.typing import NDArray
 from typing import (
+    Any,
     Callable,
     Iterable,
     Iterator,
@@ -1035,6 +1036,7 @@ class Strategy(
         disable_parallel: bool = False,
         warmup: Optional[int] = None,
         portfolio: Optional[Portfolio] = None,
+        adjust: Optional[Any] = None,
     ) -> TestResult:
         """Backtests the trading strategy by running executions that were added
         with :meth:`.add_execution`.
@@ -1085,6 +1087,8 @@ class Strategy(
                 executions.
             portfolio: Custom :class:`pybroker.portfolio.Portfolio` to use for
                 backtests.
+            adjust: The type of adjustment to make to the
+                :class:`pybroker.data.DataSource`.
 
         Returns:
             :class:`.TestResult` containing portfolio balances, order
@@ -1104,6 +1108,7 @@ class Strategy(
             disable_parallel=disable_parallel,
             warmup=warmup,
             portfolio=portfolio,
+            adjust=adjust,
         )
 
     def walkforward(
@@ -1121,6 +1126,7 @@ class Strategy(
         disable_parallel: bool = False,
         warmup: Optional[int] = None,
         portfolio: Optional[Portfolio] = None,
+        adjust: Optional[Any] = None,
     ) -> TestResult:
         """Backtests the trading strategy using `Walkforward Analysis
         <https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis>`_.
@@ -1177,6 +1183,8 @@ class Strategy(
                 executions.
             portfolio: Custom :class:`pybroker.portfolio.Portfolio` to use for
                 backtests.
+            adjust: The type of adjustment to make to the
+                :class:`pybroker.data.DataSource`.
 
         Returns:
             :class:`.TestResult` containing portfolio balances, order
@@ -1210,7 +1218,7 @@ class Strategy(
             if start_dt is not None and end_dt is not None:
                 verify_date_range(start_dt, end_dt)
             self._logger.walkforward_start(start_dt, end_dt)
-            df = self._fetch_data(timeframe)
+            df = self._fetch_data(timeframe, adjust)
             day_ids = self._to_day_ids(days)
             df = self._filter_dates(
                 df=df,
@@ -1436,13 +1444,19 @@ class Strategy(
             disable_parallel=disable_parallel,
         )
 
-    def _fetch_data(self, timeframe: str) -> pd.DataFrame:
+    def _fetch_data(
+        self, timeframe: str, adjust: Optional[Any]
+    ) -> pd.DataFrame:
         unique_syms = {
             sym for execution in self._executions for sym in execution.symbols
         }
         if isinstance(self._data_source, DataSource):
             df = self._data_source.query(
-                unique_syms, self._start_date, self._end_date, timeframe
+                unique_syms,
+                self._start_date,
+                self._end_date,
+                timeframe,
+                adjust,
             )
         else:
             df = _between(self._data_source, self._start_date, self._end_date)

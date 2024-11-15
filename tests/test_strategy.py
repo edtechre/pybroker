@@ -1216,6 +1216,7 @@ class TestStrategy:
             between_time=between_time,
             calc_bootstrap=calc_bootstrap,
             disable_parallel=disable_parallel,
+            adjust="adjustment",
         )
         if date_range[0] is None:
             expected_start_date = datetime.strptime(START_DATE, "%Y-%m-%d")
