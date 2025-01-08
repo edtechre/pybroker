@@ -829,7 +829,9 @@ class ExecContext(BaseContext):
         """Sells all long shares of :attr:`.ExecContext.symbol`."""
         pos = self.long_pos()
         if pos is None:
-            return
+            raise ValueError(
+                f"sell_all_shares failed: No long position for {self.symbol}"
+            )
         self.sell_shares = pos.shares
         self._portfolio.remove_stops(pos)
         self._exiting_pos = True
@@ -838,7 +840,9 @@ class ExecContext(BaseContext):
         """Covers all short shares of :attr:`.ExecContext.symbol`."""
         pos = self.short_pos()
         if pos is None:
-            return
+            raise ValueError(
+                f"cover_all_shares failed: No short position for {self.symbol}"
+            )
         self.cover_shares = pos.shares
         self._portfolio.remove_stops(pos)
         self._exiting_pos = True
@@ -1304,6 +1308,7 @@ class ExecContext(BaseContext):
                     "sell_shares or hold_bars must be set when "
                     "sell_fill_price is set."
                 )
+
         if self.buy_shares is None and self.sell_shares is None:
             if (
                 self.stop_loss is not None

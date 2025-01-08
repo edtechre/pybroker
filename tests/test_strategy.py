@@ -2378,7 +2378,7 @@ class TestStrategy:
         def exec_fn(ctx):
             if ctx.bars == 1:
                 ctx.buy_shares = 100
-            elif ctx.bars > 30:
+            elif ctx.long_pos() and ctx.bars > 30:
                 ctx.sell_all_shares()
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)

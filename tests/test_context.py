@@ -263,8 +263,11 @@ def test_sell_all_shares(ctx_with_pos):
 
 
 def test_sell_all_shares_when_no_position(ctx):
-    ctx.sell_all_shares()
-    assert ctx.sell_shares is None
+    with pytest.raises(
+        ValueError,
+        match=re.escape("sell_all_shares failed: No long position for SPY"),
+    ):
+        ctx.sell_all_shares()
 
 
 def test_cover_all_shares(ctx_with_pos):
@@ -274,8 +277,11 @@ def test_cover_all_shares(ctx_with_pos):
 
 
 def test_cover_all_shares_when_no_position(ctx):
-    ctx.cover_all_shares()
-    assert ctx.buy_shares is None
+    with pytest.raises(
+        ValueError,
+        match=re.escape("cover_all_shares failed: No short position for SPY"),
+    ):
+        ctx.cover_all_shares()
 
 
 def test_model(ctx, trained_models, symbol):
