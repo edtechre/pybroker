@@ -512,22 +512,29 @@ class TestYFinance:
         ],
     )
     @pytest.mark.usefixtures("setup_ds_cache")
-    def test_query(self, param_symbols, expected_df, expected_rows, request):
+    @pytest.mark.parametrize("auto_adjust", [True, False])
+    def test_query(
+        self, param_symbols, expected_df, expected_rows, request, auto_adjust
+    ):
         param_symbols = get_fixture(request, param_symbols)
         expected_df = get_fixture(request, expected_df)
-        yf = YFinance()
+        if auto_adjust:
+            expected_df = expected_df.drop(columns=["Adj Close"])
+        yf = YFinance(auto_adjust=auto_adjust)
         with mock.patch.object(yfinance, "download", return_value=expected_df):
             df = yf.query(param_symbols, START_DATE, END_DATE)
-        assert set(df.columns) == {
+        expected_columns = {
             "date",
             "open",
             "high",
             "low",
             "close",
             "volume",
-            "adj_close",
             "symbol",
         }
+        if not auto_adjust:
+            expected_columns.add("adj_close")
+        assert set(df.columns) == expected_columns
         assert df.shape[0] == expected_rows
         assert set(df["symbol"].unique()) == set(param_symbols)
         assert (df["date"].unique() == expected_df.index.unique()).all()
@@ -549,25 +556,28 @@ class TestYFinance:
             ],
         ],
     )
-    def test_query_when_empty_result(self, symbols, columns):
-        yf = YFinance()
+    @pytest.mark.parametrize("auto_adjust", [True, False])
+    def test_query_when_empty_result(self, symbols, columns, auto_adjust):
+        yf = YFinance(auto_adjust=auto_adjust)
+        if auto_adjust and "adj_close" in columns:
+            columns = [col for col in columns if col != "adj_close"]
         with mock.patch.object(
             yfinance, "download", return_value=pd.DataFrame(columns=columns)
         ):
             df = yf.query(symbols, START_DATE, END_DATE)
         assert df.empty
-        assert set(df.columns) == set(
-            (
-                "date",
-                "open",
-                "high",
-                "low",
-                "close",
-                "volume",
-                "symbol",
-                "adj_close",
-            )
-        )
+        expected_columns = {
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "symbol",
+        }
+        if not auto_adjust:
+            expected_columns.add("adj_close")
+        assert set(df.columns) == expected_columns
 
 
 class TestAKShare:

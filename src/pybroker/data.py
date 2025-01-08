@@ -464,13 +464,19 @@ class YFinance(DataSource):
 
     Attributes:
         ADJ_CLOSE: Column name of adjusted close prices.
+
+    Args:
+        auto_adjust: Whether to auto adjust close prices. If ``True``, then
+            adjusted close prices are stored in the ``close`` column. Defaults
+            to ``False``.
     """
 
     ADJ_CLOSE: Final = "adj_close"
     __TIMEFRAME: Final = "1d"
 
-    def __init__(self):
+    def __init__(self, auto_adjust: bool = False):
         super().__init__()
+        self.auto_adjust = auto_adjust
         self._scope.register_custom_cols(self.ADJ_CLOSE)
 
     def query(
@@ -514,20 +520,21 @@ class YFinance(DataSource):
             start=start_date,
             end=end_date,
             progress=show_yf_progress_bar,
+            auto_adjust=self.auto_adjust,
         )
         if df.columns.empty:
-            return pd.DataFrame(
-                columns=[
-                    DataCol.SYMBOL.value,
-                    DataCol.DATE.value,
-                    DataCol.OPEN.value,
-                    DataCol.HIGH.value,
-                    DataCol.LOW.value,
-                    DataCol.CLOSE.value,
-                    DataCol.VOLUME.value,
-                    self.ADJ_CLOSE,
-                ]
-            )
+            columns = [
+                DataCol.SYMBOL.value,
+                DataCol.DATE.value,
+                DataCol.OPEN.value,
+                DataCol.HIGH.value,
+                DataCol.LOW.value,
+                DataCol.CLOSE.value,
+                DataCol.VOLUME.value,
+            ]
+            if not self.auto_adjust:
+                columns.append(self.ADJ_CLOSE)
+            return pd.DataFrame(columns=columns)
         if df.empty:
             return df
         df = df.reset_index()
@@ -542,7 +549,8 @@ class YFinance(DataSource):
             result[DataCol.LOW.value] = df["Low"].values
             result[DataCol.CLOSE.value] = df["Close"].values
             result[DataCol.VOLUME.value] = df["Volume"].values
-            result[self.ADJ_CLOSE] = df["Adj Close"].values
+            if not self.auto_adjust:
+                result[self.ADJ_CLOSE] = df["Adj Close"].values
         else:
             df.columns = df.columns.to_flat_index()
             for sym in symbols:
@@ -556,6 +564,7 @@ class YFinance(DataSource):
                 sym_df[DataCol.LOW.value] = df[("Low", sym)].values
                 sym_df[DataCol.CLOSE.value] = df[("Close", sym)].values
                 sym_df[DataCol.VOLUME.value] = df[("Volume", sym)].values
-                sym_df[self.ADJ_CLOSE] = df[("Adj Close", sym)].values
+                if not self.auto_adjust:
+                    sym_df[self.ADJ_CLOSE] = df[("Adj Close", sym)].values
                 result = pd.concat((result, sym_df))
         return result
