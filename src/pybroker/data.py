@@ -462,13 +462,13 @@ class AlpacaCrypto(DataSource):
 class YFinance(DataSource):
     r"""Retrieves data from `Yahoo Finance <https://finance.yahoo.com/>`_\ .
 
-    Attributes:
-        ADJ_CLOSE: Column name of adjusted close prices.
-
     Args:
         auto_adjust: Whether to auto adjust close prices. If ``True``, then
             adjusted close prices are stored in the ``close`` column. Defaults
             to ``False``.
+
+    Attributes:
+        ADJ_CLOSE: Column name of adjusted close prices.
     """
 
     ADJ_CLOSE: Final = "adj_close"
