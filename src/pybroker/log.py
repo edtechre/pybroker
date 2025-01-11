@@ -403,9 +403,7 @@ class Logger:
 
     def debug_enable_data_source_cache(self, ns: str, cache_dir: str):
         self._debug(
-            "Enabled data source cache:\n"
-            f"namespace={ns}\n"
-            f"dir={cache_dir}"
+            f"Enabled data source cache:\nnamespace={ns}\ndir={cache_dir}"
         )
 
     def debug_disable_data_source_cache(self):
@@ -416,7 +414,7 @@ class Logger:
 
     def debug_enable_indicator_cache(self, ns: str, cache_dir: str):
         self._debug(
-            "Enabled indicator cache:\n" f"namespace={ns}\n" f"dir={cache_dir}"
+            f"Enabled indicator cache:\nnamespace={ns}\ndir={cache_dir}"
         )
 
     def debug_disable_indicator_cache(self):
@@ -426,9 +424,7 @@ class Logger:
         self._debug(f"Cleared indicator cache: {cache_dir}")
 
     def debug_enable_model_cache(self, ns: str, cache_dir: str):
-        self._debug(
-            "Enabled model cache:\n" f"namespace={ns}\n" f"dir={cache_dir}"
-        )
+        self._debug(f"Enabled model cache:\nnamespace={ns}\ndir={cache_dir}")
 
     def debug_disable_model_cache(self):
         self._debug("Disabled model cache.")
