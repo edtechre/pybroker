@@ -96,6 +96,6 @@ jobs:
         - name: Run build
           run: python -m build --sdist
 
-        - uses: actions/upload-artifact@v3
+        - uses: actions/upload-artifact@v4
           with:
             path: ./dist/*.tar.gz
