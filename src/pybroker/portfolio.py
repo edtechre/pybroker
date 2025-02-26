@@ -985,9 +985,10 @@ class Portfolio:
             low = None
             high = None
             if index in df.index:
-                close = to_decimal(df.loc[index][DataCol.CLOSE.value])
-                low = to_decimal(df.loc[index][DataCol.LOW.value])
-                high = to_decimal(df.loc[index][DataCol.HIGH.value])
+                df_row = df.loc[index].squeeze()
+                close = to_decimal(df_row[DataCol.CLOSE.value])
+                low = to_decimal(df_row[DataCol.LOW.value])
+                high = to_decimal(df_row[DataCol.HIGH.value])
             pos_long_shares = Decimal()
             pos_short_shares = Decimal()
             pos_equity = Decimal()
