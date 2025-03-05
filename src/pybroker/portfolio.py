@@ -987,7 +987,9 @@ class Portfolio:
             if index in df.index:
                 df_row = df.loc[index].squeeze()
                 if isinstance(df_row, pd.core.frame.DataFrame):
-                    raise ValueError("df has the same index. index:" + str(index))
+                    raise ValueError(
+                        "df has the same index. index:" + str(index)
+                    )
                 close = to_decimal(df_row[DataCol.CLOSE.value])
                 low = to_decimal(df_row[DataCol.LOW.value])
                 high = to_decimal(df_row[DataCol.HIGH.value])
