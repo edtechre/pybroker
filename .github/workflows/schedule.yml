@@ -16,7 +16,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tox
-        run: python -m pip install tox
+        run: python -m pip install --no-cache-dir tox
 
       - name: Run ruff
         run: tox -e format
@@ -32,7 +32,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tox
-        run: python -m pip install tox
+        run: python -m pip install --no-cache-dir tox
 
       - name: Run ruff
         run: tox -e lint
@@ -48,7 +48,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tox
-        run: python -m pip install tox
+        run: python -m pip install --no-cache-dir tox
 
       - name: Run mypy
         run: python -m tox -e typecheck
@@ -75,7 +75,7 @@ jobs:
           python-version: ${{ matrix.python.version }}
 
       - name: Install tox
-        run: python -m pip install tox
+        run: python -m pip install --no-cache-dir tox
 
       - name: Run pytest
         run: tox -e ${{ matrix.python.toxenv }}
