@@ -23,4 +23,4 @@ Sphinx>=5.3.0
 sphinx_rtd_theme>=2.0.0
 sphinx-intl>=2.1.0
 yahooquery>=2.3.7
-yfinance>=0.1.84
+yfinance>=0.2.55
