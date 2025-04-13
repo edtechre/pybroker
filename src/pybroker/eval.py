@@ -453,7 +453,9 @@ def iqr(values: NDArray[np.float64]) -> float:
     x = values[~np.isnan(values)]
     if not len(x):
         return 0
-    percentiles = tuple(np.percentile(x, [75, 25], method="midpoint"))
+    percentiles: NDArray[np.float64] = np.percentile(
+        x, [75, 25], method="midpoint"
+    )
     q75: float = float(percentiles[0])
     q25: float = float(percentiles[1])
     return q75 - q25
