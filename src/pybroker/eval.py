@@ -12,6 +12,7 @@ from pybroker.scope import StaticScope
 from pybroker.vect import highv, inverse_normal_cdf, normal_cdf
 from collections import deque
 from dataclasses import dataclass, field
+from datetime import datetime
 from numba import njit
 from numpy.typing import NDArray
 from typing import Callable, NamedTuple, Optional
@@ -290,20 +291,27 @@ def calmar_ratio(changes: NDArray[np.float64], bars_per_year: int) -> float:
 
 
 @njit
-def max_drawdown_percent(returns: NDArray[np.float64]) -> float:
+def max_drawdown_percent(
+    returns: NDArray[np.float64],
+) -> tuple[float, Optional[int]]:
     """Computes maximum drawdown, measured in percentage loss.
 
     Args:
         returns: Array of returns centered at 0.
+
+    Returns:
+        - Maximum drawdown, measured in percentage loss.
+        - Index of the maximum drawdown.
     """
     returns = returns + 1
     n = len(returns)
     if not n:
-        return 0
+        return 0, None
     cumulative = 1.0
     max_equity = 1.0
     dd = 0.0
-    for r in returns:
+    index = None
+    for i, r in enumerate(returns):
         cumulative *= r
         if cumulative > max_equity:
             max_equity = cumulative
@@ -311,7 +319,8 @@ def max_drawdown_percent(returns: NDArray[np.float64]) -> float:
             loss = (cumulative / max_equity - 1) * 100
             if loss < dd:
                 dd = loss
-    return dd
+                index = i
+    return dd, index
 
 
 @njit
@@ -402,7 +411,7 @@ def drawdown_conf(
             changes_sample[j] = changes[k]
             returns_sample[j] = returns[k]
         boot_dd[i] = max_drawdown(changes_sample)
-        boot_dd_pct[i] = max_drawdown_percent(returns_sample)
+        boot_dd_pct[i], _ = max_drawdown_percent(returns_sample)
     return DrawdownMetrics(_dd_confs(boot_dd), _dd_confs(boot_dd_pct))
 
 
@@ -689,6 +698,7 @@ class EvalMetrics:
             :attr:`pybroker.config.StrategyConfig.fee_mode` for more info.
         max_drawdown: Maximum drawdown, measured in cash.
         max_drawdown_pct: Maximum drawdown, measured in percentage.
+        max_drawdown_date: Date of maximum drawdown.
         win_rate: Win rate of trades.
         loss_rate: Loss rate of trades.
         winning_trades: Number of winning trades.
@@ -742,6 +752,7 @@ class EvalMetrics:
     total_fees: float = field(default=0)
     max_drawdown: float = field(default=0)
     max_drawdown_pct: float = field(default=0)
+    max_drawdown_date: Optional[datetime] = field(default=None)
     win_rate: float = field(default=0)
     loss_rate: float = field(default=0)
     winning_trades: int = field(default=0)
@@ -846,6 +857,8 @@ class EvaluateMixin:
         market_values = portfolio_df["market_value"].to_numpy()
         fees = portfolio_df["fees"].to_numpy()
         bar_returns = self._calc_bar_returns(portfolio_df)
+        bar_return_dates = bar_returns.index.to_series().reset_index(drop=True)
+        bar_returns = bar_returns.to_numpy()
         bar_changes = self._calc_bar_changes(portfolio_df)
         if (
             not len(market_values)
@@ -882,6 +895,7 @@ class EvaluateMixin:
             market_values,
             bar_changes,
             bar_returns,
+            bar_return_dates,
             pnls,
             return_pcts,
             bars=bars,
@@ -926,10 +940,10 @@ class EvaluateMixin:
         logger.calc_bootstrap_metrics_completed()
         return EvalResult(metrics, bootstrap)
 
-    def _calc_bar_returns(self, df: pd.DataFrame) -> NDArray[np.float64]:
+    def _calc_bar_returns(self, df: pd.DataFrame) -> pd.Series:
         prev_market_value = df["market_value"].shift(1)
         returns = (df["market_value"] - prev_market_value) / prev_market_value
-        return returns.dropna().to_numpy()
+        return returns.dropna()
 
     def _calc_bar_changes(self, df: pd.DataFrame) -> NDArray[np.float64]:
         changes = df["market_value"] - df["market_value"].shift(1)
@@ -940,6 +954,7 @@ class EvaluateMixin:
         market_values: NDArray[np.float64],
         bar_changes: NDArray[np.float64],
         bar_returns: NDArray[np.float64],
+        bar_return_dates: pd.Series,
         pnls: NDArray[np.float64],
         return_pcts: NDArray[np.float64],
         bars: NDArray[np.int_],
@@ -954,7 +969,12 @@ class EvaluateMixin:
     ) -> EvalMetrics:
         total_fees = fees[-1] if len(fees) else 0
         max_dd = max_drawdown(bar_changes)
-        max_dd_pct = max_drawdown_percent(bar_returns)
+        max_dd_pct, max_dd_index = max_drawdown_percent(bar_returns)
+        max_dd_date = (
+            bar_return_dates.iloc[max_dd_index].to_pydatetime()
+            if max_dd_index
+            else None
+        )
         sharpe = sharpe_ratio(bar_changes, bars_per_year)
         sortino = sortino_ratio(bar_changes, bars_per_year)
         pf = profit_factor(bar_changes)
@@ -1029,6 +1049,7 @@ class EvaluateMixin:
             end_market_value=market_values[-1],
             max_drawdown=max_dd,
             max_drawdown_pct=max_dd_pct,
+            max_drawdown_date=max_dd_date,
             largest_win=largest_win,
             largest_win_pct=largest_win_pct,
             largest_win_bars=largest_win_num_bars,

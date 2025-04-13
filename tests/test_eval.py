@@ -12,6 +12,7 @@ import os
 import pandas as pd
 import pytest
 import re
+from datetime import datetime
 from pybroker.eval import (
     EvalMetrics,
     EvaluateMixin,
@@ -225,20 +226,24 @@ def test_calmar_ratio(values, bars_per_year, expected_calmar):
 
 
 @pytest.mark.parametrize(
-    "values, expected_dd",
+    "values, expected_dd, expected_index",
     [
-        ([0, 0.1, 0.15, -0.05, 0.1, -0.25, -0.15, 0], -36.25),
-        ([0, -0.2], -20),
-        ([-0.1], -10),
-        ([0, 0, 0, 0], 0),
-        ([0], 0),
-        ([], 0),
+        ([0, 0.1, 0.15, -0.05, 0.1, -0.25, -0.15, 0], -36.25, 6),
+        ([0, -0.2], -20, 1),
+        ([-0.1], -10, 0),
+        ([0, 0, 0, 0], 0, None),
+        ([0], 0, None),
+        ([], 0, None),
     ],
 )
-def test_max_drawdown_percent(values, expected_dd):
+def test_max_drawdown_percent(values, expected_dd, expected_index):
     returns = np.array(values)
-    dd = max_drawdown_percent(returns)
+    dd, index = max_drawdown_percent(returns)
     assert round(dd, 2) == expected_dd
+    if expected_index is None:
+        assert index is None
+    else:
+        assert index == expected_index
 
 
 @pytest.mark.parametrize(
@@ -547,6 +552,7 @@ class TestEvaluateMixin:
         assert metrics.total_loss == -237770.88
         assert metrics.max_drawdown == -56721.59999999998
         assert metrics.max_drawdown_pct == -7.908428778116649
+        assert metrics.max_drawdown_date == datetime(2022, 1, 25, 5, 0)
         assert metrics.win_rate == 52.57731958762887
         assert metrics.loss_rate == 47.42268041237113
         assert metrics.winning_trades == 204
@@ -606,6 +612,7 @@ class TestEvaluateMixin:
                 "annual_return_pct",
                 "annual_std_error",
                 "annual_volatility_pct",
+                "max_drawdown_date",
             ):
                 assert getattr(result.metrics, field) is None
             else:
@@ -617,7 +624,11 @@ class TestEvaluateMixin:
     ):
         mixin = EvaluateMixin()
         result = mixin.evaluate(
-            pd.DataFrame([[1000, 0]], columns=["market_value", "fees"]),
+            pd.DataFrame(
+                [[1000, 0]],
+                columns=["market_value", "fees"],
+                index=[pd.Timestamp("2023-04-12 00:00:00")],
+            ),
             trades_df,
             calc_bootstrap,
             bootstrap_sample_size=10,
@@ -631,6 +642,7 @@ class TestEvaluateMixin:
                 "annual_return_pct",
                 "annual_std_error",
                 "annual_volatility_pct",
+                "max_drawdown_date",
             ):
                 assert getattr(result.metrics, field) is None
             else:
