@@ -16,6 +16,7 @@ from pybroker.common import (
     DataCol,
     FeeInfo,
     FeeMode,
+    PositionMode,
     PriceType,
     StopType,
     to_decimal,
@@ -342,6 +343,7 @@ class Portfolio:
         subtract_fees: Whether to subtract fees from the cash balance after an
             order is filled.
         enable_fractional_shares: Whether to enable trading fractional shares.
+        position_mode: Position mode for :class:`.Portfolio`.
         max_long_positions: Maximum number of long :class:`.Position`\ s that
             can be held at a time. If ``None``, then unlimited.
         max_short_positions: Maximum number of short :class:`.Position`\ s that
@@ -384,6 +386,7 @@ class Portfolio:
         fee_amount: Optional[float] = None,
         subtract_fees: bool = False,
         enable_fractional_shares: bool = False,
+        position_mode: PositionMode = PositionMode.DEFAULT,
         max_long_positions: Optional[int] = None,
         max_short_positions: Optional[int] = None,
         record_stops: Optional[bool] = False,
@@ -396,6 +399,7 @@ class Portfolio:
         )
         self._subtract_fees = subtract_fees
         self._enable_fractional_shares = enable_fractional_shares
+        self._position_mode = position_mode
         self.equity: Decimal = self.cash
         self.market_value: Decimal = self.cash
         self.fees = Decimal()
@@ -639,7 +643,7 @@ class Portfolio:
         if shares == 0:
             return None
         covered = self._cover(date, symbol, shares, fill_price)
-        bought_shares = self._buy(
+        bought_shares = self._long(
             date, symbol, covered.rem_shares, fill_price, limit_price, stops
         )
         if not covered.filled_shares and not bought_shares:
@@ -724,7 +728,7 @@ class Portfolio:
             mfe=mfe,
         )
 
-    def _buy(
+    def _long(
         self,
         date: np.datetime64,
         symbol: str,
@@ -733,6 +737,8 @@ class Portfolio:
         limit_price: Optional[Decimal],
         stops: Optional[Iterable[Stop]],
     ) -> Decimal:
+        if self._position_mode == PositionMode.SHORT_ONLY:
+            return Decimal()
         clamped_shares = self._clamp_shares(fill_price, shares)
         if clamped_shares < shares:
             self._logger.debug_buy_shares_exceed_cash(
@@ -924,6 +930,8 @@ class Portfolio:
             and symbol not in self.short_positions
             and len(self.short_positions) == self._max_short_positions
         ):
+            return Decimal()
+        if self._position_mode == PositionMode.LONG_ONLY:
             return Decimal()
         if symbol not in self.short_positions:
             self.symbols.add(symbol)

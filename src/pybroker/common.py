@@ -173,6 +173,20 @@ class FeeInfo(NamedTuple):
     order_type: Literal["buy", "sell"]
 
 
+class PositionMode(Enum):
+    """Position mode for backtesting.
+
+    Attributes:
+        DEFAULT: Long and short positions.
+        LONG_ONLY: Long-only positions.
+        SHORT_ONLY: Short-only positions.
+    """
+
+    DEFAULT = "default"
+    LONG_ONLY = "long_only"
+    SHORT_ONLY = "short_only"
+
+
 class BarData:
     r"""Contains data for a series of bars. Each field is a
     :class:`numpy.ndarray` that contains bar values in the series. The values

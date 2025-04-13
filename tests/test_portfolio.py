@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 from collections import deque
 from decimal import Decimal
-from pybroker.common import FeeMode, PriceType, StopType
+from pybroker.common import FeeMode, PositionMode, PriceType, StopType
 from pybroker.portfolio import Portfolio, Stop
 from pybroker.scope import ColumnScope, PriceScope
 
@@ -3536,3 +3536,25 @@ def test_mae_mfe_when_long_position():
     assert len(portfolio.trades) == 1
     assert portfolio.trades[0].mae == low_price - fill_price
     assert portfolio.trades[0].mfe == high_price - fill_price
+
+
+def test_long_only_mode():
+    cash = 100_000
+    portfolio = Portfolio(cash, position_mode=PositionMode.LONG_ONLY)
+    portfolio.buy(DATE_1, SYMBOL_1, 100, FILL_PRICE_1)
+    portfolio.sell(DATE_2, SYMBOL_1, 200, FILL_PRICE_1)
+    assert not portfolio.long_positions
+    assert not portfolio.short_positions
+    assert len(portfolio.trades) == 1
+    assert portfolio.trades[0].shares == 100
+
+
+def test_short_only_mode():
+    cash = 100_000
+    portfolio = Portfolio(cash, position_mode=PositionMode.SHORT_ONLY)
+    portfolio.sell(DATE_1, SYMBOL_1, 100, FILL_PRICE_1)
+    portfolio.buy(DATE_2, SYMBOL_1, 200, FILL_PRICE_1)
+    assert not portfolio.long_positions
+    assert not portfolio.short_positions
+    assert len(portfolio.trades) == 1
+    assert portfolio.trades[0].shares == 100
