@@ -431,8 +431,8 @@ def relative_entropy(values: NDArray[np.float64]) -> float:
         n_bins = 10
     elif n >= 100:
         n_bins = 5
-    min_val = np.min(x)
-    max_val = np.max(x)
+    min_val = float(np.min(x))
+    max_val = float(np.max(x))
     factor = (n_bins - 1.0e-10) / (max_val - min_val + 1.0e-60)
     count = np.zeros(n_bins)
     for v in x:
@@ -453,7 +453,7 @@ def iqr(values: NDArray[np.float64]) -> float:
     x = values[~np.isnan(values)]
     if not len(x):
         return 0
-    q75, q25 = np.percentile(x, [75, 25], method="midpoint")
+    q75, q25 = tuple(np.percentile(x, [75, 25], method="midpoint"))
     return q75 - q25
 
 
@@ -558,8 +558,8 @@ def avg_profit_loss(pnls: NDArray[np.float64]) -> tuple[float, float]:
     profits = pnls[pnls > 0]
     losses = pnls[pnls < 0]
     return (
-        np.mean(profits) if len(profits) else 0,
-        np.mean(losses) if len(losses) else 0,
+        float(np.mean(profits)) if len(profits) else 0,
+        float(np.mean(losses)) if len(losses) else 0,
     )
 
 
@@ -648,8 +648,8 @@ def r_squared(values: NDArray[np.float64]) -> float:
         coeffs = np.polyfit(x, values, 1)
         pred = np.poly1d(coeffs)(x)
         y_hat = np.mean(values)
-        ssres = np.sum((values - pred) ** 2)
-        sstot = np.sum((values - y_hat) ** 2)
+        ssres = float(np.sum((values - pred) ** 2))
+        sstot = float(np.sum((values - y_hat) ** 2))
         if sstot == 0:
             return 0
         return 1 - ssres / sstot
