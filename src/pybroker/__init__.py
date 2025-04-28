@@ -40,7 +40,10 @@ from pybroker.data import (
     AlpacaCrypto as AlpacaCrypto,
     YFinance as YFinance,
 )
-from pybroker.eval import EvalMetrics as EvalMetrics, BootstrapResult as BootstrapResult
+from pybroker.eval import (
+    EvalMetrics as EvalMetrics,
+    BootstrapResult as BootstrapResult,
+)
 from pybroker.indicator import (
     Indicator as Indicator,
     IndicatorSet as IndicatorSet,
