@@ -616,7 +616,7 @@ class PriceScope:
             raise ValueError(f"Unknown price: {price_type}")
         if self._round_fill_price:
             fill_price = round(cast(float, fill_price), 2)
-        return to_decimal(fill_price)
+        return to_decimal(cast(float, fill_price))
 
 
 class PendingOrder(NamedTuple):
