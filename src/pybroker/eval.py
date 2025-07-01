@@ -950,7 +950,7 @@ class EvaluateMixin:
         return returns.dropna()
 
     def _calc_bar_changes(self, df: pd.DataFrame) -> NDArray[np.float64]:
-        changes = df["market_value"] - df["market_value"].shift(1)
+        changes = (df["market_value"] - df["market_value"].shift(1))/df["market_value"].shift(1)
         return changes.dropna().to_numpy()
 
     def _calc_eval_metrics(
