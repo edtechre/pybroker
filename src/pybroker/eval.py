@@ -178,7 +178,7 @@ def log_profit_factor(changes: NDArray[np.float64]) -> np.floating:
 
 @njit
 def sharpe_ratio(
-    changes: NDArray[np.float64],
+    returns: NDArray[np.float64],
     obs: Optional[int] = None,
     downside_only: bool = False,
 ) -> np.floating:
@@ -186,36 +186,36 @@ def sharpe_ratio(
     `Sharpe Ratio <https://en.wikipedia.org/wiki/Sharpe_ratio>`_.
 
     Args:
-        changes: Array of differences between each bar and the previous bar.
+        returns: Array of returns centered at 0.
         obs: Number of observations used to annualize the Sharpe Ratio. For
             example, a value of ``252`` would be used to annualize daily
             returns.
     """
-    std_changes = changes[changes < 0] if downside_only else changes
+    std_changes = returns[returns < 0] if downside_only else returns
     if not len(std_changes):
         return np.float64(0)
     std = np.std(std_changes)
     if std == 0:
         return np.float64(0)
-    sr = np.mean(changes) / std
+    sr = np.mean(returns) / std
     if obs is not None:
         sr *= np.sqrt(obs)
     return sr
 
 
 def sortino_ratio(
-    changes: NDArray[np.float64], obs: Optional[int] = None
+    returns: NDArray[np.float64], obs: Optional[int] = None
 ) -> float:
     """Computes the
     `Sortino Ratio <https://en.wikipedia.org/wiki/Sortino_ratio>`_.
 
     Args:
-        changes: Array of differences between each bar and the previous bar.
+        returns: Array of returns centered at 0.
         obs: Number of observations used to annualize the Sortino Ratio. For
             example, a value of ``252`` would be used to annualize daily
             returns.
     """
-    return float(sharpe_ratio(changes, obs, downside_only=True))
+    return float(sharpe_ratio(returns, obs, downside_only=True))
 
 
 def conf_profit_factor(
@@ -275,19 +275,19 @@ def max_drawdown(changes: NDArray[np.float64]) -> float:
     return -dd
 
 
-def calmar_ratio(changes: NDArray[np.float64], bars_per_year: int) -> float:
+def calmar_ratio(returns: NDArray[np.float64], bars_per_year: int) -> float:
     """Computes the Calmar Ratio.
 
     Args:
-        changes: Array of differences between each bar and the previous bar.
+        returns: Array of returns centered at 0.
         bars_per_year: Number of bars per annum.
     """
-    if not len(changes):
+    if not len(returns):
         return 0
-    max_dd = np.abs(max_drawdown(changes))
+    max_dd = np.abs(max_drawdown(returns))
     if max_dd == 0:
         return 0
-    return np.mean(changes) * bars_per_year / max_dd
+    return np.mean(returns) * bars_per_year / max_dd
 
 
 @njit
@@ -923,16 +923,17 @@ class EvaluateMixin:
             samples=bootstrap_samples, sample_size=bootstrap_sample_size
         )
         confs_result = self._calc_conf_intervals(
-            bar_changes,
-            bootstrap_sample_size,
-            bootstrap_samples,
-            bars_per_year,
+            changes=bar_changes,
+            returns=bar_returns,
+            sample_size=bootstrap_sample_size,
+            samples=bootstrap_samples,
+            bars_per_year=bars_per_year,
         )
         dd_result = self._calc_drawdown_conf(
-            bar_changes,
-            bar_returns,
-            bootstrap_sample_size,
-            bootstrap_samples,
+            changes=bar_changes,
+            returns=bar_returns,
+            sample_size=bootstrap_sample_size,
+            samples=bootstrap_samples,
         )
         bootstrap = BootstrapResult(
             conf_intervals=confs_result.df,
@@ -979,8 +980,8 @@ class EvaluateMixin:
             if max_dd_index
             else None
         )
-        sharpe = sharpe_ratio(bar_changes, bars_per_year)
-        sortino = sortino_ratio(bar_changes, bars_per_year)
+        sharpe = sharpe_ratio(bar_returns, bars_per_year)
+        sortino = sortino_ratio(bar_returns, bars_per_year)
         pf = profit_factor(bar_changes)
         r2 = r_squared(market_values)
         ui = ulcer_index(market_values)
@@ -1046,7 +1047,7 @@ class EvaluateMixin:
             annual_volatility_pct = float(
                 np.std(bar_returns * 100) * np.sqrt(bars_per_year)
             )
-            calmar = calmar_ratio(bar_changes, bars_per_year)
+            calmar = calmar_ratio(bar_returns, bars_per_year)
         return EvalMetrics(
             trade_count=len(pnls),
             initial_market_value=market_values[0],
@@ -1097,6 +1098,7 @@ class EvaluateMixin:
     def _calc_conf_intervals(
         self,
         changes: NDArray[np.float64],
+        returns: NDArray[np.float64],
         sample_size: int,
         samples: int,
         bars_per_year: Optional[int],
@@ -1104,7 +1106,7 @@ class EvaluateMixin:
         pf_intervals = conf_profit_factor(changes, sample_size, samples)
         pf_conf = self._to_conf_intervals("Profit Factor", pf_intervals)
         sr_intervals = conf_sharpe_ratio(
-            changes, sample_size, samples, bars_per_year
+            returns, sample_size, samples, bars_per_year
         )
         sharpe_conf = self._to_conf_intervals("Sharpe Ratio", sr_intervals)
         df = pd.DataFrame.from_records(

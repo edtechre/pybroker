@@ -484,11 +484,11 @@ class TestEvaluateMixin:
     @pytest.mark.parametrize(
         "bars_per_year, expected_sharpe, expected_sortino",
         [
-            (None, 0.01710828175162464, 0.01714937872464358),
+            (None, 0.026013464180574847, 0.02727734785007549),
             (
                 252,
-                0.01710828175162464 * np.sqrt(252),
-                0.01714937872464358 * np.sqrt(252),
+                0.026013464180574847 * np.sqrt(252),
+                0.02727734785007549 * np.sqrt(252),
             ),
         ],
     )
@@ -583,7 +583,7 @@ class TestEvaluateMixin:
         assert metrics.std_error == 69646.36129687089
         assert metrics.total_fees == 0
         if bars_per_year is not None:
-            assert metrics.calmar == 0.6819937522980625
+            assert metrics.calmar == 1.1557170701224246
             assert truncate(metrics.annual_return_pct, 6) == truncate(
                 5.897743691129764, 6
             )
