@@ -1030,7 +1030,7 @@ class Strategy(
         between_time: Optional[tuple[str, str]] = None,
         days: Optional[Union[str, Day, Iterable[Union[str, Day]]]] = None,
         lookahead: int = 1,
-        train_size: int = 0,
+        train_size: float = 0,
         shuffle: bool = False,
         calc_bootstrap: bool = False,
         disable_parallel: bool = False,
