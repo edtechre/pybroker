@@ -1327,8 +1327,7 @@ class Strategy(
                         DataCol.DATE.value
                     ].values
                     if len(sym_dates):
-                        sym_dates.sort()
-                        exit_dates[sym] = sym_dates[-1]
+                        exit_dates[sym] = sym_dates.max()
         signals: dict[str, pd.DataFrame] = {}
         for train_idx, test_idx in self.walkforward_split(
             df=df,

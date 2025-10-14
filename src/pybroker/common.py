@@ -379,5 +379,5 @@ def get_unique_sorted_dates(col: pd.Series) -> Sequence[np.datetime64]:
     # TODO: Remove after Pandas 1.0 is no longer supported.
     if hasattr(result, "to_numpy"):
         result = result.to_numpy()
-    result.sort()
+    result = np.sort(result)
     return result
