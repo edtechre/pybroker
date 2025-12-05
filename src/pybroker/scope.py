@@ -363,7 +363,9 @@ class IndicatorScope:
         if ind_sym not in self._indicator_data:
             raise ValueError(f"Indicator {name!r} not found for {symbol}.")
         ind_series = self._indicator_data[ind_sym]
-        ind_data = ind_series[ind_series.index.isin(self._filter_dates)].to_numpy(copy=True)
+        ind_data = ind_series[
+            ind_series.index.isin(self._filter_dates)
+        ].to_numpy(copy=True)
         self._sym_inds[ind_sym] = ind_data
         return ind_data[:end_index]
 

@@ -47,10 +47,15 @@ def _to_bar_data(df: pd.DataFrame) -> BarData:
                 f"DataFrame is missing required column: {col.value}"
             )
     return BarData(
-        **{col.value: df[col.value].to_numpy(copy=True) for col in required_cols},
+        **{
+            col.value: df[col.value].to_numpy(copy=True)
+            for col in required_cols
+        },
         **{
             col.value: (
-                df[col.value].to_numpy(copy=True) if col.value in df.columns else None
+                df[col.value].to_numpy(copy=True)
+                if col.value in df.columns
+                else None
             )
             for col in (DataCol.VOLUME, DataCol.VWAP)
         },  # type: ignore[arg-type]

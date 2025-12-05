@@ -340,8 +340,6 @@ class Portfolio:
         cash: Starting cash balance.
         fee_mode: Brokerage fee mode.
         fee_amount: Brokerage fee amount.
-        subtract_fees: Whether to subtract fees from the cash balance after an
-            order is filled.
         enable_fractional_shares: Whether to enable trading fractional shares.
         position_mode: Position mode for :class:`.Portfolio`.
         max_long_positions: Maximum number of long :class:`.Position`\ s that
@@ -358,7 +356,6 @@ class Portfolio:
             with the unrealized PnL of all open short positions.
         fees: Current brokerage fees.
         fee_amount: Brokerage fee amount.
-        subtract_fees: Whether to subtract fees from the cash balance.
         enable_fractional_shares: Whether to enable trading fractional shares.
         orders: ``deque`` of all filled orders, sorted in ascending
             chronological order.
@@ -384,7 +381,6 @@ class Portfolio:
             Union[FeeMode, Callable[[FeeInfo], Decimal], None]
         ] = None,
         fee_amount: Optional[float] = None,
-        subtract_fees: bool = False,
         enable_fractional_shares: bool = False,
         position_mode: PositionMode = PositionMode.DEFAULT,
         max_long_positions: Optional[int] = None,
@@ -397,7 +393,6 @@ class Portfolio:
         self._fee_amount: Optional[Decimal] = (
             None if fee_amount is None else to_decimal(fee_amount)
         )
-        self._subtract_fees = subtract_fees
         self._enable_fractional_shares = enable_fractional_shares
         self._position_mode = position_mode
         self.equity: Decimal = self.cash
@@ -513,7 +508,7 @@ class Portfolio:
         )
         self.orders.append(order)
         self.fees += fees
-        if self._subtract_fees:
+        if self._fee_mode is not None:
             self.cash -= fees
         return order
 

@@ -84,7 +84,6 @@ class StrategyConfig:
         default=None
     )
     fee_amount: float = field(default=0)
-    subtract_fees: bool = field(default=False)
     enable_fractional_shares: bool = field(default=False)
     round_fill_price: bool = field(default=True)
     position_mode: PositionMode = field(default=PositionMode.DEFAULT)

@@ -808,9 +808,7 @@ def test_buy_and_sell_when_fees(
 
 
 def test_subtract_fees():
-    portfolio = Portfolio(
-        3, FeeMode.PER_ORDER, fee_amount=1, subtract_fees=True
-    )
+    portfolio = Portfolio(3, FeeMode.PER_ORDER, fee_amount=1)
     order = portfolio.buy(DATE_1, SYMBOL_1, shares=1, fill_price=1)
     assert_order(
         order=order,
