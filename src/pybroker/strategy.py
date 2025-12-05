@@ -686,14 +686,14 @@ class WalkforwardMixin:
                         (dates[date_col] >= window_dates[start])
                         & (dates[date_col] <= window_dates[end - 1])
                     ]
-                    test_idx = test_idx.index.to_numpy()
+                    test_idx = test_idx.index.to_numpy(copy=True)
                     yield WalkforwardWindow(np.array(tuple()), test_idx)
                 else:
                     train_idx = dates[
                         (dates[date_col] >= window_dates[start])
                         & (dates[date_col] <= window_dates[end - 1])
                     ]
-                    train_idx = train_idx.index.to_numpy()
+                    train_idx = train_idx.index.to_numpy(copy=True)
                     if shuffle:
                         np.random.shuffle(train_idx)
                     yield WalkforwardWindow(train_idx, np.array(tuple()))
@@ -719,8 +719,8 @@ class WalkforwardMixin:
                 (dates[date_col] >= window_dates[test_start])
                 & (dates[date_col] <= window_dates[test_end])
             ]
-            train_idx = train_idx.index.to_numpy()
-            test_idx = test_idx.index.to_numpy()
+            train_idx = train_idx.index.to_numpy(copy=True)
+            test_idx = test_idx.index.to_numpy(copy=True)
             if shuffle:
                 np.random.shuffle(train_idx)
             yield WalkforwardWindow(train_idx, test_idx)
@@ -761,8 +761,8 @@ class WalkforwardMixin:
                     (dates[date_col] > window_dates[test_start])
                     & (dates[date_col] <= window_dates[test_end])
                 ]
-                train_idx = train_idx.index.to_numpy()
-                test_idx = test_idx.index.to_numpy()
+                train_idx = train_idx.index.to_numpy(copy=True)
+                test_idx = test_idx.index.to_numpy(copy=True)
                 if shuffle:
                     np.random.shuffle(train_idx)
                 yield WalkforwardWindow(train_idx, test_idx)

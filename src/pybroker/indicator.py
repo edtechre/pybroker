@@ -47,15 +47,15 @@ def _to_bar_data(df: pd.DataFrame) -> BarData:
                 f"DataFrame is missing required column: {col.value}"
             )
     return BarData(
-        **{col.value: df[col.value].to_numpy() for col in required_cols},
+        **{col.value: df[col.value].to_numpy(copy=True) for col in required_cols},
         **{
             col.value: (
-                df[col.value].to_numpy() if col.value in df.columns else None
+                df[col.value].to_numpy(copy=True) if col.value in df.columns else None
             )
             for col in (DataCol.VOLUME, DataCol.VWAP)
         },  # type: ignore[arg-type]
         **{
-            col: df[col].to_numpy() if col in df.columns else None
+            col: df[col].to_numpy(copy=True) if col in df.columns else None
             for col in StaticScope.instance().custom_data_cols
         },  # type: ignore[arg-type]
     )
@@ -218,7 +218,7 @@ class IndicatorsMixin:
                 if col not in data.columns:
                     sym_data[sym][col] = None
                     continue
-                sym_data[sym][col] = data[col].to_numpy()
+                sym_data[sym][col] = data[col].to_numpy(copy=True)
         for i, (ind_sym, series) in enumerate(
             self._run_indicators(sym_data, uncached_ind_syms, disable_parallel)
         ):
