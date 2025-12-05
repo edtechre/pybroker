@@ -517,3 +517,12 @@ def test_get_signals(
             ind_data[IndicatorSymbol(ind_name, sym)].values,
             equal_nan=True,
         )
+
+
+def test_clear_params(scope):
+    scope.clear_params()
+    param("alpha", 0.1)
+    param("beta", 0.2)
+    assert scope._params == {"alpha": 0.1, "beta": 0.2}
+    scope.clear_params()
+    assert scope._params == {}

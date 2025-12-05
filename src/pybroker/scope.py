@@ -177,6 +177,10 @@ class StaticScope:
         self._params[name] = value
         return value
 
+    def clear_params(self):
+        """Clears all global parameters."""
+        self._params.clear()
+
     @classmethod
     def instance(cls) -> "StaticScope":
         """Returns singleton instance."""
@@ -218,6 +222,11 @@ def unregister_columns(names: Union[str, Iterable[str]], *args):
 def param(name: str, value: Optional[Any] = _EMPTY_PARAM) -> Optional[Any]:
     """Get or set a global parameter."""
     return StaticScope.instance().param(name, value)
+
+
+def clear_params():
+    """Clears all global parameters."""
+    StaticScope.instance().clear_params()
 
 
 class ColumnScope:

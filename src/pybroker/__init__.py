@@ -70,6 +70,7 @@ from pybroker.scope import (
     disable_progress_bar as disable_progress_bar,
     enable_progress_bar as enable_progress_bar,
     param as param,
+    clear_params as clear_params,
     register_columns as register_columns,
     unregister_columns as unregister_columns,
 )
