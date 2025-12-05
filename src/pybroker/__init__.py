@@ -88,4 +88,4 @@ from pybroker.vect import (
 # https://github.com/numba/numba/issues/8940
 from numba.np.unsafe import ndarray
 
-__version__ = "1.2.11"
+__version__ = "1.2.12"
