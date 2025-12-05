@@ -102,6 +102,8 @@ class Execution(NamedTuple):
             execution of ``fn``.
         indicator_names: Names of :class:`pybroker.indicator.Indicator`\ s
             used for execution of ``fn``.
+        args: Additional positional arguments for ``fn``.
+        kwargs: Additional keyword arguments for ``fn``.
     """
 
     id: int
@@ -109,6 +111,8 @@ class Execution(NamedTuple):
     fn: Optional[Callable[[ExecContext], None]]
     model_names: frozenset[str]
     indicator_names: frozenset[str]
+    args: tuple[Any, ...] = tuple()
+    kwargs: tuple[tuple[str, Any], ...] = tuple()
 
 
 class BacktestMixin:
@@ -186,6 +190,8 @@ class BacktestMixin:
         pending_order_scope = PendingOrderScope()
         exec_ctxs: dict[str, ExecContext] = {}
         exec_fns: dict[str, Callable[[ExecContext], None]] = {}
+        exec_args: dict[str, tuple[Any, ...]] = {}
+        exec_kwargs: dict[str, tuple[tuple[str, Any], ...]] = {}
         for sym in test_syms:
             for exec in executions:
                 if sym not in exec.symbols:
@@ -203,6 +209,8 @@ class BacktestMixin:
                     sym_end_index=sym_end_index,
                     session=sessions[sym],
                 )
+                exec_args[sym] = exec.args
+                exec_kwargs[sym] = exec.kwargs
                 if exec.fn is not None:
                     exec_fns[sym] = exec.fn
         sym_exec_dates = {
@@ -311,7 +319,11 @@ class BacktestMixin:
                 before_exec_fn(active_ctxs)
             for sym, ctx in active_ctxs.items():
                 if sym in exec_fns:
-                    exec_fns[sym](ctx)
+                    exec_fns[sym](
+                        ctx,
+                        *exec_args.get(sym, ()),
+                        **dict(exec_kwargs.get(sym, ())),
+                    )
             if after_exec_fn is not None and active_ctxs:
                 after_exec_fn(active_ctxs)
             for ctx in active_ctxs.values():
@@ -896,6 +908,8 @@ class Strategy(
         symbols: Union[str, Iterable[str]],
         models: Optional[Union[ModelSource, Iterable[ModelSource]]] = None,
         indicators: Optional[Union[Indicator, Iterable[Indicator]]] = None,
+        *args: Any,
+        **kwargs: Any,
     ):
         r"""Adds an execution to backtest.
 
@@ -910,6 +924,8 @@ class Strategy(
             indicators: :class:`Iterable` of
                 :class:`pybroker.indicator.Indicator`\ s to compute for
                 backtesting.
+            args: Positional arguments passed to ``fn``.
+            kwargs: Keyword arguments passed to ``fn``.
         """
         symbols = (
             frozenset((symbols,))
@@ -978,6 +994,8 @@ class Strategy(
                 fn=fn,
                 model_names=model_names,
                 indicator_names=ind_names,
+                args=args,
+                kwargs=tuple(sorted(kwargs.items())),
             )
         )
 

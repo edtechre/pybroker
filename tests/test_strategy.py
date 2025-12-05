@@ -2515,3 +2515,31 @@ class TestStrategy:
         strategy.add_execution(exec_fn, "SPY")
         with pytest.raises(ValueError, match=re.escape("warmup must be > 0.")):
             strategy.backtest(warmup=-1)
+
+    def test_backtest_when_args_and_kwargs(self, data_source_df):
+        def exec_fn(ctx, foo, bar=None):
+            assert foo == "foo_value"
+            assert bar == "bar_value"
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(
+            exec_fn,
+            "SPY",
+            foo="foo_value",
+            bar="bar_value",
+        )
+        strategy.backtest(calc_bootstrap=False)
+
+    def test_walkforward_when_args_and_kwargs(self, data_source_df):
+        def exec_fn(ctx, foo, bar=None):
+            assert foo == "foo_value"
+            assert bar == "bar_value"
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(
+            exec_fn,
+            "SPY",
+            foo="foo_value",
+            bar="bar_value",
+        )
+        strategy.walkforward(windows=2, calc_bootstrap=False)
