@@ -1738,6 +1738,7 @@ class TestStrategy:
             calc_bootstrap=False,
             train_only=False,
             signals=None,
+            seed=42,
         )
         assert np.issubdtype(
             result.positions["long_shares"].dtype, expected_shares_type
@@ -1843,6 +1844,7 @@ class TestStrategy:
             calc_bootstrap=False,
             train_only=False,
             signals=None,
+            seed=42,
         )
         assert result.positions["long_shares"].values[0] == 3.144
         assert result.positions["short_shares"].values[0] == 0.111
@@ -1860,6 +1862,7 @@ class TestStrategy:
             calc_bootstrap=False,
             train_only=False,
             signals=None,
+            seed=42,
         )
         assert result.portfolio.empty
         assert result.positions.empty

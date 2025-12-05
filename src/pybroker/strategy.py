@@ -1037,6 +1037,7 @@ class Strategy(
         warmup: Optional[int] = None,
         portfolio: Optional[Portfolio] = None,
         adjust: Optional[Any] = None,
+        seed: Optional[int] = 42,
     ) -> TestResult:
         """Backtests the trading strategy by running executions that were added
         with :meth:`.add_execution`.
@@ -1089,6 +1090,7 @@ class Strategy(
                 backtests.
             adjust: The type of adjustment to make to the
                 :class:`pybroker.data.DataSource`.
+            seed: Random seed used for reproducibility. Defaults to ``42``.
 
         Returns:
             :class:`.TestResult` containing portfolio balances, order
@@ -1109,6 +1111,7 @@ class Strategy(
             warmup=warmup,
             portfolio=portfolio,
             adjust=adjust,
+            seed=seed,
         )
 
     def walkforward(
@@ -1127,6 +1130,7 @@ class Strategy(
         warmup: Optional[int] = None,
         portfolio: Optional[Portfolio] = None,
         adjust: Optional[Any] = None,
+        seed: Optional[int] = 42,
     ) -> TestResult:
         """Backtests the trading strategy using `Walkforward Analysis
         <https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis>`_.
@@ -1185,6 +1189,7 @@ class Strategy(
                 backtests.
             adjust: The type of adjustment to make to the
                 :class:`pybroker.data.DataSource`.
+            seed: Random seed used for reproducibility. Defaults to ``42``.
 
         Returns:
             :class:`.TestResult` containing portfolio balances, order
@@ -1278,6 +1283,7 @@ class Strategy(
                 calc_bootstrap,
                 train_only,
                 signals if self._config.return_signals else None,
+                seed,
             )
         finally:
             scope.unfreeze_data_cols()
@@ -1472,6 +1478,7 @@ class Strategy(
         calc_bootstrap: bool,
         train_only: bool,
         signals: Optional[dict[str, pd.DataFrame]],
+        seed: Optional[int],
     ) -> TestResult:
         if train_only:
             return TestResult(
@@ -1550,6 +1557,7 @@ class Strategy(
             bootstrap_sample_size=self._config.bootstrap_sample_size,
             bootstrap_samples=self._config.bootstrap_samples,
             bars_per_year=self._config.bars_per_year,
+            seed=seed,
         )
         metrics = [
             (k, v)

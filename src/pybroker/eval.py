@@ -840,6 +840,7 @@ class EvaluateMixin:
         bootstrap_sample_size: int,
         bootstrap_samples: int,
         bars_per_year: Optional[int],
+        seed: Optional[int] = 42,
     ) -> EvalResult:
         """Computes evaluation metrics.
 
@@ -854,10 +855,13 @@ class EvaluateMixin:
                 to annualize evaluation metrics. For example, a value of
                 ``252`` would be used to annualize the Sharpe Ratio for daily
                 returns.
+            seed: Random seed for reproducibility. Defaults to 42.
 
         Returns:
             :class:`.EvalResult` containing evaluation metrics.
         """
+        if seed is not None:
+            np.random.seed(seed)
         market_values = portfolio_df["market_value"].to_numpy(copy=True)
         fees = portfolio_df["fees"].to_numpy(copy=True)
         bar_returns = self._calc_bar_returns(portfolio_df)
@@ -943,6 +947,8 @@ class EvaluateMixin:
             drawdown=dd_result.metrics,
         )
         logger.calc_bootstrap_metrics_completed()
+        if seed is not None:
+            np.random.seed()
         return EvalResult(metrics, bootstrap)
 
     def _calc_bar_returns(self, df: pd.DataFrame) -> pd.Series:
