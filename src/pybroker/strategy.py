@@ -73,6 +73,10 @@ from typing import (
     Optional,
     Union,
 )
+from typing_extensions import Concatenate, ParamSpec
+
+
+P = ParamSpec("P")
 
 
 def _between(
@@ -904,12 +908,12 @@ class Strategy(
 
     def add_execution(
         self,
-        fn: Optional[Callable[[ExecContext], None]],
+        fn: Optional[Callable[Concatenate[ExecContext, P], None]],
         symbols: Union[str, Iterable[str]],
         models: Optional[Union[ModelSource, Iterable[ModelSource]]] = None,
         indicators: Optional[Union[Indicator, Iterable[Indicator]]] = None,
-        *args: Any,
-        **kwargs: Any,
+        *args: P.args,
+        **kwargs: P.kwargs,
     ):
         r"""Adds an execution to backtest.
 
