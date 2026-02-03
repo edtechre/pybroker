@@ -29,8 +29,6 @@ class StrategyConfig:
                 :class:`pybroker.common.FeeInfo`.
             - ``None``: Fees are disabled (default).
         fee_amount: Brokerage fee amount.
-        subtract_fees: Whether to subtract fees from the cash balance after an
-            order is filled. Defaults to ``False``.
         enable_fractional_shares: Whether to enable trading fractional shares.
             Set to ``True`` for crypto trading. Defaults to ``False``.
         round_fill_price: Whether to round fill prices to the nearest cent.
