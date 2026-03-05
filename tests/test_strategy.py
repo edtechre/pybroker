@@ -289,9 +289,11 @@ class TestBacktestMixin:
         assert len(
             list(
                 filter(
-                    lambda o: o.type == "buy"
-                    and o.symbol == "SPY"
-                    and o.shares == 10,
+                    lambda o: (
+                        o.type == "buy"
+                        and o.symbol == "SPY"
+                        and o.shares == 10
+                    ),
                     portfolio.orders,
                 )
             )
@@ -299,9 +301,11 @@ class TestBacktestMixin:
         assert len(
             list(
                 filter(
-                    lambda o: o.type == "sell"
-                    and o.symbol == "AAPL"
-                    and o.shares == 20,
+                    lambda o: (
+                        o.type == "sell"
+                        and o.symbol == "AAPL"
+                        and o.shares == 20
+                    ),
                     portfolio.orders,
                 )
             )
