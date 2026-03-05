@@ -217,8 +217,8 @@ Contact
 .. image:: _static/email-image.png
 
 .. toctree::
-   :caption: AI-Powered Stock News
+   :caption: Stock News & Alerts
 
-   TrendNinja.AI <https://www.trendninja.ai>
+   MoveAlerts.ai <https://www.movealerts.ai>
 
-Stay informed with AI-powered news on top trending stocks. See `www.trendninja.ai <https://www.trendninja.ai>`_ for the latest updates!
+**AI-driven market analysis for the stocks you follow.** Receive real-time AI alerts and sentiment analysis for 10,000+ tickers at `www.movealerts.ai <https://www.movealerts.ai>`_.

@@ -128,6 +128,6 @@ snippets:
 
 <img src="https://github.com/edtechre/pybroker/blob/master/docs/_static/email-image.png?raw=true">
 
-## AI-Powered Stock News
+## Market-Moving Stock News & Alerts
 
-Stay informed with AI-powered news on top trending stocks. See [www.trendninja.ai](https://www.trendninja.ai) for the latest updates!
+**AI-driven market analysis for the stocks you follow.** Receive real-time AI alerts and sentiment analysis for 10,000+ tickers at [www.movealerts.ai](https://www.movealerts.ai).
