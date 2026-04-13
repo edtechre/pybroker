@@ -25,6 +25,8 @@ from pybroker.common import (
     DataCol as DataCol,
     Day as Day,
     FeeMode as FeeMode,
+    OrderType as OrderType,
+    PositionIntent as PositionIntent,
     PositionMode as PositionMode,
     PriceType as PriceType,
     StopType as StopType,
