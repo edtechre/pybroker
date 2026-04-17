@@ -10,7 +10,6 @@ This code is licensed under Apache 2.0 with Commons Clause license
 
 import itertools
 import numpy as np
-import pandas as pd
 from pybroker.common import (
     BarData,
     DataCol,
