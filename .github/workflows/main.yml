@@ -56,18 +56,22 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python:
           - version: "3.12"
             toxenv: "py312"
           - version: "3.11"
             toxenv: "py311"
+          - version: "3.14"
+            toxenv: "py314"
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python.version }}
+          allow-prereleases: true
 
       - name: Install tox
         run: python -m pip install --no-cache-dir tox
