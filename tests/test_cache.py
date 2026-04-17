@@ -198,8 +198,9 @@ def test_l1_cache_clear_drops_memory_copy(scope, cache_dir):
 def test_l1_cache_lru_evicts_oldest(scope, cache_dir):
     from pybroker.cache import _L1Cache
 
-    cache = _L1Cache(directory=str(cache_dir / "l1") if cache_dir else None,
-                     l1_maxsize=2)
+    cache = _L1Cache(
+        directory=str(cache_dir / "l1") if cache_dir else None, l1_maxsize=2
+    )
     cache.set("a", 1)
     cache.set("b", 2)
     cache.set("c", 3)  # evicts "a" from L1
