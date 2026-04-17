@@ -318,7 +318,7 @@ class BacktestMixin:
                     portfolio=portfolio,
                     enable_fractional_shares=enable_fractional_shares,
                 )
-            portfolio.capture_bar(date, test_data)
+            portfolio.capture_bar(date, col_scope, sym_end_index)
             if before_exec_fn is not None and active_ctxs:
                 before_exec_fn(active_ctxs)
             for sym, ctx in active_ctxs.items():
