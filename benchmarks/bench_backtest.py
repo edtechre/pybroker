@@ -451,3 +451,52 @@ class Determinism:
         return int(digest[:8], 16)
 
     track_walkforward_equity_hash.unit = "hash"  # type: ignore[attr-defined]
+
+
+class ExecContextPos:
+    """V9-specific: tight loop of ``ExecContext.long_pos()`` / ``short_pos()``.
+
+    The generic walkforward amortizes the per-call cost of these methods
+    across the outer per-bar orchestration, so V9's inlining (skips
+    ``_get_symbol`` + ``super().pos`` + ``_verify_pos_type`` and collapses
+    dict membership+lookup into ``dict.get``) doesn't move the macro
+    bench. This micro-bench drives them in a tight loop so the inlined
+    path is essentially the only cost measured.
+    """
+
+    timeout = 60
+    N = 500_000
+
+    def setup(self) -> None:
+        from decimal import Decimal
+
+        from pybroker.context import ExecContext
+        from pybroker.portfolio import Portfolio, Position
+
+        self._portfolio = Portfolio(cash=100_000)
+        long_pos = Position(symbol="SPY", shares=Decimal("100"), type="long")
+        short_pos = Position(symbol="AAPL", shares=Decimal("50"), type="short")
+        self._portfolio.long_positions["SPY"] = long_pos
+        self._portfolio.short_positions["AAPL"] = short_pos
+
+        # Instantiating ExecContext directly needs the full scope chain
+        # which is heavy. For this micro-bench we only care about the
+        # inlined fast path, which reads self.symbol + self._portfolio.
+        # Bypass __init__ with __new__ and set the two attributes.
+        self._ctx_long = ExecContext.__new__(ExecContext)
+        self._ctx_long.symbol = "SPY"
+        self._ctx_long._portfolio = self._portfolio
+
+        self._ctx_short = ExecContext.__new__(ExecContext)
+        self._ctx_short.symbol = "AAPL"
+        self._ctx_short._portfolio = self._portfolio
+
+    def time_long_pos_hot_loop(self) -> None:
+        lp = self._ctx_long.long_pos
+        for _ in range(self.N):
+            lp()
+
+    def time_short_pos_hot_loop(self) -> None:
+        sp = self._ctx_short.short_pos
+        for _ in range(self.N):
+            sp()
