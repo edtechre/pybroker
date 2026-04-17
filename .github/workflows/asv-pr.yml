@@ -76,6 +76,10 @@ jobs:
           } > sticky-comment.md
 
       - name: Post sticky PR comment
+        # Skip for fork PRs — GITHUB_TOKEN is read-only for PRs from forks
+        # and this step would fail with "Resource not accessible by integration".
+        # Benchmarks still run and results are in the job summary either way.
+        if: github.event.pull_request.head.repo.full_name == github.repository
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: asv-continuous
