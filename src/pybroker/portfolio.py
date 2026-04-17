@@ -37,6 +37,15 @@ from typing import (
 
 _DECIMAL_100: Final = Decimal(100)
 
+# Cached column name strings. DataCol.X.value goes through the enum descriptor
+# which shows up in profiling when hit per-bar-per-symbol; binding once at
+# module load keeps the hot loop free of enum __get__ calls.
+_COL_DATE: Final = DataCol.DATE.value
+_COL_CLOSE: Final = DataCol.CLOSE.value
+_COL_LOW: Final = DataCol.LOW.value
+_COL_HIGH: Final = DataCol.HIGH.value
+_CAPTURE_BAR_COLS: Final = (_COL_DATE, _COL_CLOSE, _COL_LOW, _COL_HIGH)
+
 
 class Stop(NamedTuple):
     """Contains information about a stop set on :class:`.Entry`.
@@ -999,15 +1008,16 @@ class Portfolio:
             high = None
             idx = sym_end_index.get(sym, 0) - 1
             if idx >= 0:
-                date_arr = col_scope.fetch(sym, DataCol.DATE.value)
+                cols = col_scope.fetch_dict(sym, _CAPTURE_BAR_COLS)
+                date_arr = cols[_COL_DATE]
                 if (
                     date_arr is not None
                     and idx < len(date_arr)
                     and date_arr[idx] == date
                 ):
-                    close_arr = col_scope.fetch(sym, DataCol.CLOSE.value)
-                    low_arr = col_scope.fetch(sym, DataCol.LOW.value)
-                    high_arr = col_scope.fetch(sym, DataCol.HIGH.value)
+                    close_arr = cols[_COL_CLOSE]
+                    low_arr = cols[_COL_LOW]
+                    high_arr = cols[_COL_HIGH]
                     if close_arr is not None:
                         close = to_decimal(float(close_arr[idx]))
                     if low_arr is not None:
