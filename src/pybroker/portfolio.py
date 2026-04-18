@@ -10,7 +10,6 @@ This code is licensed under Apache 2.0 with Commons Clause license
 
 import itertools
 import numpy as np
-import pandas as pd
 from pybroker.common import (
     BarData,
     DataCol,
@@ -23,7 +22,7 @@ from pybroker.common import (
     StopType,
     to_decimal,
 )
-from pybroker.scope import PriceScope, StaticScope
+from pybroker.scope import ColumnScope, PriceScope, StaticScope
 from collections import deque
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -32,6 +31,7 @@ from typing import (
     Final,
     Iterable,
     Literal,
+    Mapping,
     NamedTuple,
     Optional,
     Union,
@@ -1025,30 +1025,48 @@ class Portfolio:
                 fill_price=buy_fill_price,
             )
 
-    def capture_bar(self, date: np.datetime64, df: pd.DataFrame):
+    def capture_bar(
+        self,
+        date: np.datetime64,
+        col_scope: ColumnScope,
+        sym_end_index: Mapping[str, int],
+    ):
         """Captures portfolio state of the current bar.
 
         Args:
             date: Date of current bar.
-            df: :class:`pandas.DataFrame` containing close prices.
+            col_scope: ``ColumnScope`` providing per-symbol
+                column NumPy arrays (close/low/high). Using integer indexing
+                here avoids the MultiIndex ``.loc[(sym, date)]`` lookup that
+                dominated the pre-V2 hot path.
+            sym_end_index: Mapping from symbol to the 1-based count of bars
+                seen so far for that symbol. The current-bar row index into
+                each symbol's column array is ``sym_end_index[sym] - 1``.
         """
         total_equity = self.cash
         total_market_value = total_equity
         total_margin = Decimal()
         for sym in self.symbols:
-            index = (sym, date)
             close = None
             low = None
             high = None
-            if index in df.index:
-                df_row = df.loc[index].squeeze()
-                if isinstance(df_row, pd.core.frame.DataFrame):
-                    raise ValueError(
-                        "df has the same index. index:" + str(index)
-                    )
-                close = to_decimal(df_row[DataCol.CLOSE.value])
-                low = to_decimal(df_row[DataCol.LOW.value])
-                high = to_decimal(df_row[DataCol.HIGH.value])
+            idx = sym_end_index.get(sym, 0) - 1
+            if idx >= 0:
+                date_arr = col_scope.fetch(sym, DataCol.DATE.value)
+                if (
+                    date_arr is not None
+                    and idx < len(date_arr)
+                    and date_arr[idx] == date
+                ):
+                    close_arr = col_scope.fetch(sym, DataCol.CLOSE.value)
+                    low_arr = col_scope.fetch(sym, DataCol.LOW.value)
+                    high_arr = col_scope.fetch(sym, DataCol.HIGH.value)
+                    if close_arr is not None:
+                        close = to_decimal(float(close_arr[idx]))
+                    if low_arr is not None:
+                        low = to_decimal(float(low_arr[idx]))
+                    if high_arr is not None:
+                        high = to_decimal(float(high_arr[idx]))
             pos_long_shares = Decimal()
             pos_short_shares = Decimal()
             pos_equity = Decimal()

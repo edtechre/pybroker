@@ -3475,7 +3475,7 @@ def test_capture_bar_when_short_position():
         columns=["symbol", "date", "close", "low", "high"],
     )
     df = df.set_index(["symbol", "date"])
-    portfolio.capture_bar(DATE_1, df)
+    portfolio.capture_bar(DATE_1, ColumnScope(df), {SYMBOL_1: 1})
     pos = portfolio.short_positions[SYMBOL_1]
     assert pos.pnl == (fill_price - close_price) * shares
     assert pos.equity == 0
@@ -3523,7 +3523,7 @@ def test_capture_bar_when_long_position():
         columns=["symbol", "date", "close", "low", "high"],
     )
     df = df.set_index(["symbol", "date"])
-    portfolio.capture_bar(DATE_1, df)
+    portfolio.capture_bar(DATE_1, ColumnScope(df), {SYMBOL_1: 1})
     pos = portfolio.long_positions[SYMBOL_1]
     assert pos.pnl == (close_price - fill_price) * shares
     assert pos.equity == close_price * shares
@@ -3570,7 +3570,7 @@ def test_mae_mfe_when_short_position():
         columns=["symbol", "date", "close", "low", "high"],
     )
     df = df.set_index(["symbol", "date"])
-    portfolio.capture_bar(DATE_1, df)
+    portfolio.capture_bar(DATE_1, ColumnScope(df), {SYMBOL_1: 1})
     portfolio.buy(DATE_1, SYMBOL_1, shares, fill_price)
     assert len(portfolio.trades) == 1
     assert portfolio.trades[0].mae == fill_price - high_price
@@ -3593,7 +3593,7 @@ def test_mae_mfe_when_long_position():
         columns=["symbol", "date", "close", "low", "high"],
     )
     df = df.set_index(["symbol", "date"])
-    portfolio.capture_bar(DATE_1, df)
+    portfolio.capture_bar(DATE_1, ColumnScope(df), {SYMBOL_1: 1})
     portfolio.sell(DATE_1, SYMBOL_1, shares, fill_price)
     assert len(portfolio.trades) == 1
     assert portfolio.trades[0].mae == low_price - fill_price
