@@ -2,7 +2,7 @@ name: ASV Benchmarks (PR)
 
 on:
   pull_request:
-    branches: [master]
+    branches: [master, dev]
 
 concurrency:
   group: asv-pr-${{ github.ref }}
@@ -26,11 +26,13 @@ jobs:
       - name: Configure asv machine identity
         run: asv machine --yes --machine ci-ubuntu-latest
 
-      - name: Run asv continuous (master vs PR head)
+      - name: Run asv continuous (base vs PR head)
         id: continuous
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           set +e
-          asv continuous origin/master HEAD \
+          asv continuous "origin/${BASE_REF}" HEAD \
             --machine ci-ubuntu-latest \
             --factor 1.1 \
             --no-stats \
@@ -43,9 +45,10 @@ jobs:
       - name: Write diff to job summary
         env:
           ASV_EXIT: ${{ steps.continuous.outputs.exit_code }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
           {
-            echo "## ASV continuous — master → PR HEAD"
+            echo "## ASV continuous — ${BASE_REF} → PR HEAD"
             echo ""
             echo "Exit code: $ASV_EXIT (non-zero indicates flagged regression at --factor 1.1)"
             echo ""
