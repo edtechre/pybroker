@@ -451,37 +451,3 @@ class Determinism:
         return int(digest[:8], 16)
 
     track_walkforward_equity_hash.unit = "hash"  # type: ignore[attr-defined]
-
-
-class WalkforwardWithCache(Walkforward):
-    """V5-specific: walkforward with indicator_cache enabled.
-
-    The parent `Walkforward.setup` runs one warmup pass — that populates
-    diskcache with indicator values. The timed method then reads through
-    the populated cache, so the in-process L1 (V5) serves hits on the
-    second and subsequent runs. Without V5's L1, each hit goes to disk +
-    deserialize; with V5, it's an in-memory dict lookup.
-    """
-
-    timeout = 300
-
-    def setup(self) -> None:
-        import tempfile
-
-        import pybroker
-
-        self._cache_dir = tempfile.mkdtemp(prefix="asv_v5_")
-        pybroker.enable_indicator_cache("asv_v5", self._cache_dir)
-        # Parent.setup loads dataset + runs one warmup walkforward.
-        # With the cache enabled, that warmup populates diskcache.
-        super().setup()
-
-    def teardown(self) -> None:
-        import shutil
-
-        import pybroker
-
-        pybroker.disable_indicator_cache()
-        shutil.rmtree(self._cache_dir, ignore_errors=True)
-
-    # time_walkforward / peakmem_walkforward inherited from Walkforward.
