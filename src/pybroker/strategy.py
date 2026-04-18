@@ -16,6 +16,7 @@ from pybroker.common import (
     Day,
     IndicatorSymbol,
     ModelSymbol,
+    OrderType,
     PriceType,
     get_unique_sorted_dates,
     quantize,
@@ -526,12 +527,23 @@ class BacktestMixin:
                 or not pending_order_scope.contains(result.pending_order_id)
             ):
                 continue
+            pending = tuple(
+                pending_order_scope.orders(
+                    order_id=result.pending_order_id,
+                )
+            )
             pending_order_scope.remove(result.pending_order_id)
             buy_shares = self._get_shares(
                 result.buy_shares, enable_fractional_shares
             )
             fill_price = price_scope.fetch(
                 result.symbol, result.buy_fill_price
+            )
+            created = pending[0].created if pending else None
+            order_type = (
+                OrderType.LIMIT
+                if result.buy_limit_price is not None
+                else OrderType.MARKET
             )
             order = portfolio.buy(
                 date=date,
@@ -540,6 +552,8 @@ class BacktestMixin:
                 fill_price=fill_price,
                 limit_price=result.buy_limit_price,
                 stops=result.long_stops,
+                created=created,
+                order_type=order_type,
             )
             logger = StaticScope.instance().logger
             if order is None:
@@ -578,12 +592,23 @@ class BacktestMixin:
                 or not pending_order_scope.contains(result.pending_order_id)
             ):
                 continue
+            pending = tuple(
+                pending_order_scope.orders(
+                    order_id=result.pending_order_id,
+                )
+            )
             pending_order_scope.remove(result.pending_order_id)
             sell_shares = self._get_shares(
                 result.sell_shares, enable_fractional_shares
             )
             fill_price = price_scope.fetch(
                 result.symbol, result.sell_fill_price
+            )
+            created = pending[0].created if pending else None
+            order_type = (
+                OrderType.LIMIT
+                if result.sell_limit_price is not None
+                else OrderType.MARKET
             )
             order = portfolio.sell(
                 date=date,
@@ -592,6 +617,8 @@ class BacktestMixin:
                 fill_price=fill_price,
                 limit_price=result.sell_limit_price,
                 stops=result.short_stops,
+                created=created,
+                order_type=order_type,
             )
             logger = StaticScope.instance().logger
             if order is None:

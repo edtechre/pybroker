@@ -746,14 +746,33 @@ class PendingOrderScope:
             for order_id in cancel_ids:
                 self.remove(order_id)
 
-    def orders(self, symbol: Optional[str] = None) -> Iterable[PendingOrder]:
-        r"""Returns an :class:`Iterable` of :class:`.PendingOrder`\ s."""
-        if symbol is None:
-            return self._orders.values()
-        else:
+    def orders(
+        self,
+        symbol: Optional[str] = None,
+        order_id: Optional[int] = None,
+    ) -> Iterable[PendingOrder]:
+        r"""Returns an :class:`Iterable` of :class:`.PendingOrder`\ s.
+
+        Args:
+            symbol: Filter by ticker symbol.
+            order_id: Filter by order ID.
+        """
+        if order_id is not None and symbol is not None:
+            order = self._orders.get(order_id)
+            if order is not None and order.symbol == symbol:
+                return [order]
+            return []
+        elif order_id is not None:
+            order = self._orders.get(order_id)
+            if order is not None:
+                return [order]
+            return []
+        elif symbol is not None:
             if symbol not in self._sym_orders:
                 return []
             return self._sym_orders[symbol]
+        else:
+            return self._orders.values()
 
 
 def get_signals(
