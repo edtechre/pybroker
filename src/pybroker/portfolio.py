@@ -39,6 +39,15 @@ from typing import (
 
 _DECIMAL_100: Final = Decimal(100)
 
+# Cached column name strings. DataCol.X.value goes through the enum descriptor
+# which shows up in profiling when hit per-bar-per-symbol; binding once at
+# module load keeps the hot loop free of enum __get__ calls.
+_COL_DATE: Final = DataCol.DATE.value
+_COL_CLOSE: Final = DataCol.CLOSE.value
+_COL_LOW: Final = DataCol.LOW.value
+_COL_HIGH: Final = DataCol.HIGH.value
+_CAPTURE_BAR_COLS: Final = (_COL_DATE, _COL_CLOSE, _COL_LOW, _COL_HIGH)
+
 
 class Stop(NamedTuple):
     """Contains information about a stop set on :class:`.Entry`.
