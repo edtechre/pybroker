@@ -10,18 +10,19 @@ This code is licensed under Apache 2.0 with Commons Clause license
 
 import itertools
 import numpy as np
-import pandas as pd
 from pybroker.common import (
     BarData,
     DataCol,
     FeeInfo,
     FeeMode,
+    OrderType,
+    PositionIntent,
     PositionMode,
     PriceType,
     StopType,
     to_decimal,
 )
-from pybroker.scope import PriceScope, StaticScope
+from pybroker.scope import ColumnScope, PriceScope, StaticScope
 from collections import deque
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -30,6 +31,7 @@ from typing import (
     Final,
     Iterable,
     Literal,
+    Mapping,
     NamedTuple,
     Optional,
     Union,
@@ -228,6 +230,14 @@ class Order(NamedTuple):
         type: Type of order, either ``buy`` or ``sell``.
         symbol: Ticker symbol of the order.
         date: Date the order was filled.
+        created: Date the order signal was created, or ``None``
+            for stop-triggered orders.
+        order_type: How the order originated, either ``market``,
+            ``limit``, ``stop_bar``, ``stop_loss``,
+            ``stop_profit``, or ``stop_trailing``.
+        intent: Position intent, either ``buy_to_open``,
+            ``buy_to_close``, ``sell_to_open``, or
+            ``sell_to_close``.
         shares: Number of shares bought or sold.
         limit_price: Limit price that was used for the order.
         fill_price: Price that the order was filled at.
@@ -238,6 +248,21 @@ class Order(NamedTuple):
     type: Literal["buy", "sell"]
     symbol: str
     date: np.datetime64
+    created: Optional[np.datetime64]
+    order_type: Literal[
+        "market",
+        "limit",
+        "stop_bar",
+        "stop_loss",
+        "stop_profit",
+        "stop_trailing",
+    ]
+    intent: Literal[
+        "buy_to_open",
+        "buy_to_close",
+        "sell_to_open",
+        "sell_to_close",
+    ]
     shares: Decimal
     limit_price: Optional[Decimal]
     fill_price: Decimal
@@ -490,20 +515,26 @@ class Portfolio:
         date: np.datetime64,
         symbol: str,
         type: Literal["buy", "sell"],
+        created: Optional[np.datetime64],
+        order_type: OrderType,
+        intent: PositionIntent,
+        shares: Decimal,
         limit_price: Optional[Decimal],
         fill_price: Decimal,
-        shares: Decimal,
     ) -> Order:
         self._order_id += 1
         fees = self._calculate_fees(symbol, fill_price, shares, type)
         order = Order(
             id=self._order_id,
-            date=date,
-            symbol=symbol,
             type=type,
+            symbol=symbol,
+            date=date,
+            created=created,
+            order_type=order_type.value,
+            intent=intent.value,
+            shares=shares,
             limit_price=limit_price,
             fill_price=fill_price,
-            shares=shares,
             fees=fees,
         )
         self.orders.append(order)
@@ -610,6 +641,8 @@ class Portfolio:
         fill_price: Decimal,
         limit_price: Optional[Decimal] = None,
         stops: Optional[Iterable[Stop]] = None,
+        created: Optional[np.datetime64] = None,
+        order_type: OrderType = OrderType.MARKET,
     ) -> Optional[Order]:
         r"""Places a buy order.
 
@@ -621,6 +654,8 @@ class Portfolio:
             limit_price: Limit price of the :class:`.Order`.
             stops: :class:`.Stop`\ s to set on the :class:`.Entry` created from
                 the :class:`.Order`, if filled.
+            created: Date the order signal was created.
+            order_type: How the order originated.
 
         Returns:
             :class:`.Order` if the order was filled, otherwise ``None``.
@@ -643,13 +678,20 @@ class Portfolio:
         )
         if not covered.filled_shares and not bought_shares:
             return None
+        if bought_shares:
+            intent = PositionIntent.BUY_TO_OPEN
+        else:
+            intent = PositionIntent.BUY_TO_CLOSE
         order = self._add_order(
             date=date,
             symbol=symbol,
             type="buy",
+            created=created,
+            order_type=order_type,
+            intent=intent,
+            shares=covered.filled_shares + bought_shares,
             limit_price=limit_price,
             fill_price=fill_price,
-            shares=covered.filled_shares + bought_shares,
         )
         return order
 
@@ -783,6 +825,8 @@ class Portfolio:
         fill_price: Decimal,
         limit_price: Optional[Decimal] = None,
         stops: Optional[Iterable[Stop]] = None,
+        created: Optional[np.datetime64] = None,
+        order_type: OrderType = OrderType.MARKET,
     ) -> Optional[Order]:
         r"""Places a sell order.
 
@@ -794,6 +838,8 @@ class Portfolio:
             limit_price: Limit price of the :class:`.Order`.
             stops: :class:`.Stop`\ s to set on the :class:`.Entry` created from
                 the :class:`.Order`, if filled.
+            created: Date the order signal was created.
+            order_type: How the order originated.
 
         Returns:
             :class:`.Order` if the order was filled, otherwise ``None``.
@@ -816,13 +862,20 @@ class Portfolio:
         )
         if not sold.filled_shares and not short_shares:
             return None
+        if short_shares:
+            intent = PositionIntent.SELL_TO_OPEN
+        else:
+            intent = PositionIntent.SELL_TO_CLOSE
         order = self._add_order(
             date=date,
             symbol=symbol,
             type="sell",
+            created=created,
+            order_type=order_type,
+            intent=intent,
+            shares=sold.filled_shares + short_shares,
             limit_price=limit_price,
             fill_price=fill_price,
-            shares=sold.filled_shares + short_shares,
         )
         return order
 
@@ -972,30 +1025,48 @@ class Portfolio:
                 fill_price=buy_fill_price,
             )
 
-    def capture_bar(self, date: np.datetime64, df: pd.DataFrame):
+    def capture_bar(
+        self,
+        date: np.datetime64,
+        col_scope: ColumnScope,
+        sym_end_index: Mapping[str, int],
+    ):
         """Captures portfolio state of the current bar.
 
         Args:
             date: Date of current bar.
-            df: :class:`pandas.DataFrame` containing close prices.
+            col_scope: ``ColumnScope`` providing per-symbol
+                column NumPy arrays (close/low/high). Using integer indexing
+                here avoids the MultiIndex ``.loc[(sym, date)]`` lookup that
+                dominated the pre-V2 hot path.
+            sym_end_index: Mapping from symbol to the 1-based count of bars
+                seen so far for that symbol. The current-bar row index into
+                each symbol's column array is ``sym_end_index[sym] - 1``.
         """
         total_equity = self.cash
         total_market_value = total_equity
         total_margin = Decimal()
         for sym in self.symbols:
-            index = (sym, date)
             close = None
             low = None
             high = None
-            if index in df.index:
-                df_row = df.loc[index].squeeze()
-                if isinstance(df_row, pd.core.frame.DataFrame):
-                    raise ValueError(
-                        "df has the same index. index:" + str(index)
-                    )
-                close = to_decimal(df_row[DataCol.CLOSE.value])
-                low = to_decimal(df_row[DataCol.LOW.value])
-                high = to_decimal(df_row[DataCol.HIGH.value])
+            idx = sym_end_index.get(sym, 0) - 1
+            if idx >= 0:
+                date_arr = col_scope.fetch(sym, DataCol.DATE.value)
+                if (
+                    date_arr is not None
+                    and idx < len(date_arr)
+                    and date_arr[idx] == date
+                ):
+                    close_arr = col_scope.fetch(sym, DataCol.CLOSE.value)
+                    low_arr = col_scope.fetch(sym, DataCol.LOW.value)
+                    high_arr = col_scope.fetch(sym, DataCol.HIGH.value)
+                    if close_arr is not None:
+                        close = to_decimal(float(close_arr[idx]))
+                    if low_arr is not None:
+                        low = to_decimal(float(low_arr[idx]))
+                    if high_arr is not None:
+                        high = to_decimal(float(high_arr[idx]))
             pos_long_shares = Decimal()
             pos_short_shares = Decimal()
             pos_equity = Decimal()
@@ -1225,13 +1296,30 @@ class Portfolio:
             order_type = "buy"
         else:
             raise ValueError(f"Unknown pos_type: {stop.pos_type}")
+        if stop.pos_type == "long":
+            intent = PositionIntent.SELL_TO_CLOSE
+        else:
+            intent = PositionIntent.BUY_TO_CLOSE
+        if stop.stop_type == StopType.BAR:
+            stop_order_type = OrderType.STOP_BAR
+        elif stop.stop_type == StopType.LOSS:
+            stop_order_type = OrderType.STOP_LOSS
+        elif stop.stop_type == StopType.PROFIT:
+            stop_order_type = OrderType.STOP_PROFIT
+        elif stop.stop_type == StopType.TRAILING:
+            stop_order_type = OrderType.STOP_TRAILING
+        else:
+            raise ValueError(f"Unknown stop type: {stop.stop_type}")
         self._add_order(
             date=date,
             symbol=pos.symbol,
             type=order_type,
+            created=None,
+            order_type=stop_order_type,
+            intent=intent,
+            shares=stop_shares,
             limit_price=stop.limit_price,
             fill_price=fill_price,
-            shares=stop_shares,
         )
         return True, fill_price
 

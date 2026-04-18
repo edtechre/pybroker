@@ -167,3 +167,46 @@ def test_clear_all_caches(scope, cache_dir):
         data_source_cache.clear.assert_called_once()
         ind_cache.clear.assert_called_once()
         model_cache.clear.assert_called_once()
+
+
+@pytest.mark.usefixtures("setup_teardown")
+def test_l1_cache_serves_repeated_get_from_memory(scope, cache_dir):
+    cache = enable_indicator_cache("test", cache_dir)
+    cache.set("k1", "v1")
+    assert cache.get("k1") == "v1"
+    # Second .get must not hit diskcache — patch the parent class .get.
+    with mock.patch("diskcache.Cache.get") as disk_get:
+        assert cache.get("k1") == "v1"
+        disk_get.assert_not_called()
+
+
+@pytest.mark.usefixtures("setup_teardown")
+def test_l1_cache_clear_drops_memory_copy(scope, cache_dir):
+    cache = enable_indicator_cache("test", cache_dir)
+    cache.set("k1", "v1")
+    assert cache.get("k1") == "v1"
+    cache.clear()
+    # After clear, a repeated get must fall through to diskcache (which is
+    # also empty) — we verify by patching the parent .get and observing it
+    # gets called exactly once.
+    with mock.patch("diskcache.Cache.get", return_value=None) as disk_get:
+        assert cache.get("k1") is None
+        disk_get.assert_called_once()
+
+
+@pytest.mark.usefixtures("setup_teardown")
+def test_l1_cache_lru_evicts_oldest(scope, cache_dir):
+    from pybroker.cache import _L1Cache
+
+    cache = _L1Cache(
+        directory=str(cache_dir / "l1") if cache_dir else None, l1_maxsize=2
+    )
+    cache.set("a", 1)
+    cache.set("b", 2)
+    cache.set("c", 3)  # evicts "a" from L1
+    # "a" is evicted from L1 but still on disk; patch disk to prove the
+    # fallthrough actually happens.
+    with mock.patch("diskcache.Cache.get", return_value=1) as disk_get:
+        assert cache.get("a") == 1
+        disk_get.assert_called_once()
+    cache.close()
