@@ -1,0 +1,86 @@
+name: ASV Benchmarks (PR)
+
+on:
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: asv-pr-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  benchmark:
+    name: asv continuous
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-pybroker
+
+      - name: Configure asv machine identity
+        run: asv machine --yes --machine ci-ubuntu-latest
+
+      - name: Run asv continuous (master vs PR head)
+        id: continuous
+        run: |
+          set +e
+          asv continuous origin/master HEAD \
+            --machine ci-ubuntu-latest \
+            --factor 1.1 \
+            --no-stats \
+            >asv-continuous.log 2>&1
+          EXIT=$?
+          echo "exit_code=$EXIT" >> "$GITHUB_OUTPUT"
+          cat asv-continuous.log
+          exit 0
+
+      - name: Write diff to job summary
+        env:
+          ASV_EXIT: ${{ steps.continuous.outputs.exit_code }}
+        run: |
+          {
+            echo "## ASV continuous — master → PR HEAD"
+            echo ""
+            echo "Exit code: $ASV_EXIT (non-zero indicates flagged regression at --factor 1.1)"
+            echo ""
+            echo '```'
+            cat asv-continuous.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build sticky comment body
+        env:
+          ASV_EXIT: ${{ steps.continuous.outputs.exit_code }}
+        run: |
+          {
+            echo "## ASV continuous — benchmark diff"
+            echo ""
+            echo "Exit code: \`$ASV_EXIT\` (non-zero = flagged regression at \`--factor 1.1\`)"
+            echo ""
+            echo "<details>"
+            echo "<summary>Benchmark output</summary>"
+            echo ""
+            echo '```'
+            cat asv-continuous.log
+            echo '```'
+            echo ""
+            echo "</details>"
+            echo ""
+            echo "_Non-blocking; shared GitHub runners are noisy. For the trend view, run \`asv publish && asv preview\` locally against the committed \`.asv/results/\`._"
+          } > sticky-comment.md
+
+      - name: Post sticky PR comment
+        # Skip for fork PRs — GITHUB_TOKEN is read-only for PRs from forks
+        # and this step would fail with "Resource not accessible by integration".
+        # Benchmarks still run and results are in the job summary either way.
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: asv-continuous
+          path: sticky-comment.md

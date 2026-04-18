@@ -38,7 +38,7 @@ class BootConfIntervals(NamedTuple):
     high_10: float
 
 
-@njit
+@njit(cache=True)
 def bca_boot_conf(
     x: NDArray[np.float64],
     n: int,
@@ -141,7 +141,7 @@ def bca_boot_conf(
     return BootConfIntervals(low_2p5, high_2p5, low_5, high_5, low_10, high_10)
 
 
-@njit
+@njit(cache=True)
 def profit_factor(
     changes: NDArray[np.float64], use_log: bool = False
 ) -> np.floating:
@@ -165,7 +165,7 @@ def profit_factor(
         return np.divide(numer, denom)
 
 
-@njit
+@njit(cache=True)
 def log_profit_factor(changes: NDArray[np.float64]) -> np.floating:
     """Computes the log transformed profit factor, which is the ratio of gross
     profit to gross loss.
@@ -176,7 +176,7 @@ def log_profit_factor(changes: NDArray[np.float64]) -> np.floating:
     return profit_factor(changes, use_log=True)
 
 
-@njit
+@njit(cache=True)
 def sharpe_ratio(
     returns: NDArray[np.float64],
     obs: Optional[int] = None,
@@ -251,7 +251,7 @@ def conf_sharpe_ratio(
     return intervals
 
 
-@njit
+@njit(cache=True)
 def max_drawdown(changes: NDArray[np.float64]) -> float:
     """Computes maximum drawdown, measured in cash.
 
@@ -290,7 +290,7 @@ def calmar_ratio(returns: NDArray[np.float64], bars_per_year: int) -> float:
     return np.mean(returns) * bars_per_year / max_dd
 
 
-@njit
+@njit(cache=True)
 def max_drawdown_percent(
     returns: NDArray[np.float64],
 ) -> tuple[float, Optional[int]]:
@@ -323,7 +323,7 @@ def max_drawdown_percent(
     return dd, index
 
 
-@njit
+@njit(cache=True)
 def _dd_conf(q: float, boot: NDArray[np.float64]) -> float:
     k = int((q * (len(boot) + 1)) - 1)
     k = max(k, 0)
@@ -360,7 +360,7 @@ class DrawdownMetrics(NamedTuple):
     pct_confs: DrawdownConfs
 
 
-@njit
+@njit(cache=True)
 def _dd_confs(boot: NDArray[np.float64]) -> DrawdownConfs:
     boot.sort()
     boot = boot[::-1]
@@ -372,7 +372,7 @@ def _dd_confs(boot: NDArray[np.float64]) -> DrawdownConfs:
     )
 
 
-@njit
+@njit(cache=True)
 def drawdown_conf(
     changes: NDArray[np.float64],
     returns: NDArray[np.float64],
@@ -415,7 +415,7 @@ def drawdown_conf(
     return DrawdownMetrics(_dd_confs(boot_dd), _dd_confs(boot_dd_pct))
 
 
-@njit
+@njit(cache=True)
 def relative_entropy(values: NDArray[np.float64]) -> float:
     """Computes the relative `entropy
     <https://en.wikipedia.org/wiki/Entropy_(information_theory)>`_.
@@ -461,7 +461,7 @@ def iqr(values: NDArray[np.float64]) -> float:
     return q75 - q25
 
 
-@njit
+@njit(cache=True)
 def ulcer_index(values: NDArray[np.float64], period: int = 14) -> float:
     """Computes the
     `Ulcer Index <https://en.wikipedia.org/wiki/Ulcer_index>`_ of ``values``.
@@ -480,7 +480,7 @@ def ulcer_index(values: NDArray[np.float64], period: int = 14) -> float:
     return np.sqrt(np.mean(np.square(dd)))
 
 
-@njit
+@njit(cache=True)
 def upi(
     values: NDArray[np.float64], period: int = 14, ui: Optional[float] = None
 ) -> float:
@@ -584,7 +584,7 @@ def largest_win_loss(pnls: NDArray[np.float64]) -> tuple[float, float]:
     )
 
 
-@njit
+@njit(cache=True)
 def max_wins_losses(pnls: NDArray[np.float64]) -> tuple[int, int]:
     """Computes the max consecutive wins and max consecutive losses.
 
