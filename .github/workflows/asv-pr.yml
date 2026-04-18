@@ -17,7 +17,7 @@ jobs:
     name: asv continuous
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -80,7 +80,7 @@ jobs:
         # and this step would fail with "Resource not accessible by integration".
         # Benchmarks still run and results are in the job summary either way.
         if: github.event.pull_request.head.repo.full_name == github.repository
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: asv-continuous
           path: sticky-comment.md
