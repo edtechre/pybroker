@@ -959,8 +959,15 @@ class ExecContext(BaseContext):
             :class:`pybroker.portfolio.Position` if one exists, otherwise
             ``None``.
         """
-        symbol = self._get_symbol(symbol)
-        return super().pos(symbol, "long")
+        # Fast path inlined — called per bar per active symbol (~7k calls
+        # per V0 bench). Skips _get_symbol + super().pos + _verify_pos_type
+        # delegation and collapses the dict membership+lookup into one
+        # dict.get().
+        if symbol is None:
+            symbol = self.symbol
+            if symbol is None:
+                raise ValueError("symbol is not set.")
+        return self._portfolio.long_positions.get(symbol)
 
     def short_pos(
         self,
@@ -978,8 +985,11 @@ class ExecContext(BaseContext):
             :class:`pybroker.portfolio.Position` if one exists, otherwise
             ``None``.
         """
-        symbol = self._get_symbol(symbol)
-        return super().pos(symbol, "short")
+        if symbol is None:
+            symbol = self.symbol
+            if symbol is None:
+                raise ValueError("symbol is not set.")
+        return self._portfolio.short_positions.get(symbol)
 
     def calc_target_shares(
         self,
