@@ -1,0 +1,32 @@
+name: Setup pybroker Environment
+description: Install Python, asv, and cached pip deps for pybroker benchmarks
+
+inputs:
+  python-version:
+    description: Python version
+    default: "3.12"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      id: setup-python
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Cache pip
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: pip-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('setup.cfg', 'requirements.txt') }}
+        restore-keys: |
+          pip-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-
+
+    - name: Install asv
+      shell: bash
+      run: python -m pip install --no-cache-dir asv
+
+    - name: Install pybroker runtime deps
+      shell: bash
+      run: python -m pip install -e .
