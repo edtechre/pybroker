@@ -7,13 +7,68 @@ This code is licensed under Apache 2.0 with Commons Clause license
 """
 
 import os
+from collections import OrderedDict
 from pybroker.scope import StaticScope
 from dataclasses import dataclass
 from datetime import datetime
 from diskcache import Cache
-from typing import Final, Optional
+from threading import RLock
+from typing import Any, Final, Optional
 
 _DEFAULT_CACHE_DIRNAME: Final = ".pybrokercache"
+
+_L1_DEFAULT_MAXSIZE: Final = 1024
+
+
+class _L1Cache(Cache):
+    """:class:`diskcache.Cache` fronted by an in-process LRU of recent values.
+
+    Repeated ``.get()`` for the same key within a single Python process is
+    served from memory, skipping the disk I/O (and unpickling) diskcache does
+    on every hit. This matters most during walkforward where the same
+    indicator/model keys are re-read across windows.
+
+    The L1 is bounded to ``l1_maxsize`` entries and evicts LRU on overflow.
+    It is cleared alongside the underlying disk cache. Cross-process workers
+    (joblib loky) do not share the L1; each worker has its own.
+    """
+
+    def __init__(
+        self,
+        *args: Any,
+        l1_maxsize: int = _L1_DEFAULT_MAXSIZE,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self._l1: OrderedDict = OrderedDict()
+        self._l1_maxsize = l1_maxsize
+        self._l1_lock = RLock()
+
+    def _l1_put(self, key: Any, value: Any) -> None:
+        with self._l1_lock:
+            self._l1[key] = value
+            self._l1.move_to_end(key)
+            while len(self._l1) > self._l1_maxsize:
+                self._l1.popitem(last=False)
+
+    def get(self, key: Any, *args: Any, **kwargs: Any) -> Any:
+        with self._l1_lock:
+            if key in self._l1:
+                self._l1.move_to_end(key)
+                return self._l1[key]
+        value = super().get(key, *args, **kwargs)
+        if value is not None:
+            self._l1_put(key, value)
+        return value
+
+    def set(self, key: Any, value: Any, *args: Any, **kwargs: Any) -> Any:
+        self._l1_put(key, value)
+        return super().set(key, value, *args, **kwargs)
+
+    def clear(self, *args: Any, **kwargs: Any) -> Any:
+        with self._l1_lock:
+            self._l1.clear()
+        return super().clear(*args, **kwargs)
 
 
 @dataclass(frozen=True)
@@ -103,7 +158,7 @@ def enable_data_source_cache(
     scope = StaticScope.instance()
     cache_dir = _get_cache_dir(cache_dir, namespace, "data_source")
     scope.data_source_cache_ns = namespace
-    cache = Cache(directory=cache_dir)
+    cache = _L1Cache(directory=cache_dir)
     scope.data_source_cache = cache
     scope.logger.debug_enable_data_source_cache(namespace, cache_dir)
     return cache
@@ -148,7 +203,7 @@ def enable_indicator_cache(
     scope = StaticScope.instance()
     cache_dir = _get_cache_dir(cache_dir, namespace, "indicator")
     scope.indicator_cache_ns = namespace
-    cache = Cache(directory=cache_dir)
+    cache = _L1Cache(directory=cache_dir)
     scope.indicator_cache = cache
     scope.logger.debug_enable_indicator_cache(namespace, cache_dir)
     return cache
@@ -191,7 +246,7 @@ def enable_model_cache(
     scope = StaticScope.instance()
     cache_dir = _get_cache_dir(cache_dir, namespace, "model")
     scope.model_cache_ns = namespace
-    cache = Cache(directory=cache_dir)
+    cache = _L1Cache(directory=cache_dir)
     scope.model_cache = cache
     scope.logger.debug_enable_model_cache(namespace, cache_dir)
     return cache
