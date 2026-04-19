@@ -1,0 +1,25 @@
+FROM python:3.10-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        default-jre-headless \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir \
+        "joblib>=1.5,<2" \
+        "numpy>=1.26,<3" \
+        "ray[default]>=2.40,<3" \
+        "dask[distributed]>=2025.1" \
+        "pyspark>=3.5,<4" \
+        "joblibspark>=0.5"
+
+# Workaround for upstream bug: joblib 1.5 passes extra kwargs
+# (e.g. nesting_level) through submit_kwargs to the worker when using
+# the Dask backend, but joblib._dask.Batch.__call__ has signature
+# (self, tasks=None) — no **kwargs. Worker-side Batch invocation
+# raises TypeError on dispatch. Authorized patch for validation only.
+RUN sed -i 's/def __call__(self, tasks=None):/def __call__(self, tasks=None, **_kwargs):/' \
+    /usr/local/lib/python3.10/site-packages/joblib/_dask.py
+
+COPY test_backends.py /app/test_backends.py
+WORKDIR /app
+ENTRYPOINT ["python", "test_backends.py"]

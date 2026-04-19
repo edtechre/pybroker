@@ -1,0 +1,6 @@
+FROM docker.io/apache/spark:3.5.8
+USER 0
+RUN pip3 install --no-cache-dir \
+        "joblib>=1.5,<2" \
+        "numpy>=1.26,<3"
+USER spark
