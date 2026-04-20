@@ -2,7 +2,7 @@ name: ASV Benchmarks (PR)
 
 on:
   pull_request:
-    branches: [master]
+    branches: [master, dev]
 
 concurrency:
   group: asv-pr-${{ github.ref }}
@@ -26,11 +26,13 @@ jobs:
       - name: Configure asv machine identity
         run: asv machine --yes --machine ci-ubuntu-latest
 
-      - name: Run asv continuous (master vs PR head)
+      - name: Run asv continuous (base vs PR head)
         id: continuous
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           set +e
-          asv continuous origin/master HEAD \
+          asv continuous "origin/${BASE_REF}" HEAD \
             --machine ci-ubuntu-latest \
             --factor 1.1 \
             --no-stats \
@@ -43,9 +45,10 @@ jobs:
       - name: Write diff to job summary
         env:
           ASV_EXIT: ${{ steps.continuous.outputs.exit_code }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
           {
-            echo "## ASV continuous — master → PR HEAD"
+            echo "## ASV continuous — ${BASE_REF} → PR HEAD"
             echo ""
             echo "Exit code: $ASV_EXIT (non-zero indicates flagged regression at --factor 1.1)"
             echo ""
@@ -57,6 +60,7 @@ jobs:
       - name: Build sticky comment body
         env:
           ASV_EXIT: ${{ steps.continuous.outputs.exit_code }}
+          OVERRIDE: ${{ contains(github.event.pull_request.labels.*.name, 'bench-override') }}
         run: |
           {
             echo "## ASV continuous — benchmark diff"
@@ -72,7 +76,11 @@ jobs:
             echo ""
             echo "</details>"
             echo ""
-            echo "_Non-blocking; shared GitHub runners are noisy. For the trend view, run \`asv publish && asv preview\` locally against the committed \`.asv/results/\`._"
+            if [ "$ASV_EXIT" != "0" ] && [ "$OVERRIDE" = "true" ]; then
+              echo "_Gate forced green by \`bench-override\` label._"
+            else
+              echo "_Blocking at \`--factor 1.1\`; override via the \`bench-override\` PR label. Shared GitHub runners are noisy — for the trend view, run \`asv publish && asv preview\` locally against committed \`.asv/results/\`._"
+            fi
           } > sticky-comment.md
 
       - name: Post sticky PR comment
@@ -84,3 +92,19 @@ jobs:
         with:
           header: asv-continuous
           path: sticky-comment.md
+
+      - name: Enforce regression gate
+        env:
+          ASV_EXIT: ${{ steps.continuous.outputs.exit_code }}
+          OVERRIDE: ${{ contains(github.event.pull_request.labels.*.name, 'bench-override') }}
+        run: |
+          if [ "$ASV_EXIT" = "0" ]; then
+            echo "No regression flagged."
+            exit 0
+          fi
+          if [ "$OVERRIDE" = "true" ]; then
+            echo "Regression flagged (exit $ASV_EXIT) but 'bench-override' label is set — forcing green."
+            exit 0
+          fi
+          echo "Regression flagged (exit $ASV_EXIT) and no 'bench-override' label — failing the gate."
+          exit "$ASV_EXIT"
