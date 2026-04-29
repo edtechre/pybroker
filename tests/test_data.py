@@ -7,6 +7,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 """
 
 import akshare
+import json
 import os
 import pandas as pd
 import pytest
@@ -14,16 +15,20 @@ import re
 import yfinance
 from .fixtures import *  # noqa: F401
 from datetime import datetime
+from urllib.error import HTTPError
 from pybroker.cache import DataSourceCacheKey
 from pybroker.common import to_seconds
 from pybroker.data import (
     Alpaca,
     AlpacaCrypto,
+    DataSource,
     DataSourceCacheMixin,
     YFinance,
 )
 from pybroker.ext.data import AKShare
+from pybroker.ext.data import AdanosSentiment
 from pybroker.ext.data import YQuery
+from pybroker.ext import data as ext_data
 from unittest import mock
 from yahooquery import Ticker
 
@@ -45,6 +50,30 @@ ALPACA_COLS = [
     "vwap",
 ]
 ALPACA_CRYPTO_COLS = ALPACA_COLS + ["trade_count"]
+
+
+class StaticDataSource(DataSource):
+    def __init__(self, df):
+        super().__init__()
+        self.df = df
+
+    def _fetch_data(self, symbols, start_date, end_date, _timeframe, _adjust):
+        df = self.df[self.df["symbol"].isin(symbols)].copy()
+        return df[(df["date"] >= start_date) & (df["date"] <= end_date)]
+
+
+class JsonResponse:
+    def __init__(self, data):
+        self.data = data
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return False
+
+    def read(self):
+        return json.dumps(self.data).encode("utf-8")
 
 
 @pytest.fixture()
@@ -777,3 +806,313 @@ class TestYQuery:
                 Ticker, "history", return_value=expected_df
             ):
                 yq.query(symbols, START_DATE, END_DATE, "90m")
+
+
+class TestAdanosSentiment:
+    @pytest.mark.usefixtures("scope", "setup_ds_cache")
+    def test_query_enriches_wrapped_data_source(self):
+        prices = pd.DataFrame(
+            {
+                "date": [
+                    datetime(2024, 1, 2),
+                    datetime(2024, 1, 3),
+                    datetime(2024, 1, 2),
+                    datetime(2024, 1, 3),
+                ],
+                "symbol": ["AAPL", "AAPL", "MSFT", "MSFT"],
+                "open": [1, 2, 3, 4],
+                "high": [2, 3, 4, 5],
+                "low": [0, 1, 2, 3],
+                "close": [1.5, 2.5, 3.5, 4.5],
+                "volume": [10, 20, 30, 40],
+            }
+        )
+
+        def fetcher(source, symbol, days, **_kwargs):
+            assert source in {"reddit", "news"}
+            assert days == 2
+            sentiment = 0.2 if symbol == "AAPL" else -0.1
+            if source == "news":
+                sentiment += 0.2
+            return {
+                "sentiment_score": 0.99,
+                "buzz_score": 99,
+                "mentions": 99,
+                "daily_trend": [
+                    {
+                        "date": "2024-01-02",
+                        "sentiment_score": sentiment,
+                        "buzz_score": 10,
+                        "mentions": 2,
+                    },
+                    {
+                        "date": "2024-01-03",
+                        "sentiment_score": sentiment + 0.1,
+                        "buzz_score": 12,
+                        "mentions": 3,
+                    },
+                ],
+            }
+
+        with mock.patch.object(ext_data, "_fetch_adanos_json", fetcher):
+            adanos = AdanosSentiment(
+                StaticDataSource(prices),
+                api_key="test-key",
+                sources=("reddit", "news"),
+            )
+            df = adanos.query(["AAPL", "MSFT"], "2024-01-02", "2024-01-03")
+
+        assert {
+            "adanos_sentiment",
+            "adanos_buzz",
+            "adanos_mentions",
+            "adanos_reddit_sentiment",
+            "adanos_reddit_buzz",
+            "adanos_reddit_mentions",
+            "adanos_news_sentiment",
+            "adanos_news_buzz",
+            "adanos_news_mentions",
+        }.issubset(df.columns)
+        aapl = df[
+            (df["symbol"] == "AAPL")
+            & (df["date"] == pd.Timestamp("2024-01-02"))
+        ].iloc[0]
+        assert aapl["adanos_reddit_sentiment"] == pytest.approx(0.2)
+        assert aapl["adanos_news_sentiment"] == pytest.approx(0.4)
+        assert aapl["adanos_sentiment"] == pytest.approx(0.3)
+        assert aapl["adanos_buzz"] == pytest.approx(10)
+        assert aapl["adanos_mentions"] == pytest.approx(4)
+        aapl_end = df[
+            (df["symbol"] == "AAPL")
+            & (df["date"] == pd.Timestamp("2024-01-03"))
+        ].iloc[0]
+        assert aapl_end["adanos_reddit_sentiment"] == pytest.approx(0.3)
+        assert aapl_end["adanos_news_sentiment"] == pytest.approx(0.5)
+        assert aapl_end["adanos_sentiment"] == pytest.approx(0.4)
+        assert aapl_end["adanos_buzz"] == pytest.approx(12)
+        assert aapl_end["adanos_mentions"] == pytest.approx(6)
+
+    @pytest.mark.usefixtures("scope")
+    def test_query_joins_timezone_aware_dates(self):
+        prices = pd.DataFrame(
+            {
+                "date": [pd.Timestamp("2024-01-02", tz="US/Eastern")],
+                "symbol": ["AAPL"],
+                "open": [1],
+                "high": [2],
+                "low": [0],
+                "close": [1.5],
+                "volume": [10],
+            }
+        )
+
+        def fetcher(_source, _symbol, _days, **_kwargs):
+            return {
+                "daily_trend": [
+                    {
+                        "date": "2024-01-02",
+                        "sentiment_score": 0.25,
+                        "buzz_score": 11,
+                        "mentions": 2,
+                    }
+                ]
+            }
+
+        with mock.patch.object(ext_data, "_fetch_adanos_json", fetcher):
+            adanos = AdanosSentiment(
+                StaticDataSource(prices),
+                api_key="test-key",
+                sources=("reddit",),
+            )
+            df = adanos.query(
+                "AAPL",
+                "2024-01-02T00:00:00-05:00",
+                "2024-01-02T00:00:00-05:00",
+            )
+
+        assert df["adanos_reddit_sentiment"].iloc[0] == pytest.approx(0.25)
+
+    @pytest.mark.usefixtures("scope")
+    def test_query_uses_top_level_payload_without_daily_trend(self):
+        prices = pd.DataFrame(
+            {
+                "date": [datetime(2024, 1, 3)],
+                "symbol": ["AAPL"],
+                "open": [1],
+                "high": [2],
+                "low": [0],
+                "close": [1.5],
+                "volume": [10],
+            }
+        )
+
+        def fetcher(_source, _symbol, _days, **_kwargs):
+            return {
+                "sentiment_score": 0.45,
+                "buzz_score": 22,
+                "mentions": 7,
+            }
+
+        with mock.patch.object(ext_data, "_fetch_adanos_json", fetcher):
+            adanos = AdanosSentiment(
+                StaticDataSource(prices),
+                api_key="test-key",
+                sources=("reddit",),
+            )
+            df = adanos.query("AAPL", "2024-01-03", "2024-01-03")
+
+        assert df["adanos_reddit_sentiment"].iloc[0] == pytest.approx(0.45)
+        assert df["adanos_reddit_buzz"].iloc[0] == pytest.approx(22)
+        assert df["adanos_reddit_mentions"].iloc[0] == pytest.approx(7)
+
+    @pytest.mark.usefixtures("scope")
+    def test_query_when_aggregate_disabled(self):
+        prices = pd.DataFrame(
+            {
+                "date": [datetime(2024, 1, 2)],
+                "symbol": ["AAPL"],
+                "open": [1],
+                "high": [2],
+                "low": [0],
+                "close": [1.5],
+                "volume": [10],
+            }
+        )
+
+        def fetcher(_source, _symbol, _days, **_kwargs):
+            return {
+                "daily_trend": [
+                    {
+                        "date": "2024-01-02",
+                        "sentiment_score": 0.25,
+                        "buzz_score": 11,
+                        "mentions": 2,
+                    }
+                ]
+            }
+
+        with mock.patch.object(ext_data, "_fetch_adanos_json", fetcher):
+            adanos = AdanosSentiment(
+                StaticDataSource(prices),
+                api_key="test-key",
+                sources=("reddit",),
+                include_aggregate=False,
+            )
+            df = adanos.query("AAPL", "2024-01-02", "2024-01-02")
+
+        assert "adanos_sentiment" not in df.columns
+        assert df["adanos_reddit_sentiment"].iloc[0] == pytest.approx(0.25)
+
+    @pytest.mark.usefixtures("scope")
+    def test_query_when_source_has_no_data(self):
+        prices = pd.DataFrame(
+            {
+                "date": [datetime(2024, 1, 2)],
+                "symbol": ["AAPL"],
+                "open": [1],
+                "high": [2],
+                "low": [0],
+                "close": [1.5],
+                "volume": [10],
+            }
+        )
+        with mock.patch.object(
+            ext_data, "_fetch_adanos_json", lambda *_a, **_k: {}
+        ):
+            adanos = AdanosSentiment(
+                StaticDataSource(prices),
+                api_key="test-key",
+                sources=("reddit",),
+            )
+            df = adanos.query("AAPL", "2024-01-02", "2024-01-02")
+
+        assert pd.isna(df["adanos_sentiment"].iloc[0])
+        assert pd.isna(df["adanos_reddit_sentiment"].iloc[0])
+
+    @pytest.mark.usefixtures("scope", "setup_enabled_ds_cache")
+    def test_query_uses_separate_cache_key_from_wrapped_source(self):
+        prices = pd.DataFrame(
+            {
+                "date": [datetime(2024, 1, 2)],
+                "symbol": ["AAPL"],
+                "open": [1],
+                "high": [2],
+                "low": [0],
+                "close": [1.5],
+                "volume": [10],
+            }
+        )
+        data_source = StaticDataSource(prices)
+        data_source.query("AAPL", "2024-01-02", "2024-01-02")
+
+        def fetcher(_source, _symbol, _days, **_kwargs):
+            return {
+                "daily_trend": [
+                    {
+                        "date": "2024-01-02",
+                        "sentiment_score": 0.4,
+                        "buzz_score": 20,
+                        "mentions": 5,
+                    }
+                ]
+            }
+
+        with mock.patch.object(ext_data, "_fetch_adanos_json", fetcher):
+            adanos = AdanosSentiment(
+                data_source,
+                api_key="test-key",
+                sources=("reddit",),
+            )
+            df = adanos.query("AAPL", "2024-01-02", "2024-01-02")
+
+        assert df["adanos_reddit_sentiment"].iloc[0] == pytest.approx(0.4)
+
+    @pytest.mark.usefixtures("scope")
+    def test_init_when_unsupported_source_then_error(self):
+        with pytest.raises(
+            ValueError,
+            match=re.escape("Unsupported Adanos source: 'crypto'."),
+        ):
+            AdanosSentiment(
+                StaticDataSource(pd.DataFrame()),
+                api_key="test-key",
+                sources=("crypto",),
+            )
+
+    def test_fetch_adanos_json_uses_source_endpoint_and_api_key(self):
+        def urlopen(request, timeout):
+            assert timeout == 3
+            assert request.full_url == (
+                "https://example.com/reddit/stocks/v1/stock/AAPL?days=7"
+            )
+            assert request.get_header("X-api-key") == "test-key"
+            return JsonResponse({"sentiment_score": 0.5})
+
+        with mock.patch.object(ext_data, "urlopen", urlopen):
+            payload = ext_data._fetch_adanos_json(
+                "reddit",
+                "AAPL",
+                7,
+                api_key="test-key",
+                base_url="https://example.com/",
+                timeout=3,
+            )
+
+        assert payload == {"sentiment_score": 0.5}
+
+    def test_fetch_adanos_json_when_404_returns_empty_payload(self):
+        def urlopen(_request, timeout):
+            assert timeout == 3
+            raise HTTPError("url", 404, "Not Found", {}, None)
+
+        with mock.patch.object(ext_data, "urlopen", urlopen):
+            payload = ext_data._fetch_adanos_json(
+                "reddit",
+                "MISSING",
+                7,
+                api_key="test-key",
+                base_url="https://example.com",
+                timeout=3,
+            )
+
+        assert payload == {}

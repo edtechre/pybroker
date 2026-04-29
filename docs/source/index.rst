@@ -159,6 +159,7 @@ To learn how to use PyBroker, see the notebooks under the *User Guide*:
    notebooks/5. Writing Indicators
    notebooks/6. Training a Model
    notebooks/7. Creating a Custom Data Source
+   Adanos Sentiment Features <adanos_sentiment>
    notebooks/8. Applying Stops
    notebooks/9. Rebalancing Positions
    notebooks/10. Rotational Trading
