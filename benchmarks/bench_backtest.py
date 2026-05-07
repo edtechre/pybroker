@@ -253,6 +253,55 @@ class WalkforwardLarge:
 # ---------------------------------------------------------------------------
 
 
+class IndicatorPreprocess:
+    """Bench :py:meth:`pybroker.indicator.IndicatorSet.__call__` on a
+    multi-symbol DataFrame.
+
+    Guards two per-symbol mask loops in ``indicator.py``:
+    ``IndicatorsMixin.compute_indicators`` slices ``df[df[symbol] ==
+    sym]`` once per uncached ``IndicatorSymbol`` and
+    ``IndicatorSet.__call__`` repeats the same boolean mask while
+    rebuilding the flat output frame. Both are ``O(S * N)`` per call
+    and collapse to a single ``groupby(symbol)`` pass.
+
+    Isolation: calling ``IndicatorSet(...)(df)`` directly exercises
+    both loops without any ``Strategy`` shim. Parametrized on
+    ``(n_symbols, n_indicators)`` so the linear-in-S scan cost and
+    the I-amplified rebuild cost both have a row that pins them.
+    """
+
+    timeout = 300
+    params = ([50, 200, 500], [1, 5])
+    param_names = ("n_symbols", "n_indicators")
+
+    def setup(self, n_symbols: int, n_indicators: int) -> None:
+        from pybroker.indicator import IndicatorSet
+        from pybroker.vect import highv, lowv, sumv
+
+        np.random.seed(SEED)
+        pybroker.clear_params()
+        pybroker.disable_logging()
+        pybroker.disable_progress_bar()
+        self.df = _synthetic_ohlcv(n_symbols=n_symbols, n_days=252, seed=SEED)
+        kernels = (
+            ("hhv20", lambda b: highv(b.close, 20)),
+            ("llv20", lambda b: lowv(b.close, 20)),
+            ("sum20", lambda b: sumv(b.close, 20)),
+            ("hhv50", lambda b: highv(b.close, 50)),
+            ("llv50", lambda b: lowv(b.close, 50)),
+        )
+        ind_set = IndicatorSet()
+        for name, fn in kernels[:n_indicators]:
+            ind_set.add(pybroker.indicator(name, fn))
+        self._ind_set = ind_set
+        self._ind_set(self.df, disable_parallel=True)
+
+    def time_indicator_set_call(
+        self, n_symbols: int, n_indicators: int
+    ) -> None:
+        self._ind_set(self.df, disable_parallel=True)
+
+
 class IndicatorKernels:
     """Direct calls into vect.py @njit kernels.
 
