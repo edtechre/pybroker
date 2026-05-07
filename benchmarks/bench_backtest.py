@@ -248,6 +248,85 @@ class WalkforwardLarge:
         )
 
 
+class _PreprocessOnlyStrategy(Strategy):
+    """Strategy whose ``walkforward_split`` yields zero windows.
+
+    Used by ``ExitOnLastBarPreprocess`` to isolate the
+    ``exit_on_last_bar`` preprocessing block in
+    :py:meth:`Strategy._run_walkforward`: the preprocessing fires before
+    the windows loop, and the loop becomes a no-op so the timed call
+    doesn't pay for trade simulation.
+    """
+
+    def walkforward_split(  # type: ignore[override]
+        self,
+        df: pd.DataFrame,
+        windows: int,
+        lookahead: int,
+        train_size: float = 0.9,
+        shuffle: bool = False,
+    ):
+        return iter(())
+
+
+def _exit_on_last_bar_noop_fn(_ctx: ExecContext) -> None:
+    pass
+
+
+class ExitOnLastBarPreprocess:
+    """Bench the ``exit_on_last_bar`` preprocessing block in
+    ``Strategy._run_walkforward``.
+
+    When ``exit_on_last_bar=True``, ``_run_walkforward`` builds a
+    ``{symbol: max_date}`` map before the windows loop fires. A naive
+    ``O(E*S*N)`` boolean-mask-per-symbol implementation can be replaced
+    by a single ``isin`` + ``groupby(symbol).max()``; this bench
+    quantifies the difference and catches future regressions.
+
+    Isolation strategy: ``_PreprocessOnlyStrategy.walkforward_split``
+    yields nothing, so the timed call exercises ``_filter_dates``,
+    indicator setup (empty here), and the preprocessing block, then
+    short-circuits before the windows loop.
+
+    Parametrized on ``n_symbols`` so the linear vs roughly quadratic
+    scaling shape is visible per-row in the asv-pr output.
+    """
+
+    timeout = 300
+    params = [50, 200, 500]
+    param_names = ("n_symbols",)
+
+    def setup(self, n_symbols: int) -> None:
+        np.random.seed(SEED)
+        self.df = _synthetic_ohlcv(n_symbols=n_symbols, n_days=252, seed=SEED)
+        self._build_strategy().walkforward(
+            windows=1,
+            lookahead=LOOKAHEAD,
+            calc_bootstrap=False,
+            disable_parallel=True,
+        )
+
+    def time_exit_on_last_bar_preprocess(self, n_symbols: int) -> None:
+        self._build_strategy().walkforward(
+            windows=1,
+            lookahead=LOOKAHEAD,
+            calc_bootstrap=False,
+            disable_parallel=True,
+        )
+
+    def _build_strategy(self) -> "_PreprocessOnlyStrategy":
+        pybroker.clear_params()
+        pybroker.disable_logging()
+        pybroker.disable_progress_bar()
+        symbols = sorted(self.df["symbol"].unique().tolist())
+        start = self.df["date"].min().strftime("%Y-%m-%d")
+        end = self.df["date"].max().strftime("%Y-%m-%d")
+        config = StrategyConfig(exit_on_last_bar=True)
+        strategy = _PreprocessOnlyStrategy(self.df, start, end, config)
+        strategy.add_execution(_exit_on_last_bar_noop_fn, symbols=symbols)
+        return strategy
+
+
 # ---------------------------------------------------------------------------
 # Group B — subsystem micro-benches (no vector dependency)
 # ---------------------------------------------------------------------------
