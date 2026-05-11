@@ -24,6 +24,7 @@ from typing import (
     Optional,
     Sequence,
     Union,
+    cast,
 )
 
 _tf_pattern: Final = re.compile(r"(\d+)([A-Za-z]+)")
@@ -379,5 +380,4 @@ def get_unique_sorted_dates(col: pd.Series) -> Sequence[np.datetime64]:
     # TODO: Remove after Pandas 1.0 is no longer supported.
     if hasattr(result, "to_numpy"):
         result = result.to_numpy(copy=True)
-    result = np.sort(result)
-    return result
+    return cast(Sequence[np.datetime64], np.sort(result))
