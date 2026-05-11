@@ -33,11 +33,7 @@ def _new_exit_dates(df: pd.DataFrame, executions):
         sym_col = DataCol.SYMBOL.value
         date_col = DataCol.DATE.value
         mask = df[sym_col].isin(exit_symbols)
-        grouped = (
-            df.loc[mask]
-            .groupby(sym_col, sort=False)[date_col]
-            .max()
-        )
+        grouped = df.loc[mask].groupby(sym_col, sort=False)[date_col].max()
         exit_dates = {
             sym: np.datetime64(date) for sym, date in grouped.items()
         }
@@ -74,9 +70,7 @@ def test_multiple_executions_overlapping_symbols():
 
 
 def test_empty_dataframe():
-    df = pd.DataFrame(
-        {DataCol.SYMBOL.value: [], DataCol.DATE.value: []}
-    )
+    df = pd.DataFrame({DataCol.SYMBOL.value: [], DataCol.DATE.value: []})
     execs = [_FakeExecution(["AAPL"])]
     assert _new_exit_dates(df, execs) == {}
 

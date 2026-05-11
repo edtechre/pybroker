@@ -1383,9 +1383,7 @@ class Strategy(
                 date_col = DataCol.DATE.value
                 mask = df[sym_col].isin(exit_symbols)
                 grouped = (
-                    df.loc[mask]
-                    .groupby(sym_col, sort=False)[date_col]
-                    .max()
+                    df.loc[mask].groupby(sym_col, sort=False)[date_col].max()
                 )
                 exit_dates = {
                     sym: np.datetime64(date) for sym, date in grouped.items()
