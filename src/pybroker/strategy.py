@@ -1375,13 +1375,21 @@ class Strategy(
         sessions: dict[str, dict] = defaultdict(dict)
         exit_dates: dict[str, np.datetime64] = {}
         if self._config.exit_on_last_bar:
+            exit_symbols: set[str] = set()
             for exec in self._executions:
-                for sym in exec.symbols:
-                    sym_dates = df[df[DataCol.SYMBOL.value] == sym][
-                        DataCol.DATE.value
-                    ].values
-                    if len(sym_dates):
-                        exit_dates[sym] = sym_dates.max()
+                exit_symbols.update(exec.symbols)
+            if exit_symbols and not df.empty:
+                sym_col = DataCol.SYMBOL.value
+                date_col = DataCol.DATE.value
+                mask = df[sym_col].isin(exit_symbols)
+                grouped = (
+                    df.loc[mask]
+                    .groupby(sym_col, sort=False)[date_col]
+                    .max()
+                )
+                exit_dates = {
+                    sym: np.datetime64(date) for sym, date in grouped.items()
+                }
         signals: dict[str, pd.DataFrame] = {}
         for train_idx, test_idx in self.walkforward_split(
             df=df,
