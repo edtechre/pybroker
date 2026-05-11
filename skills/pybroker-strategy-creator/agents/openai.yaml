@@ -1,0 +1,4 @@
+interface:
+  display_name: "PyBroker Strategy Creator"
+  short_description: "Create practical PyBroker strategies"
+  default_prompt: "Use $pybroker-strategy-creator to create a PyBroker backtest strategy from my trading rules."
