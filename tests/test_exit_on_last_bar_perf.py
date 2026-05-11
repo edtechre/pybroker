@@ -6,7 +6,6 @@ to the original per-symbol boolean-indexing implementation.
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from pybroker.common import DataCol
 
