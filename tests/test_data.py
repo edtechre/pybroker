@@ -7,6 +7,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 """
 
 import akshare
+import json
 import os
 import pandas as pd
 import pytest
@@ -23,6 +24,7 @@ from pybroker.data import (
     YFinance,
 )
 from pybroker.ext.data import AKShare
+from pybroker.ext.data import FXMacroData
 from pybroker.ext.data import YQuery
 from unittest import mock
 from yahooquery import Ticker
@@ -45,6 +47,29 @@ ALPACA_COLS = [
     "vwap",
 ]
 ALPACA_CRYPTO_COLS = ALPACA_COLS + ["trade_count"]
+FXMACRODATA_COLS = [
+    "date",
+    "symbol",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+]
+
+
+class FXMacroDataResponse:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def read(self):
+        return json.dumps(self.payload).encode("utf-8")
 
 
 @pytest.fixture()
@@ -777,3 +802,87 @@ class TestYQuery:
                 Ticker, "history", return_value=expected_df
             ):
                 yq.query(symbols, START_DATE, END_DATE, "90m")
+
+
+class TestFXMacroData:
+    @pytest.mark.usefixtures("setup_ds_cache")
+    def test_query(self):
+        fxmd = FXMacroData(
+            api_key=API_KEY, base_url="https://example.com/v1"
+        )
+        payload = {
+            "data": [
+                {"date": "2021-02-02", "val": "1.201"},
+                {"date": "2021-02-03", "val": 1.202},
+            ]
+        }
+        with mock.patch(
+            "pybroker.ext.data.urlopen",
+            return_value=FXMacroDataResponse(payload),
+        ) as mock_urlopen:
+            df = fxmd.query(["EUR/USD"], START_DATE, END_DATE, "1d")
+        request = mock_urlopen.call_args.args[0]
+        assert request.full_url == (
+            "https://example.com/v1/forex/eur/usd?"
+            "start_date=2021-02-02&end_date=2022-02-02"
+        )
+        assert dict(request.header_items())["X-api-key"] == API_KEY
+        assert mock_urlopen.call_args.kwargs["timeout"] == 30
+        assert set(df.columns) == set(FXMACRODATA_COLS)
+        assert df.shape[0] == 2
+        assert df["symbol"].tolist() == ["EUR/USD", "EUR/USD"]
+        assert df["close"].tolist() == [1.201, 1.202]
+        assert df["open"].tolist() == df["close"].tolist()
+        assert df["high"].tolist() == df["close"].tolist()
+        assert df["low"].tolist() == df["close"].tolist()
+        assert df["volume"].tolist() == [0, 0]
+        assert df["date"].tolist() == [
+            pd.Timestamp("2021-02-02"),
+            pd.Timestamp("2021-02-03"),
+        ]
+
+    @pytest.mark.usefixtures("setup_ds_cache")
+    def test_query_when_empty_result(self):
+        fxmd = FXMacroData(base_url="https://example.com/v1")
+        with mock.patch(
+            "pybroker.ext.data.urlopen",
+            return_value=FXMacroDataResponse({"data": []}),
+        ):
+            df = fxmd.query(["EURUSD"], START_DATE, END_DATE, "1d")
+        assert df.empty
+        assert set(df.columns) == set(FXMACRODATA_COLS)
+
+    def test_query_when_invalid_symbol_then_error(self):
+        fxmd = FXMacroData(base_url="https://example.com/v1")
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "FXMacroData symbols must be currency pairs such as "
+                "'EURUSD' or 'EUR/USD'."
+            ),
+        ):
+            fxmd.query(["EUR"], START_DATE, END_DATE, "1d")
+
+    def test_query_when_unsupported_timeframe_then_error(self):
+        fxmd = FXMacroData(base_url="https://example.com/v1")
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "FXMacroData only supports daily data; use timeframe='1d' "
+                "or leave it empty."
+            ),
+        ):
+            fxmd.query(["EURUSD"], START_DATE, END_DATE, "1h")
+
+    @pytest.mark.usefixtures("setup_ds_cache")
+    def test_query_uses_env_api_key(self, monkeypatch):
+        monkeypatch.delenv("FXMACRODATA_API_KEY", raising=False)
+        monkeypatch.setenv("FXMD_API_KEY", API_SECRET)
+        fxmd = FXMacroData(base_url="https://example.com/v1")
+        with mock.patch(
+            "pybroker.ext.data.urlopen",
+            return_value=FXMacroDataResponse({"data": []}),
+        ) as mock_urlopen:
+            fxmd.query(["EURUSD"], START_DATE, END_DATE, "1d")
+        request = mock_urlopen.call_args.args[0]
+        assert dict(request.header_items())["X-api-key"] == API_SECRET
