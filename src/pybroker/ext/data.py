@@ -194,7 +194,7 @@ class FXMacroData(DataSource):
     def __init__(
         self,
         api_key: Optional[str] = None,
-        base_url: str = "https://api.fxmacrodata.com/v1",
+        base_url: str = "https://fxmacrodata.com/api/v1",
         timeout: float = 30,
     ):
         super().__init__()
