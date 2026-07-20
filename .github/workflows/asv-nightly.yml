@@ -1,0 +1,54 @@
+name: ASV Benchmarks (Nightly)
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: asv-nightly
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: asv run (Python ${{ matrix.python.version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python:
+          - version: "3.11"
+          - version: "3.12"
+          - version: "3.13"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-pybroker
+        with:
+          python-version: ${{ matrix.python.version }}
+
+      - name: Configure asv machine identity
+        env:
+          PY_VERSION: ${{ matrix.python.version }}
+        run: asv machine --yes --machine "ci-ubuntu-latest-py${PY_VERSION}"
+
+      - name: Run asv against master HEAD
+        env:
+          PY_VERSION: ${{ matrix.python.version }}
+        run: |
+          asv run HEAD^! \
+            --machine "ci-ubuntu-latest-py${PY_VERSION}" \
+            --show-stderr
+
+      - name: Upload asv results
+        uses: actions/upload-artifact@v4
+        with:
+          name: asv-results-py${{ matrix.python.version }}-${{ github.run_id }}
+          path: .asv/results/
+          if-no-files-found: error
+          retention-days: 30

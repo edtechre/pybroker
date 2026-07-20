@@ -214,16 +214,21 @@ class IndicatorsMixin:
             scope.logger.info_loaded_indicator_data(indicator_data.keys())
         scope.logger.indicator_data_start(uncached_ind_syms)
         scope.logger.info_indicator_data_start(uncached_ind_syms)
-        sym_data: dict[str, dict[str, Optional[NDArray]]] = defaultdict(dict)
-        for _, sym in uncached_ind_syms:
-            if sym in sym_data:
+        needed_syms = {sym for _, sym in uncached_ind_syms}
+        sym_data: dict[str, dict[str, Optional[NDArray]]] = {}
+        for sym, group in df.groupby(
+            DataCol.SYMBOL.value, sort=False, observed=True
+        ):
+            if sym not in needed_syms:
                 continue
-            data = df[df[DataCol.SYMBOL.value] == sym]
-            for col in scope.all_data_cols:
-                if col not in data.columns:
-                    sym_data[sym][col] = None
-                    continue
-                sym_data[sym][col] = data[col].to_numpy(copy=True)
+            sym_data[sym] = {
+                col: (
+                    group[col].to_numpy(copy=True)
+                    if col in group.columns
+                    else None
+                )
+                for col in scope.all_data_cols
+            }
         for i, (ind_sym, series) in enumerate(
             self._run_indicators(sym_data, uncached_ind_syms, disable_parallel)
         ):
@@ -381,9 +386,15 @@ class IndicatorSet(IndicatorsMixin):
         sym_dict: dict[str, dict[str, pd.Series]] = defaultdict(dict)
         for ind_sym, series in ind_dict.items():
             sym_dict[ind_sym.symbol][ind_sym.ind_name] = series
+        date_by_sym = {
+            sym: group[DataCol.DATE.value]
+            for sym, group in df.groupby(
+                DataCol.SYMBOL.value, sort=False, observed=True
+            )
+        }
         data: dict[str, list] = defaultdict(list)
         for sym, ind_series in sym_dict.items():
-            dates = df[df[DataCol.SYMBOL.value] == sym][DataCol.DATE.value]
+            dates = date_by_sym[sym]
             data[DataCol.SYMBOL.value].extend(
                 itertools.repeat(sym, len(dates))
             )
@@ -915,6 +926,7 @@ def intraday_intensity(
     """
 
     def _intraday_intensity(data: BarData):
+        assert data.volume is not None
         return vect.intraday_intensity(
             high=data.high,
             low=data.low,
@@ -940,6 +952,7 @@ def money_flow(name: str, lookback: int, smoothing: float = 0.0) -> Indicator:
     """
 
     def _money_flow(data: BarData):
+        assert data.volume is not None
         return vect.money_flow(
             high=data.high,
             low=data.low,
@@ -969,6 +982,7 @@ def reactivity(
     """
 
     def _reactivity(data: BarData):
+        assert data.volume is not None
         return vect.reactivity(
             high=data.high,
             low=data.low,
@@ -998,6 +1012,7 @@ def price_volume_fit(
     """
 
     def _price_volume_fit(data: BarData):
+        assert data.volume is not None
         return vect.price_volume_fit(
             close=data.close,
             volume=data.volume,
@@ -1024,6 +1039,7 @@ def volume_weighted_ma_ratio(
     """
 
     def _volume_weighted_ma_ratio(data: BarData):
+        assert data.volume is not None
         return vect.volume_weighted_ma_ratio(
             close=data.close,
             volume=data.volume,
@@ -1050,6 +1066,7 @@ def normalized_on_balance_volume(
     """
 
     def _normalized_on_balance_volume(data: BarData):
+        assert data.volume is not None
         return vect.normalized_on_balance_volume(
             close=data.close,
             volume=data.volume,
@@ -1077,6 +1094,7 @@ def delta_on_balance_volume(
     """
 
     def _delta_on_balance_volume(data: BarData):
+        assert data.volume is not None
         return vect.delta_on_balance_volume(
             close=data.close,
             volume=data.volume,
@@ -1104,6 +1122,7 @@ def normalized_positive_volume_index(
     """
 
     def _normalized_positive_volume_index(data: BarData):
+        assert data.volume is not None
         return vect.normalized_positive_volume_index(
             close=data.close,
             volume=data.volume,
@@ -1130,6 +1149,7 @@ def normalized_negative_volume_index(
     """
 
     def _normalized_negative_volume_index(data: BarData):
+        assert data.volume is not None
         return vect.normalized_negative_volume_index(
             close=data.close,
             volume=data.volume,
@@ -1157,6 +1177,7 @@ def volume_momentum(
     """
 
     def _volume_momentum(data: BarData):
+        assert data.volume is not None
         return vect.volume_momentum(
             volume=data.volume,
             short_length=short_length,

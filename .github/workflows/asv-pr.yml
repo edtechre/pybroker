@@ -1,0 +1,110 @@
+name: ASV Benchmarks (PR)
+
+on:
+  pull_request:
+    branches: [master, dev]
+
+concurrency:
+  group: asv-pr-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  benchmark:
+    name: asv continuous
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-pybroker
+
+      - name: Configure asv machine identity
+        run: asv machine --yes --machine ci-ubuntu-latest
+
+      - name: Run asv continuous (base vs PR head)
+        id: continuous
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set +e
+          asv continuous "origin/${BASE_REF}" HEAD \
+            --machine ci-ubuntu-latest \
+            --factor 1.1 \
+            --no-stats \
+            >asv-continuous.log 2>&1
+          EXIT=$?
+          echo "exit_code=$EXIT" >> "$GITHUB_OUTPUT"
+          cat asv-continuous.log
+          exit 0
+
+      - name: Write diff to job summary
+        env:
+          ASV_EXIT: ${{ steps.continuous.outputs.exit_code }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          {
+            echo "## ASV continuous — ${BASE_REF} → PR HEAD"
+            echo ""
+            echo "Exit code: $ASV_EXIT (non-zero indicates flagged regression at --factor 1.1)"
+            echo ""
+            echo '```'
+            cat asv-continuous.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build sticky comment body
+        env:
+          ASV_EXIT: ${{ steps.continuous.outputs.exit_code }}
+          OVERRIDE: ${{ contains(github.event.pull_request.labels.*.name, 'bench-override') }}
+        run: |
+          {
+            echo "## ASV continuous — benchmark diff"
+            echo ""
+            echo "Exit code: \`$ASV_EXIT\` (non-zero = flagged regression at \`--factor 1.1\`)"
+            echo ""
+            echo "<details>"
+            echo "<summary>Benchmark output</summary>"
+            echo ""
+            echo '```'
+            cat asv-continuous.log
+            echo '```'
+            echo ""
+            echo "</details>"
+            echo ""
+            if [ "$ASV_EXIT" != "0" ] && [ "$OVERRIDE" = "true" ]; then
+              echo "_Gate forced green by \`bench-override\` label._"
+            else
+              echo "_Blocking at \`--factor 1.1\`; override via the \`bench-override\` PR label. Shared GitHub runners are noisy — for the trend view, run \`asv publish && asv preview\` locally against committed \`.asv/results/\`._"
+            fi
+          } > sticky-comment.md
+
+      - name: Post sticky PR comment
+        # Skip for fork PRs — GITHUB_TOKEN is read-only for PRs from forks
+        # and this step would fail with "Resource not accessible by integration".
+        # Benchmarks still run and results are in the job summary either way.
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          header: asv-continuous
+          path: sticky-comment.md
+
+      - name: Enforce regression gate
+        env:
+          ASV_EXIT: ${{ steps.continuous.outputs.exit_code }}
+          OVERRIDE: ${{ contains(github.event.pull_request.labels.*.name, 'bench-override') }}
+        run: |
+          if [ "$ASV_EXIT" = "0" ]; then
+            echo "No regression flagged."
+            exit 0
+          fi
+          if [ "$OVERRIDE" = "true" ]; then
+            echo "Regression flagged (exit $ASV_EXIT) but 'bench-override' label is set — forcing green."
+            exit 0
+          fi
+          echo "Regression flagged (exit $ASV_EXIT) and no 'bench-override' label — failing the gate."
+          exit "$ASV_EXIT"

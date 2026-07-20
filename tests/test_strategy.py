@@ -1697,6 +1697,9 @@ class TestStrategy:
                     type="buy",
                     symbol="SPY",
                     date=np.datetime64(START_DATE),
+                    created=None,
+                    order_type="market",
+                    intent="buy_to_open",
                     shares=Decimal("3.14"),
                     limit_price=Decimal(100),
                     fill_price=Decimal(99),
@@ -1803,6 +1806,9 @@ class TestStrategy:
                     type="buy",
                     symbol="SPY",
                     date=np.datetime64(START_DATE),
+                    created=None,
+                    order_type="market",
+                    intent="buy_to_open",
                     shares=Decimal("3.144"),
                     limit_price=Decimal(100),
                     fill_price=Decimal(99),
@@ -1931,6 +1937,47 @@ class TestStrategy:
         assert trade["entry"] == 200
         assert trade["exit"] == 99.99
         assert trade["shares"] == 100
+
+    def test_backtest_when_exit_on_last_bar_with_multi_symbol_executions(
+        self, data_source_df
+    ):
+        def long_exec_fn(ctx):
+            if not ctx.long_pos():
+                ctx.buy_shares = 100
+                ctx.buy_fill_price = 150
+
+        def short_exec_fn(ctx):
+            if not ctx.short_pos():
+                ctx.sell_shares = 100
+                ctx.sell_fill_price = 200
+
+        def sell_fill_price(_symbol, _bar_data):
+            return 199.99
+
+        def buy_fill_price(_symbol, _bar_data):
+            return 99.99
+
+        config = StrategyConfig(
+            exit_on_last_bar=True,
+            exit_sell_fill_price=sell_fill_price,
+            exit_cover_fill_price=buy_fill_price,
+        )
+        strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+        strategy.add_execution(long_exec_fn, ["SPY", "AAPL"])
+        strategy.add_execution(short_exec_fn, ["MSFT", "TSLA"])
+        result = strategy.backtest(calc_bootstrap=False)
+        traded_symbols = set(result.trades["symbol"])
+        assert traded_symbols == {"SPY", "AAPL", "MSFT", "TSLA"}
+        for _, trade in result.trades.iterrows():
+            sym_dates = data_source_df[
+                data_source_df["symbol"] == trade["symbol"]
+            ]["date"].unique()
+            sym_dates = sym_dates[sym_dates <= np.datetime64(END_DATE)]
+            assert trade["exit_date"] == sym_dates[-1]
+            if trade["type"] == "long":
+                assert trade["exit"] == 199.99
+            else:
+                assert trade["exit"] == 99.99
 
     def test_backtest_when_buy_shares_and_sell_shares_then_error(
         self, data_source_df

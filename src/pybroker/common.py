@@ -143,6 +143,42 @@ class StopType(Enum):
     TRAILING = "trailing"
 
 
+class OrderType(Enum):
+    """Order type classifications.
+
+    Attributes:
+        MARKET: Market order.
+        LIMIT: Limit order.
+        STOP_BAR: Bar stop triggered order.
+        STOP_LOSS: Stop loss triggered order.
+        STOP_PROFIT: Take profit triggered order.
+        STOP_TRAILING: Trailing stop triggered order.
+    """
+
+    MARKET = "market"
+    LIMIT = "limit"
+    STOP_BAR = "stop_bar"
+    STOP_LOSS = "stop_loss"
+    STOP_PROFIT = "stop_profit"
+    STOP_TRAILING = "stop_trailing"
+
+
+class PositionIntent(Enum):
+    """Position intent of an order.
+
+    Attributes:
+        BUY_TO_OPEN: Buy to open a long position.
+        BUY_TO_CLOSE: Buy to close a short position.
+        SELL_TO_OPEN: Sell to open a short position.
+        SELL_TO_CLOSE: Sell to close a long position.
+    """
+
+    BUY_TO_OPEN = "buy_to_open"
+    BUY_TO_CLOSE = "buy_to_close"
+    SELL_TO_OPEN = "sell_to_open"
+    SELL_TO_CLOSE = "sell_to_close"
+
+
 class FeeMode(Enum):
     """Brokerage fee mode to use for backtesting.
 

@@ -16,6 +16,7 @@ from pybroker.common import (
     Day,
     IndicatorSymbol,
     ModelSymbol,
+    OrderType,
     PriceType,
     get_unique_sorted_dates,
     quantize,
@@ -318,7 +319,7 @@ class BacktestMixin:
                     portfolio=portfolio,
                     enable_fractional_shares=enable_fractional_shares,
                 )
-            portfolio.capture_bar(date, test_data)
+            portfolio.capture_bar(date, col_scope, sym_end_index)
             if before_exec_fn is not None and active_ctxs:
                 before_exec_fn(active_ctxs)
             for sym, ctx in active_ctxs.items():
@@ -526,12 +527,23 @@ class BacktestMixin:
                 or not pending_order_scope.contains(result.pending_order_id)
             ):
                 continue
+            pending = tuple(
+                pending_order_scope.orders(
+                    order_id=result.pending_order_id,
+                )
+            )
             pending_order_scope.remove(result.pending_order_id)
             buy_shares = self._get_shares(
                 result.buy_shares, enable_fractional_shares
             )
             fill_price = price_scope.fetch(
                 result.symbol, result.buy_fill_price
+            )
+            created = pending[0].created if pending else None
+            order_type = (
+                OrderType.LIMIT
+                if result.buy_limit_price is not None
+                else OrderType.MARKET
             )
             order = portfolio.buy(
                 date=date,
@@ -540,6 +552,8 @@ class BacktestMixin:
                 fill_price=fill_price,
                 limit_price=result.buy_limit_price,
                 stops=result.long_stops,
+                created=created,
+                order_type=order_type,
             )
             logger = StaticScope.instance().logger
             if order is None:
@@ -578,12 +592,23 @@ class BacktestMixin:
                 or not pending_order_scope.contains(result.pending_order_id)
             ):
                 continue
+            pending = tuple(
+                pending_order_scope.orders(
+                    order_id=result.pending_order_id,
+                )
+            )
             pending_order_scope.remove(result.pending_order_id)
             sell_shares = self._get_shares(
                 result.sell_shares, enable_fractional_shares
             )
             fill_price = price_scope.fetch(
                 result.symbol, result.sell_fill_price
+            )
+            created = pending[0].created if pending else None
+            order_type = (
+                OrderType.LIMIT
+                if result.sell_limit_price is not None
+                else OrderType.MARKET
             )
             order = portfolio.sell(
                 date=date,
@@ -592,6 +617,8 @@ class BacktestMixin:
                 fill_price=fill_price,
                 limit_price=result.sell_limit_price,
                 stops=result.short_stops,
+                created=created,
+                order_type=order_type,
             )
             logger = StaticScope.instance().logger
             if order is None:
@@ -1348,13 +1375,19 @@ class Strategy(
         sessions: dict[str, dict] = defaultdict(dict)
         exit_dates: dict[str, np.datetime64] = {}
         if self._config.exit_on_last_bar:
+            exit_symbols: set[str] = set()
             for exec in self._executions:
-                for sym in exec.symbols:
-                    sym_dates = df[df[DataCol.SYMBOL.value] == sym][
-                        DataCol.DATE.value
-                    ].values
-                    if len(sym_dates):
-                        exit_dates[sym] = sym_dates.max()
+                exit_symbols.update(exec.symbols)
+            if exit_symbols and not df.empty:
+                sym_col = DataCol.SYMBOL.value
+                date_col = DataCol.DATE.value
+                mask = df[sym_col].isin(exit_symbols)
+                grouped = (
+                    df.loc[mask].groupby(sym_col, sort=False)[date_col].max()
+                )
+                exit_dates = {
+                    sym: np.datetime64(date) for sym, date in grouped.items()
+                }
         signals: dict[str, pd.DataFrame] = {}
         for train_idx, test_idx in self.walkforward_split(
             df=df,

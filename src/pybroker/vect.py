@@ -12,13 +12,13 @@ from numpy.typing import NDArray
 from typing import Literal
 
 
-@njit
+@njit(cache=True)
 def _verify_input(array: NDArray[np.float64], n: int):
     assert n > 0, "n needs to be >= 1."
     assert n <= len(array), "n is greater than array length."
 
 
-@njit
+@njit(cache=True)
 def lowv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
     """Calculates the lowest values for every ``n`` period in ``array``.
 
@@ -40,7 +40,7 @@ def lowv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
     return out
 
 
-@njit
+@njit(cache=True)
 def highv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
     """Calculates the highest values for every ``n`` period in ``array``.
 
@@ -62,7 +62,7 @@ def highv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
     return out
 
 
-@njit
+@njit(cache=True)
 def sumv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
     """Calculates the sums for every ``n`` period in ``array``.
 
@@ -83,7 +83,7 @@ def sumv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
     return out
 
 
-@njit
+@njit(cache=True)
 def returnv(array: NDArray[np.float64], n: int = 1) -> NDArray[np.float64]:
     """Calculates returns.
 
@@ -103,7 +103,7 @@ def returnv(array: NDArray[np.float64], n: int = 1) -> NDArray[np.float64]:
     return out
 
 
-@njit
+@njit(cache=True)
 def cross(a: NDArray[np.float64], b: NDArray[np.float64]) -> NDArray[np.bool_]:
     """Checks for crossover of ``a`` above ``b``.
 
@@ -120,10 +120,10 @@ def cross(a: NDArray[np.float64], b: NDArray[np.float64]) -> NDArray[np.bool_]:
     assert len(a) == len(b), "a and b must be same length."
     assert len(a) >= 2, "a and b must have length >= 2."
     crossed = np.where(a > b, 1, 0)
-    return (sumv(crossed > 0, 2) == 1) * crossed
+    return (sumv((crossed > 0).astype(np.float64), 2) == 1) * crossed
 
 
-@njit
+@njit(cache=True)
 def normal_cdf(z: float) -> float:
     """Computes the CDF of the standard normal distribution."""
     zz = np.fabs(z)
@@ -137,7 +137,7 @@ def normal_cdf(z: float) -> float:
     return 1 - pdf * poly if z > 0 else pdf * poly
 
 
-@njit
+@njit(cache=True)
 def inverse_normal_cdf(p: float) -> float:
     """Computes the inverse CDF of the standard normal distribution."""
     pp = p if p <= 0.5 else 1 - p
@@ -150,7 +150,7 @@ def inverse_normal_cdf(p: float) -> float:
     return -x if p <= 0.5 else x
 
 
-@njit
+@njit(cache=True)
 def _atr(
     last_bar: int,
     lookback: int,
@@ -197,7 +197,7 @@ def _atr(
     return total / lookback
 
 
-@njit
+@njit(cache=True)
 def _variance(
     use_change: bool, last_bar: int, length: int, prices: NDArray[np.float64]
 ) -> float:
@@ -223,7 +223,7 @@ def _variance(
     return total / length
 
 
-@njit
+@njit(cache=True)
 def detrended_rsi(
     values: NDArray[np.float64],
     short_length: int,
@@ -319,7 +319,7 @@ def detrended_rsi(
     return output
 
 
-@njit
+@njit(cache=True)
 def macd(
     high: NDArray[np.float64],
     low: NDArray[np.float64],
@@ -360,7 +360,7 @@ def macd(
         diff = 0.5 * (long_length - 1.0)
         diff -= 0.5 * (short_length - 1.0)
         denom = np.sqrt(np.fabs(diff))
-        k = long_length + smoothing
+        k = int(long_length + smoothing)
         if k > i:
             k = i
         denom *= _atr(i, k, high, low, close, False)
@@ -375,7 +375,7 @@ def macd(
     return output
 
 
-@njit
+@njit(cache=True)
 def stochastic(
     high: NDArray[np.float64],
     low: NDArray[np.float64],
@@ -433,7 +433,7 @@ def stochastic(
     return output
 
 
-@njit
+@njit(cache=True)
 def stochastic_rsi(
     values: NDArray[np.float64],
     rsi_lookback: int,
@@ -502,7 +502,7 @@ def stochastic_rsi(
     return output
 
 
-@njit
+@njit(cache=True)
 def _legendre_1(n: int) -> NDArray[np.float64]:
     c1 = np.zeros(n)
     total = 0.0
@@ -515,7 +515,7 @@ def _legendre_1(n: int) -> NDArray[np.float64]:
     return c1
 
 
-@njit
+@njit(cache=True)
 def _legendre_2(n: int) -> tuple[NDArray, NDArray]:
     c1 = _legendre_1(n)
     c2 = np.zeros(n)
@@ -534,7 +534,7 @@ def _legendre_2(n: int) -> tuple[NDArray, NDArray]:
     return c1, c2
 
 
-@njit
+@njit(cache=True)
 def _legendre_3(n: int) -> tuple[NDArray, NDArray, NDArray]:
     """Computes the first three Legendre polynomials.
 
@@ -574,7 +574,7 @@ def _legendre_3(n: int) -> tuple[NDArray, NDArray, NDArray]:
     return c1, c2, c3
 
 
-@njit
+@njit(cache=True)
 def _trend(
     values: NDArray[np.float64],
     high: NDArray[np.float64],
@@ -728,7 +728,7 @@ def cubic_trend(
     )
 
 
-@njit
+@njit(cache=True)
 def adx(
     high: NDArray[np.float64],
     low: NDArray[np.float64],
@@ -828,7 +828,7 @@ def adx(
     return output
 
 
-@njit
+@njit(cache=True)
 def _aroon(
     high: NDArray[np.float64],
     low: NDArray[np.float64],
@@ -873,7 +873,7 @@ def _aroon(
     return output
 
 
-@njit
+@njit(cache=True)
 def aroon_up(
     high: NDArray[np.float64],
     low: NDArray[np.float64],
@@ -892,7 +892,7 @@ def aroon_up(
     return _aroon(high, low, lookback, "up")
 
 
-@njit
+@njit(cache=True)
 def aroon_down(
     high: NDArray[np.float64],
     low: NDArray[np.float64],
@@ -911,7 +911,7 @@ def aroon_down(
     return _aroon(high, low, lookback, "down")
 
 
-@njit
+@njit(cache=True)
 def aroon_diff(
     high: NDArray[np.float64],
     low: NDArray[np.float64],
@@ -930,7 +930,7 @@ def aroon_diff(
     return _aroon(high, low, lookback, "diff")
 
 
-@njit
+@njit(cache=True)
 def close_minus_ma(
     high: NDArray[np.float64],
     low: NDArray[np.float64],
@@ -978,7 +978,7 @@ def close_minus_ma(
     return output
 
 
-@njit
+@njit(cache=True)
 def _deviation(
     values: NDArray[np.float64],
     lookback: int,
@@ -1051,7 +1051,7 @@ def _deviation(
     return output
 
 
-@njit
+@njit(cache=True)
 def linear_deviation(
     values: NDArray[np.float64],
     lookback: int,
@@ -1071,7 +1071,7 @@ def linear_deviation(
     return _deviation(values, lookback, scale, "linear")
 
 
-@njit
+@njit(cache=True)
 def quadratic_deviation(
     values: NDArray[np.float64],
     lookback: int,
@@ -1091,7 +1091,7 @@ def quadratic_deviation(
     return _deviation(values, lookback, scale, "quadratic")
 
 
-@njit
+@njit(cache=True)
 def cubic_deviation(
     values: NDArray[np.float64],
     lookback: int,
@@ -1111,7 +1111,7 @@ def cubic_deviation(
     return _deviation(values, lookback, scale, "cubic")
 
 
-@njit
+@njit(cache=True)
 def price_intensity(
     open: NDArray[np.float64],
     high: NDArray[np.float64],
@@ -1171,7 +1171,7 @@ def price_intensity(
     return output
 
 
-@njit
+@njit(cache=True)
 def price_change_oscillator(
     high: NDArray[np.float64],
     low: NDArray[np.float64],
@@ -1229,7 +1229,7 @@ def price_change_oscillator(
     return output
 
 
-@njit
+@njit(cache=True)
 def _flow(
     high: NDArray[np.float64],
     low: NDArray[np.float64],
@@ -1295,7 +1295,7 @@ def _flow(
     return output
 
 
-@njit
+@njit(cache=True)
 def intraday_intensity(
     high: NDArray[np.float64],
     low: NDArray[np.float64],
@@ -1320,7 +1320,7 @@ def intraday_intensity(
     return _flow(high, low, close, volume, lookback, smoothing, "intraday")
 
 
-@njit
+@njit(cache=True)
 def money_flow(
     high: NDArray[np.float64],
     low: NDArray[np.float64],
@@ -1345,7 +1345,7 @@ def money_flow(
     return _flow(high, low, close, volume, lookback, smoothing, "money_flow")
 
 
-@njit
+@njit(cache=True)
 def reactivity(
     high: NDArray[np.float64],
     low: NDArray[np.float64],
@@ -1430,7 +1430,7 @@ def reactivity(
     return output
 
 
-@njit
+@njit(cache=True)
 def price_volume_fit(
     close: NDArray[np.float64],
     volume: NDArray[np.float64],
@@ -1481,7 +1481,7 @@ def price_volume_fit(
     return output
 
 
-@njit
+@njit(cache=True)
 def volume_weighted_ma_ratio(
     close: NDArray[np.float64],
     volume: NDArray[np.float64],
@@ -1530,7 +1530,7 @@ def volume_weighted_ma_ratio(
     return output
 
 
-@njit
+@njit(cache=True)
 def _on_balance_volume(
     close: NDArray[np.float64],
     volume: NDArray[np.float64],
@@ -1577,7 +1577,7 @@ def _on_balance_volume(
     return output
 
 
-@njit
+@njit(cache=True)
 def normalized_on_balance_volume(
     close: NDArray[np.float64],
     volume: NDArray[np.float64],
@@ -1599,7 +1599,7 @@ def normalized_on_balance_volume(
     return _on_balance_volume(close, volume, lookback, 0, scale, "normalized")
 
 
-@njit
+@njit(cache=True)
 def delta_on_balance_volume(
     close: NDArray[np.float64],
     volume: NDArray[np.float64],
@@ -1625,7 +1625,7 @@ def delta_on_balance_volume(
     )
 
 
-@njit
+@njit(cache=True)
 def _normalized_volume_index(
     close: NDArray[np.float64],
     volume: NDArray[np.float64],
@@ -1668,7 +1668,7 @@ def _normalized_volume_index(
     return output
 
 
-@njit
+@njit(cache=True)
 def normalized_positive_volume_index(
     close: NDArray[np.float64],
     volume: NDArray[np.float64],
@@ -1690,7 +1690,7 @@ def normalized_positive_volume_index(
     return _normalized_volume_index(close, volume, lookback, scale, "positive")
 
 
-@njit
+@njit(cache=True)
 def normalized_negative_volume_index(
     close: NDArray[np.float64],
     volume: NDArray[np.float64],
@@ -1712,7 +1712,7 @@ def normalized_negative_volume_index(
     return _normalized_volume_index(close, volume, lookback, scale, "negative")
 
 
-@njit
+@njit(cache=True)
 def volume_momentum(
     volume: NDArray[np.float64],
     short_length: int,
@@ -1764,7 +1764,7 @@ def volume_momentum(
     return output
 
 
-@njit
+@njit(cache=True)
 def laguerre_rsi(
     open: NDArray[np.float64],
     high: NDArray[np.float64],
