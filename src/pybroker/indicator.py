@@ -926,6 +926,7 @@ def intraday_intensity(
     """
 
     def _intraday_intensity(data: BarData):
+        assert data.volume is not None
         return vect.intraday_intensity(
             high=data.high,
             low=data.low,
@@ -951,6 +952,7 @@ def money_flow(name: str, lookback: int, smoothing: float = 0.0) -> Indicator:
     """
 
     def _money_flow(data: BarData):
+        assert data.volume is not None
         return vect.money_flow(
             high=data.high,
             low=data.low,
@@ -980,6 +982,7 @@ def reactivity(
     """
 
     def _reactivity(data: BarData):
+        assert data.volume is not None
         return vect.reactivity(
             high=data.high,
             low=data.low,
@@ -1009,6 +1012,7 @@ def price_volume_fit(
     """
 
     def _price_volume_fit(data: BarData):
+        assert data.volume is not None
         return vect.price_volume_fit(
             close=data.close,
             volume=data.volume,
@@ -1035,6 +1039,7 @@ def volume_weighted_ma_ratio(
     """
 
     def _volume_weighted_ma_ratio(data: BarData):
+        assert data.volume is not None
         return vect.volume_weighted_ma_ratio(
             close=data.close,
             volume=data.volume,
@@ -1061,6 +1066,7 @@ def normalized_on_balance_volume(
     """
 
     def _normalized_on_balance_volume(data: BarData):
+        assert data.volume is not None
         return vect.normalized_on_balance_volume(
             close=data.close,
             volume=data.volume,
@@ -1088,6 +1094,7 @@ def delta_on_balance_volume(
     """
 
     def _delta_on_balance_volume(data: BarData):
+        assert data.volume is not None
         return vect.delta_on_balance_volume(
             close=data.close,
             volume=data.volume,
@@ -1115,6 +1122,7 @@ def normalized_positive_volume_index(
     """
 
     def _normalized_positive_volume_index(data: BarData):
+        assert data.volume is not None
         return vect.normalized_positive_volume_index(
             close=data.close,
             volume=data.volume,
@@ -1141,6 +1149,7 @@ def normalized_negative_volume_index(
     """
 
     def _normalized_negative_volume_index(data: BarData):
+        assert data.volume is not None
         return vect.normalized_negative_volume_index(
             close=data.close,
             volume=data.volume,
@@ -1168,6 +1177,7 @@ def volume_momentum(
     """
 
     def _volume_momentum(data: BarData):
+        assert data.volume is not None
         return vect.volume_momentum(
             volume=data.volume,
             short_length=short_length,

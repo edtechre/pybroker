@@ -120,7 +120,7 @@ def cross(a: NDArray[np.float64], b: NDArray[np.float64]) -> NDArray[np.bool_]:
     assert len(a) == len(b), "a and b must be same length."
     assert len(a) >= 2, "a and b must have length >= 2."
     crossed = np.where(a > b, 1, 0)
-    return (sumv(crossed > 0, 2) == 1) * crossed
+    return (sumv((crossed > 0).astype(np.float64), 2) == 1) * crossed
 
 
 @njit(cache=True)
@@ -360,7 +360,7 @@ def macd(
         diff = 0.5 * (long_length - 1.0)
         diff -= 0.5 * (short_length - 1.0)
         denom = np.sqrt(np.fabs(diff))
-        k = long_length + smoothing
+        k = int(long_length + smoothing)
         if k > i:
             k = i
         denom *= _atr(i, k, high, low, close, False)

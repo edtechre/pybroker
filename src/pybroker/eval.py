@@ -144,7 +144,7 @@ def bca_boot_conf(
 @njit(cache=True)
 def profit_factor(
     changes: NDArray[np.float64], use_log: bool = False
-) -> np.floating:
+) -> float:
     """Computes the profit factor, which is the ratio of gross profit to gross
     loss.
 
@@ -166,7 +166,7 @@ def profit_factor(
 
 
 @njit(cache=True)
-def log_profit_factor(changes: NDArray[np.float64]) -> np.floating:
+def log_profit_factor(changes: NDArray[np.float64]) -> float:
     """Computes the log transformed profit factor, which is the ratio of gross
     profit to gross loss.
 
@@ -181,7 +181,7 @@ def sharpe_ratio(
     returns: NDArray[np.float64],
     obs: Optional[int] = None,
     downside_only: bool = False,
-) -> np.floating:
+) -> float:
     """Computes the
     `Sharpe Ratio <https://en.wikipedia.org/wiki/Sharpe_ratio>`_.
 
@@ -193,14 +193,14 @@ def sharpe_ratio(
     """
     std_changes = returns[returns < 0] if downside_only else returns
     if not len(std_changes):
-        return np.float64(0)
+        return 0.0
     std = np.std(std_changes)
     if std == 0:
-        return np.float64(0)
+        return 0.0
     sr = np.mean(returns) / std
     if obs is not None:
         sr *= np.sqrt(obs)
-    return sr
+    return float(sr)
 
 
 def sortino_ratio(
@@ -222,7 +222,7 @@ def conf_profit_factor(
     x: NDArray[np.float64], n: int, n_boot: int
 ) -> BootConfIntervals:
     """Computes confidence intervals for :func:`.profit_factor`."""
-    intervals = bca_boot_conf(x, n, n_boot, log_profit_factor)
+    intervals = bca_boot_conf(x, n, n_boot, log_profit_factor)  # type: ignore[arg-type]
     return BootConfIntervals(
         low_2p5=np.exp(intervals.low_2p5),
         high_2p5=np.exp(intervals.high_2p5),
@@ -237,7 +237,7 @@ def conf_sharpe_ratio(
     x: NDArray[np.float64], n: int, n_boot: int, obs: Optional[int] = None
 ) -> BootConfIntervals:
     """Computes confidence intervals for :func:`.sharpe_ratio`."""
-    intervals = bca_boot_conf(x, n, n_boot, sharpe_ratio)
+    intervals = bca_boot_conf(x, n, n_boot, sharpe_ratio)  # type: ignore[arg-type]
     if obs is not None:
         factor = np.sqrt(obs)
         intervals = BootConfIntervals(
@@ -1089,10 +1089,10 @@ class EvaluateMixin:
             total_return_pct=total_return_pct,
             annual_return_pct=annual_return_pct,
             total_fees=total_fees,
-            sharpe=sharpe,
+            sharpe=float(sharpe),
             sortino=sortino,
             calmar=calmar,
-            profit_factor=pf,
+            profit_factor=float(pf),
             equity_r2=r2,
             ulcer_index=ui,
             upi=upi_,
