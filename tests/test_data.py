@@ -652,6 +652,48 @@ class TestAKShare:
         )
 
     @pytest.mark.usefixtures("setup_ds_cache")
+    def test_query_when_em_unavailable_then_uses_tx_fallback(self):
+        symbols = ["000001.SZ"]
+        ak = AKShare()
+        expected_df = pd.DataFrame(
+            {
+                "date": [END_DATE.date()],
+                "open": [1.0],
+                "close": [2.0],
+                "high": [3.0],
+                "low": [4.0],
+                "amount": [5.0],
+            }
+        )
+        with (
+            mock.patch.object(
+                akshare,
+                "stock_zh_a_hist",
+                side_effect=ConnectionError("failed"),
+            ),
+            mock.patch.object(
+                akshare, "stock_zh_a_hist_tx", return_value=expected_df
+            ) as mock_tx,
+        ):
+            df = ak.query(symbols, START_DATE, END_DATE, "1d")
+        mock_tx.assert_called_once_with(
+            symbol="sz000001",
+            start_date=START_DATE.strftime("%Y%m%d"),
+            end_date=END_DATE.strftime("%Y%m%d"),
+            adjust="",
+        )
+        assert df.shape[0] == expected_df.shape[0]
+        assert set(df.columns) == {
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "symbol",
+        }
+
+    @pytest.mark.usefixtures("setup_ds_cache")
     def test_query_when_unsupported_timeframe_then_empty(self):
         symbols = ["A"]
         ak = AKShare()
