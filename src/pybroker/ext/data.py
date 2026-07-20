@@ -11,10 +11,44 @@ from typing import Optional
 
 import akshare
 import pandas as pd
-from yahooquery import Ticker
+import requests
 
 from pybroker.common import DataCol, to_datetime
 from pybroker.data import DataSource
+
+
+def _to_tx_symbol(symbol: str) -> str:
+    bare, _, exchange = symbol.partition(".")
+    if exchange == "SH" or bare.startswith("6"):
+        return f"sh{bare}"
+    return f"sz{bare}"
+
+
+def _fetch_akshare_symbol(
+    symbol: str,
+    simple_symbol: str,
+    start_date_str: str,
+    end_date_str: str,
+    period: str,
+    adjust: str,
+) -> pd.DataFrame:
+    try:
+        return akshare.stock_zh_a_hist(
+            symbol=simple_symbol,
+            start_date=start_date_str,
+            end_date=end_date_str,
+            period=period,
+            adjust=adjust,
+        )
+    except (ConnectionError, KeyError, requests.RequestException):
+        if period != "daily":
+            raise
+        return akshare.stock_zh_a_hist_tx(
+            symbol=_to_tx_symbol(symbol),
+            start_date=start_date_str,
+            end_date=end_date_str,
+            adjust=adjust,
+        )
 
 
 class AKShare(DataSource):
@@ -44,10 +78,11 @@ class AKShare(DataSource):
         if formatted_tf in AKShare._tf_to_period:
             period = AKShare._tf_to_period[formatted_tf]
             for i in range(len(symbols_list)):
-                temp_df = akshare.stock_zh_a_hist(
-                    symbol=symbols_simple[i],
-                    start_date=start_date_str,
-                    end_date=end_date_str,
+                temp_df = _fetch_akshare_symbol(
+                    symbol=symbols_list[i],
+                    simple_symbol=symbols_simple[i],
+                    start_date_str=start_date_str,
+                    end_date_str=end_date_str,
                     period=period,
                     adjust=adjust if adjust is not None else "",
                 )
@@ -76,6 +111,12 @@ class AKShare(DataSource):
                 "最高": DataCol.HIGH.value,
                 "最低": DataCol.LOW.value,
                 "成交量": DataCol.VOLUME.value,
+                "date": DataCol.DATE.value,
+                "open": DataCol.OPEN.value,
+                "close": DataCol.CLOSE.value,
+                "high": DataCol.HIGH.value,
+                "low": DataCol.LOW.value,
+                "amount": DataCol.VOLUME.value,
             },
             inplace=True,
         )
@@ -119,6 +160,15 @@ class YQuery(DataSource):
         adjust: Optional[bool],
     ) -> pd.DataFrame:
         """:meta private:"""
+        try:
+            from yahooquery import Ticker
+        except ImportError as exc:
+            raise ImportError(
+                "YQuery requires yahooquery in the same Python environment as "
+                "your notebook kernel. Install with: "
+                "python -m pip install 'yahooquery>=2.3.7'"
+            ) from exc
+
         show_yf_progress_bar = (
             not self._logger._disabled
             and not self._logger._progress_bar_disabled
