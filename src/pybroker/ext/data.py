@@ -9,7 +9,6 @@ This code is licensed under Apache 2.0 with Commons Clause license
 from datetime import datetime
 from typing import Optional
 
-import akshare
 import pandas as pd
 import requests
 
@@ -32,6 +31,14 @@ def _fetch_akshare_symbol(
     period: str,
     adjust: str,
 ) -> pd.DataFrame:
+    try:
+        import akshare
+    except ImportError as exc:
+        raise ImportError(
+            "AKShare requires akshare. Install with: "
+            "python -m pip install 'akshare>=1.17.50'"
+        ) from exc
+
     try:
         return akshare.stock_zh_a_hist(
             symbol=simple_symbol,

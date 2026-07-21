@@ -6,11 +6,11 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
-import akshare
 import os
 import pandas as pd
 import pytest
 import re
+import sys
 import yfinance
 from .fixtures import *  # noqa: F401
 from datetime import datetime
@@ -597,8 +597,8 @@ class TestAKShare:
                 "symbol": symbols,
             }
         )
-        with mock.patch.object(
-            akshare, "stock_zh_a_hist", return_value=expected_df
+        with mock.patch(
+            "akshare.stock_zh_a_hist", return_value=expected_df
         ):
             df = ak.query(symbols, START_DATE, END_DATE, timeframe)
         assert set(df.columns) == {
@@ -632,9 +632,8 @@ class TestAKShare:
     @pytest.mark.usefixtures("setup_ds_cache")
     def test_query_when_empty_result(self, columns):
         ak = AKShare()
-        with mock.patch.object(
-            akshare,
-            "stock_zh_a_hist",
+        with mock.patch(
+            "akshare.stock_zh_a_hist",
             return_value=pd.DataFrame(columns=columns),
         ):
             df = ak.query(["A"], START_DATE, END_DATE)
@@ -666,13 +665,12 @@ class TestAKShare:
             }
         )
         with (
-            mock.patch.object(
-                akshare,
-                "stock_zh_a_hist",
+            mock.patch(
+                "akshare.stock_zh_a_hist",
                 side_effect=ConnectionError("failed"),
             ),
-            mock.patch.object(
-                akshare, "stock_zh_a_hist_tx", return_value=expected_df
+            mock.patch(
+                "akshare.stock_zh_a_hist_tx", return_value=expected_df
             ) as mock_tx,
         ):
             df = ak.query(symbols, START_DATE, END_DATE, "1d")
@@ -708,8 +706,8 @@ class TestAKShare:
                 "symbol": symbols,
             }
         )
-        with mock.patch.object(
-            akshare, "stock_zh_a_hist", return_value=expected_df
+        with mock.patch(
+            "akshare.stock_zh_a_hist", return_value=expected_df
         ):
             df = ak.query(symbols, START_DATE, END_DATE, "2d")
         assert df.empty
@@ -724,6 +722,14 @@ class TestAKShare:
                 "symbol",
             )
         )
+
+
+    @pytest.mark.usefixtures("setup_ds_cache")
+    def test_query_when_akshare_not_installed_then_raises(self):
+        ak = AKShare()
+        with mock.patch.dict(sys.modules, {"akshare": None}):
+            with pytest.raises(ImportError, match="akshare>=1.17.50"):
+                ak.query(["A"], START_DATE, END_DATE)
 
 
 class TestYQuery:
