@@ -1017,6 +1017,8 @@ class ExecContext:
             target: Target allocation size as a proportion of portfolio
                 equity, where the max ``target`` is ``1``.
         """
+        if target < 0:
+            raise ValueError("target cannot be negative.")
         target_shares = self.calc_target_shares(target)
         pos = self.long_pos()
         if pos is None:

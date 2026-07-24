@@ -585,6 +585,20 @@ def test_set_target_shares_when_at_target(ctx, symbol, portfolio):
     assert ctx.sell_shares is None
 
 
+def test_set_target_shares_when_negative_then_error(ctx):
+    with pytest.raises(
+        ValueError, match=re.escape("target cannot be negative.")
+    ):
+        ctx.set_target_shares(-0.1)
+
+
+def test_set_target_shares_when_zero(ctx, symbol, portfolio):
+    portfolio.long_positions = {symbol: Position(symbol, 500, "long")}
+    ctx.set_target_shares(0)
+    assert ctx.sell_shares == 500
+    assert ctx.buy_shares is None
+
+
 def test_to_result_when_buy(ctx, symbol, date):
     ctx.buy_fill_price = PriceType.AVERAGE
     ctx.sell_fill_price = PriceType.HIGH
