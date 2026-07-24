@@ -16,10 +16,7 @@ from pybroker.common import PriceType, StopType, to_datetime
 from pybroker.config import StrategyConfig
 from pybroker.context import (
     ExecContext,
-    ExecResult,
-    PosSizeContext,
     set_exec_ctx_data,
-    set_pos_size_ctx_data,
 )
 from pybroker.portfolio import Order, Portfolio, Position, Trade
 
@@ -898,110 +895,6 @@ def test_set_exec_ctx_data(ctx, sym_end_index):
     assert ctx.stop_trailing is None
     assert ctx.stop_trailing_pct is None
     assert ctx.stop_trailing_limit is None
-
-
-def test_set_pos_ctx_data(
-    date,
-    portfolio,
-    col_scope,
-    ind_scope,
-    input_scope,
-    pred_scope,
-    pending_order_scope,
-    trained_models,
-    sym_end_index,
-):
-    buy_results = [
-        ExecResult(
-            symbol="SPY",
-            date=date,
-            buy_shares=100,
-            buy_fill_price=99,
-            buy_limit_price=99,
-            sell_shares=None,
-            sell_fill_price=None,
-            sell_limit_price=None,
-            hold_bars=None,
-            score=1,
-            long_stops=None,
-            short_stops=None,
-        ),
-        ExecResult(
-            symbol="AAPL",
-            date=date,
-            buy_shares=200,
-            buy_fill_price=90,
-            buy_limit_price=90,
-            sell_shares=None,
-            sell_fill_price=None,
-            sell_limit_price=None,
-            hold_bars=None,
-            score=2,
-            long_stops=None,
-            short_stops=None,
-        ),
-    ]
-    sell_results = [
-        ExecResult(
-            symbol="TSLA",
-            date=date,
-            buy_shares=None,
-            buy_fill_price=None,
-            buy_limit_price=None,
-            sell_shares=100,
-            sell_fill_price=80,
-            sell_limit_price=80,
-            hold_bars=None,
-            score=1,
-            long_stops=None,
-            short_stops=None,
-        ),
-    ]
-    sessions = {"SPY": {}, "AAPL": {}, "TSLA": {"foo": 1}}
-    ctx = PosSizeContext(
-        StrategyConfig(max_long_positions=1),
-        portfolio,
-        col_scope,
-        ind_scope,
-        input_scope,
-        pred_scope,
-        pending_order_scope,
-        trained_models,
-        sessions,
-        sym_end_index,
-    )
-    set_pos_size_ctx_data(ctx, buy_results, sell_results)
-    assert ctx.sessions == sessions
-    buy_signals = list(ctx.signals("buy"))
-    assert len(buy_signals) == 1
-    assert buy_signals[0].id == 0
-    assert buy_signals[0].symbol == "SPY"
-    assert buy_signals[0].shares == 100
-    assert buy_signals[0].score == 1
-    assert buy_signals[0].type == "buy"
-    assert buy_signals[0].bar_data is not None
-    sell_signals = list(ctx.signals("sell"))
-    assert len(sell_signals) == 1
-    assert sell_signals[0].id == 2
-    assert sell_signals[0].symbol == "TSLA"
-    assert sell_signals[0].shares == 100
-    assert sell_signals[0].score == 1
-    assert sell_signals[0].type == "sell"
-    assert sell_signals[0].bar_data is not None
-    all_signals = list(ctx.signals())
-    assert len(all_signals) == 2
-    assert all_signals[0].id == buy_signals[0].id
-    assert all_signals[0].symbol == buy_signals[0].symbol
-    assert all_signals[0].shares == buy_signals[0].shares
-    assert all_signals[0].score == buy_signals[0].score
-    assert all_signals[0].type == buy_signals[0].type
-    assert all_signals[0].bar_data is not None
-    assert all_signals[1].id == sell_signals[0].id
-    assert all_signals[1].symbol == sell_signals[0].symbol
-    assert all_signals[1].shares == sell_signals[0].shares
-    assert all_signals[1].score == sell_signals[0].score
-    assert all_signals[1].type == sell_signals[0].type
-    assert all_signals[1].bar_data is not None
 
 
 def test_cancel_pending_order(ctx, pending_orders):

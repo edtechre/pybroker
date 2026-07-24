@@ -146,26 +146,8 @@ class TestWalkforwardMixin:
         )
 
 
-def pos_size_handler(ctx):
-    signals = tuple(ctx.signals())
-    ctx.set_shares(signals[0], shares=1000)
-    ctx.set_shares(signals[1], shares=2000)
-    assert isinstance(ctx.sessions["SPY"], dict)
-    assert isinstance(ctx.sessions["AAPL"], dict)
-
-
 class TestBacktestMixin:
-    @pytest.mark.parametrize(
-        "pos_size_handler, expected_buy_shares, expected_sell_shares",
-        [(None, 200, 100), (pos_size_handler, 1000, 2000)],
-    )
-    def test_backtest_executions(
-        self,
-        data_source_df,
-        pos_size_handler,
-        expected_buy_shares,
-        expected_sell_shares,
-    ):
+    def test_backtest_executions(self, data_source_df):
         def buy_exec_fn(ctx):
             ctx.buy_fill_price = PriceType.CLOSE
             ctx.buy_limit_price = 100
@@ -203,7 +185,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=mock_portfolio,
-            pos_size_handler=pos_size_handler,
             exit_dates={},
         )
         buy_df = data_source_df[data_source_df["symbol"] == "SPY"]
@@ -213,7 +194,7 @@ class TestBacktestMixin:
             _, kwargs = mock_portfolio.buy.call_args_list[i]
             assert kwargs["date"] == date
             assert kwargs["symbol"] == "SPY"
-            assert kwargs["shares"] == expected_buy_shares
+            assert kwargs["shares"] == 200
             assert kwargs["fill_price"] == Decimal(
                 str(
                     round(buy_df[buy_df["date"] == date]["close"].values[0], 2)
@@ -227,7 +208,7 @@ class TestBacktestMixin:
             _, kwargs = mock_portfolio.sell.call_args_list[i]
             assert kwargs["date"] == date
             assert kwargs["symbol"] == "AAPL"
-            assert kwargs["shares"] == expected_sell_shares
+            assert kwargs["shares"] == 100
             assert kwargs["fill_price"] == Decimal(
                 str(
                     round(
@@ -236,82 +217,6 @@ class TestBacktestMixin:
                 )
             )
             assert kwargs["limit_price"] == 50.5
-
-    def test_backtest_when_pos_size_handler_and_cover(self, data_source_df):
-        def pos_size_handler(ctx):
-            signals = tuple(ctx.signals())
-            ctx.set_shares(signals[0], shares=10)
-            ctx.set_shares(signals[1], shares=20)
-            assert isinstance(ctx.sessions["SPY"], dict)
-            assert isinstance(ctx.sessions["AAPL"], dict)
-
-        def buy_exec_fn(ctx):
-            ctx.cover_fill_price = 1
-            ctx.cover_shares = 2
-
-        def sell_exec_fn(ctx):
-            ctx.sell_fill_price = 1
-            ctx.sell_shares = 1
-
-        buy_exec = Execution(
-            id=1,
-            symbols=frozenset(["SPY"]),
-            fn=buy_exec_fn,
-            model_names=frozenset(),
-            indicator_names=frozenset(),
-        )
-        sell_exec = Execution(
-            id=2,
-            symbols=frozenset(["AAPL"]),
-            fn=sell_exec_fn,
-            model_names=frozenset(),
-            indicator_names=frozenset(),
-        )
-        execs = {buy_exec, sell_exec}
-        portfolio = Portfolio(1_000_000)
-        mixin = BacktestMixin()
-        mixin.backtest_executions(
-            config=StrategyConfig(),
-            executions=execs,
-            before_exec_fn=None,
-            after_exec_fn=None,
-            sessions=defaultdict(dict),
-            models={},
-            indicator_data={},
-            test_data=data_source_df,
-            portfolio=portfolio,
-            pos_size_handler=pos_size_handler,
-            exit_dates={},
-        )
-        buy_df = data_source_df[data_source_df["symbol"] == "SPY"]
-        buy_dates = buy_df["date"].unique()[1:]
-        sell_df = data_source_df[data_source_df["symbol"] == "AAPL"]
-        sell_dates = sell_df["date"].unique()[1:]
-        assert len(portfolio.orders) == len(buy_dates) + len(sell_dates)
-        assert len(
-            list(
-                filter(
-                    lambda o: (
-                        o.type == "buy"
-                        and o.symbol == "SPY"
-                        and o.shares == 10
-                    ),
-                    portfolio.orders,
-                )
-            )
-        ) == len(buy_dates)
-        assert len(
-            list(
-                filter(
-                    lambda o: (
-                        o.type == "sell"
-                        and o.symbol == "AAPL"
-                        and o.shares == 20
-                    ),
-                    portfolio.orders,
-                )
-            )
-        ) == len(sell_dates)
 
     def test_backtest_executions_when_buy_delay(self, data_source_df):
         def buy_exec_fn(ctx):
@@ -339,7 +244,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=mock_portfolio,
-            pos_size_handler=None,
             exit_dates={},
         )
         buy_df = data_source_df[data_source_df["symbol"] == "SPY"]
@@ -383,7 +287,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=mock_portfolio,
-            pos_size_handler=None,
             exit_dates={},
         )
         sell_df = data_source_df[data_source_df["symbol"] == "AAPL"]
@@ -432,7 +335,6 @@ class TestBacktestMixin:
                 indicator_data={},
                 test_data=data_source_df,
                 portfolio=Mock(),
-                pos_size_handler=None,
                 exit_dates={},
             )
 
@@ -465,7 +367,6 @@ class TestBacktestMixin:
                 indicator_data={},
                 test_data=data_source_df,
                 portfolio=Mock(),
-                pos_size_handler=None,
                 exit_dates={},
             )
 
@@ -490,7 +391,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=portfolio,
-            pos_size_handler=None,
             exit_dates={},
         )
         assert len(portfolio.bars) == len(data_source_df["date"].unique())
@@ -522,7 +422,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df[data_source_df["symbol"] != "AAPL"],
             portfolio=portfolio,
-            pos_size_handler=None,
             exit_dates={},
         )
         assert len(portfolio.bars) == len(data_source_df["date"].unique())
@@ -556,7 +455,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=portfolio,
-            pos_size_handler=None,
             exit_dates={},
         )
 
@@ -591,7 +489,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=portfolio,
-            pos_size_handler=None,
             exit_dates={},
         )
         assert len(portfolio.bars)
@@ -628,7 +525,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=mock_portfolio,
-            pos_size_handler=None,
             exit_dates={},
         )
         df = data_source_df[data_source_df["symbol"].isin(["AAPL", "SPY"])]
@@ -681,7 +577,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=mock_portfolio,
-            pos_size_handler=None,
             exit_dates={},
         )
         df = data_source_df[data_source_df["symbol"].isin(["AAPL", "SPY"])]
@@ -738,7 +633,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=portfolio,
-            pos_size_handler=None,
             exit_dates={},
         )
         assert len(portfolio.short_positions) == 1
@@ -790,7 +684,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=portfolio,
-            pos_size_handler=None,
             exit_dates={},
         )
         dates = data_source_df["date"].unique()[1:]
@@ -859,7 +752,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=df,
             portfolio=mock_portfolio,
-            pos_size_handler=None,
             exit_dates={},
         )
         buy_dates = dates[1:]
@@ -899,7 +791,6 @@ class TestBacktestMixin:
                 indicator_data={},
                 test_data=data_source_df,
                 portfolio=Portfolio(100_000),
-                pos_size_handler=None,
                 exit_dates={},
             )
 
@@ -934,7 +825,6 @@ class TestBacktestMixin:
                 indicator_data={},
                 test_data=data_source_df,
                 portfolio=Portfolio(100_000),
-                pos_size_handler=None,
                 exit_dates={},
             )
 
@@ -969,7 +859,6 @@ class TestBacktestMixin:
                 indicator_data={},
                 test_data=data_source_df,
                 portfolio=Portfolio(100_000),
-                pos_size_handler=None,
                 exit_dates={},
             )
 
@@ -1000,7 +889,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=portfolio,
-            pos_size_handler=None,
             exit_dates={},
         )
         assert not len(portfolio.orders)
@@ -1033,7 +921,6 @@ class TestBacktestMixin:
             indicator_data={},
             test_data=data_source_df,
             portfolio=portfolio,
-            pos_size_handler=None,
             exit_dates={},
         )
         assert not len(portfolio.orders)
@@ -2953,25 +2840,6 @@ class TestStrategy:
         assert buy_order["shares"] == 100
         assert np.isnan(buy_order["limit_price"])
         assert buy_order["fees"] == 0
-
-    def test_backtest_when_pos_size_handler_zero_shares(self, data_source_df):
-        def buy_exec_fn(ctx):
-            ctx.buy_shares = 100
-
-        def sell_exec_fn(ctx):
-            ctx.sell_shares = 100
-
-        def pos_size_handler(ctx):
-            signals = tuple(ctx.signals())
-            ctx.set_shares(signals[0], shares=0)
-            ctx.set_shares(signals[1], shares=0)
-
-        strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.add_execution(buy_exec_fn, "SPY")
-        strategy.add_execution(sell_exec_fn, "AAPL")
-        strategy.set_pos_size_handler(pos_size_handler)
-        result = strategy.backtest(calc_bootstrap=False)
-        assert not len(result.orders)
 
     def test_backtest_when_no_stops(self, data_source_df):
         def exec_fn(ctx):

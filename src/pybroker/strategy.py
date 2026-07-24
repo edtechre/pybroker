@@ -30,9 +30,7 @@ from pybroker.config import StrategyConfig
 from pybroker.context import (
     ExecContext,
     ExecResult,
-    PosSizeContext,
     set_exec_ctx_data,
-    set_pos_size_ctx_data,
 )
 from pybroker.data import AlpacaCrypto, DataSource
 from pybroker.eval import BootstrapResult, EvalMetrics, EvaluateMixin
@@ -134,7 +132,6 @@ class BacktestMixin:
         indicator_data: Mapping[IndicatorSymbol, pd.Series],
         test_data: pd.DataFrame,
         portfolio: Portfolio,
-        pos_size_handler: Optional[Callable[[PosSizeContext], None]],
         exit_dates: Mapping[str, np.datetime64],
         train_only: bool = False,
         slippage_model: Optional[SlippageModel] = None,
@@ -159,8 +156,6 @@ class BacktestMixin:
                 values.
             test_data: :class:`pandas.DataFrame` of test data.
             portfolio: :class:`pybroker.portfolio.Portfolio`.
-            pos_size_handler: :class:`Callable` that sets position sizes when
-                placing orders for buy and sell signals.
             exit_dates: :class:`Mapping` of symbols to exit dates.
             train_only: Whether the backtest is run with trading rules or
                 only trains models.
@@ -225,19 +220,6 @@ class BacktestMixin:
         cover_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
         buy_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
         sell_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
-        if pos_size_handler is not None:
-            pos_ctx = PosSizeContext(
-                config=config,
-                portfolio=portfolio,
-                col_scope=col_scope,
-                ind_scope=ind_scope,
-                input_scope=input_scope,
-                pred_scope=pred_scope,
-                pending_order_scope=pending_order_scope,
-                models=models,
-                sessions=sessions,
-                sym_end_index=sym_end_index,
-            )
         logger = StaticScope.instance().logger
         logger.backtest_executions_start(test_dates)
         cover_results: deque[ExecResult] = deque()
@@ -264,33 +246,13 @@ class BacktestMixin:
             is_cover_sched = date in cover_sched
             is_buy_sched = date in buy_sched
             is_sell_sched = date in sell_sched
-            if (
-                config.max_long_positions is not None
-                or pos_size_handler is not None
-            ):
+            if config.max_long_positions is not None:
                 if is_cover_sched:
                     cover_sched[date].sort(key=_sort_by_score, reverse=True)
                 elif is_buy_sched:
                     buy_sched[date].sort(key=_sort_by_score, reverse=True)
-            if is_sell_sched and (
-                config.max_short_positions is not None
-                or pos_size_handler is not None
-            ):
+            if is_sell_sched and config.max_short_positions is not None:
                 sell_sched[date].sort(key=_sort_by_score, reverse=True)
-            if pos_size_handler is not None and (
-                is_cover_sched or is_buy_sched or is_sell_sched
-            ):
-                pos_size_buy_results = None
-                if is_cover_sched:
-                    pos_size_buy_results = cover_sched[date]
-                elif is_buy_sched:
-                    pos_size_buy_results = buy_sched[date]
-                self._set_pos_sizes(
-                    pos_size_handler=pos_size_handler,
-                    pos_ctx=pos_ctx,
-                    buy_results=pos_size_buy_results,
-                    sell_results=sell_sched[date] if is_sell_sched else None,
-                )
             portfolio.check_stops(date, price_scope)
             if is_cover_sched:
                 self._place_buy_orders(
@@ -428,42 +390,6 @@ class BacktestMixin:
             buy_fill_price=buy_fill_price,
             sell_fill_price=sell_fill_price,
         )
-
-    def _set_pos_sizes(
-        self,
-        pos_size_handler: Callable[[PosSizeContext], None],
-        pos_ctx: PosSizeContext,
-        buy_results: Optional[list[ExecResult]],
-        sell_results: Optional[list[ExecResult]],
-    ):
-        set_pos_size_ctx_data(
-            ctx=pos_ctx, buy_results=buy_results, sell_results=sell_results
-        )
-        pos_size_handler(pos_ctx)
-        for id, shares in pos_ctx._signal_shares.items():
-            if id < 0:
-                raise ValueError(f"Invalid ExecSignal id: {id}")
-            if buy_results is not None and sell_results is not None:
-                if id >= (len(buy_results) + len(sell_results)):
-                    raise ValueError(f"Invalid ExecSignal id: {id}")
-                if id < len(buy_results):
-                    buy_results[id].buy_shares = to_decimal(shares)
-                else:
-                    sell_results[
-                        id - len(buy_results)
-                    ].sell_shares = to_decimal(shares)
-            elif buy_results is not None:
-                if id >= len(buy_results):
-                    raise ValueError(f"Invalid ExecSignal id: {id}")
-                buy_results[id].buy_shares = to_decimal(shares)
-            elif sell_results is not None:
-                if id >= len(sell_results):
-                    raise ValueError(f"Invalid ExecSignal id: {id}")
-                sell_results[id].sell_shares = to_decimal(shares)
-            else:
-                raise ValueError(
-                    "buy_results and sell_results cannot both be None."
-                )
 
     def _schedule_order(
         self,
@@ -892,9 +818,6 @@ class Strategy(
         self._after_exec_fn: Optional[
             Callable[[Mapping[str, ExecContext]], None]
         ] = None
-        self._pos_size_handler: Optional[Callable[[PosSizeContext], None]] = (
-            None
-        )
         self._slippage_model: Optional[SlippageModel] = None
         self._scope = StaticScope.instance()
         self._logger = self._scope.logger
@@ -1057,19 +980,6 @@ class Strategy(
     def clear_executions(self):
         """Clears executions that were added with :meth:`.add_execution`."""
         self._executions.clear()
-
-    def set_pos_size_handler(
-        self, fn: Optional[Callable[[PosSizeContext], None]]
-    ):
-        r"""Sets a :class:`Callable` that determines position sizes to use for
-        buy and sell signals.
-
-        Args:
-            fn: :class:`Callable` invoked before placing orders for buy and
-                sell signals, and is passed a
-                :class:`pybroker.context.PosSizeContext`.
-        """
-        self._pos_size_handler = fn
 
     def backtest(
         self,
@@ -1464,7 +1374,6 @@ class Strategy(
                 indicator_data=indicator_data,
                 test_data=test_data,
                 portfolio=portfolio,
-                pos_size_handler=self._pos_size_handler,
                 exit_dates=exit_dates,
                 train_only=train_only,
                 slippage_model=self._slippage_model,
