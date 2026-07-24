@@ -65,7 +65,20 @@ class ExecResult:
             :attr:`pybroker.config.StrategyConfig.max_long_positions` and
             :attr:`pybroker.config.StrategyConfig.max_short_positions`
             respectively. Buy and sell signals are ranked separately by
-            ``score``.
+            ``score``. Mutually exclusive with ``long_score`` and
+            ``short_score``.
+        long_score: Score used to rank ``symbol`` when ranking buy and cover
+            signals. Orders are placed for symbols with the highest
+            ``long_score`` values, where the number of long positions held at
+            any time in the :class:`pybroker.portfolio.Portfolio` is specified
+            by :attr:`pybroker.config.StrategyConfig.max_long_positions`.
+            Mutually exclusive with ``score``.
+        short_score: Score used to rank ``symbol`` when ranking sell signals.
+            Orders are placed for symbols with the lowest ``short_score``
+            values, where the number of short positions held at any time in
+            the :class:`pybroker.portfolio.Portfolio` is specified by
+            :attr:`pybroker.config.StrategyConfig.max_short_positions`.
+            Mutually exclusive with ``score``.
         hold_bars: Number of bars to hold a long or short position for, after
             which the position is automatically liquidated.
         buy_shares: Number of shares to buy of ``symbol``.
@@ -101,6 +114,8 @@ class ExecResult:
         Callable[[str, BarData], Union[int, float, Decimal]],
     ]
     score: Optional[float]
+    long_score: Optional[float]
+    short_score: Optional[float]
     hold_bars: Optional[int]
     buy_shares: Optional[Decimal]
     buy_limit_price: Optional[Decimal]
@@ -145,7 +160,20 @@ class ExecContext:
             :attr:`pybroker.config.StrategyConfig.max_long_positions` and
             :attr:`pybroker.config.StrategyConfig.max_short_positions`
             respectively. Long and short signals are ranked separately by
-            ``score``.
+            ``score``. Mutually exclusive with ``long_score`` and
+            ``short_score``.
+        long_score: Score used to rank ``symbol`` when ranking buy and cover
+            signals. Orders are placed for symbols with the highest
+            ``long_score`` values, where the number of long positions held at
+            any time in the :class:`pybroker.portfolio.Portfolio` is specified
+            by :attr:`pybroker.config.StrategyConfig.max_long_positions`.
+            Mutually exclusive with ``score``.
+        short_score: Score used to rank ``symbol`` when ranking sell signals.
+            Orders are placed for symbols with the lowest ``short_score``
+            values, where the number of short positions held at any time in
+            the :class:`pybroker.portfolio.Portfolio` is specified by
+            :attr:`pybroker.config.StrategyConfig.max_short_positions`.
+            Mutually exclusive with ``score``.
         session: ``dict`` used to store custom data that persists for each
             bar during the :class:`pybroker.strategy.Strategy`\ 's execution.
         stop_loss: Sets stop loss on a new :class:`pybroker.portfolio.Entry`,
@@ -236,6 +264,8 @@ class ExecContext:
         self.sell_limit_price: Optional[Union[int, float, Decimal]] = None
         self.hold_bars: Optional[int] = None
         self.score: Optional[float] = None
+        self.long_score: Optional[float] = None
+        self.short_score: Optional[float] = None
         self.session = session
 
         self.stop_loss: Optional[Union[int, float, Decimal]] = None
@@ -1094,6 +1124,12 @@ class ExecContext:
                 "For each symbol, only one of buy_shares or sell_shares can be"
                 " set per bar."
             )
+        if self.score is not None and (
+            self.long_score is not None or self.short_score is not None
+        ):
+            raise ValueError(
+                "score cannot be set when long_score or short_score is set."
+            )
         if not self.buy_shares and not self.sell_shares:
             return None
         buy_fill_price = (
@@ -1133,6 +1169,8 @@ class ExecContext:
             buy_fill_price=buy_fill_price,
             sell_fill_price=sell_fill_price,
             score=self.score,
+            long_score=self.long_score,
+            short_score=self.short_score,
             hold_bars=self.hold_bars,
             buy_shares=buy_shares,
             buy_limit_price=buy_limit_price,
@@ -1173,6 +1211,8 @@ def set_exec_ctx_data(ctx: ExecContext, date: np.datetime64):
     ctx.sell_limit_price = None
     ctx.hold_bars = None
     ctx.score = None
+    ctx.long_score = None
+    ctx.short_score = None
     ctx.stop_loss = None
     ctx.stop_loss_pct = None
     ctx.stop_loss_limit = None

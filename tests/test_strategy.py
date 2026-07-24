@@ -600,6 +600,110 @@ class TestBacktestMixin:
             )
             assert kwargs["limit_price"] is None
 
+    def test_backtest_executions_when_buy_long_score(self, data_source_df):
+        def buy_exec_fn(ctx):
+            ctx.buy_fill_price = PriceType.CLOSE
+            ctx.buy_shares = 200
+            if ctx.symbol == "SPY":
+                ctx.long_score = 1
+            else:
+                ctx.long_score = 0
+
+        exec = Execution(
+            id=1,
+            symbols=frozenset(["AAPL", "SPY"]),
+            fn=buy_exec_fn,
+            model_names=frozenset(),
+            indicator_names=frozenset(),
+        )
+        execs = {exec}
+        mock_portfolio = Mock()
+        mixin = BacktestMixin()
+        mixin.backtest_executions(
+            config=StrategyConfig(max_long_positions=1),
+            executions=execs,
+            before_exec_fn=None,
+            after_exec_fn=None,
+            sessions=defaultdict(dict),
+            models={},
+            indicator_data={},
+            test_data=data_source_df,
+            portfolio=mock_portfolio,
+            exit_dates={},
+        )
+        df = data_source_df[data_source_df["symbol"].isin(["AAPL", "SPY"])]
+        buy_dates = sorted(df["date"].values)[2:]
+        assert len(mock_portfolio.buy.call_args_list) == len(buy_dates)
+        for i, date in enumerate(buy_dates):
+            sym = "SPY" if i % 2 == 0 else "AAPL"
+            _, kwargs = mock_portfolio.buy.call_args_list[i]
+            assert kwargs["date"] == date
+            assert kwargs["symbol"] == sym
+            assert kwargs["shares"] == 200
+            assert kwargs["fill_price"] == Decimal(
+                str(
+                    round(
+                        df[(df["date"] == date) & (df["symbol"] == sym)][
+                            "close"
+                        ].values[0],
+                        2,
+                    )
+                )
+            )
+            assert kwargs["limit_price"] is None
+
+    def test_backtest_executions_when_sell_short_score(self, data_source_df):
+        def sell_exec_fn(ctx):
+            ctx.sell_fill_price = PriceType.CLOSE
+            ctx.sell_shares = 200
+            if ctx.symbol == "AAPL":
+                ctx.short_score = 0
+            else:
+                ctx.short_score = 1
+
+        exec = Execution(
+            id=1,
+            symbols=frozenset(["AAPL", "SPY"]),
+            fn=sell_exec_fn,
+            model_names=frozenset(),
+            indicator_names=frozenset(),
+        )
+        execs = {exec}
+        mock_portfolio = Mock()
+        mixin = BacktestMixin()
+        mixin.backtest_executions(
+            config=StrategyConfig(max_short_positions=1),
+            executions=execs,
+            before_exec_fn=None,
+            after_exec_fn=None,
+            sessions=defaultdict(dict),
+            models={},
+            indicator_data={},
+            test_data=data_source_df,
+            portfolio=mock_portfolio,
+            exit_dates={},
+        )
+        df = data_source_df[data_source_df["symbol"].isin(["AAPL", "SPY"])]
+        sell_dates = sorted(df["date"].values)[2:]
+        assert len(mock_portfolio.sell.call_args_list) == len(sell_dates)
+        for i, date in enumerate(sell_dates):
+            sym = "AAPL" if i % 2 == 0 else "SPY"
+            _, kwargs = mock_portfolio.sell.call_args_list[i]
+            assert kwargs["date"] == date
+            assert kwargs["symbol"] == sym
+            assert kwargs["shares"] == 200
+            assert kwargs["fill_price"] == Decimal(
+                str(
+                    round(
+                        df[(df["date"] == date) & (df["symbol"] == sym)][
+                            "close"
+                        ].values[0],
+                        2,
+                    )
+                )
+            )
+            assert kwargs["limit_price"] is None
+
     def test_backtest_executions_when_max_short_positions_and_cover(
         self, data_source_df
     ):

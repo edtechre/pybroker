@@ -89,7 +89,15 @@ def _between(
     ]
 
 
-def _sort_by_score(result: ExecResult) -> float:
+def _sort_by_buy_score(result: ExecResult) -> float:
+    if result.long_score is not None:
+        return result.long_score
+    return 0.0 if result.score is None else result.score
+
+
+def _sort_by_sell_score(result: ExecResult) -> float:
+    if result.short_score is not None:
+        return -result.short_score
     return 0.0 if result.score is None else result.score
 
 
@@ -248,11 +256,13 @@ class BacktestMixin:
             is_sell_sched = date in sell_sched
             if config.max_long_positions is not None:
                 if is_cover_sched:
-                    cover_sched[date].sort(key=_sort_by_score, reverse=True)
+                    cover_sched[date].sort(
+                        key=_sort_by_buy_score, reverse=True
+                    )
                 elif is_buy_sched:
-                    buy_sched[date].sort(key=_sort_by_score, reverse=True)
+                    buy_sched[date].sort(key=_sort_by_buy_score, reverse=True)
             if is_sell_sched and config.max_short_positions is not None:
-                sell_sched[date].sort(key=_sort_by_score, reverse=True)
+                sell_sched[date].sort(key=_sort_by_sell_score, reverse=True)
             portfolio.check_stops(date, price_scope)
             if is_cover_sched:
                 self._place_buy_orders(

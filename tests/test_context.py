@@ -581,6 +581,48 @@ def test_to_result_when_buy_shares_and_sell_shares_then_error(ctx):
         ctx.to_result()
 
 
+def test_to_result_when_buy_long_score(ctx, symbol, date):
+    ctx.buy_fill_price = PriceType.AVERAGE
+    ctx.buy_shares = 20
+    ctx.long_score = 7
+    result = ctx.to_result()
+    assert result.long_score == 7
+    assert result.short_score is None
+    assert result.score is None
+
+
+def test_to_result_when_sell_short_score(ctx, symbol, date):
+    ctx.sell_fill_price = PriceType.HIGH
+    ctx.sell_shares = 20
+    ctx.short_score = 3
+    result = ctx.to_result()
+    assert result.short_score == 3
+    assert result.long_score is None
+    assert result.score is None
+
+
+@pytest.mark.parametrize(
+    "extra_attr, extra_value",
+    [
+        ("long_score", 1),
+        ("short_score", 1),
+    ],
+)
+def test_to_result_when_score_and_side_score_then_error(
+    ctx, extra_attr, extra_value
+):
+    ctx.buy_shares = 100
+    ctx.score = 5
+    setattr(ctx, extra_attr, extra_value)
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "score cannot be set when long_score or short_score is set."
+        ),
+    ):
+        ctx.to_result()
+
+
 @pytest.mark.parametrize(
     "attr, value, error",
     [
@@ -863,6 +905,8 @@ def test_set_exec_ctx_data(ctx, sym_end_index):
     ctx.sell_limit_price = 80
     ctx.hold_bars = 5
     ctx.score = 45.5
+    ctx.long_score = 10.0
+    ctx.short_score = 5.0
     ctx.stop_loss = 10
     ctx.stop_loss_pct = 20
     ctx.stop_loss_limit = 99
@@ -886,6 +930,8 @@ def test_set_exec_ctx_data(ctx, sym_end_index):
     assert ctx.sell_limit_price is None
     assert ctx.hold_bars is None
     assert ctx.score is None
+    assert ctx.long_score is None
+    assert ctx.short_score is None
     assert ctx.stop_loss is None
     assert ctx.stop_loss_pct is None
     assert ctx.stop_loss_limit is None
