@@ -597,9 +597,7 @@ class TestAKShare:
                 "symbol": symbols,
             }
         )
-        with mock.patch(
-            "akshare.stock_zh_a_hist", return_value=expected_df
-        ):
+        with mock.patch("akshare.stock_zh_a_hist", return_value=expected_df):
             df = ak.query(symbols, START_DATE, END_DATE, timeframe)
         assert set(df.columns) == {
             "date",
@@ -706,9 +704,7 @@ class TestAKShare:
                 "symbol": symbols,
             }
         )
-        with mock.patch(
-            "akshare.stock_zh_a_hist", return_value=expected_df
-        ):
+        with mock.patch("akshare.stock_zh_a_hist", return_value=expected_df):
             df = ak.query(symbols, START_DATE, END_DATE, "2d")
         assert df.empty
         assert set(df.columns) == set(
@@ -722,7 +718,6 @@ class TestAKShare:
                 "symbol",
             )
         )
-
 
     @pytest.mark.usefixtures("setup_ds_cache")
     def test_query_when_akshare_not_installed_then_raises(self):

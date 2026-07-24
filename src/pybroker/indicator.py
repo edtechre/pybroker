@@ -13,7 +13,8 @@ import operator as op
 import pandas as pd
 import pybroker.vect as vect
 from pybroker.cache import CacheDateFields, IndicatorCacheKey
-from pybroker.common import BarData, DataCol, IndicatorSymbol, default_parallel
+from pybroker.common import BarData, DataCol, IndicatorSymbol
+from pybroker.parallel import parallel
 from pybroker.eval import iqr, relative_entropy
 from pybroker.scope import StaticScope
 from pybroker.vect import highv, lowv, returnv
@@ -315,8 +316,8 @@ class IndicatorsMixin:
         else:
             scope.logger.debug_compute_indicators(is_parallel=True)
 
-            with default_parallel() as parallel:
-                return parallel(
+            with parallel() as pool:
+                return pool(
                     delayed(fns[ind_name])(**args_fn(ind_name, sym))
                     for ind_name, sym in ind_syms
                 )

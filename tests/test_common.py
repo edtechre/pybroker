@@ -12,10 +12,8 @@ import pytest
 import re
 from datetime import datetime
 from decimal import Decimal
-from joblib import Parallel
 from pybroker.common import (
     BarData,
-    default_parallel,
     parse_timeframe,
     quantize,
     to_datetime,
@@ -227,7 +225,3 @@ def test_verify_data_source_columns_when_missing_then_error():
         match=re.escape("DataFrame is missing required columns: ['close']"),
     ):
         verify_data_source_columns(df)
-
-
-def test_default_parallel():
-    assert type(default_parallel()) is Parallel

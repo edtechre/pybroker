@@ -8,12 +8,10 @@ This code is licensed under Apache 2.0 with Commons Clause license
 
 import numpy as np
 import pandas as pd
-import os
 import re
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 from enum import Enum
-from joblib import Parallel
 from numpy.typing import NDArray
 from typing import (
     Any,
@@ -399,13 +397,6 @@ def verify_date_range(start_date: datetime, end_date: datetime):
             f"start_date ({start_date}) must be on or before end_date "
             f"({end_date})."
         )
-
-
-def default_parallel() -> Parallel:
-    """Returns a :class:`joblib.Parallel` instance with ``n_jobs`` equal to
-    the number of CPUs on the host machine.
-    """
-    return Parallel(n_jobs=os.cpu_count(), prefer="processes", backend="loky")
 
 
 def get_unique_sorted_dates(col: pd.Series) -> Sequence[np.datetime64]:
