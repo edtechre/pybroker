@@ -600,14 +600,14 @@ class ExecContext:
 
     @property
     def buying_power(self) -> Decimal:
-        """Available buying power for long orders given
+        """Available buying power for long and short orders given
         :attr:`pybroker.config.StrategyConfig.leverage`.
         """
         return self._portfolio._available_buying_power()
 
     @property
     def margin_loan(self) -> Decimal:
-        """Borrowed funds used for long margin positions."""
+        """Borrowed funds used for leveraged long and short positions."""
         return self._portfolio.margin_loan
 
     @property
@@ -1140,9 +1140,9 @@ class ExecContext:
                 :attr:`.symbol` is used.
             cash: Cash used to calculate the number of number of shares. If
                 ``None``, then the :class:`pybroker.portfolio.Portfolio` equity
-                is used to calculate the number of shares. For leveraged
-                sizing, pass :attr:`.buying_power` or scale ``target_size`` by
-                :attr:`pybroker.config.StrategyConfig.leverage`.
+                is used to calculate the number of shares. For leveraged short
+                sizing, use :meth:`.set_short_target_shares` or pass
+                :attr:`.buying_power` explicitly.
 
         Returns:
             Number of shares given ``target_size`` and share ``price``. If
@@ -1180,6 +1180,28 @@ class ExecContext:
             self.buy_shares = target_shares - pos.shares
         elif pos.shares > target_shares:
             self.sell_shares = pos.shares - target_shares
+
+    def set_short_target_shares(self, target: float):
+        r"""Sets sell or cover orders to reach a target short allocation.
+
+        Calculates the number of shares needed to reach ``target`` using
+        :meth:`.calc_target_shares` and sets either :attr:`.sell_shares` or
+        :attr:`.cover_shares`.
+
+        Args:
+            target: Target allocation size as a proportion of portfolio
+                equity or buying power, where the max ``target`` is ``1``.
+        """
+        if target < 0:
+            raise ValueError("target cannot be negative.")
+        target_shares = self.calc_target_shares(target)
+        pos = self.short_pos()
+        if pos is None:
+            self.sell_shares = target_shares
+        elif pos.shares < target_shares:
+            self.sell_shares = target_shares - pos.shares
+        elif pos.shares > target_shares:
+            self.cover_shares = pos.shares - target_shares
 
     def cancel_pending_order(self, order_id: int) -> bool:
         """Cancels a :class:`pybroker.scope.PendingOrder` with ``order_id``."""

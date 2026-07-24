@@ -243,14 +243,7 @@ def _short_rotation_score(ctx: ExecContext) -> Optional[float]:
 
 
 def _set_short_target_shares(ctx: ExecContext, target: float):
-    target_shares = ctx.calc_target_shares(target)
-    pos = ctx.short_pos()
-    if pos is None:
-        ctx.sell_shares = target_shares
-    elif pos.shares < target_shares:
-        ctx.sell_shares = target_shares - pos.shares
-    elif pos.shares > target_shares:
-        ctx.cover_shares = pos.shares - target_shares
+    ctx.set_short_target_shares(target)
 
 
 def _apply_worst_rank_held_long(

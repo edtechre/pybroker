@@ -1297,7 +1297,7 @@ class TestBacktestMixin:
             indicator_names=frozenset(),
         )
         portfolio = Portfolio(
-            100_000, max_long_positions=2, max_short_positions=2
+            100_000, max_long_positions=2, max_short_positions=2, leverage=2.0
         )
         mixin = BacktestMixin()
         mixin.backtest_executions(
@@ -1305,6 +1305,7 @@ class TestBacktestMixin:
                 max_long_positions=2,
                 max_short_positions=2,
                 worst_rank_held=5,
+                leverage=2.0,
             ),
             executions={exec},
             before_exec_fn=None,
@@ -3118,6 +3119,30 @@ class TestStrategy:
         strategy.add_execution(buy_exec_fn, "SPY")
         result = strategy.backtest(calc_bootstrap=False)
         cash_shares = result.orders[result.orders["type"] == "buy"].iloc[0][
+            "shares"
+        ]
+        assert leveraged_shares > cash_shares
+
+    def test_backtest_when_leverage_short(self, data_source_df):
+        def short_exec_fn(ctx):
+            if ctx.short_pos() is None:
+                ctx.sell_shares = ctx.calc_target_shares(
+                    2.0, cash=float(ctx.buying_power)
+                )
+
+        config = StrategyConfig(initial_cash=100_000, leverage=2.0)
+        strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+        strategy.add_execution(short_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        leveraged_shares = result.orders[result.orders["type"] == "sell"].iloc[
+            0
+        ]["shares"]
+
+        config = StrategyConfig(initial_cash=100_000, leverage=1.0)
+        strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+        strategy.add_execution(short_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        cash_shares = result.orders[result.orders["type"] == "sell"].iloc[0][
             "shares"
         ]
         assert leveraged_shares > cash_shares

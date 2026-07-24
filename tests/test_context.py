@@ -603,6 +603,41 @@ def test_set_target_shares_when_zero(ctx, symbol, portfolio):
     assert ctx.buy_shares is None
 
 
+def test_set_short_target_shares_when_no_position(ctx):
+    target = 0.5
+    ctx.set_short_target_shares(target)
+    assert ctx.sell_shares == ctx.calc_target_shares(target)
+    assert ctx.cover_shares is None
+
+
+def test_set_short_target_shares_when_underweight(ctx, symbol, portfolio):
+    target = 0.2
+    target_shares = ctx.calc_target_shares(target)
+    portfolio.short_positions = {
+        symbol: Position(symbol, target_shares - 100, "short")
+    }
+    ctx.set_short_target_shares(target)
+    assert ctx.sell_shares == 100
+    assert ctx.cover_shares is None
+
+
+def test_set_short_target_shares_when_overweight(ctx, symbol, portfolio):
+    target = 0.2
+    target_shares = ctx.calc_target_shares(target)
+    portfolio.short_positions = {
+        symbol: Position(symbol, target_shares + 100, "short")
+    }
+    ctx.set_short_target_shares(target)
+    assert ctx.cover_shares == 100
+    assert ctx.sell_shares is None
+
+
+def test_buying_power_when_short_position(ctx, symbol, portfolio, date):
+    portfolio.sell(date, symbol, Decimal(500), Decimal(100))
+    assert ctx.buying_power == portfolio._available_buying_power()
+    assert ctx.buying_power < Decimal(100_000)
+
+
 def test_to_result_when_buy(ctx, symbol, date):
     ctx.buy_fill_price = PriceType.AVERAGE
     ctx.sell_fill_price = PriceType.HIGH

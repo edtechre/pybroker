@@ -301,8 +301,9 @@ class PortfolioBar(NamedTuple):
         date: Date of bar.
         cash: Available cash in :class:`.Portfolio`.
         equity: Amount of equity in :class:`.Portfolio`.
-        margin: Amount of short margin in :class:`.Portfolio`.
-        margin_loan: Borrowed funds used for long margin positions.
+        margin: Notional exposure of open short positions at mark.
+        margin_loan: Borrowed funds used for leveraged long and short
+            positions.
         net_cash_balance: ``cash - margin_loan``.
         market_value: Market value of :class:`.Portfolio`.
         pnl: Realized profit and loss (PnL) of :class:`.Portfolio`.
@@ -413,8 +414,9 @@ class Portfolio:
         enable_fractional_shares: Whether to enable trading fractional shares.
         orders: ``deque`` of all filled orders, sorted in ascending
             chronological order.
-        margin: Current amount of short margin held in open positions.
-        margin_loan: Borrowed funds used for long margin positions.
+        margin: Notional exposure of open short positions at mark.
+        margin_loan: Borrowed funds used for leveraged long and short
+            positions.
         pnl: Realized profit and loss (PnL).
         long_positions: ``dict`` mapping ticker symbols to open long
             :class:`.Position`\ s.
@@ -670,6 +672,40 @@ class Portfolio:
                     total += entry.shares * entry.price
         return total
 
+    def _short_market_value(self) -> Decimal:
+        total = Decimal()
+        for pos in self.short_positions.values():
+            if pos.close > 0:
+                total += pos.shares * pos.close
+            else:
+                for entry in pos.entries:
+                    total += entry.shares * entry.price
+        return total
+
+    def _short_entry_notional(self, pos: Position) -> Decimal:
+        total = Decimal()
+        for entry in pos.entries:
+            total += entry.shares * entry.price
+        return total
+
+    def _post_collateral(self, notional: Decimal):
+        if self._leverage > 1:
+            leverage = to_decimal(self._leverage)
+            collateral = notional / leverage
+            self.cash -= collateral
+            self.margin_loan += notional - collateral
+        else:
+            self.cash -= notional
+
+    def _release_short_collateral(self, entry_notional: Decimal, pnl: Decimal):
+        if self._leverage > 1:
+            leverage = to_decimal(self._leverage)
+            collateral = entry_notional / leverage
+            self.margin_loan -= entry_notional - collateral
+            self.cash += collateral + pnl
+        else:
+            self.cash += entry_notional + pnl
+
     def _net_cash_balance(self) -> Decimal:
         return self.cash - self.margin_loan
 
@@ -678,7 +714,8 @@ class Portfolio:
             return max(self.cash, Decimal())
         leverage = to_decimal(self._leverage)
         from_cash = self.cash * leverage
-        from_exposure = self.equity * leverage - self._long_market_value()
+        committed = self._long_market_value() + self._short_market_value()
+        from_exposure = self.equity * leverage - committed
         return max(min(from_cash, from_exposure), Decimal())
 
     def _apply_interest(self):
@@ -816,7 +853,7 @@ class Portfolio:
         entry_amount = shares * entry.price
         entry_pnl = entry_amount - order_amount
         self.pnl += entry_pnl
-        self.cash += entry_pnl
+        self._release_short_collateral(entry_amount, entry_pnl)
         pos.shares -= shares
         entry.shares -= shares
         pnl_per_bar = entry_pnl if not entry.bars else entry_pnl / entry.bars
@@ -874,12 +911,7 @@ class Portfolio:
         ):
             return Decimal()
         order_amount = shares * fill_price
-        if self._leverage > 1:
-            collateral = order_amount / to_decimal(self._leverage)
-            self.cash -= collateral
-            self.margin_loan += order_amount - collateral
-        else:
-            self.cash -= order_amount
+        self._post_collateral(order_amount)
         if symbol not in self.long_positions:
             self.symbols.add(symbol)
             pos = Position(symbol=symbol, shares=shares, type="long")
@@ -1065,6 +1097,22 @@ class Portfolio:
             return Decimal()
         if self._position_mode == PositionMode.LONG_ONLY:
             return Decimal()
+        clamped_shares = self._clamp_shares(fill_price, shares)
+        if clamped_shares < shares:
+            self._logger.debug_buy_shares_exceed_cash(
+                date=date,
+                symbol=symbol,
+                shares=shares,
+                fill_price=fill_price,
+                limit_price=None,
+                cash=self.cash,
+                clamped_shares=clamped_shares,
+            )
+            shares = clamped_shares
+        if shares <= 0:
+            return Decimal()
+        order_amount = shares * fill_price
+        self._post_collateral(order_amount)
         if symbol not in self.short_positions:
             self.symbols.add(symbol)
             pos = Position(symbol=symbol, shares=shares, type="short")
@@ -1176,6 +1224,7 @@ class Portfolio:
                 total_market_value += pos.equity
             if sym in self.short_positions:
                 pos = self.short_positions[sym]
+                entry_notional = self._short_entry_notional(pos)
                 if close is not None:
                     _calculate_pnl_mae_mfe(
                         pos, close=close, low=low, high=high
@@ -1185,10 +1234,15 @@ class Portfolio:
                     pos.market_value = pos.margin + pos.pnl
                     pos_margin += pos.margin
                     pos_short_shares += pos.shares
+                    short_equity = entry_notional + pos.pnl
+                    pos_equity += short_equity
                     pos_market_value += pos.market_value
                     pos_pnl += pos.pnl
+                    total_equity += short_equity
+                    total_market_value += pos.pnl
+                else:
+                    total_equity += entry_notional
                 total_margin += pos.margin
-                total_market_value += pos.pnl
             if close is not None:
                 self.position_bars.append(
                     PositionBar(
