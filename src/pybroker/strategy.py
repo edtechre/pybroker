@@ -299,6 +299,7 @@ class BacktestMixin:
         warmup: Optional[int] = None,
         timeframe_data: TimeframeData = TimeframeData(),
         declared_timeframes: frozenset[TimeframeInterval] = frozenset(),
+        history_col_scope: Optional[ColumnScope] = None,
     ) -> dict[str, pd.DataFrame]:
         r"""Backtests a ``set`` of :class:`.Execution`\ s that implement
         trading logic.
@@ -340,10 +341,20 @@ class BacktestMixin:
         )
         col_scope = ColumnScope(test_data)
         ind_scope = IndicatorScope(indicator_data, test_dates)
-        timeframe_scope = TimeframeScope(
-            timeframe_data, ind_scope, declared_timeframes, models
+        input_scope = ModelInputScope(
+            col_scope,
+            ind_scope,
+            models,
+            history_col_scope,
+            test_dates,
         )
-        input_scope = ModelInputScope(col_scope, ind_scope, models)
+        timeframe_scope = TimeframeScope(
+            timeframe_data,
+            ind_scope,
+            declared_timeframes,
+            models,
+            test_dates,
+        )
         pred_scope = PredictionScope(models, input_scope)
         if train_only:
             if config.return_signals:
@@ -1714,6 +1725,16 @@ class Strategy(
                 )
             if test_data.empty:
                 return signals
+            window_history = (
+                pd.concat([train_data, test_data], ignore_index=True)
+                if not train_data.empty
+                else test_data
+            )
+            sym_col = DataCol.SYMBOL.value
+            date_col = DataCol.DATE.value
+            history_col_scope = ColumnScope(
+                window_history.set_index([sym_col, date_col]).sort_index()
+            )
             split_signals = self.backtest_executions(
                 config=self._config,
                 executions=self._executions,
@@ -1732,6 +1753,7 @@ class Strategy(
                 enable_fractional_shares=self._fractional_shares_enabled(),
                 round_fill_price=self._config.round_fill_price,
                 warmup=warmup,
+                history_col_scope=history_col_scope,
             )
             for sym, signals_df in split_signals.items():
                 if sym in signals:

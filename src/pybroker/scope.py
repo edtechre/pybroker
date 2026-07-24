@@ -19,10 +19,20 @@ from pybroker.common import (
     TrainedModel,
     to_decimal,
 )
+from pybroker.timeseries import (
+    LagSeriesCache,
+    ModelInput,
+    apply_lags_to_model_input,
+    apply_prepare_input_data,
+    merge_lag_series_cache_from_arrays,
+    merge_timeframe_lag_series_cache,
+    model_input_to_dataframe,
+)
 from pybroker.log import Logger
 from pybroker.timeframe import (
     TimeframeData,
     TimeframeInterval,
+    format_timeframe_interval,
     indicator_timeframe_name,
     model_timeframe_name,
     normalize_timeframe_interval,
@@ -422,17 +432,49 @@ class TimeframeScope:
         ind_scope: IndicatorScope,
         declared_timeframes: frozenset[TimeframeInterval],
         models: Optional[Mapping[ModelSymbol, TrainedModel]] = None,
+        test_dates: Optional[Sequence[np.datetime64]] = None,
     ):
         self._timeframe_data = timeframe_data
         self._ind_scope = ind_scope
         self._declared_timeframes = declared_timeframes
         self._models = models or {}
+        self._lag_series_cache: LagSeriesCache = {}
+        self._test_dates = [] if test_dates is None else test_dates
         self._scope = StaticScope.instance()
         self._bar_cache: dict[
             tuple[str, TimeframeInterval, str], NDArray[Any]
         ] = {}
-        self._sym_inputs: dict[ModelSymbol, pd.DataFrame] = {}
+        self._sym_inputs: dict[ModelSymbol, ModelInput] = {}
         self._sym_preds: dict[ModelSymbol, NDArray] = {}
+
+    def _lag_cols(self, input_cols: tuple[str, ...]) -> tuple[str, ...]:
+        date_col = DataCol.DATE.value
+        return tuple(col for col in input_cols if col != date_col)
+
+    def _ensure_lag_cache(
+        self,
+        symbol: str,
+        interval: TimeframeInterval,
+        lag_cols: tuple[str, ...],
+        lags: int,
+    ) -> None:
+        interval = normalize_timeframe_interval(interval)
+        interval_str = format_timeframe_interval(interval)
+
+        def bars_by_symbol(sym, interval_str=interval_str, interval=interval):
+            key = (sym, interval)
+            if key not in self._timeframe_data.compressed:
+                return None
+            return self._timeframe_data.compressed[key].bars
+
+        merge_timeframe_lag_series_cache(
+            self._lag_series_cache,
+            (symbol,),
+            lag_cols,
+            lags,
+            interval_str,
+            bars_by_symbol,
+        )
 
     def is_declared(self, interval: TimeframeInterval) -> bool:
         interval = normalize_timeframe_interval(interval)
@@ -515,11 +557,13 @@ class TimeframeScope:
         end_index: int,
     ) -> pd.DataFrame:
         interval = normalize_timeframe_interval(interval)
-        df = self._prepare_full_input(symbol, interval, base_model_name)
+        model_input = self._prepare_full_input(
+            symbol, interval, base_model_name
+        )
         idx = self.completed_index(symbol, interval, end_index)
         if idx < 0:
-            return df.iloc[0:0]
-        return df.iloc[: idx + 1]
+            return model_input_to_dataframe(model_input.slice(0))
+        return model_input_to_dataframe(model_input.slice(idx + 1))
 
     def fetch_preds(
         self,
@@ -532,35 +576,33 @@ class TimeframeScope:
         model_sym = ModelSymbol(
             model_timeframe_name(base_model_name, interval), symbol
         )
+        trained_model = self._models.get(model_sym)
+        if trained_model is None:
+            raise ValueError(
+                f"Model {base_model_name!r} not found for {symbol}."
+            )
+        if trained_model.per_bar:
+            return self._fetch_preds_per_bar(
+                symbol,
+                interval,
+                base_model_name,
+                model_sym,
+                trained_model,
+                end_index,
+            )
         if model_sym not in self._sym_preds:
             input_ = self._prepare_full_input(
                 symbol, interval, base_model_name
             )
-            if input_.empty:
+            if input_.empty() or not input_.columns:
                 raise ValueError(
                     f"No input data found for model {base_model_name!r}. "
                     "Consider passing input_data_fn to pybroker#model() if "
                     "custom columns were registered."
                 )
-            if model_sym not in self._models:
-                raise ValueError(
-                    f"Model {base_model_name!r} not found for {symbol}."
-                )
-            trained_model = self._models[model_sym]
-            if trained_model.predict_fn is not None:
-                pred = trained_model.predict_fn(trained_model.instance, input_)
-            else:
-                predict_fn = getattr(trained_model.instance, "predict", None)
-                if predict_fn is not None and callable(predict_fn):
-                    pred = trained_model.instance.predict(input_)
-                else:
-                    raise ValueError(
-                        f"Model instance trained for {model_sym.model_name!r} "
-                        "does not define a predict function. Please pass a "
-                        "predict_fn to pybroker.model()."
-                    )
-            if len(pred.shape) > 1:
-                pred = np.squeeze(pred)
+            pred = self._run_predict(
+                trained_model, model_input_to_dataframe(input_)
+            )
             self._sym_preds[model_sym] = pred
         pred = self._sym_preds[model_sym]
         idx = self.completed_index(symbol, interval, end_index)
@@ -568,12 +610,67 @@ class TimeframeScope:
             return np.array([], dtype=pred.dtype)
         return pred[: idx + 1]
 
+    def _fetch_preds_per_bar(
+        self,
+        symbol: str,
+        interval: TimeframeInterval,
+        base_model_name: str,
+        model_sym: ModelSymbol,
+        trained_model: TrainedModel,
+        end_index: int,
+    ) -> NDArray:
+        if model_sym not in self._sym_preds:
+            self._sym_preds[model_sym] = np.array([], dtype=np.float64)
+        pred = self._sym_preds[model_sym]
+        target_len = self.completed_index(symbol, interval, end_index) + 1
+        if target_len <= 0:
+            return np.array([], dtype=pred.dtype)
+        while len(pred) < target_len:
+            bar_end_index = len(pred) + 1
+            input_ = self.fetch_input(
+                symbol, interval, base_model_name, bar_end_index
+            )
+            scalar = self._run_predict_scalar(trained_model, input_)
+            pred = np.append(pred, scalar)
+            self._sym_preds[model_sym] = pred
+        return pred[:target_len]
+
+    @staticmethod
+    def _run_predict(
+        trained_model: TrainedModel, input_: pd.DataFrame
+    ) -> NDArray:
+        if trained_model.predict_fn is not None:
+            pred = trained_model.predict_fn(trained_model.instance, input_)
+        else:
+            predict_fn = getattr(trained_model.instance, "predict", None)
+            if predict_fn is not None and callable(predict_fn):
+                pred = trained_model.instance.predict(input_)
+            else:
+                raise ValueError(
+                    f"Model instance trained for {trained_model.name!r} "
+                    "does not define a predict function. Please pass a "
+                    "predict_fn to pybroker.model()."
+                )
+        pred_arr = np.asarray(pred)
+        if pred_arr.ndim == 0:
+            return np.array([pred_arr.item()])
+        if len(pred_arr.shape) > 1:
+            pred_arr = np.squeeze(pred_arr)
+        return pred_arr
+
+    @staticmethod
+    def _run_predict_scalar(
+        trained_model: TrainedModel, input_: pd.DataFrame
+    ) -> float:
+        pred = TimeframeScope._run_predict(trained_model, input_)
+        return float(np.asarray(pred).reshape(-1)[0])
+
     def _prepare_full_input(
         self,
         symbol: str,
         interval: TimeframeInterval,
         base_model_name: str,
-    ) -> pd.DataFrame:
+    ) -> ModelInput:
         interval = normalize_timeframe_interval(interval)
         model_sym = ModelSymbol(
             model_timeframe_name(base_model_name, interval), symbol
@@ -583,7 +680,9 @@ class TimeframeScope:
         if not self._scope.has_model_source(base_model_name):
             raise ValueError(f"Model {base_model_name!r} not found.")
         source = self._scope.get_model_source(base_model_name)
-        df = self._build_compressed_df(symbol, interval, source)
+        model_input = self._build_compressed_model_input(
+            symbol, interval, source
+        )
         if model_sym not in self._models:
             raise ValueError(
                 f"Model {base_model_name!r} not found for {symbol}."
@@ -591,23 +690,46 @@ class TimeframeScope:
         trained_model = self._models[model_sym]
         if trained_model.input_cols is not None:
             for input_col in trained_model.input_cols:
-                if input_col not in df.columns:
+                if input_col not in model_input:
                     raise ValueError(
                         f"Missing column {input_col!r} for input data to "
                         f"model {model_sym.model_name!r}."
                     )
-            df = df[list(trained_model.input_cols)]
+            model_input = model_input.select_columns(trained_model.input_cols)
+        if source.lags is not None:
+            if trained_model.input_cols is None:
+                raise ValueError(
+                    f"Model {model_sym.model_name!r} requires input columns "
+                    f"from training before applying lags."
+                )
+            lag_cols = self._lag_cols(trained_model.input_cols)
+            self._ensure_lag_cache(symbol, interval, lag_cols, source.lags)
+            apply_lags_to_model_input(
+                model_input,
+                lag_cols,
+                source.lags,
+                self._lag_series_cache,
+                symbol,
+                np.asarray(
+                    self._timeframe_data.compressed[
+                        (symbol, interval)
+                    ].bars.dates
+                ),
+                format_timeframe_interval(interval),
+            )
         if not trained_model.input_cols or source._input_data_fn:
-            df = source.prepare_input_data(df)
-        self._sym_inputs[model_sym] = df
-        return df
+            model_input = apply_prepare_input_data(
+                model_input, source.prepare_input_data
+            )
+        self._sym_inputs[model_sym] = model_input
+        return model_input
 
-    def _build_compressed_df(
+    def _build_compressed_model_input(
         self,
         symbol: str,
         interval: TimeframeInterval,
         source,
-    ) -> pd.DataFrame:
+    ) -> ModelInput:
         interval = normalize_timeframe_interval(interval)
         key = (symbol, interval)
         if key not in self._timeframe_data.compressed:
@@ -615,7 +737,7 @@ class TimeframeScope:
                 f"Timeframe {interval!r} data not found for {symbol!r}."
             )
         bars = self._timeframe_data.compressed[key].bars
-        data: dict[str, NDArray[Any]] = {
+        arrays: dict[str, NDArray[Any]] = {
             DataCol.DATE.value: bars.dates,
             DataCol.OPEN.value: bars.open,
             DataCol.HIGH.value: bars.high,
@@ -625,12 +747,13 @@ class TimeframeScope:
         }
         for col in self._scope.custom_data_cols:
             if col in bars.custom:
-                data[col] = bars.custom[col]
+                arrays[col] = bars.custom[col]
         for ind_name in source.indicators:
-            data[ind_name] = self._ind_scope.fetch_full(
+            arrays[ind_name] = self._ind_scope.fetch_full(
                 symbol, indicator_timeframe_name(ind_name, interval)
             )
-        return pd.DataFrame(data)
+        columns = tuple(arrays.keys())
+        return ModelInput(columns, arrays, bars.dates)
 
     def clear_cache(self):
         self._bar_cache.clear()
@@ -654,12 +777,55 @@ class ModelInputScope:
         col_scope: ColumnScope,
         ind_scope: IndicatorScope,
         models: Mapping[ModelSymbol, TrainedModel],
+        history_col_scope: Optional["ColumnScope"] = None,
+        test_dates: Optional[Sequence[np.datetime64]] = None,
     ):
         self._col_scope = col_scope
         self._ind_scope = ind_scope
         self._models = models
-        self._sym_inputs: dict[ModelSymbol, pd.DataFrame] = {}
+        self._history_col_scope = history_col_scope
+        self._lag_series_cache: LagSeriesCache = {}
+        self._history_dates: dict[str, np.ndarray] = {}
+        self._test_dates = [] if test_dates is None else test_dates
+        self._sym_inputs: dict[ModelSymbol, ModelInput] = {}
         self._scope = StaticScope.instance()
+
+    def _lag_cols(self, input_cols: tuple[str, ...]) -> tuple[str, ...]:
+        date_col = DataCol.DATE.value
+        return tuple(col for col in input_cols if col != date_col)
+
+    def _ensure_lag_cache(
+        self,
+        symbol: str,
+        lag_cols: tuple[str, ...],
+        lags: int,
+    ) -> None:
+        if symbol in self._history_dates:
+            return
+        if self._history_col_scope is None:
+            raise ValueError(
+                f"History data required to compute lags for {symbol!r}."
+            )
+        dates = self._history_col_scope.fetch(symbol, DataCol.DATE.value)
+        if dates is None:
+            raise ValueError(f"History dates not found for {symbol!r}.")
+        self._history_dates[symbol] = dates
+        column_arrays: dict[str, NDArray[Any]] = {}
+        for col in lag_cols:
+            col_data = self._history_col_scope.fetch(symbol, col)
+            if col_data is None:
+                raise ValueError(
+                    f"History column {col!r} not found for {symbol!r}."
+                )
+            column_arrays[col] = col_data
+        merge_lag_series_cache_from_arrays(
+            self._lag_series_cache,
+            symbol,
+            lag_cols,
+            lags,
+            dates,
+            column_arrays,
+        )
 
     def fetch(
         self, symbol: str, name: str, end_index: Optional[int] = None
@@ -675,14 +841,24 @@ class ModelInputScope:
                 truncated.
 
         Returns:
-            :class:`numpy.ndarray` of model input data for every bar until
+            :class:`pandas.DataFrame` of model input data for every bar until
             ``end_index`` (when specified).
         """
+        model_input = self._fetch_model_input(symbol, name, end_index)
+        return model_input_to_dataframe(model_input)
+
+    def _fetch_model_input(
+        self, symbol: str, name: str, end_index: Optional[int] = None
+    ) -> ModelInput:
         model_sym = ModelSymbol(name, symbol)
         if model_sym in self._sym_inputs:
-            df = self._sym_inputs[model_sym]
-            return df if end_index is None else df.loc[: end_index - 1]
-        input_ = {}
+            model_input = self._sym_inputs[model_sym]
+            return (
+                model_input
+                if end_index is None
+                else model_input.slice(end_index)
+            )
+        input_: dict[str, NDArray[Any]] = {}
         for col in self._scope.all_data_cols:
             data = self._col_scope.fetch(symbol, col)
             if data is not None:
@@ -691,23 +867,49 @@ class ModelInputScope:
             raise ValueError(f"Model {name!r} not found.")
         for ind_name in self._scope.get_indicator_names(name):
             input_[ind_name] = self._ind_scope.fetch(symbol, ind_name)
-        df = pd.DataFrame.from_dict(input_)
         if model_sym not in self._models:
             raise ValueError(f"Model {name!r} not found for {symbol}.")
         trained_model = self._models[model_sym]
+        model_source = self._scope.get_model_source(name)
+        date_col = DataCol.DATE.value
+        row_dates = input_.get(date_col)
+        if row_dates is None:
+            row_dates = self._col_scope.fetch(symbol, date_col)
+        assert row_dates is not None
+        columns = tuple(input_.keys())
+        model_input = ModelInput(columns, input_, row_dates)
         if trained_model.input_cols is not None:
             for input_col in trained_model.input_cols:
-                if input_col not in df.columns:
+                if input_col not in model_input:
                     raise ValueError(
                         f"Missing column {input_col!r} for input data to "
                         f"model {model_sym.model_name!r}."
                     )
-            df = df[list(trained_model.input_cols)]
-        model_source = self._scope.get_model_source(name)
+            model_input = model_input.select_columns(trained_model.input_cols)
+        if model_source.lags is not None:
+            if trained_model.input_cols is None:
+                raise ValueError(
+                    f"Model {model_sym.model_name!r} requires input columns "
+                    f"from training before applying lags."
+                )
+            lag_cols = self._lag_cols(trained_model.input_cols)
+            self._ensure_lag_cache(symbol, lag_cols, model_source.lags)
+            apply_lags_to_model_input(
+                model_input,
+                lag_cols,
+                model_source.lags,
+                self._lag_series_cache,
+                symbol,
+                self._history_dates[symbol],
+            )
         if not trained_model.input_cols or model_source._input_data_fn:
-            df = model_source.prepare_input_data(df)
-        self._sym_inputs[model_sym] = df
-        return df if end_index is None else df.loc[: end_index - 1]
+            model_input = apply_prepare_input_data(
+                model_input, model_source.prepare_input_data
+            )
+        self._sym_inputs[model_sym] = model_input
+        return (
+            model_input if end_index is None else model_input.slice(end_index)
+        )
 
 
 class PredictionScope:
@@ -746,10 +948,15 @@ class PredictionScope:
             ``end_index`` (when specified).
         """
         model_sym = ModelSymbol(name, symbol)
+        trained_model = self._models.get(model_sym)
+        if trained_model is not None and trained_model.per_bar:
+            return self._fetch_per_bar(
+                symbol, name, model_sym, trained_model, end_index
+            )
         if model_sym in self._sym_preds:
             return self._sym_preds[model_sym][:end_index]
         input_ = self._input_scope.fetch(symbol, name)
-        if input_.empty:
+        if input_.empty or len(input_.columns) == 0:
             raise ValueError(
                 f"No input data found for model {name!r}. Consider "
                 "passing input_data_fn to pybroker#model() if custom columns "
@@ -758,6 +965,38 @@ class PredictionScope:
         if model_sym not in self._models:
             raise ValueError(f"Model {name!r} not found for {symbol}.")
         trained_model = self._models[model_sym]
+        pred = self._run_predict(trained_model, input_)
+        self._sym_preds[model_sym] = pred
+        return pred[:end_index]
+
+    def _fetch_per_bar(
+        self,
+        symbol: str,
+        name: str,
+        model_sym: ModelSymbol,
+        trained_model: TrainedModel,
+        end_index: Optional[int],
+    ) -> NDArray:
+        if model_sym not in self._sym_preds:
+            self._sym_preds[model_sym] = np.array([], dtype=np.float64)
+        pred = self._sym_preds[model_sym]
+        if end_index is None:
+            input_full = self._input_scope.fetch(symbol, name)
+            target_len = len(input_full)
+        else:
+            target_len = end_index
+        while len(pred) < target_len:
+            bar_end_index = len(pred) + 1
+            input_ = self._input_scope.fetch(symbol, name, bar_end_index)
+            scalar = self._run_predict_scalar(trained_model, input_)
+            pred = np.append(pred, scalar)
+            self._sym_preds[model_sym] = pred
+        return pred if end_index is None else pred[:end_index]
+
+    @staticmethod
+    def _run_predict(
+        trained_model: TrainedModel, input_: pd.DataFrame
+    ) -> NDArray:
         if trained_model.predict_fn is not None:
             pred = trained_model.predict_fn(trained_model.instance, input_)
         else:
@@ -766,14 +1005,23 @@ class PredictionScope:
                 pred = trained_model.instance.predict(input_)
             else:
                 raise ValueError(
-                    f"Model instance trained for {model_sym.model_name!r} "
+                    f"Model instance trained for {trained_model.name!r} "
                     "does not define a predict function. Please pass a "
                     "predict_fn to pybroker.model()."
                 )
-        if len(pred.shape) > 1:
-            pred = np.squeeze(pred)
-        self._sym_preds[model_sym] = pred
-        return pred[:end_index]
+        pred_arr = np.asarray(pred)
+        if pred_arr.ndim == 0:
+            return np.array([pred_arr.item()])
+        if len(pred_arr.shape) > 1:
+            pred_arr = np.squeeze(pred_arr)
+        return pred_arr
+
+    @staticmethod
+    def _run_predict_scalar(
+        trained_model: TrainedModel, input_: pd.DataFrame
+    ) -> float:
+        pred = PredictionScope._run_predict(trained_model, input_)
+        return float(np.asarray(pred).reshape(-1)[0])
 
 
 class PriceScope:

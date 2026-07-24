@@ -7,6 +7,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 """
 
 import functools
+import numpy as np
 import pandas as pd
 from pybroker.cache import CacheDateFields, ModelCacheKey
 from pybroker.common import (
@@ -18,6 +19,16 @@ from pybroker.common import (
     to_datetime,
 )
 from pybroker.indicator import Indicator
+from pybroker.timeseries import (
+    LagSeriesCache,
+    ModelInput,
+    apply_lags_to_model_input,
+    apply_lags_to_model_input_pooled,
+    merge_lag_series_cache,
+    merge_timeframe_lag_series_cache,
+    model_input_from_frame,
+    model_input_to_dataframe,
+)
 from pybroker.parallel import parallel
 from pybroker.scope import StaticScope
 from pybroker.timeframe import (
@@ -27,6 +38,7 @@ from pybroker.timeframe import (
     model_timeframe_name,
     normalize_timeframe_interval,
     parse_model_timeframe_name,
+    format_timeframe_interval,
     slice_compressed_df_by_dates,
 )
 from dataclasses import asdict
@@ -64,6 +76,11 @@ class ModelSource:
             overrides calling the model's default ``predict`` function. If set,
             ``predict_fn`` will be called with the trained model and a
             :class:`pandas.DataFrame` containing all test data.
+        lags: Number of lag steps to include for each input column inferred
+            from training data or returned by ``fn``. Stored as transform
+            metadata on model input (see :mod:`pybroker.timeseries`).
+        per_bar: If ``True``, ``predict_fn`` is called once per bar with input
+            truncated to rows up to and including the current bar.
         pooled: If ``True``, the model is trained once per execution using
             combined multi-symbol data. Defaults to ``False``.
         kwargs: ``dict`` of additional kwargs.
@@ -77,11 +94,15 @@ class ModelSource:
         predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]],
         pooled: bool,
         kwargs: dict[str, Any],
+        lags: Optional[int] = None,
+        per_bar: bool = False,
     ):
         self.name = name
         self.indicators = tuple(indicator_names)
         self._input_data_fn = input_data_fn
         self._predict_fn = predict_fn
+        self.lags = lags
+        self.per_bar = per_bar
         self.pooled = pooled
         self._kwargs = kwargs
 
@@ -161,9 +182,18 @@ class ModelLoader(ModelSource):
         predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]],
         pooled: bool,
         kwargs: dict[str, Any],
+        lags: Optional[int] = None,
+        per_bar: bool = False,
     ):
         super().__init__(
-            name, indicator_names, input_data_fn, predict_fn, pooled, kwargs
+            name,
+            indicator_names,
+            input_data_fn,
+            predict_fn,
+            pooled,
+            kwargs,
+            lags=lags,
+            per_bar=per_bar,
         )
         self._load_fn = functools.partial(load_fn, **kwargs)
 
@@ -226,9 +256,18 @@ class ModelTrainer(ModelSource):
         predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]],
         pooled: bool,
         kwargs: dict[str, Any],
+        lags: Optional[int] = None,
+        per_bar: bool = False,
     ):
         super().__init__(
-            name, indicator_names, input_data_fn, predict_fn, pooled, kwargs
+            name,
+            indicator_names,
+            input_data_fn,
+            predict_fn,
+            pooled,
+            kwargs,
+            lags=lags,
+            per_bar=per_bar,
         )
         self._train_fn = functools.partial(train_fn, **kwargs)
 
@@ -272,6 +311,8 @@ def model(
     name: str,
     fn: Callable[..., Union[Any, tuple[Any, Iterable[str]]]],
     indicators: Optional[Iterable[Indicator]] = None,
+    lags: Optional[int] = None,
+    per_bar: bool = False,
     input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]] = None,
     predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]] = None,
     pretrained: bool = False,
@@ -302,6 +343,12 @@ def model(
         indicators: :class:`Iterable` of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
+        lags: Number of lag steps to include for each input column inferred
+            from training data or returned by ``fn``. Stored as transform
+            metadata on model input (see :mod:`pybroker.timeseries`).
+        per_bar: If ``True``, ``predict_fn`` is called once per bar with input
+            truncated to rows up to and including the current bar. Requires
+            ``predict_fn``.
         input_data_fn: :class:`Callable[[DataFrame], DataFrame]` for
             preprocessing input data passed to the model when making
             predictions. If set, ``input_data_fn`` will be called with a
@@ -309,7 +356,9 @@ def model(
         predict_fn: :class:`Callable[[Model, DataFrame], ndarray]` that
             overrides calling the model's default ``predict`` function. If set,
             ``predict_fn`` will be called with the trained model and a
-            :class:`pandas.DataFrame` containing all test data.
+            :class:`pandas.DataFrame` containing all test data. When
+            ``per_bar=True``, ``predict_fn`` receives input rows up to and
+            including the current bar and must return a scalar prediction.
         pretrained: If ``True``, then ``fn`` is used to load and return a
             pre-trained model. If ``False``, ``fn`` is used to train and return
             a new model. Defaults to ``False``.
@@ -320,6 +369,13 @@ def model(
     Returns:
         :class:`.ModelSource` instance.
     """
+    if lags is not None:
+        if not isinstance(lags, int) or lags <= 0:
+            raise ValueError("lags must be a positive integer.")
+    if per_bar and pooled:
+        raise ValueError("per_bar=True is not supported with pooled=True.")
+    if per_bar and predict_fn is None:
+        raise ValueError("per_bar=True requires predict_fn to be set.")
     scope = StaticScope.instance()
     indicator_names = (
         tuple(sorted(set(ind.name for ind in indicators)))
@@ -335,6 +391,8 @@ def model(
             predict_fn=predict_fn,
             pooled=pooled,
             kwargs=kwargs,
+            lags=lags,
+            per_bar=per_bar,
         )
         scope.set_model_source(loader)
         return loader
@@ -347,6 +405,8 @@ def model(
             predict_fn=predict_fn,
             pooled=pooled,
             kwargs=kwargs,
+            lags=lags,
+            per_bar=per_bar,
         )
         scope.set_model_source(trainer)
         return trainer
@@ -371,8 +431,8 @@ class _TrainerTask(NamedTuple):
     model_name: str
     symbols: frozenset[str]
     model_sym: Optional[ModelSymbol]
-    train_data: pd.DataFrame
-    test_data: pd.DataFrame
+    train_data: ModelInput
+    test_data: ModelInput
 
 
 PooledTrainResult = tuple[str, frozenset[str], Any, Optional[tuple[str]]]
@@ -383,7 +443,7 @@ TrainerReturn = Union[PooledTrainerReturn, SymTrainerReturn]
 
 
 def _infer_input_cols(
-    train_data: pd.DataFrame, pooled: bool, indicators: tuple[str, ...]
+    train_data: ModelInput, pooled: bool, indicators: tuple[str, ...]
 ) -> tuple[str, ...]:
     data_cols = {col.value for col in DataCol}
     cols = [
@@ -397,9 +457,30 @@ def _infer_input_cols(
     return tuple(cols)
 
 
+def _lag_feature_cols(
+    train_data: ModelInput, pooled: bool, indicators: tuple[str, ...]
+) -> tuple[str, ...]:
+    date_col = DataCol.DATE.value
+    return tuple(
+        col
+        for col in _infer_input_cols(train_data, pooled, indicators)
+        if col != date_col
+    )
+
+
+def _history_df(
+    train_data: pd.DataFrame, test_data: pd.DataFrame
+) -> pd.DataFrame:
+    if train_data.empty:
+        return test_data
+    if test_data.empty:
+        return train_data
+    return pd.concat([train_data, test_data], ignore_index=True)
+
+
 def _parse_model_result(
     model_result: Union[Any, tuple[Any, Iterable[str]]],
-    train_data: pd.DataFrame,
+    train_data: ModelInput,
     pooled: bool,
     indicators: tuple[str, ...],
 ) -> tuple[Any, Optional[tuple[str]]]:
@@ -417,11 +498,15 @@ def _parse_model_result(
 def _train_model_sym(
     source: ModelTrainer,
     model_sym: ModelSymbol,
-    sym_train_data: pd.DataFrame,
-    sym_test_data: pd.DataFrame,
+    sym_train_data: ModelInput,
+    sym_test_data: ModelInput,
 ) -> SymTrainResult:
     model_name, sym = model_sym
-    model_result = source(sym, sym_train_data, sym_test_data)
+    model_result = source(
+        sym,
+        model_input_to_dataframe(sym_train_data),
+        model_input_to_dataframe(sym_test_data),
+    )
     model, input_cols = _parse_model_result(
         model_result,
         sym_train_data,
@@ -435,10 +520,13 @@ def _train_model_pooled(
     source: ModelTrainer,
     model_name: str,
     symbols: frozenset[str],
-    pooled_train_data: pd.DataFrame,
-    pooled_test_data: pd.DataFrame,
+    pooled_train_data: ModelInput,
+    pooled_test_data: ModelInput,
 ) -> PooledTrainResult:
-    model_result = source.train_pooled(pooled_train_data, pooled_test_data)
+    model_result = source.train_pooled(
+        model_input_to_dataframe(pooled_train_data),
+        model_input_to_dataframe(pooled_test_data),
+    )
     model, input_cols = _parse_model_result(
         model_result,
         pooled_train_data,
@@ -514,6 +602,9 @@ class ModelsMixin:
         """
         if train_data.empty or not model_syms:
             return {}
+        history_df = _history_df(train_data, test_data)
+        lag_series_cache: LagSeriesCache = {}
+        history_dates: dict[str, np.ndarray] = {}
         if pooled_model_groups is None:
             pooled_model_groups = {}
         scope = StaticScope.instance()
@@ -563,6 +654,9 @@ class ModelsMixin:
                 source,
                 train_dates,
                 test_dates,
+                history_df,
+                lag_series_cache,
+                history_dates,
             )
             trainer_tasks.append(
                 _TrainerTask(
@@ -607,26 +701,64 @@ class ModelsMixin:
                         indicator_data,
                         source,
                         timeframe_data,
+                        lag_series_cache,
                     )
                 )
             elif isinstance(source, ModelTrainer):
                 if source.pooled:
                     continue
-                sym_train_data = self._slice_by_symbol(sym, train_data)
-                sym_test_data = self._slice_by_symbol(sym, test_data)
+                sym_train_df = self._slice_by_symbol(sym, train_data)
+                sym_test_df = self._slice_by_symbol(sym, test_data)
                 for ind_name in source.indicators:
                     ind_series = indicator_data[IndicatorSymbol(ind_name, sym)]
-                    if not sym_train_data.empty:
-                        sym_train_data[ind_name] = ind_series[
+                    if not sym_train_df.empty:
+                        sym_train_df[ind_name] = ind_series[
                             ind_series.index.isin(train_dates)
                         ].values
-                    if not sym_test_data.empty:
-                        sym_test_data[ind_name] = ind_series[
+                    if not sym_test_df.empty:
+                        sym_test_df[ind_name] = ind_series[
                             ind_series.index.isin(test_dates)
                         ].values
+                sym_train_data = model_input_from_frame(sym_train_df)
+                sym_test_data = model_input_from_frame(sym_test_df)
+                if source.lags is not None:
+                    lag_cols = _lag_feature_cols(
+                        sym_train_data,
+                        pooled=False,
+                        indicators=source.indicators,
+                    )
+                    merge_lag_series_cache(
+                        lag_series_cache,
+                        history_df,
+                        (sym,),
+                        lag_cols,
+                        source.lags,
+                        history_dates,
+                    )
+                    apply_lags_to_model_input(
+                        sym_train_data,
+                        lag_cols,
+                        source.lags,
+                        lag_series_cache,
+                        sym,
+                        history_dates[sym],
+                    )
+                    apply_lags_to_model_input(
+                        sym_test_data,
+                        lag_cols,
+                        source.lags,
+                        lag_series_cache,
+                        sym,
+                        history_dates[sym],
+                    )
+                    sym_train_data = sym_train_data.drop_lag_warmup()
             else:
-                sym_train_data = pd.DataFrame()
-                sym_test_data = pd.DataFrame()
+                sym_train_data = ModelInput(
+                    (), {}, np.array([], dtype="datetime64[ns]")
+                )
+                sym_test_data = ModelInput(
+                    (), {}, np.array([], dtype="datetime64[ns]")
+                )
             if isinstance(source, ModelTrainer):
                 trainer_tasks.append(
                     _TrainerTask(
@@ -664,6 +796,7 @@ class ModelsMixin:
                         instance=model,
                         predict_fn=task.source._predict_fn,
                         input_cols=input_cols,
+                        per_bar=task.source.per_bar,
                     )
                     self._set_cached_model(
                         model, input_cols, model_sym, cache_date_fields
@@ -679,6 +812,7 @@ class ModelsMixin:
                     instance=model,
                     predict_fn=task.source._predict_fn,
                     input_cols=input_cols,
+                    per_bar=task.source.per_bar,
                 )
                 self._set_cached_model(
                     model, input_cols, model_sym, cache_date_fields
@@ -699,6 +833,7 @@ class ModelsMixin:
                 instance=model,
                 predict_fn=source._predict_fn,
                 input_cols=input_cols,
+                per_bar=source.per_bar,
             )
             self._set_cached_model(
                 model, input_cols, model_sym, cache_date_fields
@@ -742,7 +877,10 @@ class ModelsMixin:
         source: ModelTrainer,
         train_dates: Collection,
         test_dates: Collection,
-    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        history_df: pd.DataFrame,
+        lag_series_cache: LagSeriesCache,
+        history_dates: dict[str, np.ndarray],
+    ) -> tuple[ModelInput, ModelInput]:
         sym_col = DataCol.SYMBOL.value
         date_col = DataCol.DATE.value
         pooled_train = train_data[train_data[sym_col].isin(symbols)].copy()
@@ -766,7 +904,44 @@ class ModelsMixin:
                     pooled_test.loc[test_mask, ind_name] = ind_series[
                         ind_series.index.isin(sym_test_dates)
                     ].values
-        return pooled_train, pooled_test
+        if source.lags is not None:
+            lag_cols = _lag_feature_cols(
+                model_input_from_frame(pooled_train),
+                pooled=True,
+                indicators=source.indicators,
+            )
+            merge_lag_series_cache(
+                lag_series_cache,
+                history_df,
+                symbols,
+                lag_cols,
+                source.lags,
+                history_dates,
+            )
+            pooled_train_input = model_input_from_frame(pooled_train)
+            pooled_test_input = model_input_from_frame(pooled_test)
+            apply_lags_to_model_input_pooled(
+                pooled_train_input,
+                lag_cols,
+                source.lags,
+                lag_series_cache,
+                history_dates,
+                symbols,
+            )
+            apply_lags_to_model_input_pooled(
+                pooled_test_input,
+                lag_cols,
+                source.lags,
+                lag_series_cache,
+                history_dates,
+                symbols,
+            )
+            pooled_train_input = pooled_train_input.drop_lag_warmup()
+            return pooled_train_input, pooled_test_input
+        return (
+            model_input_from_frame(pooled_train),
+            model_input_from_frame(pooled_test),
+        )
 
     def _slice_by_symbol(self, symbol: str, df: pd.DataFrame) -> pd.DataFrame:
         return (
@@ -784,7 +959,8 @@ class ModelsMixin:
         indicator_data: Mapping[IndicatorSymbol, pd.Series],
         source: ModelSource,
         timeframe_data: TimeframeData,
-    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        lag_series_cache: LagSeriesCache,
+    ) -> tuple[ModelInput, ModelInput]:
         scope = StaticScope.instance()
         key = (symbol, token)
         if key not in timeframe_data.compressed:
@@ -800,8 +976,52 @@ class ModelsMixin:
             source.indicators,
             scope.custom_data_cols,
         )
-        sym_train_data = slice_compressed_df_by_dates(full_df, train_dates)
-        sym_test_data = slice_compressed_df_by_dates(full_df, test_dates)
+        sym_train_df = slice_compressed_df_by_dates(full_df, train_dates)
+        sym_test_df = slice_compressed_df_by_dates(full_df, test_dates)
+        sym_train_data = model_input_from_frame(sym_train_df)
+        sym_test_data = model_input_from_frame(sym_test_df)
+        if source.lags is not None:
+            lag_cols = _lag_feature_cols(
+                sym_train_data,
+                pooled=False,
+                indicators=source.indicators,
+            )
+            interval = format_timeframe_interval(token)
+
+            def bars_by_symbol(sym, interval=interval, token=token):
+                key = (sym, token)
+                if key not in timeframe_data.compressed:
+                    return None
+                return timeframe_data.compressed[key].bars
+
+            merge_timeframe_lag_series_cache(
+                lag_series_cache,
+                (symbol,),
+                lag_cols,
+                source.lags,
+                interval,
+                bars_by_symbol,
+            )
+            history_dates = np.asarray(compressed.bars.dates)
+            apply_lags_to_model_input(
+                sym_train_data,
+                lag_cols,
+                source.lags,
+                lag_series_cache,
+                symbol,
+                history_dates,
+                interval,
+            )
+            apply_lags_to_model_input(
+                sym_test_data,
+                lag_cols,
+                source.lags,
+                lag_series_cache,
+                symbol,
+                history_dates,
+                interval,
+            )
+            sym_train_data = sym_train_data.drop_lag_warmup()
         return sym_train_data, sym_test_data
 
     def _get_cached_models(
@@ -865,6 +1085,7 @@ class ModelsMixin:
                             instance=model,
                             predict_fn=source._predict_fn,
                             input_cols=input_cols,
+                            per_bar=source.per_bar,
                         )
                     continue
                 uncached_model_syms.append(model_sym)
@@ -889,6 +1110,7 @@ class ModelsMixin:
                     instance=model,
                     predict_fn=source._predict_fn,
                     input_cols=input_cols,
+                    per_bar=source.per_bar,
                 )
             else:
                 uncached_model_syms.append(model_sym)

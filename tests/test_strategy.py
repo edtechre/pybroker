@@ -1945,7 +1945,7 @@ def executions_with_pooled_and_non_pooled_models(
         MODEL_NAME,
         lambda sym, train_data, test_data: FakeModel(
             sym,
-            np.full(train_data.shape[0] + test_data.shape[0], 50),
+            np.full(len(train_data) + len(test_data), 50),
         ),
         indicators,
         predict_fn=lambda _model, df: np.full(len(df), 50.0),

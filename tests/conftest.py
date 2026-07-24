@@ -9,7 +9,27 @@ This code is licensed under Apache 2.0 with Commons Clause license
 import os
 import tempfile
 
+import numpy as np
 import pytest
+
+
+def _patch_numpy_seed_for_randomly() -> None:
+    """Wrap ``numpy.random.seed`` for pytest-randomly + thinc entrypoints.
+
+    pytest-randomly passes session seeds with per-test offsets that can exceed
+    NumPy's legacy ``2**32 - 1`` limit to third-party reseed hooks (e.g. thinc).
+    """
+    _original_seed = np.random.seed
+
+    def _seed(seed=None):
+        if seed is not None and isinstance(seed, (int, np.integer)):
+            seed = int(seed) % (2**32)
+        return _original_seed(seed)
+
+    np.random.seed = _seed  # type: ignore[method-assign]
+
+
+_patch_numpy_seed_for_randomly()
 
 
 def _configure_numba_cache_dir() -> None:

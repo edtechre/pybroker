@@ -70,12 +70,14 @@ class TrainedModel(NamedTuple):
             default ``predict`` function.
         input_cols: Names of the columns to be used as input for the model when
             making predictions.
+        per_bar: If ``True``, predictions are made incrementally once per bar.
     """
 
     name: str
     instance: Any
     predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]]
     input_cols: Optional[tuple[str]]
+    per_bar: bool = False
 
 
 class DataCol(Enum):

@@ -908,3 +908,54 @@ class TestTimeframeModels:
         model_sym = ModelSymbol("tf_model@2", sym)
         assert model_sym in models
         assert models[model_sym].name == "tf_model@2"
+
+
+class TestTimeSeriesModelOptions:
+    def test_lags_metadata_on_train(
+        self,
+        scope,
+        train_data,
+        test_data,
+        ind_data,
+        cache_date_fields,
+    ):
+        sym = train_data[DataCol.SYMBOL.value].iloc[0]
+        model(
+            "lag_train",
+            lambda sym, train, test: (object(), ("close",)),
+            lags=2,
+        )
+        mixin = ModelsMixin()
+        models = mixin.train_models(
+            [ModelSymbol("lag_train", sym)],
+            train_data,
+            test_data,
+            ind_data,
+            cache_date_fields,
+        )
+        assert models[ModelSymbol("lag_train", sym)].input_cols == ("close",)
+
+    def test_per_bar_stored_on_trained_model(
+        self,
+        scope,
+        train_data,
+        test_data,
+        ind_data,
+        cache_date_fields,
+    ):
+        sym = train_data[DataCol.SYMBOL.value].iloc[0]
+        model(
+            "pb_model",
+            lambda sym, train, test: object(),
+            predict_fn=lambda m, d: np.array([1.0]),
+            per_bar=True,
+        )
+        mixin = ModelsMixin()
+        models = mixin.train_models(
+            [ModelSymbol("pb_model", sym)],
+            train_data,
+            test_data,
+            ind_data,
+            cache_date_fields,
+        )
+        assert models[ModelSymbol("pb_model", sym)].per_bar is True
