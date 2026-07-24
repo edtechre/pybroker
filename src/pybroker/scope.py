@@ -43,6 +43,7 @@ from decimal import Decimal
 from diskcache import Cache
 from numpy.typing import NDArray
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Final,
@@ -55,6 +56,9 @@ from typing import (
     Union,
     cast,
 )
+
+if TYPE_CHECKING:
+    from pybroker.portfolio import Stop
 
 _EMPTY_PARAM: Final = object()
 
@@ -1138,6 +1142,11 @@ class PendingOrder(NamedTuple):
         shares: Number of shares to be bought or sold.
         limit_price: Limit price to use for the order.
         fill_price: Price that the order will be filled at.
+        exec_bar: Symbol bar index when the order will first be attempted.
+        timeout_bars: Number of bars to retry after the first attempt.
+            ``None`` for a single attempt, ``-1`` for indefinite persistence,
+            or a positive integer for a limited number of retry bars.
+        stops: Stops to attach when the order is filled.
     """
 
     id: int
@@ -1155,6 +1164,9 @@ class PendingOrder(NamedTuple):
         PriceType,
         Callable[[str, BarData], Union[int, float, Decimal]],
     ]
+    exec_bar: int
+    timeout_bars: Optional[int]
+    stops: Optional[frozenset["Stop"]]
 
 
 class PendingOrderScope:
@@ -1172,6 +1184,10 @@ class PendingOrderScope:
         """
         return order_id in self._orders
 
+    def get(self, order_id: int) -> Optional[PendingOrder]:
+        """Returns a :class:`.PendingOrder` with ``order_id``."""
+        return self._orders.get(order_id)
+
     def add(
         self,
         type: Literal["buy", "sell"],
@@ -1188,6 +1204,9 @@ class PendingOrderScope:
             PriceType,
             Callable[[str, BarData], Union[int, float, Decimal]],
         ],
+        exec_bar: int,
+        timeout_bars: Optional[int],
+        stops: Optional[frozenset["Stop"]] = None,
     ) -> int:
         """Creates a :class:`.PendingOrder`.
 
@@ -1199,6 +1218,9 @@ class PendingOrderScope:
             shares: Number of shares to be bought or sold.
             limit_price: Limit price to use for the order.
             fill_price: Price that the order will be filled at.
+            exec_bar: Symbol bar index when the order will first be attempted.
+            timeout_bars: Number of bars to retry after the first attempt.
+            stops: Stops to attach when the order is filled.
 
         Returns:
             ID of the :class:`.PendingOrder`.
@@ -1213,6 +1235,9 @@ class PendingOrderScope:
             shares=shares,
             limit_price=limit_price,
             fill_price=fill_price,
+            exec_bar=exec_bar,
+            timeout_bars=timeout_bars,
+            stops=stops,
         )
         self._orders[self._order_id] = order
         self._sym_orders[symbol].add(order)

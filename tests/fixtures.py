@@ -263,6 +263,9 @@ def pending_orders():
             shares=Decimal(100),
             limit_price=None,
             fill_price=PriceType.MIDDLE,
+            exec_bar=5,
+            timeout_bars=None,
+            stops=None,
         ),
         PendingOrder(
             id=2,
@@ -273,6 +276,9 @@ def pending_orders():
             shares=Decimal(200),
             limit_price=Decimal(99),
             fill_price=PriceType.AVERAGE,
+            exec_bar=6,
+            timeout_bars=None,
+            stops=None,
         ),
     )
 
@@ -289,6 +295,9 @@ def pending_order_scope(pending_orders):
             shares=order.shares,
             limit_price=order.limit_price,
             fill_price=order.fill_price,
+            exec_bar=order.exec_bar,
+            timeout_bars=order.timeout_bars,
+            stops=order.stops,
         )
     return scope
 

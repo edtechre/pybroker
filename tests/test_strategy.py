@@ -2045,6 +2045,21 @@ START_DATE = "2020-01-02"
 END_DATE = "2021-12-31"
 
 
+def _limit_order_df(highs, lows):
+    dates = pd.date_range("2020-01-02", periods=len(highs), freq="B")
+    return pd.DataFrame(
+        {
+            "date": dates,
+            "symbol": ["SPY"] * len(highs),
+            "open": highs,
+            "high": highs,
+            "low": lows,
+            "close": highs,
+            "volume": np.repeat(1_000_000, len(highs)),
+        }
+    )
+
+
 def _picklable_train_fake_model(sym, train_data, test_data):
     return FakeModel(
         sym,
@@ -3511,6 +3526,9 @@ class TestStrategy:
                     shares=100,
                     limit_price=None,
                     fill_price=PriceType.MIDDLE,
+                    exec_bar=1 + buy_delay,
+                    timeout_bars=None,
+                    stops=None,
                 )
             else:
                 assert not tuple(ctx.pending_orders())
@@ -3554,6 +3572,9 @@ class TestStrategy:
                     shares=100,
                     limit_price=99,
                     fill_price=PriceType.MIDDLE,
+                    exec_bar=1 + buy_delay,
+                    timeout_bars=None,
+                    stops=None,
                 )
                 assert orders[1] == PendingOrder(
                     id=2,
@@ -3564,6 +3585,9 @@ class TestStrategy:
                     shares=200,
                     limit_price=100,
                     fill_price=PriceType.MIDDLE,
+                    exec_bar=2 + sell_delay,
+                    timeout_bars=None,
+                    stops=None,
                 )
                 ctx.cancel_all_pending_orders()
             else:
@@ -3573,6 +3597,107 @@ class TestStrategy:
         strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
         strategy.add_execution(exec_fn, "SPY")
         result = strategy.backtest(calc_bootstrap=False)
+        assert not len(result.orders)
+
+    def test_limit_order_single_attempt_default(self):
+        df = _limit_order_df(
+            highs=[110] * 5,
+            lows=[90] * 5,
+        )
+
+        def buy_exec_fn(ctx):
+            if ctx.bars == 1:
+                ctx.buy_shares = 100
+                ctx.buy_limit_price = 50
+            elif ctx.bars == 2:
+                assert len(tuple(ctx.pending_orders())) == 1
+            elif ctx.bars == 3:
+                assert not tuple(ctx.pending_orders())
+
+        config = StrategyConfig(buy_delay=2)
+        strategy = Strategy(df, "2020-01-02", "2020-01-15", config)
+        strategy.add_execution(buy_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        assert not len(result.orders)
+
+    def test_limit_order_persists_until_fill(self):
+        df = _limit_order_df(
+            highs=[110, 110, 110, 110, 50],
+            lows=[90, 90, 90, 90, 30],
+        )
+        pending_after_exec = False
+        fill_date = None
+
+        def buy_exec_fn(ctx):
+            nonlocal pending_after_exec, fill_date
+            if ctx.bars == 1:
+                ctx.buy_shares = 100
+                ctx.buy_limit_price = 50
+                ctx.buy_timeout_bars = -1
+            elif ctx.bars == 2:
+                pending_after_exec = bool(tuple(ctx.pending_orders()))
+            elif ctx.bars == 5:
+                fill_date = ctx.date[-1]
+
+        strategy = Strategy(df, "2020-01-02", "2020-01-10")
+        strategy.add_execution(buy_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        assert pending_after_exec
+        assert len(result.orders) == 1
+        order = result.orders.iloc[0]
+        assert order["type"] == "buy"
+        assert order["date"] == fill_date
+        assert order["limit_price"] == 50
+        assert order["shares"] == 100
+
+    def test_limit_order_timeout_cancel(self):
+        df = _limit_order_df(
+            highs=[110] * 6,
+            lows=[90] * 6,
+        )
+        pending_after_retries = False
+
+        def buy_exec_fn(ctx):
+            nonlocal pending_after_retries
+            if ctx.bars == 1:
+                ctx.buy_shares = 100
+                ctx.buy_limit_price = 50
+                ctx.buy_timeout_bars = 2
+            elif ctx.bars == 4:
+                pending_after_retries = bool(tuple(ctx.pending_orders()))
+            elif ctx.bars == 5:
+                assert not tuple(ctx.pending_orders())
+
+        strategy = Strategy(df, "2020-01-02", "2020-01-15")
+        strategy.add_execution(buy_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        assert pending_after_retries
+        assert not len(result.orders)
+
+    def test_limit_order_manual_cancel_after_failed_attempt(self):
+        df = _limit_order_df(
+            highs=[110] * 5,
+            lows=[90] * 5,
+        )
+        canceled = False
+
+        def buy_exec_fn(ctx):
+            nonlocal canceled
+            if ctx.bars == 1:
+                ctx.buy_shares = 100
+                ctx.buy_limit_price = 50
+                ctx.buy_timeout_bars = -1
+            elif ctx.bars == 3:
+                orders = tuple(ctx.pending_orders())
+                assert len(orders) == 1
+                canceled = ctx.cancel_pending_order(orders[0].id)
+            elif ctx.bars == 4:
+                assert not tuple(ctx.pending_orders())
+
+        strategy = Strategy(df, "2020-01-02", "2020-01-15")
+        strategy.add_execution(buy_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        assert canceled
         assert not len(result.orders)
 
     def test_backtest_when_buy_hold_bars(self, data_source_df):

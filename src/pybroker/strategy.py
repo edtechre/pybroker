@@ -57,6 +57,7 @@ from pybroker.scope import (
     ColumnScope,
     IndicatorScope,
     ModelInputScope,
+    PendingOrder,
     PendingOrderScope,
     PredictionScope,
     PriceScope,
@@ -201,6 +202,10 @@ def _sort_by_sell_score(result: ExecResult) -> float:
     if result.short_score is not None:
         return -result.short_score
     return 0.0 if result.score is None else result.score
+
+
+def _is_persistent_limit(pending: PendingOrder) -> bool:
+    return pending.limit_price is not None and pending.timeout_bars is not None
 
 
 def _is_rankable(score: Optional[float]) -> TypeGuard[float]:
@@ -542,6 +547,14 @@ class BacktestMixin:
                     portfolio=portfolio,
                     enable_fractional_shares=enable_fractional_shares,
                 )
+            self._process_persistent_orders(
+                date=date,
+                sym_end_index=sym_end_index,
+                price_scope=price_scope,
+                pending_order_scope=pending_order_scope,
+                portfolio=portfolio,
+                enable_fractional_shares=enable_fractional_shares,
+            )
             portfolio.capture_bar(date, col_scope, sym_end_index)
             if before_exec_fn is not None and active_ctxs:
                 before_exec_fn(active_ctxs)
@@ -706,6 +719,15 @@ class BacktestMixin:
                 fill_price = result.sell_fill_price
             else:
                 raise ValueError("buy_shares or sell_shares needs to be set.")
+            if order_type == "buy":
+                timeout_bars = result.buy_timeout_bars
+                stops = result.long_stops
+            else:
+                timeout_bars = result.sell_timeout_bars
+                stops = result.short_stops
+            if stops is not None and not stops:
+                stops = None
+            exec_bar = sym_end_index[result.symbol] + delay
             result.pending_order_id = pending_order_scope.add(
                 type=order_type,
                 symbol=result.symbol,
@@ -714,6 +736,9 @@ class BacktestMixin:
                 shares=shares,
                 limit_price=limit_price,
                 fill_price=fill_price,
+                exec_bar=exec_bar,
+                timeout_bars=timeout_bars,
+                stops=stops,
             )
             sched[date].append(result)
             logger.debug_schedule_order(date, result)
@@ -730,6 +755,7 @@ class BacktestMixin:
         enable_fractional_shares: bool,
     ):
         buy_results = buy_sched[date]
+        logger = StaticScope.instance().logger
         for result in buy_results:
             if result.buy_shares is None:
                 continue
@@ -738,51 +764,38 @@ class BacktestMixin:
                 or not pending_order_scope.contains(result.pending_order_id)
             ):
                 continue
-            pending = tuple(
-                pending_order_scope.orders(
-                    order_id=result.pending_order_id,
-                )
-            )
-            pending_order_scope.remove(result.pending_order_id)
-            buy_shares = self._get_shares(
-                result.buy_shares, enable_fractional_shares
-            )
-            fill_price = price_scope.fetch(
-                result.symbol, result.buy_fill_price
-            )
-            created = pending[0].created if pending else None
-            order_type = (
-                OrderType.LIMIT
-                if result.buy_limit_price is not None
-                else OrderType.MARKET
-            )
-            order = portfolio.buy(
+            pending = pending_order_scope.get(result.pending_order_id)
+            if pending is None:
+                continue
+            order = self._attempt_pending_order(
+                pending=pending,
                 date=date,
-                symbol=result.symbol,
-                shares=buy_shares,
-                fill_price=fill_price,
-                limit_price=result.buy_limit_price,
-                stops=result.long_stops,
-                created=created,
-                order_type=order_type,
+                price_scope=price_scope,
+                portfolio=portfolio,
+                enable_fractional_shares=enable_fractional_shares,
             )
-            logger = StaticScope.instance().logger
+            buy_shares = self._get_shares(
+                pending.shares, enable_fractional_shares
+            )
+            fill_price = price_scope.fetch(pending.symbol, pending.fill_price)
             if order is None:
                 logger.debug_unfilled_buy_order(
                     date=date,
-                    symbol=result.symbol,
+                    symbol=pending.symbol,
                     shares=buy_shares,
                     fill_price=fill_price,
-                    limit_price=result.buy_limit_price,
+                    limit_price=pending.limit_price,
                 )
             else:
                 logger.debug_filled_buy_order(
                     date=date,
-                    symbol=result.symbol,
+                    symbol=pending.symbol,
                     shares=buy_shares,
                     fill_price=fill_price,
-                    limit_price=result.buy_limit_price,
+                    limit_price=pending.limit_price,
                 )
+            if order is not None or not _is_persistent_limit(pending):
+                pending_order_scope.remove(pending.id)
         del buy_sched[date]
 
     def _place_sell_orders(
@@ -795,6 +808,7 @@ class BacktestMixin:
         enable_fractional_shares: bool,
     ):
         sell_results = sell_sched[date]
+        logger = StaticScope.instance().logger
         for result in sell_results:
             if result.sell_shares is None:
                 continue
@@ -803,52 +817,152 @@ class BacktestMixin:
                 or not pending_order_scope.contains(result.pending_order_id)
             ):
                 continue
-            pending = tuple(
-                pending_order_scope.orders(
-                    order_id=result.pending_order_id,
-                )
-            )
-            pending_order_scope.remove(result.pending_order_id)
-            sell_shares = self._get_shares(
-                result.sell_shares, enable_fractional_shares
-            )
-            fill_price = price_scope.fetch(
-                result.symbol, result.sell_fill_price
-            )
-            created = pending[0].created if pending else None
-            order_type = (
-                OrderType.LIMIT
-                if result.sell_limit_price is not None
-                else OrderType.MARKET
-            )
-            order = portfolio.sell(
+            pending = pending_order_scope.get(result.pending_order_id)
+            if pending is None:
+                continue
+            order = self._attempt_pending_order(
+                pending=pending,
                 date=date,
-                symbol=result.symbol,
-                shares=sell_shares,
-                fill_price=fill_price,
-                limit_price=result.sell_limit_price,
-                stops=result.short_stops,
-                created=created,
-                order_type=order_type,
+                price_scope=price_scope,
+                portfolio=portfolio,
+                enable_fractional_shares=enable_fractional_shares,
             )
-            logger = StaticScope.instance().logger
+            sell_shares = self._get_shares(
+                pending.shares, enable_fractional_shares
+            )
+            fill_price = price_scope.fetch(pending.symbol, pending.fill_price)
             if order is None:
                 logger.debug_unfilled_sell_order(
                     date=date,
-                    symbol=result.symbol,
+                    symbol=pending.symbol,
                     shares=sell_shares,
                     fill_price=fill_price,
-                    limit_price=result.sell_limit_price,
+                    limit_price=pending.limit_price,
                 )
             else:
                 logger.debug_filled_sell_order(
                     date=date,
-                    symbol=result.symbol,
+                    symbol=pending.symbol,
                     shares=sell_shares,
                     fill_price=fill_price,
-                    limit_price=result.sell_limit_price,
+                    limit_price=pending.limit_price,
                 )
+            if order is not None or not _is_persistent_limit(pending):
+                pending_order_scope.remove(pending.id)
         del sell_sched[date]
+
+    def _process_persistent_orders(
+        self,
+        date: np.datetime64,
+        sym_end_index: Mapping[str, int],
+        price_scope: PriceScope,
+        pending_order_scope: PendingOrderScope,
+        portfolio: Portfolio,
+        enable_fractional_shares: bool,
+    ):
+        logger = StaticScope.instance().logger
+        for pending in tuple(pending_order_scope.orders()):
+            if pending.exec_date >= date:
+                continue
+            if pending.timeout_bars is None:
+                continue
+            bars_since_attempt = (
+                sym_end_index[pending.symbol] - pending.exec_bar
+            )
+            if (
+                pending.timeout_bars >= 0
+                and bars_since_attempt > pending.timeout_bars
+            ):
+                pending_order_scope.remove(pending.id)
+                logger.debug_timeout_order(date=date, pending_order=pending)
+                continue
+            order = self._attempt_pending_order(
+                pending=pending,
+                date=date,
+                price_scope=price_scope,
+                portfolio=portfolio,
+                enable_fractional_shares=enable_fractional_shares,
+            )
+            shares = self._get_shares(pending.shares, enable_fractional_shares)
+            fill_price = price_scope.fetch(pending.symbol, pending.fill_price)
+            if order is None:
+                if pending.type == "buy":
+                    logger.debug_unfilled_buy_order(
+                        date=date,
+                        symbol=pending.symbol,
+                        shares=shares,
+                        fill_price=fill_price,
+                        limit_price=pending.limit_price,
+                    )
+                else:
+                    logger.debug_unfilled_sell_order(
+                        date=date,
+                        symbol=pending.symbol,
+                        shares=shares,
+                        fill_price=fill_price,
+                        limit_price=pending.limit_price,
+                    )
+            else:
+                if pending.type == "buy":
+                    logger.debug_filled_buy_order(
+                        date=date,
+                        symbol=pending.symbol,
+                        shares=shares,
+                        fill_price=fill_price,
+                        limit_price=pending.limit_price,
+                    )
+                else:
+                    logger.debug_filled_sell_order(
+                        date=date,
+                        symbol=pending.symbol,
+                        shares=shares,
+                        fill_price=fill_price,
+                        limit_price=pending.limit_price,
+                    )
+            if order is not None:
+                pending_order_scope.remove(pending.id)
+
+    def _attempt_pending_order(
+        self,
+        pending: PendingOrder,
+        date: np.datetime64,
+        price_scope: PriceScope,
+        portfolio: Portfolio,
+        enable_fractional_shares: bool,
+    ) -> Optional[Order]:
+        shares = self._get_shares(pending.shares, enable_fractional_shares)
+        fill_price = price_scope.fetch(pending.symbol, pending.fill_price)
+        if pending.type == "buy":
+            order_type = (
+                OrderType.LIMIT
+                if pending.limit_price is not None
+                else OrderType.MARKET
+            )
+            return portfolio.buy(
+                date=date,
+                symbol=pending.symbol,
+                shares=shares,
+                fill_price=fill_price,
+                limit_price=pending.limit_price,
+                stops=pending.stops,
+                created=pending.created,
+                order_type=order_type,
+            )
+        order_type = (
+            OrderType.LIMIT
+            if pending.limit_price is not None
+            else OrderType.MARKET
+        )
+        return portfolio.sell(
+            date=date,
+            symbol=pending.symbol,
+            shares=shares,
+            fill_price=fill_price,
+            limit_price=pending.limit_price,
+            stops=pending.stops,
+            created=pending.created,
+            order_type=order_type,
+        )
 
     def _get_shares(
         self,

@@ -389,6 +389,20 @@ class Logger:
         )
         self._debug(f"Unfilled sell order:\n{order}")
 
+    def debug_timeout_order(
+        self,
+        date: np.datetime64,
+        pending_order,
+    ):
+        self._debug(
+            f"Timed out pending {pending_order.type} order:\n"
+            f"date={to_datetime(date)}\n"
+            f"symbol={pending_order.symbol}\n"
+            f"shares={pending_order.shares}\n"
+            f"limit_price={pending_order.limit_price}\n"
+            f"timeout_bars={pending_order.timeout_bars}\n"
+        )
+
     def debug_schedule_order(self, date: np.datetime64, exec_result):
         self._debug(f"Scheduling order: {date}\n{exec_result}")
 

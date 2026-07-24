@@ -1077,6 +1077,33 @@ def test_to_result_when_stop_fn_limit_without_fn_then_error(ctx):
         ctx.to_result()
 
 
+def test_to_result_buy_timeout_bars(ctx, symbol, date):
+    ctx.buy_shares = 100
+    ctx.buy_limit_price = 50
+    ctx.buy_timeout_bars = 10
+    result = ctx.to_result()
+    assert result.buy_timeout_bars == 10
+    assert result.sell_timeout_bars is None
+
+
+def test_to_result_sell_timeout_bars(ctx, symbol, date):
+    ctx.sell_shares = 200
+    ctx.sell_limit_price = 60
+    ctx.sell_timeout_bars = -1
+    result = ctx.to_result()
+    assert result.sell_timeout_bars == -1
+    assert result.buy_timeout_bars is None
+
+
+def test_timeout_bars_reset_each_bar(ctx):
+    ctx.buy_shares = 100
+    ctx.buy_timeout_bars = 5
+    ctx.to_result()
+    set_exec_ctx_data(ctx, ctx._curr_date)
+    assert ctx.buy_timeout_bars is None
+    assert ctx.sell_timeout_bars is None
+
+
 def test_to_result_not_buy_shares_and_not_sell_shares_and_stop_fn_then_error(
     ctx,
 ):

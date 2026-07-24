@@ -194,9 +194,17 @@ class ExecResult:
             which the position is automatically liquidated.
         buy_shares: Number of shares to buy of ``symbol``.
         buy_limit_price: Limit price used for a buy (long) order of ``symbol``.
+        buy_timeout_bars: Number of bars to retry an unfilled buy limit order
+            after the first attempt. ``None`` for a single attempt, ``-1`` for
+            indefinite persistence, or a positive integer for a limited number
+            of retry bars.
         sell_shares: Number of shares to sell of ``symbol``.
         sell_limit_price: Limit price used for a sell (short) order of
             ``symbol``.
+        sell_timeout_bars: Number of bars to retry an unfilled sell limit order
+            after the first attempt. ``None`` for a single attempt, ``-1`` for
+            indefinite persistence, or a positive integer for a limited number
+            of retry bars.
         long_stops: Stops for long :class:`pybroker.portfolio.Entry`\ s.
         short_stops: Stops for short :class:`pybroker.portfolio.Entry`\ s.
         cover: Whether ``buy_shares`` are used to cover a short position. If
@@ -230,8 +238,10 @@ class ExecResult:
     hold_bars: Optional[int]
     buy_shares: Optional[Decimal]
     buy_limit_price: Optional[Decimal]
+    buy_timeout_bars: Optional[int]
     sell_shares: Optional[Decimal]
     sell_limit_price: Optional[Decimal]
+    sell_timeout_bars: Optional[int]
     long_stops: Optional[frozenset[Stop]]
     short_stops: Optional[frozenset[Stop]]
     cover: bool = field(default=False)
@@ -403,11 +413,19 @@ class ExecContext:
         buy_shares: Number of shares to buy of ``symbol``.
         buy_limit_price: Limit price to use for a buy (long) order of
             ``symbol``.
+        buy_timeout_bars: Number of bars to retry an unfilled buy limit order
+            after the first attempt. ``None`` for a single attempt, ``-1`` for
+            indefinite persistence, or a positive integer for a limited number
+            of retry bars.
         sell_fill_price: Fill price to use for a sell (short) order of
             ``symbol``.
         sell_shares: Number of shares to sell of ``symbol``.
         sell_limit_price: Limit price to use for a sell (short) order of
             ``symbol``.
+        sell_timeout_bars: Number of bars to retry an unfilled sell limit order
+            after the first attempt. ``None`` for a single attempt, ``-1`` for
+            indefinite persistence, or a positive integer for a limited number
+            of retry bars.
         hold_bars: Number of bars to hold a long or short position for, after
             which the position is automatically liquidated.
         score: Score used to rank ``symbol`` when ranking buy and sell signals.
@@ -521,6 +539,7 @@ class ExecContext:
         ] = None
         self.buy_shares: Optional[Union[int, float, Decimal]] = None
         self.buy_limit_price: Optional[Union[int, float, Decimal]] = None
+        self.buy_timeout_bars: Optional[int] = None
         self.sell_fill_price: Optional[
             Union[
                 int,
@@ -533,6 +552,7 @@ class ExecContext:
         ] = None
         self.sell_shares: Optional[Union[int, float, Decimal]] = None
         self.sell_limit_price: Optional[Union[int, float, Decimal]] = None
+        self.sell_timeout_bars: Optional[int] = None
         self.hold_bars: Optional[int] = None
         self.score: Optional[float] = None
         self.long_score: Optional[float] = None
@@ -1559,8 +1579,10 @@ class ExecContext:
             hold_bars=self.hold_bars,
             buy_shares=buy_shares,
             buy_limit_price=buy_limit_price,
+            buy_timeout_bars=self.buy_timeout_bars,
             sell_shares=sell_shares,
             sell_limit_price=sell_limit_price,
+            sell_timeout_bars=self.sell_timeout_bars,
             long_stops=long_stops,
             short_stops=short_stops,
             cover=self._cover,
@@ -1593,9 +1615,11 @@ def set_exec_ctx_data(ctx: ExecContext, date: np.datetime64):
     ctx.buy_fill_price = None
     ctx.buy_shares = None
     ctx.buy_limit_price = None
+    ctx.buy_timeout_bars = None
     ctx.sell_fill_price = None
     ctx.sell_shares = None
     ctx.sell_limit_price = None
+    ctx.sell_timeout_bars = None
     ctx.hold_bars = None
     ctx.score = None
     ctx.long_score = None
