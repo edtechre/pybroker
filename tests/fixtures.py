@@ -33,7 +33,9 @@ from pybroker.scope import (
     PendingOrderScope,
     PredictionScope,
     StaticScope,
+    TimeframeScope,
 )
+from pybroker.timeframe import TimeframeData
 from pybroker.vect import highv, lowv, sumv
 from typing import NamedTuple
 
@@ -57,6 +59,24 @@ def get_fixture(request, param):
     if isinstance(param, LazyFixture):
         return request.getfixturevalue(param.name)
     return param
+
+
+@pytest.fixture()
+def minute_bars_df():
+    dates = pd.date_range("2020-01-06 09:30", periods=390 * 5, freq="1min")
+    n = len(dates)
+    close = np.linspace(100, 110, n)
+    return pd.DataFrame(
+        {
+            "date": dates,
+            "symbol": ["SPY"] * n,
+            "open": close,
+            "high": close + 0.5,
+            "low": close - 0.5,
+            "close": close,
+            "volume": np.ones(n),
+        }
+    )
 
 
 @pytest.fixture()
@@ -209,6 +229,16 @@ def col_scope(data_source_df):
 @pytest.fixture()
 def ind_scope(ind_data, dates):
     return IndicatorScope(ind_data, dates)
+
+
+@pytest.fixture()
+def declared_timeframes():
+    return frozenset()
+
+
+@pytest.fixture()
+def timeframe_scope(ind_scope, declared_timeframes):
+    return TimeframeScope(TimeframeData(), ind_scope, declared_timeframes)
 
 
 @pytest.fixture()

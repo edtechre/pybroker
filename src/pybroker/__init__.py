@@ -33,6 +33,7 @@ from pybroker.common import (
 )
 from pybroker.context import (
     ExecContext as ExecContext,
+    TimeframeContext as TimeframeContext,
 )
 from pybroker.config import StrategyConfig as StrategyConfig
 from pybroker.data import (
@@ -76,6 +77,7 @@ from pybroker.scope import (
 )
 from pybroker.slippage import RandomSlippageModel as RandomSlippageModel
 from pybroker.strategy import Strategy as Strategy, TestResult as TestResult
+from pybroker.timeframe import TimeframeInterval as TimeframeInterval
 from pybroker.vect import (
     cross as cross,
     highv as highv,

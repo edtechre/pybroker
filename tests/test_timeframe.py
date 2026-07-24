@@ -1,0 +1,760 @@
+"""Tests for multi-timeframe compression."""
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from pybroker.common import DataCol, IndicatorSymbol
+from pybroker.indicator import IndicatorsMixin, indicator
+from pybroker.timeframe import (
+    TimeframeData,
+    build_compressed_symbol_df,
+    compress,
+    compress_symbol_df,
+    format_timeframe_interval,
+    indicator_timeframe_name,
+    infer_base_bar_seconds,
+    is_valid_timeframe_interval,
+    model_timeframe_name,
+    normalize_timeframe_interval,
+    parse_indicator_timeframe_name,
+    parse_model_timeframe_name,
+    slice_compressed_df_by_dates,
+    validate_timeframe_interval,
+)
+
+
+def _daily_bars(dates, o, h, low, c, v=None):
+    n = len(dates)
+    dates = np.array(dates, dtype="datetime64[D]")
+    o = np.asarray(o, dtype=np.float64)
+    h = np.asarray(h, dtype=np.float64)
+    low = np.asarray(low, dtype=np.float64)
+    c = np.asarray(c, dtype=np.float64)
+    v = (
+        np.ones(n, dtype=np.float64)
+        if v is None
+        else np.asarray(v, dtype=np.float64)
+    )
+    return dates, o, h, low, c, v
+
+
+def _minute_sym_df(periods: int = 390) -> pd.DataFrame:
+    """Synthetic 1-minute OHLCV (~one trading day when periods=390)."""
+    dates = pd.date_range("2020-01-06 09:30", periods=periods, freq="1min")
+    close = np.linspace(100, 110, periods)
+    return pd.DataFrame(
+        {
+            DataCol.DATE.value: dates,
+            DataCol.OPEN.value: close,
+            DataCol.HIGH.value: close + 0.5,
+            DataCol.LOW.value: close - 0.5,
+            DataCol.CLOSE.value: close,
+            DataCol.VOLUME.value: np.ones(periods),
+        }
+    )
+
+
+def _ohlcv_from_dates(dates: pd.DatetimeIndex) -> tuple:
+    n = len(dates)
+    close = np.arange(n, dtype=np.float64) + 1
+    o = close
+    h = close + 1
+    low = close - 1
+    v = np.ones(n)
+    return (
+        dates.to_numpy().astype("datetime64[ns]"),
+        o,
+        h,
+        low,
+        close,
+        v,
+    )
+
+
+ONE_MINUTE_BASE_SECONDS = 60.0
+
+CALENDAR_INTERVALS = ("daily", "weekly", "monthly", "quarterly", "yearly")
+DURATION_UNIT_LETTERS = ("s", "m", "h", "d", "w")
+
+
+class TestTimeframeIntervals:
+    @pytest.mark.parametrize("interval", [2, 5, 10])
+    def test_normalize_every_n_bars(self, interval):
+        assert normalize_timeframe_interval(interval) == interval
+
+    @pytest.mark.parametrize("interval", CALENDAR_INTERVALS)
+    def test_normalize_calendar(self, interval):
+        assert normalize_timeframe_interval(interval) == interval
+
+    @pytest.mark.parametrize(
+        "raw,expected",
+        [
+            ("5m", "5m"),
+            ("1h", "1h"),
+            ("30s", "30s"),
+            ("5d", "5d"),
+            ("1w", "1w"),
+            ("5M", "5m"),
+            ("1H", "1h"),
+        ],
+    )
+    def test_normalize_duration(self, raw, expected):
+        assert normalize_timeframe_interval(raw) == expected  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize("letter", DURATION_UNIT_LETTERS)
+    def test_normalize_duration_unit_letters(self, letter):
+        interval = f"1{letter}"
+        assert normalize_timeframe_interval(interval) == interval  # type: ignore[arg-type]
+
+    def test_reject_one(self):
+        with pytest.raises(ValueError, match="n > 1"):
+            normalize_timeframe_interval(1)
+
+    def test_reject_multi_unit_duration(self):
+        with pytest.raises(ValueError, match="Invalid timeframe interval"):
+            normalize_timeframe_interval("1h 30m")  # type: ignore[arg-type]
+
+    def test_reject_long_unit_names(self):
+        with pytest.raises(ValueError, match="Invalid timeframe interval"):
+            normalize_timeframe_interval("5min")  # type: ignore[arg-type]
+        with pytest.raises(ValueError, match="Invalid timeframe interval"):
+            normalize_timeframe_interval("1hour")  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize(
+        "interval,expected",
+        [
+            (5, "5"),
+            ("weekly", "weekly"),
+            ("5m", "5m"),
+            ("1h", "1h"),
+            ("monthly", "monthly"),
+        ],
+    )
+    def test_format_interval(self, interval, expected):
+        assert format_timeframe_interval(interval) == expected
+
+    @pytest.mark.parametrize(
+        "interval,suffix",
+        [
+            (5, "5"),
+            ("weekly", "weekly"),
+            ("5m", "5m"),
+            ("1h", "1h"),
+            ("monthly", "monthly"),
+        ],
+    )
+    def test_indicator_and_parse_names(self, interval, suffix):
+        assert indicator_timeframe_name("sma20", interval) == f"sma20@{suffix}"
+        assert parse_indicator_timeframe_name(f"sma20@{suffix}") == (
+            "sma20",
+            interval,
+        )
+        assert parse_model_timeframe_name(f"m@{suffix}") == ("m", interval)
+
+
+class TestIntervalHierarchyOnOneMinute:
+    """Combinatoric granularity checks on a 1-minute base feed."""
+
+    @pytest.mark.parametrize(
+        "interval",
+        ["weekly", 5, "1h"],
+        ids=["weekly", "every_5_bars", "1h"],
+    )
+    def test_declared_combo_valid_on_one_minute(self, interval):
+        validate_timeframe_interval(interval, ONE_MINUTE_BASE_SECONDS)
+        data = compress_symbol_df(_minute_sym_df(), interval, frozenset())
+        assert len(data.bars.close) > 0
+
+    @pytest.mark.parametrize(
+        "interval",
+        [5, "2m", "5m", "1h", "1d", "daily", "weekly", "monthly"],
+        ids=[
+            "every_5_bars",
+            "2m",
+            "5m",
+            "1h",
+            "1d",
+            "daily",
+            "weekly",
+            "monthly",
+        ],
+    )
+    def test_coarser_intervals_accepted_on_one_minute(self, interval):
+        validate_timeframe_interval(interval, ONE_MINUTE_BASE_SECONDS)
+        assert is_valid_timeframe_interval(interval, ONE_MINUTE_BASE_SECONDS)
+
+    @pytest.mark.parametrize(
+        "interval",
+        ["30s", "1m", "45s"],
+        ids=["30s", "1m", "45s"],
+    )
+    def test_finer_intervals_rejected_on_one_minute(self, interval):
+        with pytest.raises(ValueError, match="Cannot compress"):
+            validate_timeframe_interval(interval, ONE_MINUTE_BASE_SECONDS)
+
+    def test_coarser_intervals_yield_fewer_or_equal_bars(self):
+        sym_df = _minute_sym_df(periods=390)
+        bar_counts = [
+            len(compress_symbol_df(sym_df, interval, frozenset()).bars.close)
+            for interval in (5, "5m", "1h", "weekly")
+        ]
+        every5, five_m, one_h, weekly = bar_counts
+        assert weekly <= one_h <= five_m
+        assert five_m <= every5
+
+    def test_infer_base_bar_seconds_from_one_minute_df(self):
+        sym_df = _minute_sym_df(periods=10)
+        assert infer_base_bar_seconds(sym_df, "") == ONE_MINUTE_BASE_SECONDS
+
+
+class TestCompressAllCalendarIntervals:
+    @pytest.mark.parametrize(
+        "interval,dates",
+        [
+            ("daily", pd.date_range("2020-01-01", periods=5, freq="D")),
+            ("weekly", pd.date_range("2020-01-06", periods=10, freq="B")),
+            ("monthly", pd.date_range("2020-01-01", periods=90, freq="D")),
+            ("quarterly", pd.date_range("2020-01-01", periods=400, freq="D")),
+            ("yearly", pd.date_range("2018-01-01", periods=800, freq="D")),
+        ],
+        ids=["daily", "weekly", "monthly", "quarterly", "yearly"],
+    )
+    def test_compress_calendar_produces_bars(self, interval, dates):
+        dates_arr, o, h, low, c, v = _ohlcv_from_dates(dates)
+        bars, completed = compress(dates_arr, o, h, low, c, v, interval)
+        assert len(bars.close) >= 1
+        assert len(completed) == len(dates)
+        assert bars.open[0] == o[0]
+        assert bars.close[-1] == c[-1]
+
+
+class TestCompressAllDurationIntervals:
+    @pytest.mark.parametrize(
+        "interval,periods,expected_bins",
+        [
+            ("30s", 4, 4),
+            ("1m", 4, 4),
+            ("5m", 10, 2),
+            ("1h", 120, 3),
+        ],
+        ids=["30s", "1m", "5m", "1h"],
+    )
+    def test_compress_duration_on_one_minute_base(
+        self, interval, periods, expected_bins
+    ):
+        dates = pd.date_range("2020-01-01 09:30", periods=periods, freq="1min")
+        dates_arr, o, h, low, c, v = _ohlcv_from_dates(dates)
+        bars, _ = compress(dates_arr, o, h, low, c, v, interval)
+        assert len(bars.close) == expected_bins
+
+    def test_compress_one_day_duration_on_daily_base(self):
+        dates, o, h, low, c, v = _daily_bars(
+            ["2020-01-01", "2020-01-02", "2020-01-03", "2020-01-04"],
+            [1, 2, 3, 4],
+            [2, 3, 4, 5],
+            [0.5, 1.5, 2.5, 3.5],
+            [1.5, 2.5, 3.5, 4.5],
+        )
+        bars, _ = compress(dates, o, h, low, c, v, "1d")
+        assert len(bars.close) == 4
+
+    def test_compress_one_week_duration_on_daily_base(self):
+        dates = pd.date_range("2020-01-06", periods=14, freq="D")
+        dates_arr, o, h, low, c, v = _ohlcv_from_dates(dates)
+        bars, _ = compress(dates_arr, o, h, low, c, v, "1w")
+        assert len(bars.close) == 3
+
+
+class TestValidateTimeframeGranularity:
+    @pytest.mark.parametrize(
+        "base_bar_seconds,interval",
+        [
+            (60, "5m"),
+            (60, "1h"),
+            (60, 5),
+            (300, "1h"),
+            (86400, "weekly"),
+            (86400, 5),
+            (86400, "monthly"),
+        ],
+        ids=[
+            "1m_to_5m",
+            "1m_to_1h",
+            "1m_to_5bars",
+            "5m_to_1h",
+            "daily_to_weekly",
+            "daily_to_5bars",
+            "daily_to_monthly",
+        ],
+    )
+    def test_validate_timeframe_interval_accepts_valid(
+        self, base_bar_seconds, interval
+    ):
+        validate_timeframe_interval(interval, base_bar_seconds)
+        assert is_valid_timeframe_interval(interval, base_bar_seconds)
+
+    @pytest.mark.parametrize(
+        "base_bar_seconds,interval",
+        [
+            (86400, "daily"),
+            (86400, "1m"),
+            (86400, "1h"),
+            (604800, "daily"),
+            (604800, "weekly"),
+            (28 * 86400, "weekly"),
+            (300, "1m"),
+        ],
+        ids=[
+            "daily_to_daily",
+            "daily_to_1m",
+            "daily_to_1h",
+            "weekly_to_daily",
+            "weekly_to_weekly",
+            "monthly_to_weekly",
+            "5m_to_1m",
+        ],
+    )
+    def test_validate_timeframe_interval_rejects_invalid(
+        self, base_bar_seconds, interval
+    ):
+        with pytest.raises(ValueError, match="Cannot compress"):
+            validate_timeframe_interval(interval, base_bar_seconds)
+
+    def test_validate_weekly_on_daily(self):
+        validate_timeframe_interval("weekly", 86400)
+
+    def test_reject_daily_on_daily(self):
+        with pytest.raises(ValueError, match="Cannot compress daily bars"):
+            validate_timeframe_interval("daily", 86400)
+
+    def test_reject_weekly_on_weekly(self):
+        with pytest.raises(ValueError, match="Cannot compress weekly bars"):
+            validate_timeframe_interval("weekly", 604800)
+
+    def test_reject_weekly_on_monthly(self):
+        with pytest.raises(ValueError, match="Cannot compress monthly bars"):
+            validate_timeframe_interval("weekly", 28 * 86400)
+
+    def test_reject_daily_on_weekly(self):
+        with pytest.raises(ValueError, match="Cannot compress weekly bars"):
+            validate_timeframe_interval("daily", 604800)
+
+
+class TestCompressEveryN:
+    def test_ohlcv_aggregation(self):
+        dates, o, h, low, c, v = _daily_bars(
+            ["2020-01-01", "2020-01-02", "2020-01-03", "2020-01-04"],
+            [1, 2, 3, 4],
+            [2, 3, 4, 5],
+            [0.5, 1.5, 2.5, 3.5],
+            [1.5, 2.5, 3.5, 4.5],
+            [10, 20, 30, 40],
+        )
+        bars, completed = compress(dates, o, h, low, c, v, 2)
+        assert len(bars.close) == 2
+        assert bars.open[0] == 1
+        assert bars.high[0] == 3
+        assert bars.low[0] == 0.5
+        assert bars.close[0] == 2.5
+        assert bars.volume[0] == 30
+        assert bars.open[1] == 3
+        assert bars.close[1] == 4.5
+        assert bars.volume[1] == 70
+        assert list(completed) == [-1, 0, 0, 1]
+
+    def test_single_bar_bins(self):
+        dates, o, h, low, c, v = _daily_bars(
+            ["2020-01-01", "2020-01-02"],
+            [1, 2],
+            [1, 2],
+            [1, 2],
+            [1, 2],
+        )
+        bars, completed = compress(dates, o, h, low, c, v, 2)
+        assert len(bars.close) == 1
+        assert bars.open[0] == 1
+        assert bars.close[0] == 2
+        assert completed[0] == -1
+        assert completed[1] == 0
+
+    def test_final_partial_bin_invisible(self):
+        dates, o, h, low, c, v = _daily_bars(
+            ["2020-01-01", "2020-01-02", "2020-01-03"],
+            [1, 2, 3],
+            [1, 2, 3],
+            [1, 2, 3],
+            [1, 2, 3],
+        )
+        bars, completed = compress(dates, o, h, low, c, v, 2)
+        assert len(bars.close) == 2
+        assert completed[-1] == 0
+        assert completed[-1] != 1
+
+    def test_float_dtype(self):
+        dates, o, h, low, c, v = _daily_bars(
+            ["2020-01-01"], [1.5], [2.5], [0.5], [1.0]
+        )
+        bars, _ = compress(dates, o, h, low, c, v, 2)
+        assert bars.close.dtype == np.float64
+
+    def test_nan_volume(self):
+        dates, o, h, low, c, _ = _daily_bars(
+            ["2020-01-01", "2020-01-02"],
+            [1, 2],
+            [1, 2],
+            [1, 2],
+            [1, 2],
+        )
+        v = np.array([np.nan, 1.0])
+        bars, _ = compress(dates, o, h, low, c, v, 2)
+        assert np.isnan(bars.volume[0])
+
+
+class TestCompressWeekly:
+    def test_iso_week_alignment(self):
+        # Mon 2020-01-06 through Fri 2020-01-10 -> one week
+        dates = np.array(
+            [
+                "2020-01-06",
+                "2020-01-07",
+                "2020-01-08",
+                "2020-01-09",
+                "2020-01-10",
+            ],
+            dtype="datetime64[D]",
+        )
+        o = np.array([1, 2, 3, 4, 5], dtype=np.float64)
+        h = o + 1
+        low = o - 0.5
+        c = o + 0.5
+        v = np.ones(5)
+        bars, completed = compress(dates, o, h, low, c, v, "weekly")
+        assert len(bars.close) == 1
+        assert bars.open[0] == 1
+        assert bars.close[0] == 5.5
+        assert bars.high[0] == 6
+        assert bars.low[0] == 0.5
+        assert bars.volume[0] == 5
+        assert list(completed) == [-1, -1, -1, -1, 0]
+
+    def test_holiday_split_week(self):
+        # Mon-Thu only (4 bars) still one weekly bin
+        dates = np.array(
+            ["2020-01-06", "2020-01-07", "2020-01-08", "2020-01-09"],
+            dtype="datetime64[D]",
+        )
+        c = np.array([10, 11, 12, 13], dtype=np.float64)
+        o = c - 1
+        h = c + 1
+        low = c - 2
+        v = np.ones(4)
+        bars, completed = compress(dates, o, h, low, c, v, "weekly")
+        assert len(bars.close) == 1
+        assert bars.close[0] == 13
+        assert completed[-1] == 0
+
+    def test_mid_week_start(self):
+        # Wed-Fri then Mon-Tue of next week
+        dates = np.array(
+            [
+                "2020-01-08",
+                "2020-01-09",
+                "2020-01-10",
+                "2020-01-13",
+                "2020-01-14",
+            ],
+            dtype="datetime64[D]",
+        )
+        c = np.arange(5, dtype=np.float64)
+        o = c
+        h = c + 1
+        low = c - 1
+        v = np.ones(5)
+        bars, completed = compress(dates, o, h, low, c, v, "weekly")
+        assert len(bars.close) == 2
+        assert bars.close[0] == 2
+        assert bars.close[1] == 4
+        assert completed[2] == 0
+        assert completed[4] == 1
+
+    def test_completed_at_bin_boundary(self):
+        dates = np.array(
+            ["2020-01-06", "2020-01-07", "2020-01-13"],
+            dtype="datetime64[D]",
+        )
+        c = np.array([1, 2, 3], dtype=np.float64)
+        o = h = low = c
+        v = np.ones(3)
+        bars, completed = compress(dates, o, h, low, c, v, "weekly")
+        assert completed[1] == 0
+        assert bars.close[completed[1]] == 2
+        assert completed[2] == 1
+        assert bars.close[completed[2]] == 3
+
+    def test_pandas_resample_reference(self):
+        dates = pd.date_range("2020-01-06", periods=10, freq="B")
+        n = len(dates)
+        df = pd.DataFrame(
+            {
+                "open": np.arange(n, dtype=float),
+                "high": np.arange(n, dtype=float) + 1,
+                "low": np.arange(n, dtype=float) - 1,
+                "close": np.arange(n, dtype=float) + 0.5,
+                "volume": np.ones(n),
+            },
+            index=dates,
+        )
+        ref = (
+            df.resample("W-FRI")
+            .agg(
+                {
+                    "open": "first",
+                    "high": "max",
+                    "low": "min",
+                    "close": "last",
+                    "volume": "sum",
+                }
+            )
+            .dropna()
+        )
+        bars, _ = compress(
+            df.index.to_numpy().astype("datetime64[ns]"),
+            df["open"].to_numpy(),
+            df["high"].to_numpy(),
+            df["low"].to_numpy(),
+            df["close"].to_numpy(),
+            df["volume"].to_numpy(),
+            "weekly",
+        )
+        assert len(bars.close) == len(ref)
+        np.testing.assert_array_almost_equal(bars.open, ref["open"].to_numpy())
+        np.testing.assert_array_almost_equal(bars.high, ref["high"].to_numpy())
+        np.testing.assert_array_almost_equal(bars.low, ref["low"].to_numpy())
+        np.testing.assert_array_almost_equal(
+            bars.close, ref["close"].to_numpy()
+        )
+        np.testing.assert_array_almost_equal(
+            bars.volume, ref["volume"].to_numpy()
+        )
+
+
+class TestInferBaseBarSeconds:
+    def test_from_timeframe_string(self):
+        df = pd.DataFrame()
+        assert infer_base_bar_seconds(df, "1h") == 3600
+        assert infer_base_bar_seconds(df, "1d") == 86400
+
+    def test_from_dataframe(self):
+        df = pd.DataFrame(
+            {
+                "date": pd.date_range("2020-01-01", periods=5, freq="D"),
+                "symbol": ["SPY"] * 5,
+            }
+        )
+        assert infer_base_bar_seconds(df, "") == 86400
+
+    def test_prefers_bar_spacing_over_timeframe_string(self):
+        df = pd.DataFrame(
+            {
+                "date": pd.date_range("2020-01-01", periods=5, freq="D"),
+                "symbol": ["SPY"] * 5,
+            }
+        )
+        assert infer_base_bar_seconds(df, "1h") == 86400
+
+
+class TestCompressDuration:
+    def test_five_minute_bins(self):
+        dates = pd.date_range("2020-01-01 09:30", periods=10, freq="1min")
+        n = len(dates)
+        close = np.arange(n, dtype=np.float64) + 1
+        o = close
+        h = close + 1
+        low = close - 1
+        v = np.ones(n)
+        bars, completed = compress(
+            dates.to_numpy().astype("datetime64[ns]"),
+            o,
+            h,
+            low,
+            close,
+            v,
+            "5m",
+        )
+        assert len(bars.close) == 2
+        assert bars.open[0] == 1
+        assert bars.close[0] == 5
+        assert bars.open[1] == 6
+        assert bars.close[1] == 10
+        assert completed[-1] == 1
+
+
+class TestCompressSymbolDfValidation:
+    def _daily_sym_df(self):
+        dates = pd.date_range("2020-01-01", periods=5, freq="D")
+        return pd.DataFrame(
+            {
+                DataCol.DATE.value: dates,
+                DataCol.OPEN.value: np.arange(5, dtype=float),
+                DataCol.HIGH.value: np.arange(5, dtype=float) + 1,
+                DataCol.LOW.value: np.arange(5, dtype=float) - 1,
+                DataCol.CLOSE.value: np.arange(5, dtype=float) + 0.5,
+                DataCol.VOLUME.value: np.ones(5),
+            }
+        )
+
+    def test_rejects_invalid_calendar_interval(self):
+        with pytest.raises(ValueError, match="Cannot compress daily bars"):
+            compress_symbol_df(self._daily_sym_df(), "daily", frozenset())
+
+    def test_allows_valid_calendar_interval(self):
+        data = compress_symbol_df(self._daily_sym_df(), "weekly", frozenset())
+        assert len(data.bars.close) > 0
+
+    def test_compress_symbol_df_valid_duration(self):
+        dates = pd.date_range("2020-01-01 09:30", periods=10, freq="1min")
+        sym_df = pd.DataFrame(
+            {
+                DataCol.DATE.value: dates,
+                DataCol.OPEN.value: np.arange(10, dtype=float),
+                DataCol.HIGH.value: np.arange(10, dtype=float) + 1,
+                DataCol.LOW.value: np.arange(10, dtype=float) - 1,
+                DataCol.CLOSE.value: np.arange(10, dtype=float) + 0.5,
+                DataCol.VOLUME.value: np.ones(10),
+            }
+        )
+        data = compress_symbol_df(sym_df, "5m", frozenset())
+        assert len(data.bars.close) == 2
+
+
+class TestModelTimeframeNaming:
+    def test_model_timeframe_name(self):
+        assert model_timeframe_name("m", "weekly") == "m@weekly"
+
+    def test_parse_model_timeframe_name(self):
+        assert parse_model_timeframe_name("m@weekly") == ("m", "weekly")
+        assert parse_model_timeframe_name("m") == ("m", None)
+
+
+class TestBuildCompressedSymbolDf:
+    def test_build_and_slice_by_dates(self):
+        sym = "SPY"
+        dates = np.array(
+            ["2020-01-06", "2020-01-07", "2020-01-08", "2020-01-09"],
+            dtype="datetime64[D]",
+        )
+        n = len(dates)
+        close = np.arange(n, dtype=np.float64) + 1
+        df = pd.DataFrame(
+            {
+                DataCol.SYMBOL.value: [sym] * n,
+                DataCol.DATE.value: dates,
+                DataCol.OPEN.value: close,
+                DataCol.HIGH.value: close + 1,
+                DataCol.LOW.value: close - 1,
+                DataCol.CLOSE.value: close,
+                DataCol.VOLUME.value: np.ones(n),
+            }
+        )
+        compressed = compress_symbol_df(df, 2, frozenset())
+        ind_series = pd.Series(
+            np.array([10.0, 20.0]), index=compressed.bars.dates
+        )
+        built = build_compressed_symbol_df(
+            sym,
+            2,
+            compressed,
+            {IndicatorSymbol("sma@2", sym): ind_series},
+            ("sma",),
+            frozenset(),
+        )
+        assert list(built.columns) == [
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "sma",
+        ]
+        sliced = slice_compressed_df_by_dates(built, dates[:2])
+        assert len(sliced) == 1
+
+
+class TestTimeframeIndicatorCompute:
+    def test_ind_timeframe_matches_hand_compressed(self):
+        def sma(bar_data, period):
+            close = bar_data.close
+            out = np.full(len(close), np.nan)
+            for i in range(period - 1, len(close)):
+                out[i] = np.mean(close[i - period + 1 : i + 1])
+            return out
+
+        from pybroker.scope import StaticScope
+
+        StaticScope.__instance = None
+        sma_ind = indicator("sma20", sma, period=5)
+        sym = "SPY"
+        dates = np.array(
+            [
+                "2020-01-06",
+                "2020-01-07",
+                "2020-01-08",
+                "2020-01-09",
+                "2020-01-10",
+            ],
+            dtype="datetime64[D]",
+        )
+        n = len(dates)
+        close = np.arange(n, dtype=np.float64) + 1
+        df = pd.DataFrame(
+            {
+                DataCol.SYMBOL.value: [sym] * n,
+                DataCol.DATE.value: dates,
+                DataCol.OPEN.value: close,
+                DataCol.HIGH.value: close + 1,
+                DataCol.LOW.value: close - 1,
+                DataCol.CLOSE.value: close,
+                DataCol.VOLUME.value: np.ones(n),
+            }
+        )
+        timeframe_data = TimeframeData()
+        sym_df = df.reset_index(drop=True)
+        timeframe_data.compressed[(sym, "weekly")] = compress_symbol_df(
+            sym_df, "weekly", frozenset()
+        )
+        mixin = IndicatorsMixin()
+        result = mixin.compute_indicators(
+            df=df,
+            indicator_syms=[
+                IndicatorSymbol(sma_ind.timeframe("weekly").name, sym)
+            ],
+            cache_date_fields=None,
+            disable_parallel_indicators=True,
+            timeframe_data=timeframe_data,
+        )
+        hand = sma_ind(
+            _compressed_to_bar_data(
+                timeframe_data.compressed[(sym, "weekly")].bars
+            )
+        )
+        key = IndicatorSymbol(sma_ind.timeframe("weekly").name, sym)
+        np.testing.assert_array_almost_equal(
+            result[key].to_numpy(), hand.to_numpy()
+        )
+
+
+def _compressed_to_bar_data(bars):
+    from pybroker.common import BarData
+
+    return BarData(
+        date=bars.dates,
+        open=bars.open,
+        high=bars.high,
+        low=bars.low,
+        close=bars.close,
+        volume=bars.volume,
+        vwap=None,
+        **bars.custom,
+    )

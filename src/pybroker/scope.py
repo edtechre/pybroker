@@ -20,6 +20,14 @@ from pybroker.common import (
     to_decimal,
 )
 from pybroker.log import Logger
+from pybroker.timeframe import (
+    TimeframeData,
+    TimeframeInterval,
+    indicator_timeframe_name,
+    model_timeframe_name,
+    normalize_timeframe_interval,
+    parse_indicator_timeframe_name,
+)
 from collections import defaultdict
 from decimal import Decimal
 from diskcache import Cache
@@ -385,15 +393,249 @@ class IndicatorScope:
         """
         ind_sym = IndicatorSymbol(name, symbol)
         if ind_sym in self._sym_inds:
-            return self._sym_inds[ind_sym][:end_index]
+            cached = self._sym_inds[ind_sym]
+            return cached if end_index is None else cached[:end_index]
         if ind_sym not in self._indicator_data:
             raise ValueError(f"Indicator {name!r} not found for {symbol}.")
         ind_series = self._indicator_data[ind_sym]
-        ind_data = ind_series[
-            ind_series.index.isin(self._filter_dates)
-        ].to_numpy(copy=True)
+        _, token = parse_indicator_timeframe_name(name)
+        if token is not None:
+            ind_data = ind_series.to_numpy(copy=True)
+        else:
+            ind_data = ind_series[
+                ind_series.index.isin(self._filter_dates)
+            ].to_numpy(copy=True)
         self._sym_inds[ind_sym] = ind_data
-        return ind_data[:end_index]
+        return ind_data if end_index is None else ind_data[:end_index]
+
+    def fetch_full(self, symbol: str, name: str) -> NDArray[np.float64]:
+        """Fetches the full indicator array without truncation."""
+        return self.fetch(symbol, name, end_index=None)
+
+
+class TimeframeScope:
+    """Serves compressed bar and indicator data through alignment maps."""
+
+    def __init__(
+        self,
+        timeframe_data: TimeframeData,
+        ind_scope: IndicatorScope,
+        declared_timeframes: frozenset[TimeframeInterval],
+        models: Optional[Mapping[ModelSymbol, TrainedModel]] = None,
+    ):
+        self._timeframe_data = timeframe_data
+        self._ind_scope = ind_scope
+        self._declared_timeframes = declared_timeframes
+        self._models = models or {}
+        self._scope = StaticScope.instance()
+        self._bar_cache: dict[
+            tuple[str, TimeframeInterval, str], NDArray[Any]
+        ] = {}
+        self._sym_inputs: dict[ModelSymbol, pd.DataFrame] = {}
+        self._sym_preds: dict[ModelSymbol, NDArray] = {}
+
+    def is_declared(self, interval: TimeframeInterval) -> bool:
+        interval = normalize_timeframe_interval(interval)
+        return interval in self._declared_timeframes
+
+    def completed_index(
+        self, symbol: str, interval: TimeframeInterval, end_index: int
+    ) -> int:
+        interval = normalize_timeframe_interval(interval)
+        key = (symbol, interval)
+        if key not in self._timeframe_data.compressed:
+            raise ValueError(
+                f"Timeframe {interval!r} data not found for {symbol!r}."
+            )
+        completed = self._timeframe_data.compressed[key].completed
+        return int(completed[end_index - 1])
+
+    def fetch_bar(
+        self,
+        symbol: str,
+        interval: TimeframeInterval,
+        col: str,
+        end_index: int,
+    ) -> NDArray[Any]:
+        interval = normalize_timeframe_interval(interval)
+        cache_key = (symbol, interval, col)
+        data: NDArray[Any]
+        if cache_key not in self._bar_cache:
+            key = (symbol, interval)
+            if key not in self._timeframe_data.compressed:
+                raise ValueError(
+                    f"Timeframe {interval!r} data not found for {symbol!r}."
+                )
+            bars = self._timeframe_data.compressed[key].bars
+            if col == DataCol.DATE.value:
+                data = bars.dates
+            elif col == DataCol.OPEN.value:
+                data = bars.open
+            elif col == DataCol.HIGH.value:
+                data = bars.high
+            elif col == DataCol.LOW.value:
+                data = bars.low
+            elif col == DataCol.CLOSE.value:
+                data = bars.close
+            elif col == DataCol.VOLUME.value:
+                data = bars.volume
+            elif col in bars.custom:
+                data = bars.custom[col]
+            else:
+                raise ValueError(
+                    f"Column {col!r} not found for timeframe {interval!r}."
+                )
+            self._bar_cache[cache_key] = data
+        data = self._bar_cache[cache_key]
+        idx = self.completed_index(symbol, interval, end_index)
+        if idx < 0:
+            return np.array([], dtype=data.dtype)
+        return data[: idx + 1]
+
+    def fetch_indicator(
+        self,
+        symbol: str,
+        interval: TimeframeInterval,
+        base_name: str,
+        end_index: int,
+    ) -> NDArray[np.float64]:
+        interval = normalize_timeframe_interval(interval)
+        name = indicator_timeframe_name(base_name, interval)
+        values = self._ind_scope.fetch_full(symbol, name)
+        idx = self.completed_index(symbol, interval, end_index)
+        if idx < 0:
+            return np.array([], dtype=np.float64)
+        return values[: idx + 1]
+
+    def fetch_input(
+        self,
+        symbol: str,
+        interval: TimeframeInterval,
+        base_model_name: str,
+        end_index: int,
+    ) -> pd.DataFrame:
+        interval = normalize_timeframe_interval(interval)
+        df = self._prepare_full_input(symbol, interval, base_model_name)
+        idx = self.completed_index(symbol, interval, end_index)
+        if idx < 0:
+            return df.iloc[0:0]
+        return df.iloc[: idx + 1]
+
+    def fetch_preds(
+        self,
+        symbol: str,
+        interval: TimeframeInterval,
+        base_model_name: str,
+        end_index: int,
+    ) -> NDArray:
+        interval = normalize_timeframe_interval(interval)
+        model_sym = ModelSymbol(
+            model_timeframe_name(base_model_name, interval), symbol
+        )
+        if model_sym not in self._sym_preds:
+            input_ = self._prepare_full_input(
+                symbol, interval, base_model_name
+            )
+            if input_.empty:
+                raise ValueError(
+                    f"No input data found for model {base_model_name!r}. "
+                    "Consider passing input_data_fn to pybroker#model() if "
+                    "custom columns were registered."
+                )
+            if model_sym not in self._models:
+                raise ValueError(
+                    f"Model {base_model_name!r} not found for {symbol}."
+                )
+            trained_model = self._models[model_sym]
+            if trained_model.predict_fn is not None:
+                pred = trained_model.predict_fn(trained_model.instance, input_)
+            else:
+                predict_fn = getattr(trained_model.instance, "predict", None)
+                if predict_fn is not None and callable(predict_fn):
+                    pred = trained_model.instance.predict(input_)
+                else:
+                    raise ValueError(
+                        f"Model instance trained for {model_sym.model_name!r} "
+                        "does not define a predict function. Please pass a "
+                        "predict_fn to pybroker.model()."
+                    )
+            if len(pred.shape) > 1:
+                pred = np.squeeze(pred)
+            self._sym_preds[model_sym] = pred
+        pred = self._sym_preds[model_sym]
+        idx = self.completed_index(symbol, interval, end_index)
+        if idx < 0:
+            return np.array([], dtype=pred.dtype)
+        return pred[: idx + 1]
+
+    def _prepare_full_input(
+        self,
+        symbol: str,
+        interval: TimeframeInterval,
+        base_model_name: str,
+    ) -> pd.DataFrame:
+        interval = normalize_timeframe_interval(interval)
+        model_sym = ModelSymbol(
+            model_timeframe_name(base_model_name, interval), symbol
+        )
+        if model_sym in self._sym_inputs:
+            return self._sym_inputs[model_sym]
+        if not self._scope.has_model_source(base_model_name):
+            raise ValueError(f"Model {base_model_name!r} not found.")
+        source = self._scope.get_model_source(base_model_name)
+        df = self._build_compressed_df(symbol, interval, source)
+        if model_sym not in self._models:
+            raise ValueError(
+                f"Model {base_model_name!r} not found for {symbol}."
+            )
+        trained_model = self._models[model_sym]
+        if trained_model.input_cols is not None:
+            for input_col in trained_model.input_cols:
+                if input_col not in df.columns:
+                    raise ValueError(
+                        f"Missing column {input_col!r} for input data to "
+                        f"model {model_sym.model_name!r}."
+                    )
+            df = df[list(trained_model.input_cols)]
+        if not trained_model.input_cols or source._input_data_fn:
+            df = source.prepare_input_data(df)
+        self._sym_inputs[model_sym] = df
+        return df
+
+    def _build_compressed_df(
+        self,
+        symbol: str,
+        interval: TimeframeInterval,
+        source,
+    ) -> pd.DataFrame:
+        interval = normalize_timeframe_interval(interval)
+        key = (symbol, interval)
+        if key not in self._timeframe_data.compressed:
+            raise ValueError(
+                f"Timeframe {interval!r} data not found for {symbol!r}."
+            )
+        bars = self._timeframe_data.compressed[key].bars
+        data: dict[str, NDArray[Any]] = {
+            DataCol.DATE.value: bars.dates,
+            DataCol.OPEN.value: bars.open,
+            DataCol.HIGH.value: bars.high,
+            DataCol.LOW.value: bars.low,
+            DataCol.CLOSE.value: bars.close,
+            DataCol.VOLUME.value: bars.volume,
+        }
+        for col in self._scope.custom_data_cols:
+            if col in bars.custom:
+                data[col] = bars.custom[col]
+        for ind_name in source.indicators:
+            data[ind_name] = self._ind_scope.fetch_full(
+                symbol, indicator_timeframe_name(ind_name, interval)
+            )
+        return pd.DataFrame(data)
+
+    def clear_cache(self):
+        self._bar_cache.clear()
+        self._sym_inputs.clear()
+        self._sym_preds.clear()
 
 
 class ModelInputScope:

@@ -17,6 +17,14 @@ from pybroker.common import BarData, DataCol, IndicatorSymbol
 from pybroker.parallel import parallel
 from pybroker.eval import iqr, relative_entropy
 from pybroker.scope import StaticScope
+from pybroker.timeframe import (
+    CompressedBars,
+    TimeframeData,
+    TimeframeInterval,
+    indicator_timeframe_name,
+    normalize_timeframe_interval,
+    parse_indicator_timeframe_name,
+)
 from pybroker.vect import highv, lowv, returnv
 from collections import defaultdict
 from dataclasses import asdict
@@ -119,30 +127,49 @@ class Indicator:
     def __str__(self):
         return f"Indicator({self.name!r}, {self._kwargs})"
 
+    def timeframe(self, interval: TimeframeInterval) -> "TimeframeIndicator":
+        """Returns a timeframe-bound variant computed on compressed bars."""
+        return TimeframeIndicator(self, interval)
 
-def indicator(
-    name: str, fn: Callable[..., NDArray[np.float64]], **kwargs
-) -> Indicator:
-    r"""Creates an :class:`.Indicator` instance and registers it globally with
-    ``name``.
 
-    Args:
-        name: Name for referencing the indicator globally.
-        fn: ``Callable[[BarData, ...], NDArray[float]]`` used to compute the
-            series of indicator values.
-        \**kwargs: Additional arguments to pass to ``fn``.
+class TimeframeIndicator:
+    """Lightweight wrapper binding an indicator to a compression timeframe."""
 
-    Returns:
-        :class:`.Indicator` instance.
-    """
-    scope = StaticScope.instance()
-    indicator = Indicator(name, fn, kwargs)
-    scope.set_indicator(indicator)
-    return indicator
+    def __init__(self, base: Indicator, interval: TimeframeInterval):
+        self.base = base
+        self.interval = normalize_timeframe_interval(interval)
+        self.name = indicator_timeframe_name(base.name, self.interval)
+        self._kwargs = base._kwargs
+
+    def __call__(self, data: Union[BarData, pd.DataFrame]) -> pd.Series:
+        return self.base(data)
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return (
+            f"TimeframeIndicator({self.base.name!r}, "
+            f"{self.interval!r}, {self._kwargs})"
+        )
+
+
+def _compressed_to_bar_data(bars: CompressedBars) -> BarData:
+    return BarData(
+        date=bars.dates,
+        open=bars.open,
+        high=bars.high,
+        low=bars.low,
+        close=bars.close,
+        volume=bars.volume,
+        vwap=None,
+        **bars.custom,
+    )
 
 
 def _decorate_indicator_fn(ind_name: str):
-    fn = StaticScope.instance().get_indicator(ind_name).__call__
+    base_name, _ = parse_indicator_timeframe_name(ind_name)
+    fn = StaticScope.instance().get_indicator(base_name).__call__
 
     def decorated_indicator_fn(
         symbol: str,
@@ -172,6 +199,27 @@ def _decorate_indicator_fn(ind_name: str):
     return decorated_indicator_fn
 
 
+def indicator(
+    name: str, fn: Callable[..., NDArray[np.float64]], **kwargs
+) -> Indicator:
+    r"""Creates an :class:`.Indicator` instance and registers it globally with
+    ``name``.
+
+    Args:
+        name: Name for referencing the indicator globally.
+        fn: ``Callable[[BarData, ...], NDArray[float]]`` used to compute the
+            series of indicator values.
+        \**kwargs: Additional arguments to pass to ``fn``.
+
+    Returns:
+        :class:`.Indicator` instance.
+    """
+    scope = StaticScope.instance()
+    ind = Indicator(name, fn, kwargs)
+    scope.set_indicator(ind)
+    return ind
+
+
 class IndicatorsMixin:
     """Mixin implementing indicator related functionality."""
 
@@ -181,6 +229,7 @@ class IndicatorsMixin:
         indicator_syms: Iterable[IndicatorSymbol],
         cache_date_fields: Optional[CacheDateFields],
         disable_parallel_indicators: bool,
+        timeframe_data: Optional[TimeframeData] = None,
     ) -> dict[IndicatorSymbol, pd.Series]:
         """Computes indicator data for the provided
         :class:`pybroker.common.IndicatorSymbol` pairs.
@@ -233,7 +282,10 @@ class IndicatorsMixin:
             }
         for i, (ind_sym, series) in enumerate(
             self._run_indicators(
-                sym_data, uncached_ind_syms, disable_parallel_indicators
+                sym_data,
+                uncached_ind_syms,
+                disable_parallel_indicators,
+                timeframe_data,
             )
         ):
             indicator_data[ind_sym] = series
@@ -292,6 +344,7 @@ class IndicatorsMixin:
         sym_data: Mapping[str, Mapping[str, Optional[NDArray]]],
         ind_syms: Collection[IndicatorSymbol],
         disable_parallel_indicators: bool,
+        timeframe_data: Optional[TimeframeData] = None,
     ) -> Iterable[tuple[IndicatorSymbol, pd.Series]]:
         fns = {}
         for ind_name, _ in ind_syms:
@@ -301,6 +354,32 @@ class IndicatorsMixin:
         scope = StaticScope.instance()
 
         def args_fn(ind_name, sym):
+            _, token = parse_indicator_timeframe_name(ind_name)
+            if token is not None:
+                if timeframe_data is None:
+                    raise ValueError(
+                        f"Timeframe indicator {ind_name!r} requires compressed "
+                        "data. Call Strategy.set_timeframes() first."
+                    )
+                key = (sym, token)
+                if key not in timeframe_data.compressed:
+                    raise ValueError(
+                        f"Missing compressed data for {sym!r} and "
+                        f"timeframe {token!r}."
+                    )
+                bars = timeframe_data.compressed[key].bars
+                return {
+                    "symbol": sym,
+                    "ind_name": ind_name,
+                    "date": bars.dates,
+                    "open": bars.open,
+                    "high": bars.high,
+                    "low": bars.low,
+                    "close": bars.close,
+                    "volume": bars.volume,
+                    "vwap": None,
+                    "custom_col_data": dict(bars.custom),
+                }
             return {
                 "symbol": sym,
                 "ind_name": ind_name,

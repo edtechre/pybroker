@@ -19,6 +19,8 @@ from unittest.mock import patch
 def ctx(
     col_scope,
     ind_scope,
+    timeframe_scope,
+    declared_timeframes,
     input_scope,
     pred_scope,
     pending_order_scope,
@@ -29,6 +31,8 @@ def ctx(
         portfolio=None,
         col_scope=col_scope,
         ind_scope=ind_scope,
+        timeframe_scope=timeframe_scope,
+        declared_timeframes=declared_timeframes,
         input_scope=input_scope,
         pred_scope=pred_scope,
         pending_order_scope=pending_order_scope,

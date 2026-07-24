@@ -20,6 +20,15 @@ from pybroker.common import (
 from pybroker.indicator import Indicator
 from pybroker.parallel import parallel
 from pybroker.scope import StaticScope
+from pybroker.timeframe import (
+    TimeframeData,
+    TimeframeInterval,
+    build_compressed_symbol_df,
+    model_timeframe_name,
+    normalize_timeframe_interval,
+    parse_model_timeframe_name,
+    slice_compressed_df_by_dates,
+)
 from dataclasses import asdict
 from datetime import datetime
 from joblib import delayed
@@ -93,6 +102,27 @@ class ModelSource:
                     )
             return df[[*self.indicators]]
         return self._input_data_fn(df)
+
+    def timeframe(self, interval: TimeframeInterval) -> "TimeframeModelSource":
+        """Returns a timeframe-bound variant trained on compressed bars."""
+        return TimeframeModelSource(self, interval)
+
+
+class TimeframeModelSource:
+    """Lightweight wrapper binding a model source to a compression timeframe."""
+
+    def __init__(self, base: ModelSource, interval: TimeframeInterval):
+        self.base = base
+        self.interval = normalize_timeframe_interval(interval)
+        self.name = model_timeframe_name(base.name, self.interval)
+        self.indicators = base.indicators
+        self.pooled = base.pooled
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return f"TimeframeModelSource({self.base.name!r}, {self.interval!r})"
 
 
 class ModelLoader(ModelSource):
@@ -456,6 +486,7 @@ class ModelsMixin:
         pooled_model_groups: Optional[
             Mapping[tuple[str, int], frozenset[str]]
         ] = None,
+        timeframe_data: Optional[TimeframeData] = None,
     ) -> dict[ModelSymbol, TrainedModel]:
         """Trains models for the provided :class:`pybroker.common.ModelSymbol`
         pairs.
@@ -516,7 +547,10 @@ class ModelsMixin:
                 continue
             if not group_model_syms & uncached_model_sym_set:
                 continue
-            source = scope.get_model_source(model_name)
+            base_name, token = parse_model_timeframe_name(model_name)
+            if token is not None:
+                continue
+            source = scope.get_model_source(base_name)
             if not isinstance(source, ModelTrainer) or not source.pooled:
                 raise TypeError(
                     f"ModelSource {model_name!r} is not a pooled ModelTrainer."
@@ -547,8 +581,35 @@ class ModelsMixin:
             if model_sym in models or model_sym in covered_pooled_model_syms:
                 continue
             model_name, sym = model_sym
-            source = scope.get_model_source(model_name)
-            if isinstance(source, ModelTrainer):
+            base_name, token = parse_model_timeframe_name(model_name)
+            source = scope.get_model_source(base_name)
+            if token is not None:
+                if isinstance(source, ModelLoader):
+                    raise ValueError(
+                        f"Pretrained model {base_name!r} does not support "
+                        f".timeframe({token!r})."
+                    )
+                if source.pooled:
+                    raise ValueError(
+                        f"Pooled model {base_name!r} does not support "
+                        f".timeframe({token!r})."
+                    )
+                if timeframe_data is None:
+                    raise ValueError(
+                        f"Timeframe data required to train model {model_name!r}."
+                    )
+                sym_train_data, sym_test_data = (
+                    self._prepare_timeframe_symbol_data(
+                        sym,
+                        token,
+                        train_dates,
+                        test_dates,
+                        indicator_data,
+                        source,
+                        timeframe_data,
+                    )
+                )
+            elif isinstance(source, ModelTrainer):
                 if source.pooled:
                     continue
                 sym_train_data = self._slice_by_symbol(sym, train_data)
@@ -563,6 +624,10 @@ class ModelsMixin:
                         sym_test_data[ind_name] = ind_series[
                             ind_series.index.isin(test_dates)
                         ].values
+            else:
+                sym_train_data = pd.DataFrame()
+                sym_test_data = pd.DataFrame()
+            if isinstance(source, ModelTrainer):
                 trainer_tasks.append(
                     _TrainerTask(
                         pooled=False,
@@ -575,6 +640,11 @@ class ModelsMixin:
                     )
                 )
             elif isinstance(source, ModelLoader):
+                if token is not None:
+                    raise ValueError(
+                        f"Pretrained model {base_name!r} does not support "
+                        f".timeframe({token!r})."
+                    )
                 loader_syms.append((source, model_sym))
             else:
                 raise TypeError(f"Invalid ModelSource type: {type(source)}")
@@ -704,6 +774,35 @@ class ModelsMixin:
             .drop(columns=DataCol.SYMBOL.value)
             .sort_values(DataCol.DATE.value)
         )
+
+    def _prepare_timeframe_symbol_data(
+        self,
+        symbol: str,
+        token: TimeframeInterval,
+        train_dates: Collection,
+        test_dates: Collection,
+        indicator_data: Mapping[IndicatorSymbol, pd.Series],
+        source: ModelSource,
+        timeframe_data: TimeframeData,
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        scope = StaticScope.instance()
+        key = (symbol, token)
+        if key not in timeframe_data.compressed:
+            raise ValueError(
+                f"Timeframe {token!r} data not found for {symbol!r}."
+            )
+        compressed = timeframe_data.compressed[key]
+        full_df = build_compressed_symbol_df(
+            symbol,
+            token,
+            compressed,
+            indicator_data,
+            source.indicators,
+            scope.custom_data_cols,
+        )
+        sym_train_data = slice_compressed_df_by_dates(full_df, train_dates)
+        sym_test_data = slice_compressed_df_by_dates(full_df, test_dates)
+        return sym_train_data, sym_test_data
 
     def _get_cached_models(
         self,

@@ -6,14 +6,22 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import numpy as np
 import pandas as pd
 import pytest
 import re
 from .fixtures import *  # noqa: F401
 from unittest.mock import Mock, patch
 from pybroker.cache import CacheDateFields
-from pybroker.common import DataCol, ModelSymbol, TrainedModel, to_datetime
+from pybroker.common import (
+    DataCol,
+    IndicatorSymbol,
+    ModelSymbol,
+    TrainedModel,
+    to_datetime,
+)
 from pybroker.model import ModelLoader, ModelsMixin, ModelTrainer, model
+from pybroker.timeframe import TimeframeData, compress_symbol_df
 from pybroker.scope import ModelInputScope
 
 TF_SECONDS = 60
@@ -831,3 +839,72 @@ class TestPooledModelsMixin:
                     serial_models[model_sym].instance.symbol
                     == parallel_models[model_sym].instance.symbol
                 )
+
+
+class TestTimeframeModels:
+    def test_model_timeframe_binds_name(self, scope, indicators):
+        m = model(
+            "tf_model",
+            lambda sym, train, test: FakeModel(sym, np.array([1.0])),
+            indicators,
+        )
+        tf_m = m.timeframe("weekly")
+        assert tf_m.name == "tf_model@weekly"
+        assert tf_m.base is m
+
+    def test_train_models_timeframe(self, scope, cache_date_fields):
+        sym = "SPY"
+        dates = np.array(
+            ["2020-01-06", "2020-01-07", "2020-01-08", "2020-01-09"],
+            dtype="datetime64[D]",
+        )
+        n = len(dates)
+        close = np.arange(n, dtype=np.float64) + 1
+        df = pd.DataFrame(
+            {
+                DataCol.SYMBOL.value: [sym] * n,
+                DataCol.DATE.value: dates,
+                DataCol.OPEN.value: close,
+                DataCol.HIGH.value: close + 1,
+                DataCol.LOW.value: close - 1,
+                DataCol.CLOSE.value: close,
+                DataCol.VOLUME.value: np.ones(n),
+            }
+        )
+        timeframe_data = TimeframeData()
+        timeframe_data.compressed[(sym, 2)] = compress_symbol_df(
+            df, 2, frozenset()
+        )
+        from pybroker.indicator import IndicatorsMixin, indicator
+
+        sma_ind = indicator(
+            "sma2",
+            lambda bar_data, period: bar_data.close,
+            period=2,
+        )
+        ind_data = IndicatorsMixin().compute_indicators(
+            df=df,
+            indicator_syms=[IndicatorSymbol(sma_ind.timeframe(2).name, sym)],
+            cache_date_fields=cache_date_fields,
+            disable_parallel_indicators=True,
+            timeframe_data=timeframe_data,
+        )
+        m = model(
+            "tf_model",
+            lambda sym, train, test: FakeModel(sym, np.zeros(len(test))),
+            [sma_ind],
+        )
+        mixin = ModelsMixin()
+        train_dates = dates[:2]
+        test_dates = dates[2:]
+        models = mixin.train_models(
+            model_syms=[ModelSymbol(m.timeframe(2).name, sym)],
+            train_data=df[df[DataCol.DATE.value].isin(train_dates)],
+            test_data=df[df[DataCol.DATE.value].isin(test_dates)],
+            indicator_data=ind_data,
+            cache_date_fields=cache_date_fields,
+            timeframe_data=timeframe_data,
+        )
+        model_sym = ModelSymbol("tf_model@2", sym)
+        assert model_sym in models
+        assert models[model_sym].name == "tf_model@2"

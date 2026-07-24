@@ -109,6 +109,8 @@ def trades(dates, symbols):
 def ctx(
     col_scope,
     ind_scope,
+    timeframe_scope,
+    declared_timeframes,
     input_scope,
     pred_scope,
     pending_order_scope,
@@ -125,6 +127,8 @@ def ctx(
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
+        timeframe_scope=timeframe_scope,
+        declared_timeframes=declared_timeframes,
         input_scope=input_scope,
         pred_scope=pred_scope,
         pending_order_scope=pending_order_scope,
@@ -140,6 +144,8 @@ def ctx(
 def ctx_with_pos(
     col_scope,
     ind_scope,
+    timeframe_scope,
+    declared_timeframes,
     input_scope,
     pred_scope,
     pending_order_scope,
@@ -163,6 +169,8 @@ def ctx_with_pos(
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
+        timeframe_scope=timeframe_scope,
+        declared_timeframes=declared_timeframes,
         input_scope=input_scope,
         pred_scope=pred_scope,
         pending_order_scope=pending_order_scope,
@@ -178,6 +186,8 @@ def ctx_with_pos(
 def ctx_with_orders(
     col_scope,
     ind_scope,
+    timeframe_scope,
+    declared_timeframes,
     input_scope,
     pred_scope,
     pending_order_scope,
@@ -200,6 +210,8 @@ def ctx_with_orders(
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
+        timeframe_scope=timeframe_scope,
+        declared_timeframes=declared_timeframes,
         input_scope=input_scope,
         pred_scope=pred_scope,
         pending_order_scope=pending_order_scope,
@@ -303,6 +315,23 @@ def test_model_when_not_found_then_error(ctx, symbol):
 
 def test_indicator(ctx, end_index):
     assert len(ctx.indicator("hhv")) == end_index
+
+
+def test_timeframe_when_not_declared_then_error(ctx):
+    with pytest.raises(ValueError, match=re.escape("set_timeframes()")):
+        ctx.timeframe("weekly")
+
+
+def test_timeframe_context_read_only(
+    timeframe_scope, trained_models, sym_end_index
+):
+    from pybroker.context import TimeframeContext
+
+    timeframe_ctx = TimeframeContext(
+        "SPY", "weekly", timeframe_scope, sym_end_index, trained_models
+    )
+    with pytest.raises(AttributeError, match="read-only"):
+        timeframe_ctx.buy_shares = 100
 
 
 def test_indicator_when_not_found_then_error(ctx, symbol):
@@ -477,6 +506,8 @@ def test_calc_target_shares(ctx):
 def test_calc_target_shares_when_enable_fractional_shares(
     col_scope,
     ind_scope,
+    timeframe_scope,
+    declared_timeframes,
     input_scope,
     pred_scope,
     pending_order_scope,
@@ -492,6 +523,8 @@ def test_calc_target_shares_when_enable_fractional_shares(
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
+        timeframe_scope=timeframe_scope,
+        declared_timeframes=declared_timeframes,
         input_scope=input_scope,
         pred_scope=pred_scope,
         pending_order_scope=pending_order_scope,
