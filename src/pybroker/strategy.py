@@ -7,6 +7,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 """
 
 import dataclasses
+import math
 import numpy as np
 import pandas as pd
 from pybroker.cache import CacheDateFields
@@ -70,6 +71,7 @@ from typing import (
     MutableMapping,
     NamedTuple,
     Optional,
+    TypeGuard,
     Union,
 )
 from typing_extensions import Concatenate, ParamSpec
@@ -99,6 +101,137 @@ def _sort_by_sell_score(result: ExecResult) -> float:
     if result.short_score is not None:
         return -result.short_score
     return 0.0 if result.score is None else result.score
+
+
+def _is_rankable(score: Optional[float]) -> TypeGuard[float]:
+    if score is None:
+        return False
+    if isinstance(score, float) and math.isnan(score):
+        return False
+    if pd.isna(score):
+        return False
+    return True
+
+
+def _rank_by_score(scores: Mapping[str, float]) -> dict[str, int]:
+    sorted_scores = sorted(
+        scores.items(), key=lambda item: (-item[1], item[0])
+    )
+    return {symbol: rank + 1 for rank, (symbol, _) in enumerate(sorted_scores)}
+
+
+def _rank_by_short_score(scores: Mapping[str, float]) -> dict[str, int]:
+    sorted_scores = sorted(scores.items(), key=lambda item: (item[1], item[0]))
+    return {symbol: rank + 1 for rank, (symbol, _) in enumerate(sorted_scores)}
+
+
+def _long_rotation_score(ctx: ExecContext) -> Optional[float]:
+    if _is_rankable(ctx.long_score):
+        return ctx.long_score
+    return None
+
+
+def _short_rotation_score(ctx: ExecContext) -> Optional[float]:
+    if _is_rankable(ctx.short_score):
+        return ctx.short_score
+    return None
+
+
+def _set_short_target_shares(ctx: ExecContext, target: float):
+    target_shares = ctx.calc_target_shares(target)
+    pos = ctx.short_pos()
+    if pos is None:
+        ctx.sell_shares = target_shares
+    elif pos.shares < target_shares:
+        ctx.sell_shares = target_shares - pos.shares
+    elif pos.shares > target_shares:
+        ctx.cover_shares = pos.shares - target_shares
+
+
+def _apply_worst_rank_held_long(
+    active_ctxs: Mapping[str, ExecContext],
+    portfolio: Portfolio,
+    max_long_positions: int,
+    worst_rank_held: int,
+):
+    rankable_scores: dict[str, float] = {}
+    for sym, ctx in active_ctxs.items():
+        score = _long_rotation_score(ctx)
+        if score is not None:
+            rankable_scores[sym] = score
+    ranks = _rank_by_score(rankable_scores)
+    target_size = 1 / max_long_positions
+    for sym in portfolio.long_positions:
+        if sym not in active_ctxs:
+            continue
+        ctx = active_ctxs[sym]
+        if ctx.sell_shares is not None:
+            continue
+        rank = ranks.get(sym)
+        if rank is None or rank > worst_rank_held:
+            ctx.sell_all_shares()
+    for sym, ctx in active_ctxs.items():
+        if sym in portfolio.long_positions or sym in portfolio.short_positions:
+            continue
+        if ctx.buy_shares is not None or _long_rotation_score(ctx) is None:
+            continue
+        ctx.set_target_shares(target_size)
+
+
+def _apply_worst_rank_held_short(
+    active_ctxs: Mapping[str, ExecContext],
+    portfolio: Portfolio,
+    max_short_positions: int,
+    worst_rank_held: int,
+):
+    rankable_scores: dict[str, float] = {}
+    for sym, ctx in active_ctxs.items():
+        score = _short_rotation_score(ctx)
+        if score is not None:
+            rankable_scores[sym] = score
+    ranks = _rank_by_short_score(rankable_scores)
+    target_size = 1 / max_short_positions
+    for sym in portfolio.short_positions:
+        if sym not in active_ctxs:
+            continue
+        ctx = active_ctxs[sym]
+        if ctx.buy_shares is not None:
+            continue
+        rank = ranks.get(sym)
+        if rank is None or rank > worst_rank_held:
+            ctx.cover_all_shares()
+    for sym, ctx in active_ctxs.items():
+        if sym in portfolio.short_positions or sym in portfolio.long_positions:
+            continue
+        if ctx.sell_shares is not None or _short_rotation_score(ctx) is None:
+            continue
+        _set_short_target_shares(ctx, target_size)
+
+
+def _apply_worst_rank_held(
+    active_ctxs: Mapping[str, ExecContext],
+    portfolio: Portfolio,
+    config: StrategyConfig,
+):
+    worst_rank_held = config.worst_rank_held
+    if worst_rank_held is None:
+        return
+    max_long_positions = config.max_long_positions
+    max_short_positions = config.max_short_positions
+    if max_long_positions is not None:
+        _apply_worst_rank_held_long(
+            active_ctxs,
+            portfolio,
+            max_long_positions,
+            worst_rank_held,
+        )
+    if max_short_positions is not None:
+        _apply_worst_rank_held_short(
+            active_ctxs,
+            portfolio,
+            max_short_positions,
+            worst_rank_held,
+        )
 
 
 class Execution(NamedTuple):
@@ -303,6 +436,8 @@ class BacktestMixin:
                     )
             if after_exec_fn is not None and active_ctxs:
                 after_exec_fn(active_ctxs)
+            if config.worst_rank_held is not None:
+                _apply_worst_rank_held(active_ctxs, portfolio, config)
             for ctx in active_ctxs.values():
                 if (
                     slippage_model
@@ -330,26 +465,48 @@ class BacktestMixin:
                     col_scope=col_scope,
                     pending_order_scope=pending_order_scope,
                 )
-            while buy_results:
-                self._schedule_order(
-                    result=buy_results.popleft(),
-                    created=date,
-                    sym_end_index=sym_end_index,
-                    delay=config.buy_delay,
-                    sched=buy_sched,
-                    col_scope=col_scope,
-                    pending_order_scope=pending_order_scope,
-                )
-            while sell_results:
-                self._schedule_order(
-                    result=sell_results.popleft(),
-                    created=date,
-                    sym_end_index=sym_end_index,
-                    delay=config.sell_delay,
-                    sched=sell_sched,
-                    col_scope=col_scope,
-                    pending_order_scope=pending_order_scope,
-                )
+            if config.worst_rank_held is not None:
+                while sell_results:
+                    self._schedule_order(
+                        result=sell_results.popleft(),
+                        created=date,
+                        sym_end_index=sym_end_index,
+                        delay=config.sell_delay,
+                        sched=sell_sched,
+                        col_scope=col_scope,
+                        pending_order_scope=pending_order_scope,
+                    )
+                while buy_results:
+                    self._schedule_order(
+                        result=buy_results.popleft(),
+                        created=date,
+                        sym_end_index=sym_end_index,
+                        delay=config.buy_delay,
+                        sched=buy_sched,
+                        col_scope=col_scope,
+                        pending_order_scope=pending_order_scope,
+                    )
+            else:
+                while buy_results:
+                    self._schedule_order(
+                        result=buy_results.popleft(),
+                        created=date,
+                        sym_end_index=sym_end_index,
+                        delay=config.buy_delay,
+                        sched=buy_sched,
+                        col_scope=col_scope,
+                        pending_order_scope=pending_order_scope,
+                    )
+                while sell_results:
+                    self._schedule_order(
+                        result=sell_results.popleft(),
+                        created=date,
+                        sym_end_index=sym_end_index,
+                        delay=config.sell_delay,
+                        sched=sell_sched,
+                        col_scope=col_scope,
+                        pending_order_scope=pending_order_scope,
+                    )
             while exit_ctxs:
                 self._exit_position(
                     portfolio=portfolio,
@@ -853,6 +1010,31 @@ class Strategy(
             raise ValueError("bootstrap_samples must be greater than 0.")
         if config.bootstrap_sample_size <= 0:
             raise ValueError("bootstrap_sample_size must be greater than 0.")
+        if config.worst_rank_held is not None:
+            if (
+                config.max_long_positions is None
+                and config.max_short_positions is None
+            ):
+                raise ValueError(
+                    "worst_rank_held requires max_long_positions or "
+                    "max_short_positions to be set."
+                )
+            if (
+                config.max_long_positions is not None
+                and config.worst_rank_held < config.max_long_positions
+            ):
+                raise ValueError(
+                    "worst_rank_held must be greater than or equal to "
+                    "max_long_positions."
+                )
+            if (
+                config.max_short_positions is not None
+                and config.worst_rank_held < config.max_short_positions
+            ):
+                raise ValueError(
+                    "worst_rank_held must be greater than or equal to "
+                    "max_short_positions."
+                )
 
     def _verify_data_source(
         self, data_source: Union[DataSource, pd.DataFrame]

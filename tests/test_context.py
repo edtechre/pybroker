@@ -544,7 +544,9 @@ def test_set_target_shares_when_overweight(ctx, symbol, portfolio):
 def test_set_target_shares_when_at_target(ctx, symbol, portfolio):
     target = 0.2
     target_shares = ctx.calc_target_shares(target)
-    portfolio.long_positions = {symbol: Position(symbol, target_shares, "long")}
+    portfolio.long_positions = {
+        symbol: Position(symbol, target_shares, "long")
+    }
     ctx.set_target_shares(target)
     assert ctx.buy_shares is None
     assert ctx.sell_shares is None
@@ -656,6 +658,20 @@ def test_to_result_when_score_and_side_score_then_error(
         ValueError,
         match=re.escape(
             "score cannot be set when long_score or short_score is set."
+        ),
+    ):
+        ctx.to_result()
+
+
+def test_to_result_when_worst_rank_held_and_score_then_error(ctx):
+    ctx.config = StrategyConfig(max_long_positions=2, worst_rank_held=5)
+    ctx.score = 5
+    ctx.buy_shares = 100
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "score cannot be used with worst_rank_held; use long_score or "
+            "short_score instead."
         ),
     ):
         ctx.to_result()
