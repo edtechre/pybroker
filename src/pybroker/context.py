@@ -798,6 +798,26 @@ class ExecContext:
             return shares.max(0)
         return max(int(shares), 0)
 
+    def set_target_shares(self, target: float):
+        r"""Sets buy or sell orders to reach a target allocation.
+
+        Calculates the number of shares needed to reach ``target`` using
+        :meth:`.calc_target_shares` and sets either :attr:`.buy_shares` or
+        :attr:`.sell_shares`.
+
+        Args:
+            target: Target allocation size as a proportion of portfolio
+                equity, where the max ``target`` is ``1``.
+        """
+        target_shares = self.calc_target_shares(target)
+        pos = self.long_pos()
+        if pos is None:
+            self.buy_shares = target_shares
+        elif pos.shares < target_shares:
+            self.buy_shares = target_shares - pos.shares
+        elif pos.shares > target_shares:
+            self.sell_shares = pos.shares - target_shares
+
     def cancel_pending_order(self, order_id: int) -> bool:
         """Cancels a :class:`pybroker.scope.PendingOrder` with ``order_id``."""
         return self._pending_order_scope.remove(order_id)
