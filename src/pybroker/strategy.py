@@ -37,7 +37,7 @@ from pybroker.context import (
 from pybroker.data import AlpacaCrypto, DataSource
 from pybroker.eval import BootstrapResult, EvalMetrics, EvaluateMixin
 from pybroker.indicator import Indicator, IndicatorsMixin
-from pybroker.model import ModelSource, ModelsMixin, TrainedModel
+from pybroker.model import ModelSource, ModelTrainer, ModelsMixin, TrainedModel
 from pybroker.portfolio import (
     Order,
     Portfolio,
@@ -1411,13 +1411,29 @@ class Strategy(
             train_data = df.loc[train_idx]
             test_data = df.loc[test_idx]
             if not train_data.empty:
+                train_symbols = set(train_data[DataCol.SYMBOL.value].unique())
                 model_syms = {
                     ModelSymbol(model_name, sym)
-                    for sym in train_data[DataCol.SYMBOL.value].unique()
+                    for sym in train_symbols
                     for execution in self._executions
                     for model_name in execution.model_names
                     if sym in execution.symbols
                 }
+                pooled_model_groups: dict[tuple[str, int], frozenset[str]] = {}
+                for execution in self._executions:
+                    exec_syms = frozenset(
+                        sym
+                        for sym in execution.symbols
+                        if sym in train_symbols
+                    )
+                    if not exec_syms:
+                        continue
+                    for model_name in execution.model_names:
+                        source = self._scope.get_model_source(model_name)
+                        if isinstance(source, ModelTrainer) and source.pooled:
+                            pooled_model_groups[(model_name, execution.id)] = (
+                                exec_syms
+                            )
                 train_dates = get_unique_sorted_dates(
                     train_data[DataCol.DATE.value]
                 )
@@ -1434,6 +1450,7 @@ class Strategy(
                         days=days,
                     ),
                     enable_parallel_models=enable_parallel_models,
+                    pooled_model_groups=pooled_model_groups,
                 )
             if test_data.empty:
                 return signals

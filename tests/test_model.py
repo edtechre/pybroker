@@ -12,8 +12,9 @@ import re
 from .fixtures import *  # noqa: F401
 from unittest.mock import Mock, patch
 from pybroker.cache import CacheDateFields
-from pybroker.common import ModelSymbol, TrainedModel, to_datetime
+from pybroker.common import DataCol, ModelSymbol, TrainedModel, to_datetime
 from pybroker.model import ModelLoader, ModelsMixin, ModelTrainer, model
+from pybroker.scope import ModelInputScope
 
 TF_SECONDS = 60
 BETWEEN_TIME = ("10:00", "15:30")
@@ -108,17 +109,30 @@ def test_model(indicators, pretrained, input_cols):
     assert source._predict_fn is predict_fn
 
 
+@pytest.mark.parametrize("pooled", [True, False])
+def test_model_pooled_flag(indicators, pooled):
+    source = model(
+        f"pooled={pooled}",
+        lambda *args: args,
+        indicators,
+        pooled=pooled,
+    )
+    assert source.pooled is pooled
+
+
 class TestModelSource:
     @pytest.mark.parametrize("clazz", [ModelLoader, ModelTrainer])
     def test_model_prepare_input_fn(self, data_source_df, clazz):
         prepare_fn = Mock()
-        source = clazz("model_source", lambda x: x, [], prepare_fn, None, {})
+        source = clazz(
+            "model_source", lambda x: x, [], prepare_fn, None, False, {}
+        )
         source.prepare_input_data(data_source_df)
         prepare_fn.assert_called_once_with(data_source_df)
 
     @pytest.mark.parametrize("clazz", [ModelLoader, ModelTrainer])
     def test_model_prepare_input_fn_when_empty_data(self, clazz):
-        source = clazz("model_source", lambda x: x, [], None, None, {})
+        source = clazz("model_source", lambda x: x, [], None, None, False, {})
         df = source.prepare_input_data(pd.DataFrame())
         assert df.empty
 
@@ -126,7 +140,9 @@ class TestModelSource:
     def test_model_prepare_input_fn_when_fn_none(
         self, ind_df, ind_names, clazz
     ):
-        source = clazz("model_source", lambda x: x, ind_names, None, None, {})
+        source = clazz(
+            "model_source", lambda x: x, ind_names, None, None, False, {}
+        )
         df = source.prepare_input_data(ind_df)
         assert df.equals(ind_df)
 
@@ -134,7 +150,9 @@ class TestModelSource:
     def test_model_prepare_input_fn_when_indicators_not_found_then_error(
         self, ind_df, clazz
     ):
-        source = clazz("model_source", lambda x: x, ["foo"], None, None, {})
+        source = clazz(
+            "model_source", lambda x: x, ["foo"], None, None, False, {}
+        )
         with pytest.raises(
             ValueError,
             match=re.escape("Indicator 'foo' not found in DataFrame."),
@@ -144,7 +162,7 @@ class TestModelSource:
     def test_model_loader_call_with_kwargs(self, start_date, end_date):
         load_fn = Mock()
         kwargs = {"a": 1, "b": 2}
-        ModelLoader("loader", load_fn, [], None, None, kwargs)(
+        ModelLoader("loader", load_fn, [], None, None, False, kwargs)(
             "SPY", start_date, end_date
         )
         load_fn.assert_called_once_with("SPY", start_date, end_date, **kwargs)
@@ -152,7 +170,7 @@ class TestModelSource:
     def test_model_trainer_call_with_kwargs(self, train_data, test_data):
         train_fn = Mock()
         kwargs = {"a": 1, "b": 2}
-        ModelTrainer("trainer", train_fn, [], None, None, kwargs)(
+        ModelTrainer("trainer", train_fn, [], None, None, False, kwargs)(
             "SPY", train_data, test_data
         )
         train_fn.assert_called_once_with(
@@ -161,12 +179,14 @@ class TestModelSource:
 
     def test_model_trainer_repr(self):
         trainer = ModelTrainer(
-            "trainer", lambda x: x, [], None, None, {"a": 1}
+            "trainer", lambda x: x, [], None, None, False, {"a": 1}
         )
         assert repr(trainer) == "ModelTrainer('trainer', {'a': 1})"
 
     def test_model_loader_repr(self):
-        trainer = ModelLoader("loader", lambda x: x, [], None, None, {"a": 1})
+        trainer = ModelLoader(
+            "loader", lambda x: x, [], None, None, False, {"a": 1}
+        )
         assert repr(trainer) == "ModelLoader('loader', {'a': 1})"
 
 
@@ -265,7 +285,14 @@ class TestModelsMixin:
             for sym in train_data["symbol"].unique()
         )
         fake_results = [
-            (model_sym, FakeModel(model_sym.symbol, np.array([1.0])), None)
+            (
+                "sym",
+                (
+                    model_sym,
+                    FakeModel(model_sym.symbol, np.array([1.0])),
+                    None,
+                ),
+            )
             for model_sym in trainer_syms
         ]
         mixin = ModelsMixin()
@@ -284,3 +311,523 @@ class TestModelsMixin:
             mock_parallel.assert_called_once()
             mock_pool.assert_called_once()
         self._assert_models(models, trainer_syms)
+
+
+class TestPooledModelsMixin:
+    @pytest.fixture()
+    def pooled_symbols(self):
+        return frozenset({"SPY", "AAPL"})
+
+    @pytest.fixture()
+    def pooled_model_syms(self, pooled_symbols):
+        return [
+            ModelSymbol("pooled_model", sym) for sym in sorted(pooled_symbols)
+        ]
+
+    @pytest.fixture()
+    def pooled_model_groups(self, pooled_symbols):
+        return {("pooled_model", 1): pooled_symbols}
+
+    @pytest.mark.usefixtures("setup_model_cache")
+    def test_train_models_pooled_calls_once(
+        self,
+        scope,
+        indicators,
+        train_data,
+        test_data,
+        ind_data,
+        cache_date_fields,
+        pooled_symbols,
+        pooled_model_syms,
+        pooled_model_groups,
+    ):
+        train_fn = Mock(return_value=FakeModel("pooled", np.array([1.0])))
+        model(
+            "pooled_model",
+            train_fn,
+            indicators,
+            pooled=True,
+        )
+        mixin = ModelsMixin()
+        models = mixin.train_models(
+            pooled_model_syms,
+            train_data,
+            test_data,
+            ind_data,
+            cache_date_fields,
+            pooled_model_groups=pooled_model_groups,
+        )
+        train_fn.assert_called_once()
+        call_args = train_fn.call_args[0]
+        assert len(call_args) == 2
+        pooled_train, pooled_test = call_args
+        assert DataCol.SYMBOL.value in pooled_train.columns
+        assert set(pooled_train[DataCol.SYMBOL.value].unique()) == set(
+            pooled_symbols
+        )
+        assert len(models) == len(pooled_symbols)
+
+    @pytest.mark.usefixtures("setup_model_cache")
+    def test_train_models_pooled_data_has_symbol_column(
+        self,
+        scope,
+        indicators,
+        train_data,
+        test_data,
+        ind_data,
+        cache_date_fields,
+        pooled_symbols,
+        pooled_model_syms,
+        pooled_model_groups,
+    ):
+        captured = {}
+
+        def train_pooled(train_df, test_df):
+            captured["train"] = train_df
+            captured["test"] = test_df
+            return FakeModel("pooled", np.array([1.0]))
+
+        model("pooled_model", train_pooled, indicators, pooled=True)
+        mixin = ModelsMixin()
+        mixin.train_models(
+            pooled_model_syms,
+            train_data,
+            test_data,
+            ind_data,
+            cache_date_fields,
+            pooled_model_groups=pooled_model_groups,
+        )
+        assert DataCol.SYMBOL.value in captured["train"].columns
+        assert DataCol.SYMBOL.value in captured["test"].columns
+        assert len(captured["train"][DataCol.SYMBOL.value].unique()) > 1
+
+    @pytest.mark.usefixtures("setup_model_cache")
+    def test_train_models_pooled_stores_shared_instance(
+        self,
+        scope,
+        indicators,
+        train_data,
+        test_data,
+        ind_data,
+        cache_date_fields,
+        pooled_model_syms,
+        pooled_model_groups,
+    ):
+        shared = FakeModel("pooled", np.array([1.0]))
+        model(
+            "pooled_model",
+            lambda train_df, test_df: shared,
+            indicators,
+            pooled=True,
+        )
+        mixin = ModelsMixin()
+        models = mixin.train_models(
+            pooled_model_syms,
+            train_data,
+            test_data,
+            ind_data,
+            cache_date_fields,
+            pooled_model_groups=pooled_model_groups,
+        )
+        instances = [
+            models[model_sym].instance for model_sym in pooled_model_syms
+        ]
+        assert all(instance is shared for instance in instances)
+
+    @pytest.mark.usefixtures("setup_model_cache")
+    def test_train_models_pooled_non_pooled_mixed(
+        self,
+        scope,
+        indicators,
+        train_data,
+        test_data,
+        ind_data,
+        cache_date_fields,
+        pooled_model_syms,
+        pooled_model_groups,
+    ):
+        model(
+            "pooled_model",
+            lambda train_df, test_df: FakeModel("pooled", np.array([1.0])),
+            indicators,
+            pooled=True,
+        )
+        per_sym = model(
+            "per_sym_model",
+            lambda sym, train_df, test_df: FakeModel(sym, np.array([1.0])),
+            indicators,
+        )
+        per_sym_syms = [
+            ModelSymbol(per_sym.name, sym)
+            for sym in train_data["symbol"].unique()
+        ]
+        mixin = ModelsMixin()
+        models = mixin.train_models(
+            pooled_model_syms + per_sym_syms,
+            train_data,
+            test_data,
+            ind_data,
+            cache_date_fields,
+            pooled_model_groups=pooled_model_groups,
+        )
+        pooled_instances = {
+            models[model_sym].instance for model_sym in pooled_model_syms
+        }
+        assert len(pooled_instances) == 1
+        for model_sym in per_sym_syms:
+            assert models[model_sym].instance.symbol == model_sym.symbol
+
+    @pytest.mark.usefixtures("setup_model_cache")
+    def test_train_models_pooled_infers_input_cols_without_symbol(
+        self,
+        scope,
+        indicators,
+        train_data,
+        test_data,
+        ind_data,
+        cache_date_fields,
+        pooled_model_syms,
+        pooled_model_groups,
+    ):
+        model(
+            "pooled_model",
+            lambda train_df, test_df: FakeModel("pooled", np.array([1.0])),
+            indicators,
+            pooled=True,
+        )
+        mixin = ModelsMixin()
+        models = mixin.train_models(
+            pooled_model_syms,
+            train_data,
+            test_data,
+            ind_data,
+            cache_date_fields,
+            pooled_model_groups=pooled_model_groups,
+        )
+        input_cols = models[pooled_model_syms[0]].input_cols
+        assert input_cols is not None
+        assert DataCol.SYMBOL.value not in input_cols
+        assert "hhv" in input_cols
+
+    @pytest.mark.usefixtures("setup_model_cache")
+    def test_train_models_pooled_explicit_input_cols_unchanged(
+        self,
+        scope,
+        indicators,
+        train_data,
+        test_data,
+        ind_data,
+        cache_date_fields,
+        pooled_model_syms,
+        pooled_model_groups,
+    ):
+        explicit_cols = ("hhv", "symbol_id")
+        model(
+            "pooled_model",
+            lambda train_df, test_df: (
+                FakeModel("pooled", np.array([1.0])),
+                explicit_cols,
+            ),
+            indicators,
+            pooled=True,
+        )
+        mixin = ModelsMixin()
+        models = mixin.train_models(
+            pooled_model_syms,
+            train_data,
+            test_data,
+            ind_data,
+            cache_date_fields,
+            pooled_model_groups=pooled_model_groups,
+        )
+        assert models[pooled_model_syms[0]].input_cols == explicit_cols
+
+    @pytest.mark.usefixtures("setup_model_cache")
+    def test_train_models_non_pooled_infers_input_cols_from_train_df(
+        self,
+        scope,
+        indicators,
+        train_data,
+        test_data,
+        ind_data,
+        cache_date_fields,
+    ):
+        per_sym = model(
+            "per_sym_model",
+            lambda sym, train_df, test_df: FakeModel(sym, np.array([1.0])),
+            indicators,
+        )
+        model_sym = ModelSymbol(per_sym.name, train_data["symbol"].unique()[0])
+        mixin = ModelsMixin()
+        models = mixin.train_models(
+            [model_sym],
+            train_data,
+            test_data,
+            ind_data,
+            cache_date_fields,
+        )
+        input_cols = models[model_sym].input_cols
+        assert input_cols is not None
+        assert DataCol.SYMBOL.value not in input_cols
+        assert "hhv" in input_cols
+        assert "date" in input_cols
+
+    @pytest.mark.usefixtures("setup_model_cache")
+    def test_pooled_predict_input_omits_symbol(
+        self,
+        scope,
+        indicators,
+        train_data,
+        test_data,
+        ind_data,
+        cache_date_fields,
+        pooled_model_syms,
+        pooled_model_groups,
+        col_scope,
+        ind_scope,
+    ):
+        model(
+            "pooled_model",
+            lambda train_df, test_df: FakeModel("pooled", np.array([1.0])),
+            indicators,
+            pooled=True,
+        )
+        mixin = ModelsMixin()
+        models = mixin.train_models(
+            pooled_model_syms,
+            train_data,
+            test_data,
+            ind_data,
+            cache_date_fields,
+            pooled_model_groups=pooled_model_groups,
+        )
+        model_sym = pooled_model_syms[0]
+        input_scope = ModelInputScope(col_scope, ind_scope, models)
+        df = input_scope.fetch(model_sym.symbol, model_sym.model_name)
+        assert DataCol.SYMBOL.value not in df.columns
+        assert list(df.columns) == list(models[model_sym].input_cols)
+
+    @pytest.mark.usefixtures("setup_model_cache")
+    def test_train_models_single_pooled_group_parallel_skips_pool(
+        self,
+        scope,
+        indicators,
+        train_data,
+        test_data,
+        ind_data,
+        cache_date_fields,
+        pooled_model_syms,
+        pooled_model_groups,
+    ):
+        model(
+            "pooled_model",
+            lambda train_df, test_df: FakeModel("pooled", np.array([1.0])),
+            indicators,
+            pooled=True,
+        )
+        mixin = ModelsMixin()
+        with patch("pybroker.model.parallel") as mock_parallel:
+            mixin.train_models(
+                pooled_model_syms,
+                train_data,
+                test_data,
+                ind_data,
+                cache_date_fields,
+                enable_parallel_models=True,
+                pooled_model_groups=pooled_model_groups,
+            )
+            mock_parallel.assert_not_called()
+
+    @pytest.mark.usefixtures("setup_model_cache")
+    def test_train_models_multiple_pooled_groups_parallel_invokes_pool(
+        self,
+        scope,
+        indicators,
+        train_data,
+        test_data,
+        ind_data,
+        cache_date_fields,
+    ):
+        model(
+            "pooled_model",
+            lambda train_df, test_df: FakeModel("pooled", np.array([1.0])),
+            indicators,
+            pooled=True,
+        )
+        symbols = sorted(train_data["symbol"].unique())
+        group_one = frozenset({symbols[0]})
+        group_two = frozenset({symbols[1]})
+        pooled_model_groups = {
+            ("pooled_model", 1): group_one,
+            ("pooled_model", 2): group_two,
+        }
+        model_syms = [
+            ModelSymbol("pooled_model", sym)
+            for sym in sorted(group_one | group_two)
+        ]
+        mixin = ModelsMixin()
+        fake_results = [
+            (
+                "pooled",
+                (
+                    "pooled_model",
+                    group_one,
+                    FakeModel("pooled", np.array([1.0])),
+                    None,
+                ),
+            ),
+            (
+                "pooled",
+                (
+                    "pooled_model",
+                    group_two,
+                    FakeModel("pooled", np.array([1.0])),
+                    None,
+                ),
+            ),
+        ]
+        with patch("pybroker.model.parallel") as mock_parallel:
+            mock_pool = Mock(return_value=fake_results)
+            mock_parallel.return_value.__enter__ = Mock(return_value=mock_pool)
+            mock_parallel.return_value.__exit__ = Mock(return_value=False)
+            models = mixin.train_models(
+                model_syms,
+                train_data,
+                test_data,
+                ind_data,
+                cache_date_fields,
+                enable_parallel_models=True,
+                pooled_model_groups=pooled_model_groups,
+            )
+            mock_parallel.assert_called_once()
+            mock_pool.assert_called_once()
+        assert len(models) == len(model_syms)
+
+    @pytest.mark.usefixtures("setup_model_cache")
+    def test_train_models_pooled_mixed_parallel_invokes_pool(
+        self,
+        scope,
+        indicators,
+        train_data,
+        test_data,
+        ind_data,
+        cache_date_fields,
+        pooled_model_syms,
+        pooled_model_groups,
+    ):
+        model(
+            "pooled_model",
+            lambda train_df, test_df: FakeModel("pooled", np.array([1.0])),
+            indicators,
+            pooled=True,
+        )
+        per_sym = model(
+            "per_sym_model",
+            lambda sym, train_df, test_df: FakeModel(sym, np.array([1.0])),
+            indicators,
+        )
+        per_sym_syms = [
+            ModelSymbol(per_sym.name, sym)
+            for sym in train_data["symbol"].unique()
+        ]
+        mixin = ModelsMixin()
+        fake_results = [
+            (
+                "pooled",
+                (
+                    "pooled_model",
+                    frozenset({"SPY", "AAPL"}),
+                    FakeModel("pooled", np.array([1.0])),
+                    None,
+                ),
+            ),
+            *[
+                (
+                    "sym",
+                    (
+                        model_sym,
+                        FakeModel(model_sym.symbol, np.array([1.0])),
+                        None,
+                    ),
+                )
+                for model_sym in per_sym_syms
+            ],
+        ]
+        with patch("pybroker.model.parallel") as mock_parallel:
+            mock_pool = Mock(return_value=fake_results)
+            mock_parallel.return_value.__enter__ = Mock(return_value=mock_pool)
+            mock_parallel.return_value.__exit__ = Mock(return_value=False)
+            models = mixin.train_models(
+                pooled_model_syms + per_sym_syms,
+                train_data,
+                test_data,
+                ind_data,
+                cache_date_fields,
+                enable_parallel_models=True,
+                pooled_model_groups=pooled_model_groups,
+            )
+            mock_parallel.assert_called_once()
+            mock_pool.assert_called_once()
+        assert len(models) == len(pooled_model_syms) + len(per_sym_syms)
+
+    @pytest.mark.usefixtures("setup_model_cache")
+    def test_train_models_pooled_mixed_serial_parallel_equivalent(
+        self,
+        scope,
+        indicators,
+        train_data,
+        test_data,
+        ind_data,
+        cache_date_fields,
+        pooled_model_syms,
+        pooled_model_groups,
+    ):
+        model(
+            "pooled_model",
+            lambda train_df, test_df: FakeModel("pooled", np.array([1.0])),
+            indicators,
+            pooled=True,
+        )
+        per_sym = model(
+            "per_sym_model",
+            lambda sym, train_df, test_df: FakeModel(sym, np.array([1.0])),
+            indicators,
+        )
+        per_sym_syms = [
+            ModelSymbol(per_sym.name, sym)
+            for sym in train_data["symbol"].unique()
+        ]
+        all_model_syms = pooled_model_syms + per_sym_syms
+        mixin = ModelsMixin()
+        serial_models = mixin.train_models(
+            all_model_syms,
+            train_data,
+            test_data,
+            ind_data,
+            cache_date_fields,
+            enable_parallel_models=False,
+            pooled_model_groups=pooled_model_groups,
+        )
+        parallel_models = mixin.train_models(
+            all_model_syms,
+            train_data,
+            test_data,
+            ind_data,
+            cache_date_fields,
+            enable_parallel_models=True,
+            pooled_model_groups=pooled_model_groups,
+        )
+        assert set(serial_models.keys()) == set(parallel_models.keys())
+        for model_sym in all_model_syms:
+            if model_sym in pooled_model_syms:
+                assert (
+                    serial_models[model_sym].instance
+                    is parallel_models[model_sym].instance
+                    or serial_models[model_sym].instance.symbol
+                    == parallel_models[model_sym].instance.symbol
+                )
+            else:
+                assert (
+                    serial_models[model_sym].instance.symbol
+                    == parallel_models[model_sym].instance.symbol
+                )

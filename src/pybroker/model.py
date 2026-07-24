@@ -29,10 +29,12 @@ from typing import (
     Callable,
     Collection,
     Iterable,
+    Literal,
     Mapping,
     NamedTuple,
     Optional,
     Union,
+    cast,
 )
 
 
@@ -53,6 +55,8 @@ class ModelSource:
             overrides calling the model's default ``predict`` function. If set,
             ``predict_fn`` will be called with the trained model and a
             :class:`pandas.DataFrame` containing all test data.
+        pooled: If ``True``, the model is trained once per execution using
+            combined multi-symbol data. Defaults to ``False``.
         kwargs: ``dict`` of additional kwargs.
     """
 
@@ -62,12 +66,14 @@ class ModelSource:
         indicator_names: Iterable[str],
         input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]],
         predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]],
+        pooled: bool,
         kwargs: dict[str, Any],
     ):
         self.name = name
         self.indicators = tuple(indicator_names)
         self._input_data_fn = input_data_fn
         self._predict_fn = predict_fn
+        self.pooled = pooled
         self._kwargs = kwargs
 
     def prepare_input_data(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -111,6 +117,8 @@ class ModelLoader(ModelSource):
             overrides calling the model's default ``predict`` function. If set,
             ``predict_fn`` will be called with the trained model and a
             :class:`pandas.DataFrame` containing all test data.
+        pooled: If ``True``, the model is trained once per execution using
+            combined multi-symbol data. Defaults to ``False``.
         kwargs: ``dict`` of kwargs to pass to ``load_fn``.
     """
 
@@ -121,10 +129,11 @@ class ModelLoader(ModelSource):
         indicator_names: Iterable[str],
         input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]],
         predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]],
+        pooled: bool,
         kwargs: dict[str, Any],
     ):
         super().__init__(
-            name, indicator_names, input_data_fn, predict_fn, kwargs
+            name, indicator_names, input_data_fn, predict_fn, pooled, kwargs
         )
         self._load_fn = functools.partial(load_fn, **kwargs)
 
@@ -155,12 +164,13 @@ class ModelTrainer(ModelSource):
 
     Args:
         name: Name of model.
-        train_fn: ``Callable[[symbol: str, train_data: DataFrame,
-            test_data: DataFrame, ...], DataFrame]`` used to train and return a
-            model. This is expected to return either a trained model instance,
-            or a tuple containing a trained model instance and a
-            :class:`Iterable` of column names to to be used as input for the
-            model when making predictions.
+        train_fn: When ``pooled`` is ``False``, ``Callable[[symbol: str,
+            train_data: DataFrame, test_data: DataFrame, ...], DataFrame]``.
+            When ``pooled`` is ``True``, ``Callable[[train_data: DataFrame,
+            test_data: DataFrame, ...], DataFrame]``. This is expected to
+            return either a trained model instance, or a tuple containing a
+            trained model instance and a :class:`Iterable` of column names to
+            to be used as input for the model when making predictions.
         indicator_names: :class:`Iterable` of names of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
@@ -172,6 +182,8 @@ class ModelTrainer(ModelSource):
             overrides calling the model's default ``predict`` function. If set,
             ``predict_fn`` will be called with the trained model and a
             :class:`pandas.DataFrame` containing all test data.
+        pooled: If ``True``, the model is trained once per execution using
+            combined multi-symbol data. Defaults to ``False``.
         kwargs: ``dict`` of kwargs to pass to ``train_fn``.
     """
 
@@ -182,17 +194,18 @@ class ModelTrainer(ModelSource):
         indicator_names: Iterable[str],
         input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]],
         predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]],
+        pooled: bool,
         kwargs: dict[str, Any],
     ):
         super().__init__(
-            name, indicator_names, input_data_fn, predict_fn, kwargs
+            name, indicator_names, input_data_fn, predict_fn, pooled, kwargs
         )
         self._train_fn = functools.partial(train_fn, **kwargs)
 
     def __call__(
         self, symbol: str, train_data: pd.DataFrame, test_data: pd.DataFrame
     ) -> Union[Any, tuple[Any, Iterable[str]]]:
-        """Trains model.
+        """Trains model per symbol.
 
         Args:
             symbol: Ticker symbol of model (models are trained per symbol).
@@ -203,6 +216,20 @@ class ModelTrainer(ModelSource):
             Trained model.
         """
         return self._train_fn(symbol, train_data, test_data)
+
+    def train_pooled(
+        self, train_data: pd.DataFrame, test_data: pd.DataFrame
+    ) -> Union[Any, tuple[Any, Iterable[str]]]:
+        """Trains model using combined multi-symbol data.
+
+        Args:
+            train_data: Train data containing a ``symbol`` column.
+            test_data: Test data containing a ``symbol`` column.
+
+        Returns:
+            Trained model.
+        """
+        return self._train_fn(train_data, test_data)
 
     def __repr__(self):
         return self.__str__()
@@ -218,6 +245,7 @@ def model(
     input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]] = None,
     predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]] = None,
     pretrained: bool = False,
+    pooled: bool = False,
     **kwargs,
 ) -> ModelSource:
     r"""Creates a :class:`.ModelSource` instance and registers it globally with
@@ -226,14 +254,21 @@ def model(
     Args:
         name: Name for referencing the model globally.
         fn: :class:`Callable` used to either train or load a model instance. If
-            for training, then ``fn`` has signature ``Callable[[symbol: str,
-            train_data: DataFrame, test_data: DataFrame, ...], DataFrame]``.
-            If for loading, then ``fn`` has signature
+            for training with ``pooled=False``, then ``fn`` has signature
+            ``Callable[[symbol: str, train_data: DataFrame, test_data:
+            DataFrame, ...], DataFrame]``. If for training with
+            ``pooled=True``, then ``fn`` has signature ``Callable[[train_data:
+            DataFrame, test_data: DataFrame, ...], DataFrame]`` where both
+            frames contain a ``symbol`` column with data for all symbols in the
+            execution. If for loading, then ``fn`` has signature
             ``Callable[[symbol: str, train_start_date: datetime,
             train_end_date: datetime, ...], DataFrame]``. This is expected to
             return either a trained model instance, or a tuple containing a
             trained model instance and a :class:`Iterable` of column names to
-            to be used as input for the model when making predictions.
+            to be used as input for the model when making predictions. When
+            only a model instance is returned, columns from the training
+            DataFrame are used for prediction. For pooled models, the
+            ``symbol`` column is omitted from inferred prediction columns.
         indicators: :class:`Iterable` of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
@@ -248,6 +283,8 @@ def model(
         pretrained: If ``True``, then ``fn`` is used to load and return a
             pre-trained model. If ``False``, ``fn`` is used to train and return
             a new model. Defaults to ``False``.
+        pooled: If ``True``, the model is trained once per execution using
+            combined multi-symbol data. Defaults to ``False``.
         \**kwargs: Additional arguments to pass to ``fn``.
 
     Returns:
@@ -266,6 +303,7 @@ def model(
             indicator_names=indicator_names,
             input_data_fn=input_data_fn,
             predict_fn=predict_fn,
+            pooled=pooled,
             kwargs=kwargs,
         )
         scope.set_model_source(loader)
@@ -277,6 +315,7 @@ def model(
             indicator_names=indicator_names,
             input_data_fn=input_data_fn,
             predict_fn=predict_fn,
+            pooled=pooled,
             kwargs=kwargs,
         )
         scope.set_model_source(trainer)
@@ -296,21 +335,111 @@ class CachedModel(NamedTuple):
     input_cols: Optional[tuple[str]]
 
 
+class _TrainerTask(NamedTuple):
+    pooled: bool
+    source: ModelTrainer
+    model_name: str
+    symbols: frozenset[str]
+    model_sym: Optional[ModelSymbol]
+    train_data: pd.DataFrame
+    test_data: pd.DataFrame
+
+
+PooledTrainResult = tuple[str, frozenset[str], Any, Optional[tuple[str]]]
+SymTrainResult = tuple[ModelSymbol, Any, Optional[tuple[str]]]
+PooledTrainerReturn = tuple[Literal["pooled"], PooledTrainResult]
+SymTrainerReturn = tuple[Literal["sym"], SymTrainResult]
+TrainerReturn = Union[PooledTrainerReturn, SymTrainerReturn]
+
+
+def _infer_input_cols(
+    train_data: pd.DataFrame, pooled: bool, indicators: tuple[str, ...]
+) -> tuple[str, ...]:
+    data_cols = {col.value for col in DataCol}
+    cols = [
+        col
+        for col in train_data.columns
+        if col in data_cols or col in indicators
+    ]
+    if pooled:
+        symbol_col = DataCol.SYMBOL.value
+        cols = [col for col in cols if col != symbol_col]
+    return tuple(cols)
+
+
+def _parse_model_result(
+    model_result: Union[Any, tuple[Any, Iterable[str]]],
+    train_data: pd.DataFrame,
+    pooled: bool,
+    indicators: tuple[str, ...],
+) -> tuple[Any, Optional[tuple[str]]]:
+    if isinstance(model_result, tuple):
+        model = model_result[0]
+        input_cols = cast(tuple[str], tuple(model_result[1]))
+    else:
+        model = model_result
+        input_cols = cast(
+            tuple[str], _infer_input_cols(train_data, pooled, indicators)
+        )
+    return model, input_cols
+
+
 def _train_model_sym(
     source: ModelTrainer,
     model_sym: ModelSymbol,
     sym_train_data: pd.DataFrame,
     sym_test_data: pd.DataFrame,
-) -> tuple[ModelSymbol, Any, Optional[tuple[str]]]:
+) -> SymTrainResult:
     model_name, sym = model_sym
     model_result = source(sym, sym_train_data, sym_test_data)
-    input_cols: Optional[tuple[str]] = None
-    if isinstance(model_result, tuple):
-        model = model_result[0]
-        input_cols = tuple(model_result[1])  # type: ignore[assignment]
-    else:
-        model = model_result
+    model, input_cols = _parse_model_result(
+        model_result,
+        sym_train_data,
+        pooled=False,
+        indicators=source.indicators,
+    )
     return model_sym, model, input_cols
+
+
+def _train_model_pooled(
+    source: ModelTrainer,
+    model_name: str,
+    symbols: frozenset[str],
+    pooled_train_data: pd.DataFrame,
+    pooled_test_data: pd.DataFrame,
+) -> PooledTrainResult:
+    model_result = source.train_pooled(pooled_train_data, pooled_test_data)
+    model, input_cols = _parse_model_result(
+        model_result,
+        pooled_train_data,
+        pooled=True,
+        indicators=source.indicators,
+    )
+    return model_name, symbols, model, input_cols
+
+
+def _run_trainer_task(task: _TrainerTask) -> TrainerReturn:
+    if task.pooled:
+        return (
+            "pooled",
+            _train_model_pooled(
+                task.source,
+                task.model_name,
+                task.symbols,
+                task.train_data,
+                task.test_data,
+            ),
+        )
+    assert task.model_sym is not None
+    return (
+        "sym",
+        _train_model_sym(
+            task.source,
+            task.model_sym,
+            task.train_data,
+            task.test_data,
+        ),
+    )
 
 
 class ModelsMixin:
@@ -324,6 +453,9 @@ class ModelsMixin:
         indicator_data: Mapping[IndicatorSymbol, pd.Series],
         cache_date_fields: CacheDateFields,
         enable_parallel_models: bool = False,
+        pooled_model_groups: Optional[
+            Mapping[tuple[str, int], frozenset[str]]
+        ] = None,
     ) -> dict[ModelSymbol, TrainedModel]:
         """Trains models for the provided :class:`pybroker.common.ModelSymbol`
         pairs.
@@ -341,6 +473,9 @@ class ModelsMixin:
             enable_parallel_models: If ``True``, :class:`.ModelTrainer` models
                 are trained in parallel using multiple processes. Defaults to
                 ``False``.
+            pooled_model_groups: ``Mapping`` of ``(model_name, execution_id)``
+                pairs to ``frozenset[str]`` of symbols for pooled training.
+                Defaults to ``None``.
 
         Returns:
             ``dict`` mapping each :class:`pybroker.common.ModelSymbol` pair
@@ -348,15 +483,19 @@ class ModelsMixin:
         """
         if train_data.empty or not model_syms:
             return {}
+        if pooled_model_groups is None:
+            pooled_model_groups = {}
         scope = StaticScope.instance()
         train_dates = get_unique_sorted_dates(train_data[DataCol.DATE.value])
         test_dates = get_unique_sorted_dates(test_data[DataCol.DATE.value])
         scope.logger.train_split_start(train_dates)
         scope.logger.info_train_split_start(model_syms)
         models, uncached_model_syms = self._get_cached_models(
-            model_syms, cache_date_fields
+            model_syms, cache_date_fields, pooled_model_groups
         )
-        if not uncached_model_syms:
+        if not uncached_model_syms and not self._has_uncached_pooled_groups(
+            model_syms, models, pooled_model_groups
+        ):
             scope.logger.loaded_models()
             scope.logger.info_loaded_models(model_syms)
             return models
@@ -364,16 +503,54 @@ class ModelsMixin:
             scope.logger.info_loaded_models(models.keys())
         start_date = to_datetime(train_dates[0])
         end_date = to_datetime(train_dates[-1])
-        trainer_tasks: list[
-            tuple[ModelTrainer, ModelSymbol, pd.DataFrame, pd.DataFrame]
-        ] = []
+        uncached_model_sym_set = set(uncached_model_syms)
+        trainer_tasks: list[_TrainerTask] = []
         loader_syms: list[tuple[ModelLoader, ModelSymbol]] = []
+        covered_pooled_model_syms: set[ModelSymbol] = set()
+
+        for (model_name, _), symbols in pooled_model_groups.items():
+            group_model_syms = {
+                ModelSymbol(model_name, sym) for sym in symbols
+            }
+            if group_model_syms.issubset(models.keys()):
+                continue
+            if not group_model_syms & uncached_model_sym_set:
+                continue
+            source = scope.get_model_source(model_name)
+            if not isinstance(source, ModelTrainer) or not source.pooled:
+                raise TypeError(
+                    f"ModelSource {model_name!r} is not a pooled ModelTrainer."
+                )
+            pooled_train_data, pooled_test_data = self._prepare_pooled_data(
+                symbols,
+                train_data,
+                test_data,
+                indicator_data,
+                source,
+                train_dates,
+                test_dates,
+            )
+            trainer_tasks.append(
+                _TrainerTask(
+                    pooled=True,
+                    source=source,
+                    model_name=model_name,
+                    symbols=symbols,
+                    model_sym=None,
+                    train_data=pooled_train_data,
+                    test_data=pooled_test_data,
+                )
+            )
+            covered_pooled_model_syms.update(group_model_syms)
+
         for model_sym in uncached_model_syms:
-            if model_sym in models:
+            if model_sym in models or model_sym in covered_pooled_model_syms:
                 continue
             model_name, sym = model_sym
             source = scope.get_model_source(model_name)
             if isinstance(source, ModelTrainer):
+                if source.pooled:
+                    continue
                 sym_train_data = self._slice_by_symbol(sym, train_data)
                 sym_test_data = self._slice_by_symbol(sym, test_data)
                 for ind_name in source.indicators:
@@ -387,32 +564,56 @@ class ModelsMixin:
                             ind_series.index.isin(test_dates)
                         ].values
                 trainer_tasks.append(
-                    (source, model_sym, sym_train_data, sym_test_data)
+                    _TrainerTask(
+                        pooled=False,
+                        source=source,
+                        model_name=model_name,
+                        symbols=frozenset(),
+                        model_sym=model_sym,
+                        train_data=sym_train_data,
+                        test_data=sym_test_data,
+                    )
                 )
             elif isinstance(source, ModelLoader):
                 loader_syms.append((source, model_sym))
             else:
                 raise TypeError(f"Invalid ModelSource type: {type(source)}")
+
         trainer_results = self._run_model_trainers(
             trainer_tasks, enable_parallel_models
         )
-        for (source, model_sym, _, _), (
-            _,
-            model,
-            input_cols,
-        ) in zip(trainer_tasks, trainer_results):
-            model_name, _ = model_sym
-            scope.logger.info_train_model_start(model_sym)
-            models[model_sym] = TrainedModel(
-                name=model_name,
-                instance=model,
-                predict_fn=source._predict_fn,
-                input_cols=input_cols,
-            )
-            self._set_cached_model(
-                model, input_cols, model_sym, cache_date_fields
-            )
-            scope.logger.info_train_model_completed(model_sym)
+        for task, trainer_result in zip(trainer_tasks, trainer_results):
+            if trainer_result[0] == "pooled":
+                _, pooled_result = cast(PooledTrainerReturn, trainer_result)
+                model_name, symbols, model, input_cols = pooled_result
+                for sym in symbols:
+                    model_sym = ModelSymbol(model_name, sym)
+                    scope.logger.info_train_model_start(model_sym)
+                    models[model_sym] = TrainedModel(
+                        name=model_name,
+                        instance=model,
+                        predict_fn=task.source._predict_fn,
+                        input_cols=input_cols,
+                    )
+                    self._set_cached_model(
+                        model, input_cols, model_sym, cache_date_fields
+                    )
+                    scope.logger.info_train_model_completed(model_sym)
+            else:
+                _, sym_result = cast(SymTrainerReturn, trainer_result)
+                model_sym, model, input_cols = sym_result
+                model_name, _ = model_sym
+                scope.logger.info_train_model_start(model_sym)
+                models[model_sym] = TrainedModel(
+                    name=model_name,
+                    instance=model,
+                    predict_fn=task.source._predict_fn,
+                    input_cols=input_cols,
+                )
+                self._set_cached_model(
+                    model, input_cols, model_sym, cache_date_fields
+                )
+                scope.logger.info_train_model_completed(model_sym)
         for source, model_sym in loader_syms:
             model_name, sym = model_sym
             scope.logger.info_loaded_model(model_sym)
@@ -435,29 +636,67 @@ class ModelsMixin:
         scope.logger.train_split_completed()
         return models
 
+    def _has_uncached_pooled_groups(
+        self,
+        model_syms: Iterable[ModelSymbol],
+        models: Mapping[ModelSymbol, TrainedModel],
+        pooled_model_groups: Mapping[tuple[str, int], frozenset[str]],
+    ) -> bool:
+        uncached_model_sym_set = set(model_syms) - set(models.keys())
+        for (model_name, _), symbols in pooled_model_groups.items():
+            group_model_syms = {
+                ModelSymbol(model_name, sym) for sym in symbols
+            }
+            if group_model_syms & uncached_model_sym_set:
+                return True
+        return False
+
     def _run_model_trainers(
         self,
-        trainer_tasks: Collection[
-            tuple[ModelTrainer, ModelSymbol, pd.DataFrame, pd.DataFrame]
-        ],
+        trainer_tasks: Collection[_TrainerTask],
         enable_parallel_models: bool,
-    ) -> list[tuple[ModelSymbol, Any, Optional[tuple[str]]]]:
+    ) -> list[TrainerReturn]:
         if enable_parallel_models and len(trainer_tasks) > 1:
             with parallel() as pool:
                 return pool(
-                    delayed(_train_model_sym)(
-                        source, model_sym, sym_train_data, sym_test_data
-                    )
-                    for source, model_sym, sym_train_data, sym_test_data in (
-                        trainer_tasks
-                    )
+                    delayed(_run_trainer_task)(task) for task in trainer_tasks
                 )
-        return [
-            _train_model_sym(source, model_sym, sym_train_data, sym_test_data)
-            for source, model_sym, sym_train_data, sym_test_data in (
-                trainer_tasks
-            )
-        ]
+        return [_run_trainer_task(task) for task in trainer_tasks]
+
+    def _prepare_pooled_data(
+        self,
+        symbols: frozenset[str],
+        train_data: pd.DataFrame,
+        test_data: pd.DataFrame,
+        indicator_data: Mapping[IndicatorSymbol, pd.Series],
+        source: ModelTrainer,
+        train_dates: Collection,
+        test_dates: Collection,
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        sym_col = DataCol.SYMBOL.value
+        date_col = DataCol.DATE.value
+        pooled_train = train_data[train_data[sym_col].isin(symbols)].copy()
+        pooled_test = test_data[test_data[sym_col].isin(symbols)].copy()
+        if not pooled_train.empty:
+            pooled_train = pooled_train.sort_values([sym_col, date_col])
+        if not pooled_test.empty:
+            pooled_test = pooled_test.sort_values([sym_col, date_col])
+        for sym in symbols:
+            for ind_name in source.indicators:
+                ind_series = indicator_data[IndicatorSymbol(ind_name, sym)]
+                train_mask = pooled_train[sym_col] == sym
+                if train_mask.any():
+                    sym_train_dates = pooled_train.loc[train_mask, date_col]
+                    pooled_train.loc[train_mask, ind_name] = ind_series[
+                        ind_series.index.isin(sym_train_dates)
+                    ].values
+                test_mask = pooled_test[sym_col] == sym
+                if test_mask.any():
+                    sym_test_dates = pooled_test.loc[test_mask, date_col]
+                    pooled_test.loc[test_mask, ind_name] = ind_series[
+                        ind_series.index.isin(sym_test_dates)
+                    ].values
+        return pooled_train, pooled_test
 
     def _slice_by_symbol(self, symbol: str, df: pd.DataFrame) -> pd.DataFrame:
         return (
@@ -470,6 +709,7 @@ class ModelsMixin:
         self,
         model_syms: Iterable[ModelSymbol],
         cache_date_fields: CacheDateFields,
+        pooled_model_groups: Mapping[tuple[str, int], frozenset[str]],
     ) -> tuple[dict[ModelSymbol, TrainedModel], list[ModelSymbol]]:
         model_syms = sorted(model_syms)
         models: dict[ModelSymbol, TrainedModel] = {}
@@ -477,7 +717,59 @@ class ModelsMixin:
         if scope.model_cache is None:
             return models, model_syms
         uncached_model_syms = []
+        pooled_groups_by_model_sym: dict[ModelSymbol, frozenset[str]] = {}
+        for (model_name, _), symbols in pooled_model_groups.items():
+            for sym in symbols:
+                pooled_groups_by_model_sym[ModelSymbol(model_name, sym)] = (
+                    symbols
+                )
         for model_sym in model_syms:
+            if model_sym in pooled_groups_by_model_sym:
+                symbols = pooled_groups_by_model_sym[model_sym]
+                group_cached = True
+                for sym in symbols:
+                    group_model_sym = ModelSymbol(model_sym.model_name, sym)
+                    cache_key = ModelCacheKey(
+                        symbol=group_model_sym.symbol,
+                        model_name=group_model_sym.model_name,
+                        **asdict(cache_date_fields),
+                    )
+                    scope.logger.debug_get_model_cache(cache_key)
+                    cached_data = scope.model_cache.get(repr(cache_key))
+                    if cached_data is None:
+                        group_cached = False
+                        break
+                if group_cached:
+                    for sym in symbols:
+                        group_model_sym = ModelSymbol(
+                            model_sym.model_name, sym
+                        )
+                        if group_model_sym in models:
+                            continue
+                        cache_key = ModelCacheKey(
+                            symbol=group_model_sym.symbol,
+                            model_name=group_model_sym.model_name,
+                            **asdict(cache_date_fields),
+                        )
+                        cached_data = scope.model_cache.get(repr(cache_key))
+                        input_cols = None
+                        if isinstance(cached_data, CachedModel):
+                            model = cached_data.model
+                            input_cols = cached_data.input_cols
+                        else:
+                            model = cached_data
+                        source = scope.get_model_source(
+                            group_model_sym.model_name
+                        )
+                        models[group_model_sym] = TrainedModel(
+                            name=group_model_sym.model_name,
+                            instance=model,
+                            predict_fn=source._predict_fn,
+                            input_cols=input_cols,
+                        )
+                    continue
+                uncached_model_syms.append(model_sym)
+                continue
             cache_key = ModelCacheKey(
                 symbol=model_sym.symbol,
                 model_name=model_sym.model_name,

@@ -1185,6 +1185,224 @@ def _picklable_train_fake_model(sym, train_data, test_data):
     )
 
 
+POOLED_MODEL_NAME = "pooled_fake_model"
+_pooled_train_calls: list[tuple[int, frozenset[str]]] = []
+
+
+class PooledFakeModel:
+    def __init__(self, symbols):
+        self.symbols = frozenset(symbols)
+
+
+def _train_pooled_fake_model(train_data, test_data):
+    _pooled_train_calls.append(
+        (
+            train_data.shape[0],
+            frozenset(train_data[DataCol.SYMBOL.value].unique()),
+        )
+    )
+    return PooledFakeModel(train_data[DataCol.SYMBOL.value].unique())
+
+
+def _picklable_train_pooled_fake_model(train_data, test_data):
+    return PooledFakeModel(train_data[DataCol.SYMBOL.value].unique())
+
+
+def _picklable_non_pooled_predict_fn(_model, df):
+    return np.full(len(df), 50.0)
+
+
+def _picklable_train_non_pooled_fake_model(sym, train_data, test_data):
+    return FakeModel(
+        sym,
+        np.full(train_data.shape[0] + test_data.shape[0], 50),
+    )
+
+
+def _pooled_predict_fn(_model, df):
+    if df.empty:
+        return np.array([])
+    return np.full(len(df), float(df["close"].iloc[0]))
+
+
+@pytest.fixture()
+def exec_pooled_model_source(scope, indicators):
+    _pooled_train_calls.clear()
+    return model(
+        POOLED_MODEL_NAME,
+        _train_pooled_fake_model,
+        indicators,
+        predict_fn=_pooled_predict_fn,
+        pooled=True,
+    )
+
+
+@pytest.fixture()
+def exec_picklable_pooled_model_source(scope, indicators):
+    return model(
+        POOLED_MODEL_NAME,
+        _picklable_train_pooled_fake_model,
+        indicators,
+        predict_fn=_pooled_predict_fn,
+        pooled=True,
+    )
+
+
+@pytest.fixture()
+def executions_with_pooled_models(
+    executions_train_only, exec_pooled_model_source
+):
+    def exec_fn(ctx):
+        preds = ctx.preds(exec_pooled_model_source.name)
+        assert len(preds) > 0
+        assert isinstance(
+            ctx.model(exec_pooled_model_source.name), PooledFakeModel
+        )
+
+    executions_train_only[0]["models"] = exec_pooled_model_source
+    executions_train_only[0]["fn"] = exec_fn
+    return executions_train_only
+
+
+@pytest.fixture()
+def executions_with_picklable_pooled_models(
+    executions_train_only, exec_picklable_pooled_model_source
+):
+    def exec_fn(ctx):
+        preds = ctx.preds(exec_picklable_pooled_model_source.name)
+        assert len(preds) > 0
+        assert isinstance(
+            ctx.model(exec_picklable_pooled_model_source.name), PooledFakeModel
+        )
+
+    executions_train_only[0]["models"] = exec_picklable_pooled_model_source
+    executions_train_only[0]["fn"] = exec_fn
+    return executions_train_only
+
+
+@pytest.fixture()
+def executions_with_two_picklable_pooled_groups(
+    exec_picklable_pooled_model_source,
+):
+    def exec_fn(ctx):
+        assert isinstance(
+            ctx.model(exec_picklable_pooled_model_source.name), PooledFakeModel
+        )
+
+    return [
+        {
+            "fn": exec_fn,
+            "symbols": ["AAPL", "MSFT"],
+            "models": exec_picklable_pooled_model_source,
+            "indicators": None,
+        },
+        {
+            "fn": exec_fn,
+            "symbols": ["SPY", "TSLA"],
+            "models": exec_picklable_pooled_model_source,
+            "indicators": None,
+        },
+    ]
+
+
+@pytest.fixture()
+def executions_with_picklable_pooled_and_non_pooled_models(
+    exec_picklable_pooled_model_source, indicators
+):
+    non_pooled = model(
+        MODEL_NAME,
+        _picklable_train_non_pooled_fake_model,
+        indicators,
+        predict_fn=_picklable_non_pooled_predict_fn,
+    )
+
+    def pooled_exec_fn(ctx):
+        assert isinstance(
+            ctx.model(exec_picklable_pooled_model_source.name), PooledFakeModel
+        )
+
+    def non_pooled_exec_fn(ctx):
+        assert isinstance(ctx.model(MODEL_NAME), FakeModel)
+
+    return [
+        {
+            "fn": pooled_exec_fn,
+            "symbols": ["AAPL", "MSFT"],
+            "models": exec_picklable_pooled_model_source,
+            "indicators": None,
+        },
+        {
+            "fn": non_pooled_exec_fn,
+            "symbols": "SPY",
+            "models": non_pooled,
+            "indicators": None,
+        },
+    ]
+
+
+@pytest.fixture()
+def executions_with_two_pooled_groups(
+    executions_train_only, exec_pooled_model_source
+):
+    def exec_fn(ctx):
+        assert isinstance(
+            ctx.model(exec_pooled_model_source.name), PooledFakeModel
+        )
+
+    return [
+        {
+            "fn": exec_fn,
+            "symbols": ["AAPL", "MSFT"],
+            "models": exec_pooled_model_source,
+            "indicators": None,
+        },
+        {
+            "fn": exec_fn,
+            "symbols": ["SPY", "TSLA"],
+            "models": exec_pooled_model_source,
+            "indicators": None,
+        },
+    ]
+
+
+@pytest.fixture()
+def executions_with_pooled_and_non_pooled_models(
+    exec_pooled_model_source, indicators
+):
+    non_pooled = model(
+        MODEL_NAME,
+        lambda sym, train_data, test_data: FakeModel(
+            sym,
+            np.full(train_data.shape[0] + test_data.shape[0], 50),
+        ),
+        indicators,
+        predict_fn=lambda _model, df: np.full(len(df), 50.0),
+    )
+
+    def pooled_exec_fn(ctx):
+        assert isinstance(
+            ctx.model(exec_pooled_model_source.name), PooledFakeModel
+        )
+
+    def non_pooled_exec_fn(ctx):
+        assert isinstance(ctx.model(MODEL_NAME), FakeModel)
+
+    return [
+        {
+            "fn": pooled_exec_fn,
+            "symbols": ["AAPL", "MSFT"],
+            "models": exec_pooled_model_source,
+            "indicators": None,
+        },
+        {
+            "fn": non_pooled_exec_fn,
+            "symbols": "SPY",
+            "models": non_pooled,
+            "indicators": None,
+        },
+    ]
+
+
 @pytest.fixture()
 def ray_backend():
     ray = pytest.importorskip("ray")
@@ -1344,6 +1562,172 @@ class TestStrategy:
                     seed=42,
                 )
                 mock_parallel.assert_called()
+        finally:
+            _parallel_mod._config = saved
+
+    def test_walkforward_pooled_model_training(
+        self, data_source_df, executions_with_pooled_models
+    ):
+        _pooled_train_calls.clear()
+        config = StrategyConfig()
+        strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+        for exec in executions_with_pooled_models:
+            strategy.add_execution(**exec)
+        strategy.walkforward(
+            windows=1,
+            lookahead=1,
+            timeframe="1d",
+            train_size=0.5,
+            seed=42,
+        )
+        assert len(_pooled_train_calls) == 1
+        _, symbols = _pooled_train_calls[0]
+        assert symbols == frozenset({"AAPL", "MSFT"})
+
+    def test_walkforward_pooled_model_predict(
+        self, data_source_df, executions_with_pooled_models
+    ):
+        config = StrategyConfig()
+        strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+        for exec in executions_with_pooled_models:
+            strategy.add_execution(**exec)
+        result = strategy.walkforward(
+            windows=1,
+            lookahead=1,
+            timeframe="1d",
+            train_size=0.5,
+            seed=42,
+        )
+        assert not result.portfolio.empty
+
+    def test_walkforward_pooled_enable_parallel_models(
+        self, data_source_df, executions_with_picklable_pooled_models
+    ):
+        _parallel_mod = import_module("pybroker.parallel")
+        saved = get_parallel_config()
+        try:
+            set_parallel(n_jobs=2)
+            config = StrategyConfig()
+            strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+            for exec in executions_with_picklable_pooled_models:
+                strategy.add_execution(**exec)
+            serial_result = strategy.walkforward(
+                windows=1,
+                lookahead=1,
+                timeframe="1d",
+                train_size=0.5,
+                enable_parallel_models=False,
+                seed=42,
+            )
+            parallel_result = strategy.walkforward(
+                windows=1,
+                lookahead=1,
+                timeframe="1d",
+                train_size=0.5,
+                enable_parallel_models=True,
+                seed=42,
+            )
+            pd.testing.assert_frame_equal(
+                serial_result.portfolio, parallel_result.portfolio
+            )
+            assert serial_result.metrics == parallel_result.metrics
+            assert get_parallel_config().backend == "loky"
+        finally:
+            _parallel_mod._config = saved
+
+    def test_walkforward_multiple_pooled_executions_parallel(
+        self, data_source_df, executions_with_two_picklable_pooled_groups
+    ):
+        _parallel_mod = import_module("pybroker.parallel")
+        saved = get_parallel_config()
+        try:
+            set_parallel(n_jobs=2)
+            config = StrategyConfig()
+            strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+            for exec in executions_with_two_picklable_pooled_groups:
+                strategy.add_execution(**exec)
+            serial_result = strategy.walkforward(
+                windows=1,
+                lookahead=1,
+                timeframe="1d",
+                train_size=0.5,
+                enable_parallel_models=False,
+                seed=42,
+            )
+            parallel_result = strategy.walkforward(
+                windows=1,
+                lookahead=1,
+                timeframe="1d",
+                train_size=0.5,
+                enable_parallel_models=True,
+                seed=42,
+            )
+            pd.testing.assert_frame_equal(
+                serial_result.portfolio, parallel_result.portfolio
+            )
+            assert serial_result.metrics == parallel_result.metrics
+            with patch("pybroker.model.parallel", wraps=parallel) as (
+                mock_parallel
+            ):
+                strategy.walkforward(
+                    windows=1,
+                    lookahead=1,
+                    timeframe="1d",
+                    train_size=0.5,
+                    enable_parallel_models=True,
+                    seed=42,
+                )
+                mock_parallel.assert_called()
+            assert get_parallel_config().backend == "loky"
+        finally:
+            _parallel_mod._config = saved
+
+    def test_walkforward_pooled_mixed_enable_parallel_models(
+        self,
+        data_source_df,
+        executions_with_picklable_pooled_and_non_pooled_models,
+    ):
+        _parallel_mod = import_module("pybroker.parallel")
+        saved = get_parallel_config()
+        try:
+            set_parallel(n_jobs=2)
+            config = StrategyConfig()
+            strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+            for exec in executions_with_picklable_pooled_and_non_pooled_models:
+                strategy.add_execution(**exec)
+            serial_result = strategy.walkforward(
+                windows=1,
+                lookahead=1,
+                timeframe="1d",
+                train_size=0.5,
+                enable_parallel_models=False,
+                seed=42,
+            )
+            parallel_result = strategy.walkforward(
+                windows=1,
+                lookahead=1,
+                timeframe="1d",
+                train_size=0.5,
+                enable_parallel_models=True,
+                seed=42,
+            )
+            pd.testing.assert_frame_equal(
+                serial_result.portfolio, parallel_result.portfolio
+            )
+            assert serial_result.metrics == parallel_result.metrics
+            with patch("pybroker.model.parallel", wraps=parallel) as (
+                mock_parallel
+            ):
+                strategy.walkforward(
+                    windows=1,
+                    lookahead=1,
+                    timeframe="1d",
+                    train_size=0.5,
+                    enable_parallel_models=True,
+                    seed=42,
+                )
+                mock_parallel.assert_called()
+            assert get_parallel_config().backend == "loky"
         finally:
             _parallel_mod._config = saved
 
