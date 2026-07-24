@@ -40,6 +40,8 @@ from pybroker.strategy import (
     _is_rankable,
     _rank_by_score,
     _rank_by_short_score,
+    _resolve_execution_symbols,
+    _resolve_executions,
 )
 from unittest.mock import Mock, patch
 
@@ -93,6 +95,299 @@ def _rotational_test_df(symbols, num_bars=5):
                 }
             )
     return pd.DataFrame(rows)
+
+
+def _selector_universe_df(
+    symbol_volumes: dict[str, int],
+    num_bars: int = 20,
+    start: str = "2020-01-01",
+) -> pd.DataFrame:
+    dates = pd.date_range(start, periods=num_bars, freq="D")
+    rows = []
+    for sym, vol in symbol_volumes.items():
+        for i, date in enumerate(dates):
+            rows.append(
+                {
+                    "symbol": sym,
+                    "date": date,
+                    "open": 10.0,
+                    "high": 10.0,
+                    "low": 10.0,
+                    "close": 10.0,
+                    "volume": vol + i,
+                    "adj_close": 10.0,
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+class TestSymbolSelector:
+    def _execution(self, symbols, fn=None):
+        return Execution(
+            id=1,
+            symbols=symbols,
+            fn=fn,
+            model_names=frozenset(),
+            indicator_names=frozenset(),
+        )
+
+    def test_selector_empty_list_raises(self):
+        def empty_selector(_df):
+            return []
+
+        with pytest.raises(ValueError, match="empty list"):
+            _resolve_execution_symbols(
+                self._execution(empty_selector),
+                _selector_universe_df({"AAA": 100}),
+            )
+
+    def test_selector_unknown_symbols_raises(self):
+        def bad_selector(_df):
+            return ["UNKNOWN"]
+
+        with pytest.raises(ValueError, match="unknown symbols.*UNKNOWN"):
+            _resolve_execution_symbols(
+                self._execution(bad_selector),
+                _selector_universe_df({"AAA": 100}),
+            )
+
+    def test_selector_duplicates_raises(self):
+        def dupe_selector(_df):
+            return ["AAA", "AAA"]
+
+        with pytest.raises(ValueError, match="duplicate symbols"):
+            _resolve_execution_symbols(
+                self._execution(dupe_selector),
+                _selector_universe_df({"AAA": 100}),
+            )
+
+    def test_resolve_executions_overlap_raises(self):
+        df = _selector_universe_df({"AAA": 100, "BBB": 200})
+        exec_a = self._execution(lambda d: ["AAA"])
+        exec_b = self._execution(lambda d: ["AAA", "BBB"])
+        with pytest.raises(ValueError, match="AAA was already added"):
+            _resolve_executions({exec_a, exec_b}, df)
+
+    def test_selector_receives_train_slice_only(self):
+        df = _selector_universe_df(
+            {"AAA": 100, "BBB": 200, "CCC": 300}, num_bars=12
+        )
+        selection_dates: list[set] = []
+        test_dates: list[set] = []
+
+        def track_selector(selection_df):
+            selection_dates.append(set(selection_df["date"]))
+            return ["AAA"]
+
+        def exec_fn(_ctx):
+            pass
+
+        strategy = Strategy(df, "2020-01-01", "2020-01-12")
+        strategy.add_execution(exec_fn, track_selector)
+        mixin = WalkforwardMixin()
+        for train_idx, test_idx in mixin.walkforward_split(
+            df=df, windows=2, lookahead=1, train_size=0.5, shuffle=False
+        ):
+            train_data = df.loc[train_idx]
+            test_data = df.loc[test_idx]
+            test_dates.append(set(test_data["date"]))
+            _resolve_executions(strategy._executions, train_data)
+
+        assert len(selection_dates) == 2
+        for sel_dates, tst_dates in zip(selection_dates, test_dates):
+            assert sel_dates.isdisjoint(tst_dates)
+
+    def test_selector_called_once_per_window(self):
+        df = _selector_universe_df(
+            {"AAA": 100, "BBB": 200, "CCC": 300}, num_bars=12
+        )
+        call_count = {"n": 0}
+
+        def counting_selector(_df):
+            call_count["n"] += 1
+            return ["AAA"]
+
+        def exec_fn(_ctx):
+            pass
+
+        strategy = Strategy(df, "2020-01-01", "2020-01-12")
+        strategy.add_execution(exec_fn, counting_selector)
+        strategy.walkforward(windows=3, train_size=0.5, lookahead=1)
+        assert call_count["n"] == 3
+
+    def test_selector_with_dataframe_universe(self):
+        df = _selector_universe_df(
+            {"AAA": 100, "BBB": 500, "CCC": 300}, num_bars=8
+        )
+        seen_symbols: list[str] = []
+
+        def top_volume(selection_df):
+            adv = selection_df.groupby("symbol")["volume"].mean()
+            return [adv.idxmax()]
+
+        def exec_fn(ctx):
+            seen_symbols.append(ctx.symbol)
+
+        strategy = Strategy(df, "2020-01-01", "2020-01-08")
+        strategy.add_execution(exec_fn, top_volume)
+        strategy.walkforward(windows=1, train_size=0.5, lookahead=1)
+        assert set(seen_symbols) == {"BBB"}
+
+    def test_selector_with_datasource_raises(self):
+        class FakeSource(DataSource):
+            def _fetch_data(
+                self, symbols, start_date, end_date, timeframe, adjust
+            ):
+                return pd.DataFrame()
+
+        def exec_fn(_ctx):
+            pass
+
+        def selector(_df):
+            return ["AAA"]
+
+        strategy = Strategy(
+            FakeSource(), "2020-01-01", "2020-01-08", StrategyConfig()
+        )
+        strategy.add_execution(exec_fn, selector)
+        with pytest.raises(
+            ValueError, match="Dynamic symbol selection requires"
+        ):
+            strategy.walkforward(windows=1)
+
+    def test_boundary_liquidation_dropped_symbol(self):
+        df = _selector_universe_df({"AAA": 100, "BBB": 200}, num_bars=12)
+        window = {"n": 0}
+        initial_cash = Decimal(100_000)
+
+        def rotating_selector(_df):
+            window["n"] += 1
+            return ["AAA"] if window["n"] == 1 else ["BBB"]
+
+        def buy_once(ctx):
+            if ctx.long_pos() is None:
+                ctx.buy_shares = 100
+
+        strategy = Strategy(
+            df,
+            "2020-01-01",
+            "2020-01-12",
+            StrategyConfig(initial_cash=initial_cash, buy_delay=1),
+        )
+        strategy.add_execution(buy_once, rotating_selector)
+        result = strategy.walkforward(windows=2, train_size=0.5, lookahead=1)
+        aaa_trades = result.trades[result.trades["symbol"] == "AAA"]
+        assert not aaa_trades.empty
+        assert pd.notna(aaa_trades.iloc[-1]["exit_date"])
+        aaa_sells = result.orders[
+            (result.orders["symbol"] == "AAA")
+            & (result.orders["type"] == "sell")
+        ]
+        assert not aaa_sells.empty
+        assert result.portfolio.iloc[-1]["cash"] > 0
+
+    def test_mixed_static_and_selector_executions(self):
+        df = _selector_universe_df(
+            {"AAA": 100, "BBB": 200, "CCC": 300}, num_bars=8
+        )
+        seen: set[str] = set()
+
+        def pick_aaa(_df):
+            return ["AAA"]
+
+        def static_fn(ctx):
+            seen.add(ctx.symbol)
+
+        strategy = Strategy(df, "2020-01-01", "2020-01-08")
+        strategy.add_execution(static_fn, "BBB")
+        strategy.add_execution(static_fn, pick_aaa)
+        strategy.walkforward(windows=1, train_size=0.5, lookahead=1)
+        assert seen == {"AAA", "BBB"}
+
+    def test_indicators_skipped_for_unselected_symbols(self, scope):
+        from pybroker.indicator import indicator
+        from pybroker.vect import sumv
+
+        df = _selector_universe_df(
+            {"AAA": 100, "BBB": 200, "CCC": 300}, num_bars=8
+        )
+        sma = indicator(
+            "sma_sel", lambda bar_data, n: sumv(bar_data.close, n), n=2
+        )
+
+        def pick_aaa(_df):
+            return ["AAA"]
+
+        def exec_fn(_ctx):
+            pass
+
+        strategy = Strategy(df, "2020-01-01", "2020-01-08")
+        strategy.add_execution(exec_fn, pick_aaa, indicators=[sma])
+        with patch.object(
+            strategy, "compute_indicators", wraps=strategy.compute_indicators
+        ) as mock_compute:
+            strategy.walkforward(windows=1, train_size=0.5, lookahead=1)
+            indicator_syms = mock_compute.call_args.kwargs["indicator_syms"]
+            symbols_computed = {pair.symbol for pair in indicator_syms}
+            assert symbols_computed == {"AAA"}
+
+    def test_indicator_cache_reuse_across_windows(self, scope, tmp_path):
+        from pybroker.cache import (
+            clear_indicator_cache,
+            disable_indicator_cache,
+            enable_indicator_cache,
+        )
+        from pybroker.indicator import indicator
+        from pybroker.vect import sumv
+
+        enable_indicator_cache("selector_cache", str(tmp_path))
+        clear_indicator_cache()
+        df = _selector_universe_df(
+            {"AAA": 100, "BBB": 200, "CCC": 300}, num_bars=15
+        )
+        sma = indicator(
+            "sma_cache", lambda bar_data, n: sumv(bar_data.close, n), n=2
+        )
+        window = {"n": 0}
+
+        def alternating_selector(_df):
+            window["n"] += 1
+            if window["n"] in (1, 3):
+                return ["AAA"]
+            return ["BBB"]
+
+        def exec_fn(_ctx):
+            pass
+
+        strategy = Strategy(df, "2020-01-01", "2020-01-15")
+        strategy.add_execution(exec_fn, alternating_selector, indicators=[sma])
+        aaa_uncached_counts: list[int] = []
+        real_get = strategy._get_cached_indicators
+
+        def track_cache(indicator_syms, cache_date_fields):
+            data, uncached = real_get(indicator_syms, cache_date_fields)
+            aaa_uncached_counts.append(
+                sum(1 for p in uncached if p.symbol == "AAA")
+            )
+            return data, uncached
+
+        try:
+            with patch.object(
+                strategy, "_get_cached_indicators", side_effect=track_cache
+            ):
+                strategy.walkforward(windows=3, train_size=0.5, lookahead=1)
+        finally:
+            disable_indicator_cache()
+        assert aaa_uncached_counts == [1, 0, 0]
+
+    def test_static_symbols_unchanged(self, data_source_df):
+        def exec_fn(_ctx):
+            pass
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn, "SPY")
+        result = strategy.walkforward(windows=1, train_size=0.5)
+        assert result.metrics is not None
 
 
 class TestWalkforwardMixin:

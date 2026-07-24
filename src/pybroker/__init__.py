@@ -30,6 +30,7 @@ from pybroker.common import (
     PositionMode as PositionMode,
     PriceType as PriceType,
     StopType as StopType,
+    SymbolSelector as SymbolSelector,
 )
 from pybroker.context import (
     ExecContext as ExecContext,

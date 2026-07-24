@@ -19,6 +19,7 @@ from pybroker.common import (
     ModelSymbol,
     OrderType,
     PriceType,
+    SymbolSelector,
     get_unique_sorted_dates,
     quantize,
     to_datetime,
@@ -92,6 +93,7 @@ from typing import (
     Optional,
     TypeGuard,
     Union,
+    cast,
 )
 from typing_extensions import Concatenate, ParamSpec
 
@@ -108,6 +110,85 @@ def _between(
         (df[DataCol.DATE.value].dt.tz_localize(None) >= start_date)
         & (df[DataCol.DATE.value].dt.tz_localize(None) <= end_date)
     ]
+
+
+def _is_symbol_selector(
+    symbols: Union[frozenset[str], SymbolSelector],
+) -> TypeGuard[SymbolSelector]:
+    return callable(symbols) and not isinstance(symbols, (str, bytes))
+
+
+def _static_symbols(
+    symbols: Union[frozenset[str], SymbolSelector],
+) -> frozenset[str]:
+    if _is_symbol_selector(symbols):
+        return frozenset()
+    return cast(frozenset[str], symbols)
+
+
+def _resolve_execution_symbols(
+    execution: "Execution",
+    selection_df: pd.DataFrame,
+) -> frozenset[str]:
+    if _is_symbol_selector(execution.symbols):
+        selected = execution.symbols(selection_df)
+        if not isinstance(selected, list):
+            raise TypeError(
+                "symbol selector must return a list[str], "
+                f"received {type(selected)!r}."
+            )
+        if not selected:
+            raise ValueError("symbol selector returned an empty list.")
+        if len(selected) != len(set(selected)):
+            seen: set[str] = set()
+            dupes = []
+            for sym in selected:
+                if sym in seen:
+                    dupes.append(sym)
+                seen.add(sym)
+            raise ValueError(
+                f"symbol selector returned duplicate symbols: {sorted(set(dupes))}."
+            )
+        loaded = set(selection_df[DataCol.SYMBOL.value].unique())
+        unknown = set(selected) - loaded
+        if unknown:
+            raise ValueError(
+                f"symbol selector returned unknown symbols: {sorted(unknown)}."
+            )
+        return frozenset(selected)
+    return cast(frozenset[str], execution.symbols)
+
+
+def _resolve_executions(
+    executions: set["Execution"],
+    selection_df: pd.DataFrame,
+) -> set["Execution"]:
+    resolved: set[Execution] = set()
+    seen_syms: set[str] = set()
+    for execution in executions:
+        syms = _resolve_execution_symbols(execution, selection_df)
+        overlap = seen_syms & syms
+        if overlap:
+            sym = sorted(overlap)[0]
+            raise ValueError(f"{sym} was already added to an execution.")
+        seen_syms.update(syms)
+        resolved.add(execution._replace(symbols=syms))
+    return resolved
+
+
+def _selection_df(
+    train_data: pd.DataFrame,
+    test_data: pd.DataFrame,
+) -> pd.DataFrame:
+    if not train_data.empty:
+        return train_data
+    if not test_data.empty:
+        return (
+            test_data
+            if train_data.empty
+            else pd.concat([train_data, test_data], ignore_index=True)
+        )
+    return train_data
 
 
 def _sort_by_buy_score(result: ExecResult) -> float:
@@ -270,7 +351,7 @@ class Execution(NamedTuple):
     """
 
     id: int
-    symbols: frozenset[str]
+    symbols: Union[frozenset[str], SymbolSelector]
     fn: Optional[Callable[[ExecContext], None]]
     model_names: frozenset[str]
     indicator_names: frozenset[str]
@@ -370,7 +451,7 @@ class BacktestMixin:
         exec_kwargs: dict[str, tuple[tuple[str, Any], ...]] = {}
         for sym in test_syms:
             for exec in executions:
-                if sym not in exec.symbols:
+                if sym not in _static_symbols(exec.symbols):
                     continue
                 exec_ctxs[sym] = ExecContext(
                     symbol=sym,
@@ -1172,7 +1253,7 @@ class Strategy(
     def add_execution(
         self,
         fn: Optional[Callable[Concatenate[ExecContext, P], None]],
-        symbols: Union[str, Iterable[str]],
+        symbols: Union[str, Iterable[str], SymbolSelector],
         models: Optional[Union[ModelSource, Iterable[ModelSource]]] = None,
         indicators: Optional[Union[Indicator, Iterable[Indicator]]] = None,
         *args: P.args,
@@ -1185,7 +1266,9 @@ class Strategy(
                 backtest and passed an :class:`pybroker.context.ExecContext`
                 for each ticker symbol in ``symbols``.
             symbols: Ticker symbols used to run ``fn``, where ``fn`` is called
-                separately for each symbol.
+                separately for each symbol. Can also be a
+                :class:`Callable` ``(df) -> list[str]`` that selects symbols
+                from train-window data during walkforward.
             models: :class:`Iterable` of :class:`pybroker.model.ModelSource`\ s
                 to train/load for backtesting.
             indicators: :class:`Iterable` of
@@ -1194,19 +1277,24 @@ class Strategy(
             args: Positional arguments passed to ``fn``.
             kwargs: Keyword arguments passed to ``fn``.
         """
-        symbols = (
-            frozenset((symbols,))
-            if isinstance(symbols, str)
-            else frozenset(symbols)
-        )
-        if not symbols:
-            raise ValueError("symbols cannot be empty.")
-        for sym in symbols:
-            for exec in self._executions:
-                if sym in exec.symbols:
-                    raise ValueError(
-                        f"{sym} was already added to an execution."
-                    )
+        if callable(symbols) and not isinstance(symbols, (str, bytes)):
+            stored_symbols: Union[frozenset[str], SymbolSelector] = symbols
+        elif isinstance(symbols, str):
+            stored_symbols = frozenset((symbols,))
+        else:
+            stored_symbols = frozenset(symbols)
+        if isinstance(stored_symbols, frozenset):
+            if not stored_symbols:
+                raise ValueError("symbols cannot be empty.")
+            for sym in stored_symbols:
+                for exec in self._executions:
+                    exec_syms = _static_symbols(exec.symbols)
+                    if not exec_syms:
+                        continue
+                    if sym in exec_syms:
+                        raise ValueError(
+                            f"{sym} was already added to an execution."
+                        )
         if models is not None:
             model_name_set: set[str] = set()
             for model in (
@@ -1294,7 +1382,7 @@ class Strategy(
         self._executions.add(
             Execution(
                 id=self._execution_id,
-                symbols=symbols,
+                symbols=stored_symbols,
                 fn=fn,
                 model_names=model_names,
                 indicator_names=ind_names,
@@ -1551,25 +1639,33 @@ class Strategy(
                 days=day_ids,
             )
             self._validate_timeframes_for_base(df, timeframe)
-            unique_syms = {
-                sym
-                for execution in self._executions
-                for sym in execution.symbols
-            }
+            has_selector = self._has_symbol_selector()
+            if has_selector:
+                unique_syms = set(df[DataCol.SYMBOL.value].unique())
+            else:
+                unique_syms = {
+                    sym
+                    for execution in self._executions
+                    for sym in _static_symbols(execution.symbols)
+                }
             timeframe_data = self._compress_timeframes(df, unique_syms)
             tf_seconds = to_seconds(timeframe)
-            indicator_data = self._fetch_indicators(
-                df=df,
-                cache_date_fields=CacheDateFields(
-                    start_date=start_dt,
-                    end_date=end_dt,
-                    tf_seconds=tf_seconds,
-                    between_time=between_time,
-                    days=day_ids,
-                ),
-                disable_parallel_indicators=disable_parallel_indicators,
-                timeframe_data=timeframe_data,
+            cache_date_fields = CacheDateFields(
+                start_date=start_dt,
+                end_date=end_dt,
+                tf_seconds=tf_seconds,
+                between_time=between_time,
+                days=day_ids,
             )
+            if has_selector:
+                indicator_data: dict[IndicatorSymbol, pd.Series] = {}
+            else:
+                indicator_data = self._fetch_indicators(
+                    df=df,
+                    cache_date_fields=cache_date_fields,
+                    disable_parallel_indicators=disable_parallel_indicators,
+                    timeframe_data=timeframe_data,
+                )
             train_only = (
                 self._before_exec_fn is None
                 and self._after_exec_fn is None
@@ -1605,6 +1701,9 @@ class Strategy(
                 train_only=train_only,
                 warmup=warmup,
                 enable_parallel_models=enable_parallel_models,
+                has_selector=has_selector,
+                disable_parallel_indicators=disable_parallel_indicators,
+                global_cache_date_fields=cache_date_fields,
             )
             if train_only:
                 self._logger.walkforward_completed()
@@ -1635,6 +1734,44 @@ class Strategy(
             )
         )  # type: ignore[return-value]
 
+    def _has_symbol_selector(self) -> bool:
+        return any(_is_symbol_selector(e.symbols) for e in self._executions)
+
+    def _liquidate_dropped_symbols(
+        self,
+        portfolio: Portfolio,
+        selected_syms: set[str],
+        test_data: pd.DataFrame,
+    ) -> None:
+        held = set(portfolio.long_positions) | set(portfolio.short_positions)
+        dropped = held - selected_syms
+        if not dropped or test_data.empty:
+            return
+        sym_col = DataCol.SYMBOL.value
+        date_col = DataCol.DATE.value
+        scoped = (
+            test_data.reset_index(drop=True)
+            .set_index([sym_col, date_col])
+            .sort_index()
+        )
+        col_scope = ColumnScope(scoped)
+        sym_end_index = {sym: 1 for sym in dropped}
+        price_scope = PriceScope(
+            col_scope, sym_end_index, self._config.round_fill_price
+        )
+        for sym in dropped:
+            sym_rows = test_data[test_data[sym_col] == sym]
+            if sym_rows.empty:
+                continue
+            date = np.datetime64(sym_rows.iloc[0][date_col])
+            buy_fill = price_scope.fetch(
+                sym, self._config.exit_cover_fill_price
+            )
+            sell_fill = price_scope.fetch(
+                sym, self._config.exit_sell_fill_price
+            )
+            portfolio.exit_position(date, sym, buy_fill, sell_fill)
+
     def _fractional_shares_enabled(self):
         return self._config.enable_fractional_shares or isinstance(
             self._data_source, AlpacaCrypto
@@ -1657,16 +1794,24 @@ class Strategy(
         train_only: bool,
         warmup: Optional[int],
         enable_parallel_models: bool = False,
+        has_selector: bool = False,
+        disable_parallel_indicators: bool = False,
+        global_cache_date_fields: Optional[CacheDateFields] = None,
     ) -> dict[str, pd.DataFrame]:
         sessions: dict[str, dict] = defaultdict(dict)
         exit_dates: dict[str, np.datetime64] = {}
+        sym_col = DataCol.SYMBOL.value
+        date_col = DataCol.DATE.value
         if self._config.exit_on_last_bar:
-            exit_symbols: set[str] = set()
-            for exec in self._executions:
-                exit_symbols.update(exec.symbols)
+            if has_selector:
+                exit_symbols = set(df[sym_col].unique())
+            else:
+                exit_symbols = {
+                    sym
+                    for exec in self._executions
+                    for sym in _static_symbols(exec.symbols)
+                }
             if exit_symbols and not df.empty:
-                sym_col = DataCol.SYMBOL.value
-                date_col = DataCol.DATE.value
                 mask = df[sym_col].isin(exit_symbols)
                 grouped = (
                     df.loc[mask].groupby(sym_col, sort=False)[date_col].max()
@@ -1685,20 +1830,46 @@ class Strategy(
             models: dict[ModelSymbol, TrainedModel] = {}
             train_data = df.loc[train_idx]
             test_data = df.loc[test_idx]
+            selection_data = _selection_df(train_data, test_data)
+            if has_selector:
+                if global_cache_date_fields is None:
+                    raise ValueError("global_cache_date_fields is required.")
+                window_executions = _resolve_executions(
+                    self._executions, selection_data
+                )
+                window_indicator_data = self._fetch_indicators(
+                    df=df,
+                    cache_date_fields=global_cache_date_fields,
+                    disable_parallel_indicators=disable_parallel_indicators,
+                    timeframe_data=timeframe_data,
+                    executions=window_executions,
+                )
+                indicator_data.update(window_indicator_data)
+            else:
+                window_executions = self._executions
+            selected_syms = {
+                sym
+                for execution in window_executions
+                for sym in _static_symbols(execution.symbols)
+            }
+            self._liquidate_dropped_symbols(
+                portfolio, selected_syms, test_data
+            )
             if not train_data.empty:
-                train_symbols = set(train_data[DataCol.SYMBOL.value].unique())
+                train_symbols = set(train_data[sym_col].unique())
                 model_syms = {
                     ModelSymbol(model_name, sym)
                     for sym in train_symbols
-                    for execution in self._executions
+                    for execution in window_executions
                     for model_name in execution.model_names
-                    if sym in execution.symbols
+                    for exec_sym in _static_symbols(execution.symbols)
+                    if sym == exec_sym
                 }
                 pooled_model_groups: dict[tuple[str, int], frozenset[str]] = {}
-                for execution in self._executions:
+                for execution in window_executions:
                     exec_syms = frozenset(
                         sym
-                        for sym in execution.symbols
+                        for sym in _static_symbols(execution.symbols)
                         if sym in train_symbols
                     )
                     if not exec_syms:
@@ -1714,9 +1885,7 @@ class Strategy(
                             pooled_model_groups[(model_name, execution.id)] = (
                                 exec_syms
                             )
-                train_dates = get_unique_sorted_dates(
-                    train_data[DataCol.DATE.value]
-                )
+                train_dates = get_unique_sorted_dates(train_data[date_col])
                 models = self.train_models(
                     model_syms=model_syms,
                     train_data=train_data,
@@ -1740,14 +1909,12 @@ class Strategy(
                 if not train_data.empty
                 else test_data
             )
-            sym_col = DataCol.SYMBOL.value
-            date_col = DataCol.DATE.value
             history_col_scope = ColumnScope(
                 window_history.set_index([sym_col, date_col]).sort_index()
             )
             split_signals = self.backtest_executions(
                 config=self._config,
-                executions=self._executions,
+                executions=window_executions,
                 before_exec_fn=self._before_exec_fn,
                 after_exec_fn=self._after_exec_fn,
                 sessions=sessions,
@@ -1812,10 +1979,12 @@ class Strategy(
         cache_date_fields: CacheDateFields,
         disable_parallel_indicators: bool,
         timeframe_data: Optional[TimeframeData] = None,
+        executions: Optional[set[Execution]] = None,
     ) -> dict[IndicatorSymbol, pd.Series]:
+        exec_set = executions if executions is not None else self._executions
         indicator_syms = set()
-        for execution in self._executions:
-            for sym in execution.symbols:
+        for execution in exec_set:
+            for sym in _static_symbols(execution.symbols):
                 for model_name in execution.model_names:
                     base_name, token = parse_model_timeframe_name(model_name)
                     ind_names = self._scope.get_indicator_names(base_name)
@@ -1838,10 +2007,18 @@ class Strategy(
     def _fetch_data(
         self, timeframe: str, adjust: Optional[Any]
     ) -> pd.DataFrame:
-        unique_syms = {
-            sym for execution in self._executions for sym in execution.symbols
-        }
+        has_selector = self._has_symbol_selector()
+        if has_selector and isinstance(self._data_source, DataSource):
+            raise ValueError(
+                "Dynamic symbol selection requires a pandas DataFrame data "
+                "source containing the candidate universe."
+            )
         if isinstance(self._data_source, DataSource):
+            unique_syms = frozenset(
+                sym
+                for execution in self._executions
+                for sym in _static_symbols(execution.symbols)
+            )
             df = self._data_source.query(
                 unique_syms,
                 self._start_date,
@@ -1851,7 +2028,13 @@ class Strategy(
             )
         else:
             df = _between(self._data_source, self._start_date, self._end_date)
-            df = df[df[DataCol.SYMBOL.value].isin(unique_syms)]
+            if not has_selector:
+                unique_syms = frozenset(
+                    sym
+                    for execution in self._executions
+                    for sym in _static_symbols(execution.symbols)
+                )
+                df = df[df[DataCol.SYMBOL.value].isin(unique_syms)]
         if df.empty:
             raise ValueError("DataSource is empty.")
         return df.reset_index(drop=True)

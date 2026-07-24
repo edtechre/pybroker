@@ -25,6 +25,8 @@ from typing import (
     cast,
 )
 
+SymbolSelector = Callable[[pd.DataFrame], list[str]]
+
 _tf_pattern: Final = re.compile(r"(\d+)([A-Za-z]+)")
 _tf_abbr: Final = {
     "s": "sec",
