@@ -2763,6 +2763,55 @@ class TestStrategy:
         with pytest.raises(ValueError, match=re.escape(expected_msg)):
             Strategy(data_source_df, START_DATE, END_DATE, config)
 
+    @pytest.mark.parametrize(
+        "leverage, expected_msg",
+        [
+            (0, "leverage must be greater than or equal to 1."),
+            (0.5, "leverage must be greater than or equal to 1."),
+            (-1, "leverage must be greater than or equal to 1."),
+        ],
+    )
+    def test_when_invalid_leverage_config_then_error(
+        self, data_source_df, leverage, expected_msg
+    ):
+        config = StrategyConfig(leverage=leverage)
+        with pytest.raises(ValueError, match=re.escape(expected_msg)):
+            Strategy(data_source_df, START_DATE, END_DATE, config)
+
+    def test_when_invalid_interest_rate_config_then_error(
+        self, data_source_df
+    ):
+        config = StrategyConfig(interest_rate=-1)
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "interest_rate must be greater than or equal to 0."
+            ),
+        ):
+            Strategy(data_source_df, START_DATE, END_DATE, config)
+
+    def test_backtest_when_leverage(self, data_source_df):
+        def buy_exec_fn(ctx):
+            if ctx.long_pos() is None:
+                ctx.buy_shares = ctx.calc_target_shares(2.0)
+
+        config = StrategyConfig(initial_cash=100_000, leverage=2.0)
+        strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+        strategy.add_execution(buy_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        leveraged_shares = result.orders[result.orders["type"] == "buy"].iloc[
+            0
+        ]["shares"]
+
+        config = StrategyConfig(initial_cash=100_000, leverage=1.0)
+        strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+        strategy.add_execution(buy_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        cash_shares = result.orders[result.orders["type"] == "buy"].iloc[0][
+            "shares"
+        ]
+        assert leveraged_shares > cash_shares
+
     def test_when_data_source_missing_columns_then_error(self):
         values = np.repeat(1, 100)
         df = pd.DataFrame(
@@ -2812,6 +2861,8 @@ class TestStrategy:
                     cash=Decimal(100_000),
                     equity=Decimal(100_000),
                     margin=Decimal(),
+                    margin_loan=Decimal(),
+                    net_cash_balance=Decimal(100_000),
                     market_value=Decimal(100_000),
                     pnl=Decimal(1000),
                     unrealized_pnl=Decimal(),
@@ -2921,6 +2972,8 @@ class TestStrategy:
                     cash=Decimal(100_000),
                     equity=Decimal(100_000),
                     margin=Decimal(),
+                    margin_loan=Decimal(),
+                    net_cash_balance=Decimal(100_000),
                     market_value=Decimal(100_000),
                     pnl=Decimal("1000.111"),
                     unrealized_pnl=Decimal(),

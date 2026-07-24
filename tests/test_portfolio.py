@@ -3620,3 +3620,87 @@ def test_short_only_mode():
     assert not portfolio.short_positions
     assert len(portfolio.trades) == 1
     assert portfolio.trades[0].shares == 100
+
+
+def test_buy_when_leverage_allows_borrowed_funds():
+    portfolio = Portfolio(CASH, leverage=2.0)
+    fill_price = Decimal(100)
+    shares = Decimal(2000)
+    order = portfolio.buy(DATE_1, SYMBOL_1, shares, fill_price)
+    assert order is not None
+    assert order.shares == shares
+    assert portfolio.cash == CASH - shares * fill_price / 2
+    assert portfolio.margin_loan == shares * fill_price / 2
+
+
+def test_buy_when_leverage_clamps_to_buying_power():
+    portfolio = Portfolio(CASH, leverage=2.0)
+    fill_price = Decimal(100)
+    order = portfolio.buy(DATE_1, SYMBOL_1, Decimal(2001), fill_price)
+    assert order is not None
+    assert order.shares == Decimal(2000)
+
+
+def test_buy_when_leverage_partial_deployment():
+    portfolio = Portfolio(CASH, leverage=2.0)
+    fill_price = Decimal(100)
+    order_1 = portfolio.buy(DATE_1, SYMBOL_1, Decimal(1000), fill_price)
+    assert order_1 is not None
+    assert order_1.shares == Decimal(1000)
+    assert portfolio.cash == CASH - Decimal(50_000)
+    assert portfolio.margin_loan == Decimal(50_000)
+    order_2 = portfolio.buy(DATE_2, SYMBOL_1, Decimal(1000), fill_price)
+    assert order_2 is not None
+    assert order_2.shares == Decimal(1000)
+    assert portfolio.cash == 0
+    assert portfolio.margin_loan == CASH
+    order_3 = portfolio.buy(DATE_3, SYMBOL_1, Decimal(1), fill_price)
+    assert order_3 is None
+
+
+def test_sell_when_leverage_pays_down_margin_loan():
+    portfolio = Portfolio(CASH, leverage=2.0)
+    fill_price = Decimal(100)
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(2000), fill_price)
+    portfolio.incr_bars()
+    portfolio.sell(DATE_2, SYMBOL_1, Decimal(2000), fill_price)
+    assert portfolio.cash == CASH
+    assert portfolio.margin_loan == 0
+
+
+def test_capture_bar_when_leverage_includes_margin_columns():
+    portfolio = Portfolio(CASH, leverage=2.0)
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(2000), Decimal(100))
+    df = pd.DataFrame(
+        [[SYMBOL_1, DATE_1, Decimal(100), Decimal(99), Decimal(101)]],
+        columns=["symbol", "date", "close", "low", "high"],
+    )
+    df = df.set_index(["symbol", "date"])
+    portfolio.capture_bar(DATE_1, ColumnScope(df), {SYMBOL_1: 1})
+    bar = portfolio.bars[0]
+    assert bar.cash == 0
+    assert bar.margin_loan == CASH
+    assert bar.net_cash_balance == -CASH
+    assert bar.equity == CASH
+
+
+def test_apply_interest_when_net_cash_negative():
+    portfolio = Portfolio(
+        CASH, leverage=2.0, interest_rate=7.0, bars_per_year=252
+    )
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(2000), Decimal(100))
+    portfolio._apply_interest()
+    expected_interest = CASH * Decimal(7) / Decimal(100) / Decimal(252)
+    assert portfolio.margin_loan == CASH + expected_interest
+
+
+def test_apply_interest_when_net_cash_positive():
+    portfolio = Portfolio(CASH, interest_rate=7.0, bars_per_year=252)
+    portfolio._apply_interest()
+    expected_interest = CASH * Decimal(7) / Decimal(100) / Decimal(252)
+    assert portfolio.cash == CASH + expected_interest
+
+
+def test_available_buying_power_when_leverage_default():
+    portfolio = Portfolio(CASH)
+    assert portfolio._available_buying_power() == CASH

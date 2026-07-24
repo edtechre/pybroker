@@ -85,6 +85,13 @@ class StrategyConfig:
         round_test_result: When ``True``, round values in
             :class:`pybroker.strategy.TestResult` up to the nearest cent.
             Defaults to ``True``.
+        leverage: Account leverage multiplier for long buying power. Default
+            ``1.0`` uses cash-only buying. ``2.0`` allows positions up to 2x
+            equity. Must be ``>= 1.0``.
+        interest_rate: Annual interest rate applied to net cash balance
+            (``cash - margin_loan``). Charges interest when net cash is
+            negative and credits interest when net cash is positive.
+            Defaults to ``0`` (disabled).
     """
 
     initial_cash: float = field(default=100_000)
@@ -113,3 +120,5 @@ class StrategyConfig:
     return_signals: bool = field(default=False)
     return_stops: bool = field(default=False)
     round_test_result: bool = field(default=True)
+    leverage: float = field(default=1.0)
+    interest_rate: float = field(default=0.0)

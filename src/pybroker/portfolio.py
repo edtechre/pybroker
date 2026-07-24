@@ -283,9 +283,11 @@ class PortfolioBar(NamedTuple):
 
     Attributes:
         date: Date of bar.
-        cash: Amount of cash in :class:`.Portfolio`.
+        cash: Available cash in :class:`.Portfolio`.
         equity: Amount of equity in :class:`.Portfolio`.
-        margin: Amount of margin in :class:`.Portfolio`.
+        margin: Amount of short margin in :class:`.Portfolio`.
+        margin_loan: Borrowed funds used for long margin positions.
+        net_cash_balance: ``cash - margin_loan``.
         market_value: Market value of :class:`.Portfolio`.
         pnl: Realized profit and loss (PnL) of :class:`.Portfolio`.
         unrealized_pnl: Unrealized profit and loss (PnL) of
@@ -297,6 +299,8 @@ class PortfolioBar(NamedTuple):
     cash: Decimal
     equity: Decimal
     margin: Decimal
+    margin_loan: Decimal
+    net_cash_balance: Decimal
     market_value: Decimal
     pnl: Decimal
     unrealized_pnl: Decimal
@@ -393,7 +397,8 @@ class Portfolio:
         enable_fractional_shares: Whether to enable trading fractional shares.
         orders: ``deque`` of all filled orders, sorted in ascending
             chronological order.
-        margin: Current amount of margin held in open positions.
+        margin: Current amount of short margin held in open positions.
+        margin_loan: Borrowed funds used for long margin positions.
         pnl: Realized profit and loss (PnL).
         long_positions: ``dict`` mapping ticker symbols to open long
             :class:`.Position`\ s.
@@ -420,6 +425,9 @@ class Portfolio:
         max_long_positions: Optional[int] = None,
         max_short_positions: Optional[int] = None,
         record_stops: Optional[bool] = False,
+        leverage: float = 1.0,
+        interest_rate: float = 0.0,
+        bars_per_year: Optional[int] = None,
     ):
         self.cash: Decimal = to_decimal(cash)
         self._initial_market_value = self.cash
@@ -435,9 +443,13 @@ class Portfolio:
         self._max_long_positions = max_long_positions
         self._max_short_positions = max_short_positions
         self._record_stops = record_stops
+        self._leverage = leverage
+        self._interest_rate = interest_rate
+        self._bars_per_year = bars_per_year
         self.orders: deque[Order] = deque()
         self.trades: deque[Trade] = deque()
         self.margin: Decimal = Decimal()
+        self.margin_loan: Decimal = Decimal()
         self.pnl: Decimal = Decimal()
         self.long_positions: dict[str, Position] = {}
         self.short_positions: dict[str, Position] = {}
@@ -632,13 +644,53 @@ class Portfolio:
             if stop.id in self._stop_data:
                 del self._stop_data[stop.id]
 
+    def _long_market_value(self) -> Decimal:
+        total = Decimal()
+        for pos in self.long_positions.values():
+            if pos.close > 0:
+                total += pos.shares * pos.close
+            else:
+                for entry in pos.entries:
+                    total += entry.shares * entry.price
+        return total
+
+    def _net_cash_balance(self) -> Decimal:
+        return self.cash - self.margin_loan
+
+    def _available_buying_power(self) -> Decimal:
+        if self._leverage <= 1:
+            return max(self.cash, Decimal())
+        leverage = to_decimal(self._leverage)
+        from_cash = self.cash * leverage
+        from_exposure = self.equity * leverage - self._long_market_value()
+        return max(min(from_cash, from_exposure), Decimal())
+
+    def _apply_interest(self):
+        if self._interest_rate <= 0:
+            return
+        bars_per_year = self._bars_per_year or 252
+        net_cash = self._net_cash_balance()
+        if net_cash == 0:
+            return
+        daily_rate = (
+            to_decimal(self._interest_rate)
+            / _DECIMAL_100
+            / Decimal(bars_per_year)
+        )
+        interest = abs(net_cash) * daily_rate
+        if net_cash < 0:
+            self.margin_loan += interest
+        else:
+            self.cash += interest
+
     def _clamp_shares(self, fill_price: Decimal, shares: Decimal) -> Decimal:
-        if self.cash < 0:
+        buying_power = self._available_buying_power()
+        if self._leverage <= 1 and self.cash < 0:
             return Decimal()
         max_shares = (
-            Decimal(self.cash / fill_price)
+            Decimal(buying_power / fill_price)
             if self._enable_fractional_shares
-            else Decimal(self.cash // fill_price)
+            else Decimal(buying_power // fill_price)
         )
         return min(shares, max_shares)
 
@@ -806,7 +858,12 @@ class Portfolio:
         ):
             return Decimal()
         order_amount = shares * fill_price
-        self.cash -= order_amount
+        if self._leverage > 1:
+            collateral = order_amount / to_decimal(self._leverage)
+            self.cash -= collateral
+            self.margin_loan += order_amount - collateral
+        else:
+            self.cash -= order_amount
         if symbol not in self.long_positions:
             self.symbols.add(symbol)
             pos = Position(symbol=symbol, shares=shares, type="long")
@@ -930,7 +987,9 @@ class Portfolio:
         entry_amount = shares * entry.price
         entry_pnl = order_amount - entry_amount
         self.pnl += entry_pnl
-        self.cash += order_amount
+        loan_repayment = min(order_amount, self.margin_loan)
+        self.margin_loan -= loan_repayment
+        self.cash += order_amount - loan_repayment
         pos.shares -= shares
         entry.shares -= shares
         pnl_per_bar = entry_pnl if not entry.bars else entry_pnl / entry.bars
@@ -1052,7 +1111,8 @@ class Portfolio:
                 seen so far for that symbol. The current-bar row index into
                 each symbol's column array is ``sym_end_index[sym] - 1``.
         """
-        total_equity = self.cash
+        self._apply_interest()
+        total_equity = self.cash - self.margin_loan
         total_market_value = total_equity
         total_margin = Decimal()
         for sym in self.symbols:
@@ -1131,6 +1191,7 @@ class Portfolio:
         self.market_value = total_market_value
         self.margin = total_margin
 
+        net_cash_balance = self._net_cash_balance()
         self.bars.append(
             PortfolioBar(
                 date=date,
@@ -1138,6 +1199,8 @@ class Portfolio:
                 equity=self.equity,
                 market_value=self.market_value,
                 margin=self.margin,
+                margin_loan=self.margin_loan,
+                net_cash_balance=net_cash_balance,
                 pnl=self.equity - self._initial_market_value,
                 unrealized_pnl=self.market_value - self.equity,
                 fees=self.fees,

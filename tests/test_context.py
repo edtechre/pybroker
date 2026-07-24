@@ -271,6 +271,10 @@ def test_portfolio_field(ctx, portfolio, field, port_field):
     assert getattr(ctx, field) == getattr(portfolio, port_field)
 
 
+def test_buying_power(ctx, portfolio):
+    assert ctx.buying_power == portfolio._available_buying_power()
+
+
 def test_sell_all_shares(ctx_with_pos):
     ctx_with_pos.sell_all_shares()
     assert ctx_with_pos.sell_shares == 200

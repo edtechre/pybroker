@@ -465,6 +465,23 @@ class ExecContext:
         return self._portfolio.margin
 
     @property
+    def buying_power(self) -> Decimal:
+        """Available buying power for long orders given
+        :attr:`pybroker.config.StrategyConfig.leverage`.
+        """
+        return self._portfolio._available_buying_power()
+
+    @property
+    def margin_loan(self) -> Decimal:
+        """Borrowed funds used for long margin positions."""
+        return self._portfolio.margin_loan
+
+    @property
+    def net_cash_balance(self) -> Decimal:
+        """Net cash balance (``cash - margin_loan``)."""
+        return self._portfolio._net_cash_balance()
+
+    @property
     def total_market_value(self) -> Decimal:
         """Total market value currently held in the
         :class:`pybroker.portfolio.Portfolio`. The market value is defined as
@@ -989,7 +1006,9 @@ class ExecContext:
                 :attr:`.symbol` is used.
             cash: Cash used to calculate the number of number of shares. If
                 ``None``, then the :class:`pybroker.portfolio.Portfolio` equity
-                is used to calculate the number of shares.
+                is used to calculate the number of shares. For leveraged
+                sizing, pass :attr:`.buying_power` or scale ``target_size`` by
+                :attr:`pybroker.config.StrategyConfig.leverage`.
 
         Returns:
             Number of shares given ``target_size`` and share ``price``. If

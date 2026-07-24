@@ -1048,6 +1048,12 @@ class Strategy(
             raise ValueError("bootstrap_samples must be greater than 0.")
         if config.bootstrap_sample_size <= 0:
             raise ValueError("bootstrap_sample_size must be greater than 0.")
+        if config.leverage < 1:
+            raise ValueError("leverage must be greater than or equal to 1.")
+        if config.interest_rate < 0:
+            raise ValueError(
+                "interest_rate must be greater than or equal to 0."
+            )
         if config.worst_rank_held is not None:
             if (
                 config.max_long_positions is None
@@ -1579,6 +1585,9 @@ class Strategy(
                     self._config.max_long_positions,
                     self._config.max_short_positions,
                     self._config.return_stops,
+                    self._config.leverage,
+                    self._config.interest_rate,
+                    self._config.bars_per_year,
                 )
             signals = self._run_walkforward(
                 portfolio=portfolio,
@@ -1890,6 +1899,8 @@ class Strategy(
             "cash",
             "equity",
             "margin",
+            "margin_loan",
+            "net_cash_balance",
             "market_value",
             "pnl",
             "unrealized_pnl",
