@@ -26,6 +26,7 @@ from pybroker.timeseries import (
     apply_lags_to_model_input_pooled,
     merge_lag_series_cache,
     merge_timeframe_lag_series_cache,
+    model_input_from_arrays,
     model_input_from_frame,
     model_input_to_dataframe,
 )
@@ -34,12 +35,12 @@ from pybroker.scope import StaticScope
 from pybroker.timeframe import (
     TimeframeData,
     TimeframeInterval,
-    build_compressed_symbol_df,
+    build_compressed_symbol_arrays,
     model_timeframe_name,
     normalize_timeframe_interval,
     parse_model_timeframe_name,
     format_timeframe_interval,
-    slice_compressed_df_by_dates,
+    slice_arrays_by_dates,
 )
 from dataclasses import asdict
 from datetime import datetime
@@ -968,7 +969,7 @@ class ModelsMixin:
                 f"Timeframe {token!r} data not found for {symbol!r}."
             )
         compressed = timeframe_data.compressed[key]
-        full_df = build_compressed_symbol_df(
+        columns, arrays, bar_dates = build_compressed_symbol_arrays(
             symbol,
             token,
             compressed,
@@ -976,10 +977,24 @@ class ModelsMixin:
             source.indicators,
             scope.custom_data_cols,
         )
-        sym_train_df = slice_compressed_df_by_dates(full_df, train_dates)
-        sym_test_df = slice_compressed_df_by_dates(full_df, test_dates)
-        sym_train_data = model_input_from_frame(sym_train_df)
-        sym_test_data = model_input_from_frame(sym_test_df)
+        _, train_arrays, train_dates = slice_arrays_by_dates(
+            columns,
+            arrays,
+            bar_dates,
+            train_dates,
+        )
+        _, test_arrays, test_dates = slice_arrays_by_dates(
+            columns,
+            arrays,
+            bar_dates,
+            test_dates,
+        )
+        sym_train_data = model_input_from_arrays(
+            columns, train_arrays, train_dates
+        )
+        sym_test_data = model_input_from_arrays(
+            columns, test_arrays, test_dates
+        )
         if source.lags is not None:
             lag_cols = _lag_feature_cols(
                 sym_train_data,

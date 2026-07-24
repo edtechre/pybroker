@@ -71,6 +71,7 @@ from pybroker.timeframe import (
     infer_base_bar_seconds,
     normalize_timeframe_interval,
     parse_model_timeframe_name,
+    symbol_dates_from_frame,
     validate_timeframe_interval,
 )
 from pybroker.slippage import SlippageModel
@@ -1743,7 +1744,9 @@ class Strategy(
                 sessions=sessions,
                 models=models,
                 indicator_data=indicator_data,
-                timeframe_data=timeframe_data.slice_for_test(test_data),
+                timeframe_data=timeframe_data.slice_for_test(
+                    symbol_dates_from_frame(test_data)
+                ),
                 declared_timeframes=declared_timeframes,
                 test_data=test_data,
                 portfolio=portfolio,

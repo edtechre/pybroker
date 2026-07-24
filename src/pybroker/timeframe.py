@@ -58,6 +58,36 @@ class CompressedBars:
     dates: NDArray[np.datetime64]
     custom: Mapping[str, NDArray[np.float64]] = field(default_factory=dict)
 
+    def slice_by_dates(
+        self, dates: Iterable[np.datetime64]
+    ) -> "CompressedBars":
+        """Returns compressed bars restricted to ``dates``."""
+        if len(self.dates) == 0:
+            return self
+        target = np.asarray(list(dates), dtype="datetime64[ns]")
+        if len(target) == 0:
+            empty_f = np.array([], dtype=np.float64)
+            empty_d = np.array([], dtype="datetime64[ns]")
+            return CompressedBars(
+                open=empty_f,
+                high=empty_f,
+                low=empty_f,
+                close=empty_f,
+                volume=empty_f,
+                dates=empty_d,
+            )
+        mask = np.isin(self.dates, target)
+        custom = {col: values[mask] for col, values in self.custom.items()}
+        return CompressedBars(
+            open=self.open[mask],
+            high=self.high[mask],
+            low=self.low[mask],
+            close=self.close[mask],
+            volume=self.volume[mask],
+            dates=self.dates[mask],
+            custom=custom,
+        )
+
 
 @dataclass(frozen=True)
 class CompressedSymbolData:
@@ -76,18 +106,22 @@ class TimeframeData:
         field(default_factory=dict)
     )
 
-    def slice_for_test(self, test_df: pd.DataFrame) -> "TimeframeData":
-        """Returns a copy with ``completed`` arrays aligned to ``test_df``."""
-        if test_df.empty or not self.compressed:
+    def slice_for_test(
+        self,
+        test_symbol_dates: Mapping[str, NDArray[np.datetime64]],
+    ) -> "TimeframeData":
+        """Returns a copy with ``completed`` arrays aligned to test dates."""
+        if not test_symbol_dates or not self.compressed:
             return TimeframeData()
         result: dict[tuple[str, TimeframeInterval], CompressedSymbolData] = {}
-        sym_col = DataCol.SYMBOL.value
-        date_col = DataCol.DATE.value
         for (symbol, interval), data in self.compressed.items():
-            sym_test = test_df.loc[test_df[sym_col] == symbol, date_col]
-            if sym_test.empty:
+            if symbol not in test_symbol_dates:
                 continue
-            test_dates = sym_test.to_numpy()
+            test_dates = np.asarray(
+                test_symbol_dates[symbol], dtype="datetime64[ns]"
+            )
+            if len(test_dates) == 0:
+                continue
             idx = np.searchsorted(data.base_dates, test_dates)
             if not np.array_equal(data.base_dates[idx], test_dates):
                 raise ValueError(
@@ -192,18 +226,39 @@ def parse_model_timeframe_name(
     return parse_indicator_timeframe_name(name)
 
 
-def build_compressed_symbol_df(
+def symbol_dates_from_frame(
+    df: pd.DataFrame,
+) -> dict[str, NDArray[np.datetime64]]:
+    """Extracts per-symbol test dates from a multi-symbol frame."""
+    if df.empty:
+        return {}
+    sym_col = DataCol.SYMBOL.value
+    date_col = DataCol.DATE.value
+    symbols = df[sym_col].to_numpy()
+    dates = df[date_col].to_numpy(dtype="datetime64[ns]")
+    return {str(sym): dates[symbols == sym] for sym in np.unique(symbols)}
+
+
+def build_compressed_symbol_arrays(
     symbol: str,
     interval: TimeframeInterval,
     compressed: CompressedSymbolData,
     indicator_data: Mapping[IndicatorSymbol, pd.Series],
     indicator_names: Iterable[str],
     custom_cols: Iterable[str],
-) -> pd.DataFrame:
-    """Builds a compressed-bar DataFrame with base indicator column names."""
+) -> tuple[tuple[str, ...], dict[str, NDArray], NDArray[np.datetime64]]:
+    """Builds compressed-bar column arrays with base indicator names."""
     interval = normalize_timeframe_interval(interval)
     bars = compressed.bars
-    data: dict[str, NDArray] = {
+    columns: list[str] = [
+        DataCol.DATE.value,
+        DataCol.OPEN.value,
+        DataCol.HIGH.value,
+        DataCol.LOW.value,
+        DataCol.CLOSE.value,
+        DataCol.VOLUME.value,
+    ]
+    arrays: dict[str, NDArray] = {
         DataCol.DATE.value: bars.dates,
         DataCol.OPEN.value: bars.open,
         DataCol.HIGH.value: bars.high,
@@ -213,13 +268,54 @@ def build_compressed_symbol_df(
     }
     for col in custom_cols:
         if col in bars.custom:
-            data[col] = bars.custom[col]
-    df = pd.DataFrame(data)
+            columns.append(col)
+            arrays[col] = bars.custom[col]
     for ind_name in indicator_names:
         suffixed = indicator_timeframe_name(ind_name, interval)
-        ind_series = indicator_data[IndicatorSymbol(suffixed, symbol)]
-        df[ind_name] = ind_series.to_numpy(copy=True)
-    return df
+        columns.append(ind_name)
+        arrays[ind_name] = indicator_data[
+            IndicatorSymbol(suffixed, symbol)
+        ].to_numpy(copy=True)
+    return tuple(columns), arrays, bars.dates
+
+
+def slice_arrays_by_dates(
+    columns: tuple[str, ...],
+    arrays: Mapping[str, NDArray],
+    dates: NDArray[np.datetime64],
+    selected: Iterable[np.datetime64],
+) -> tuple[tuple[str, ...], dict[str, NDArray], NDArray[np.datetime64]]:
+    """Filters column arrays to rows whose dates are in ``selected``."""
+    if len(dates) == 0:
+        empty = np.array([], dtype=np.float64)
+        return columns, {col: empty for col in columns if col in arrays}, dates
+    target = np.asarray(list(selected), dtype="datetime64[ns]")
+    mask = np.isin(dates, target)
+    sliced = {
+        col: np.asarray(arrays[col])[mask] for col in columns if col in arrays
+    }
+    return columns, sliced, dates[mask]
+
+
+def build_compressed_symbol_df(
+    symbol: str,
+    interval: TimeframeInterval,
+    compressed: CompressedSymbolData,
+    indicator_data: Mapping[IndicatorSymbol, pd.Series],
+    indicator_names: Iterable[str],
+    custom_cols: Iterable[str],
+) -> pd.DataFrame:
+    """Builds a compressed-bar DataFrame with base indicator column names."""
+    columns, arrays, _dates = build_compressed_symbol_arrays(
+        symbol,
+        interval,
+        compressed,
+        indicator_data,
+        indicator_names,
+        custom_cols,
+    )
+    data = {col: arrays[col] for col in columns}
+    return pd.DataFrame(data)
 
 
 def slice_compressed_df_by_dates(
@@ -229,8 +325,23 @@ def slice_compressed_df_by_dates(
     if df.empty:
         return df
     date_col = DataCol.DATE.value
-    date_set = frozenset(dates)
-    return df[df[date_col].isin(date_set)].reset_index(drop=True)
+    columns = tuple(df.columns)
+    arrays = {
+        col: df[col].to_numpy(copy=False)
+        for col in columns
+        if col in df.columns
+    }
+    bar_dates = arrays[date_col]
+    _, sliced_arrays, sliced_dates = slice_arrays_by_dates(
+        columns,
+        arrays,
+        bar_dates,
+        dates,
+    )
+    data = {date_col: sliced_dates, **sliced_arrays}
+    return pd.DataFrame(
+        {col: data[col] for col in columns if col in data}
+    ).reset_index(drop=True)
 
 
 def _coarser_interval_seconds(interval: str) -> float:
@@ -261,19 +372,31 @@ def _bar_seconds_label(seconds: float) -> str:
     return f"{secs}-second bars" if secs != 1 else "1-second bars"
 
 
-def _median_bar_seconds_from_dates(dates: pd.Series) -> Optional[float]:
+def _median_bar_seconds_from_dates(
+    dates: NDArray[np.datetime64],
+) -> Optional[float]:
     if len(dates) < 2:
         return None
-    deltas = dates.diff().dropna()
-    return float(deltas.dt.total_seconds().median())
+    deltas_ns = np.diff(dates.astype("datetime64[ns]").astype(np.int64))
+    return float(np.median(deltas_ns / 1_000_000_000))
+
+
+def _infer_bar_seconds_from_dates(
+    dates: NDArray[np.datetime64],
+) -> Optional[float]:
+    """Infers base bar spacing from bar date arrays."""
+    if len(dates) == 0:
+        return None
+    unique_dates = np.unique(dates.astype("datetime64[ns]"))
+    return _median_bar_seconds_from_dates(unique_dates)
 
 
 def _infer_bar_seconds_from_df(df: pd.DataFrame) -> Optional[float]:
     """Infers base bar spacing from bar dates in ``df``."""
     if df.empty:
         return None
-    dates = df[DataCol.DATE.value].drop_duplicates().sort_values()
-    return _median_bar_seconds_from_dates(dates)
+    dates = df[DataCol.DATE.value].to_numpy(dtype="datetime64[ns]")
+    return _infer_bar_seconds_from_dates(dates)
 
 
 def _infer_bar_seconds_from_str(timeframe_str: str) -> Optional[float]:
