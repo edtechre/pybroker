@@ -1731,6 +1731,42 @@ class TestStrategy:
         finally:
             _parallel_mod._config = saved
 
+    @pytest.mark.xdist_group(name="loky")
+    def test_walkforward_enable_parallel_models_loky(
+        self, data_source_df, executions_with_picklable_models
+    ):
+        _parallel_mod = import_module("pybroker.parallel")
+        saved = get_parallel_config()
+        try:
+            set_parallel(n_jobs=2, backend="loky")
+            config = StrategyConfig()
+            strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+            for exec in executions_with_picklable_models:
+                strategy.add_execution(**exec)
+            serial_result = strategy.walkforward(
+                windows=1,
+                lookahead=1,
+                timeframe="1d",
+                train_size=0.5,
+                enable_parallel_models=False,
+                seed=42,
+            )
+            parallel_result = strategy.walkforward(
+                windows=1,
+                lookahead=1,
+                timeframe="1d",
+                train_size=0.5,
+                enable_parallel_models=True,
+                seed=42,
+            )
+            pd.testing.assert_frame_equal(
+                serial_result.portfolio, parallel_result.portfolio
+            )
+            assert serial_result.metrics == parallel_result.metrics
+            assert get_parallel_config().backend == "loky"
+        finally:
+            _parallel_mod._config = saved
+
     @pytest.mark.xdist_group(name="ray")
     def test_walkforward_enable_parallel_models_ray(
         self, data_source_df, executions_with_picklable_models, ray_backend
