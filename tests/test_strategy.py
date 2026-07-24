@@ -3812,6 +3812,38 @@ class TestStrategy:
         assert np.isnan(sell_order["limit_price"])
         assert sell_order["fees"] == 0
 
+    def test_backtest_when_custom_stop(self, data_source_df):
+        def exec_fn(ctx):
+            if ctx.bars == 1:
+                ctx.buy_shares = 100
+
+                def stop_fn(stop_ctx):
+                    if stop_ctx.close[-1] < float(stop_ctx.entry.price) - 10:
+                        return PriceType.CLOSE
+                    return None
+
+                ctx.stop_fn = stop_fn
+
+        df = data_source_df[data_source_df["symbol"] == "SPY"]
+        dates = df["date"].unique()
+        dates = dates[dates <= np.datetime64(END_DATE)]
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        assert len(result.trades) == 1
+        trade = result.trades.iloc[0]
+        assert trade["type"] == "long"
+        assert trade["symbol"] == "SPY"
+        assert trade["entry_date"] == dates[1]
+        assert trade["shares"] == 100
+        assert trade["stop"] == "custom"
+        assert trade["pnl"] < 0
+        assert len(result.orders) == 2
+        sell_order = result.orders.iloc[1]
+        assert sell_order["type"] == "sell"
+        assert sell_order["symbol"] == "SPY"
+        assert sell_order["order_type"] == "stop_custom"
+
     def test_backtest_when_sell_before_stop_loss(self, data_source_df):
         def exec_fn(ctx):
             if ctx.bars == 1:

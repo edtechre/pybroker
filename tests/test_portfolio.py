@@ -1888,6 +1888,207 @@ def test_trigger_long_bar_stop():
     )
 
 
+def test_trigger_long_custom_stop():
+    expected_fill_price = Decimal(90)
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, 100, 100, 100, 100],
+            [SYMBOL_1, DATE_2, 100, 100, expected_fill_price, 95],
+        ],
+        columns=["symbol", "date", "open", "high", "low", "close"],
+    )
+    df = df.set_index(["symbol", "date"])
+    col_scope = ColumnScope(df)
+    sym_end_index = {SYMBOL_1: len(df)}
+    price_scope = PriceScope(col_scope, sym_end_index, True)
+
+    def stop_fn(ctx):
+        if ctx.close[-1] < 100:
+            return PriceType.LOW
+        return None
+
+    stops = (
+        Stop(
+            id=1,
+            symbol=SYMBOL_1,
+            stop_type=StopType.CUSTOM,
+            pos_type="long",
+            percent=None,
+            points=None,
+            bars=None,
+            fill_price=stop_fn,
+            limit_price=None,
+            exit_price=None,
+        ),
+    )
+    entry_price = Decimal(100)
+    portfolio = Portfolio(CASH)
+    portfolio.buy(
+        DATE_1,
+        SYMBOL_1,
+        SHARES_1,
+        entry_price,
+        limit_price=None,
+        stops=stops,
+    )
+    portfolio.check_stops(DATE_2, price_scope, col_scope, {SYMBOL_1: len(df)})
+    expected_pnl = (expected_fill_price - entry_price) * SHARES_1
+    assert_portfolio(
+        portfolio=portfolio,
+        cash=CASH + expected_pnl,
+        pnl=expected_pnl,
+        symbols=set(),
+        short_positions_len=0,
+        long_positions_len=0,
+        orders=portfolio.orders,
+    )
+    assert len(portfolio.trades) == 1
+    assert_trade(
+        trade=portfolio.trades[0],
+        type="long",
+        symbol=SYMBOL_1,
+        entry_date=DATE_1,
+        exit_date=DATE_2,
+        entry=entry_price,
+        exit=expected_fill_price,
+        shares=SHARES_1,
+        pnl=expected_pnl,
+        return_pct=(expected_fill_price / entry_price - 1) * 100,
+        agg_pnl=expected_pnl,
+        bars=0,
+        pnl_per_bar=expected_pnl,
+        stop_type=StopType.CUSTOM,
+        mae=expected_fill_price - entry_price,
+        mfe=0,
+    )
+    assert_order(
+        order=portfolio.orders[1],
+        date=DATE_2,
+        symbol=SYMBOL_1,
+        type="sell",
+        limit_price=None,
+        fill_price=expected_fill_price,
+        shares=SHARES_1,
+        fees=0,
+        order_type="stop_custom",
+        intent="sell_to_close",
+    )
+
+
+def test_trigger_long_custom_stop_when_none():
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, 100, 100, 100, 100],
+            [SYMBOL_1, DATE_2, 100, 110, 100, 105],
+        ],
+        columns=["symbol", "date", "open", "high", "low", "close"],
+    )
+    df = df.set_index(["symbol", "date"])
+    col_scope = ColumnScope(df)
+    sym_end_index = {SYMBOL_1: len(df)}
+    price_scope = PriceScope(col_scope, sym_end_index, True)
+    stops = (
+        Stop(
+            id=1,
+            symbol=SYMBOL_1,
+            stop_type=StopType.CUSTOM,
+            pos_type="long",
+            percent=None,
+            points=None,
+            bars=None,
+            fill_price=lambda _: None,
+            limit_price=None,
+            exit_price=None,
+        ),
+    )
+    entry_price = Decimal(100)
+    portfolio = Portfolio(CASH)
+    portfolio.buy(
+        DATE_1,
+        SYMBOL_1,
+        SHARES_1,
+        entry_price,
+        limit_price=None,
+        stops=stops,
+    )
+    portfolio.check_stops(DATE_2, price_scope, col_scope, {SYMBOL_1: len(df)})
+    assert SYMBOL_1 in portfolio.long_positions
+    assert len(portfolio.trades) == 0
+
+
+def test_trigger_long_custom_stop_with_limit():
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, 100, 100, 100, 100],
+            [SYMBOL_1, DATE_2, 100, 100, 90, 95],
+        ],
+        columns=["symbol", "date", "open", "high", "low", "close"],
+    )
+    df = df.set_index(["symbol", "date"])
+    col_scope = ColumnScope(df)
+    sym_end_index = {SYMBOL_1: len(df)}
+    price_scope = PriceScope(col_scope, sym_end_index, True)
+    stops = (
+        Stop(
+            id=1,
+            symbol=SYMBOL_1,
+            stop_type=StopType.CUSTOM,
+            pos_type="long",
+            percent=None,
+            points=None,
+            bars=None,
+            fill_price=lambda _: PriceType.LOW,
+            limit_price=Decimal(95),
+            exit_price=None,
+        ),
+    )
+    entry_price = Decimal(100)
+    portfolio = Portfolio(CASH)
+    portfolio.buy(
+        DATE_1,
+        SYMBOL_1,
+        SHARES_1,
+        entry_price,
+        limit_price=None,
+        stops=stops,
+    )
+    portfolio.check_stops(DATE_2, price_scope, col_scope, {SYMBOL_1: len(df)})
+    assert SYMBOL_1 in portfolio.long_positions
+    assert len(portfolio.trades) == 0
+
+
+def test_cancel_custom_stop():
+    def stop_fn(_):
+        return None
+
+    stops = (
+        Stop(
+            id=1,
+            symbol=SYMBOL_1,
+            stop_type=StopType.CUSTOM,
+            pos_type="long",
+            percent=None,
+            points=None,
+            bars=None,
+            fill_price=stop_fn,
+            limit_price=None,
+            exit_price=None,
+        ),
+    )
+    portfolio = Portfolio(CASH)
+    portfolio.buy(
+        DATE_1,
+        SYMBOL_1,
+        SHARES_1,
+        FILL_PRICE_1,
+        limit_price=None,
+        stops=stops,
+    )
+    entry = portfolio.long_positions[SYMBOL_1].entries[0]
+    portfolio.remove_stops(entry, StopType.CUSTOM)
+    assert not entry.stops
+
+
 @pytest.mark.parametrize(
     "percent, points, expected_fill_price",
     [(Decimal(20), None, Decimal(160)), (None, Decimal(10), Decimal(190))],

@@ -34,6 +34,7 @@ from pybroker.common import (
 )
 from pybroker.context import (
     ExecContext as ExecContext,
+    StopContext as StopContext,
     TimeframeContext as TimeframeContext,
 )
 from pybroker.config import StrategyConfig as StrategyConfig

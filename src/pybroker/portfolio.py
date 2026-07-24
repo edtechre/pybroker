@@ -27,6 +27,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import (
+    TYPE_CHECKING,
     Callable,
     Final,
     Iterable,
@@ -35,7 +36,20 @@ from typing import (
     NamedTuple,
     Optional,
     Union,
+    cast,
 )
+
+if TYPE_CHECKING:
+    from pybroker.context import StopFn
+
+_BarStopFillPrice = Union[
+    int,
+    float,
+    np.floating,
+    Decimal,
+    PriceType,
+    Callable[[str, BarData], Union[int, float, Decimal]],
+]
 
 _DECIMAL_100: Final = Decimal(100)
 
@@ -82,6 +96,7 @@ class Stop(NamedTuple):
             Decimal,
             PriceType,
             Callable[[str, BarData], Union[int, float, Decimal]],
+            Callable[..., Optional[Union[int, float, Decimal, PriceType]]],
         ]
     ]
     limit_price: Optional[Decimal]
@@ -226,7 +241,7 @@ class Trade(NamedTuple):
     agg_pnl: Decimal
     bars: int
     pnl_per_bar: Decimal
-    stop: Optional[Literal["bar", "loss", "profit", "trailing"]]
+    stop: Optional[Literal["bar", "loss", "profit", "trailing", "custom"]]
     mae: Decimal
     mfe: Decimal
 
@@ -243,7 +258,7 @@ class Order(NamedTuple):
             for stop-triggered orders.
         order_type: How the order originated, either ``market``,
             ``limit``, ``stop_bar``, ``stop_loss``,
-            ``stop_profit``, or ``stop_trailing``.
+            ``stop_profit``, ``stop_trailing``, or ``stop_custom``.
         intent: Position intent, either ``buy_to_open``,
             ``buy_to_close``, ``sell_to_open``, or
             ``sell_to_close``.
@@ -265,6 +280,7 @@ class Order(NamedTuple):
         "stop_loss",
         "stop_profit",
         "stop_trailing",
+        "stop_custom",
     ]
     intent: Literal[
         "buy_to_open",
@@ -620,7 +636,7 @@ class Portfolio:
             if stop.id in self._stop_data:
                 raise ValueError(f"Duplicate stop ID: {stop.id}")
             entry.stops.append(stop)
-            if stop.stop_type == StopType.BAR:
+            if stop.stop_type in (StopType.BAR, StopType.CUSTOM):
                 continue
             amount = self._get_stop_amount(stop, entry.price)
             if (
@@ -1224,6 +1240,14 @@ class Portfolio:
             if stop_data.stop in stop_data.entry.stops:
                 stop_data.entry.stops.remove(stop_data.stop)
             return True
+        for pos in itertools.chain(
+            self.long_positions.values(), self.short_positions.values()
+        ):
+            for entry in pos.entries:
+                for stop in entry.stops:
+                    if stop.id == stop_id:
+                        entry.stops.remove(stop)
+                        return True
         return False
 
     def remove_stops(
@@ -1271,7 +1295,13 @@ class Portfolio:
             if stop_id is not None:
                 self.remove_stop(stop_id)
 
-    def check_stops(self, date: np.datetime64, price_scope: PriceScope):
+    def check_stops(
+        self,
+        date: np.datetime64,
+        price_scope: PriceScope,
+        col_scope: Optional[ColumnScope] = None,
+        sym_end_index: Optional[Mapping[str, int]] = None,
+    ):
         """Checks whether stops are triggered."""
         executed: deque[tuple[Position, Entry]] = deque()
         for pos in itertools.chain(
@@ -1280,7 +1310,13 @@ class Portfolio:
             for entry in pos.entries:
                 for stop in entry.stops:
                     triggered, fill_price = self._trigger_stop(
-                        date, price_scope, pos, entry, stop
+                        date,
+                        price_scope,
+                        pos,
+                        entry,
+                        stop,
+                        col_scope,
+                        sym_end_index,
                     )
                     if self._record_stops:
                         self._capture_stop(date, entry, stop, fill_price)
@@ -1328,6 +1364,8 @@ class Portfolio:
         pos: Position,
         entry: Entry,
         stop: Stop,
+        col_scope: Optional[ColumnScope] = None,
+        sym_end_index: Optional[Mapping[str, int]] = None,
     ) -> tuple[bool, Optional[Decimal]]:
         fill_price = None
         if stop.pos_type == "long" and stop.symbol not in self.long_positions:
@@ -1346,6 +1384,15 @@ class Portfolio:
             fill_price = self._trigger_profit_or_loss_stop(stop, price_scope)
         elif stop.stop_type == StopType.TRAILING:
             fill_price = self._trigger_trailing_stop(stop, price_scope)
+        elif stop.stop_type == StopType.CUSTOM:
+            fill_price = self._trigger_custom_stop(
+                stop,
+                price_scope,
+                entry,
+                date,
+                col_scope,
+                sym_end_index,
+            )
         else:
             raise ValueError(f"Unknown stop type: {stop.stop_type}")
         if fill_price is None:
@@ -1380,6 +1427,8 @@ class Portfolio:
             stop_order_type = OrderType.STOP_PROFIT
         elif stop.stop_type == StopType.TRAILING:
             stop_order_type = OrderType.STOP_TRAILING
+        elif stop.stop_type == StopType.CUSTOM:
+            stop_order_type = OrderType.STOP_CUSTOM
         else:
             raise ValueError(f"Unknown stop type: {stop.stop_type}")
         self._add_order(
@@ -1401,14 +1450,12 @@ class Portfolio:
         if stop.bars is None:
             raise ValueError("Bars not set on bar stop.")
         if entry.bars >= stop.bars:
-            return price_scope.fetch(
-                stop.symbol,
-                (
-                    PriceType.MIDDLE
-                    if stop.fill_price is None
-                    else stop.fill_price
-                ),
+            fill_price: _BarStopFillPrice = (
+                PriceType.MIDDLE
+                if stop.fill_price is None
+                else cast(_BarStopFillPrice, stop.fill_price)
             )
+            return price_scope.fetch(stop.symbol, fill_price)
         return None
 
     def _trigger_profit_or_loss_stop(
@@ -1449,6 +1496,38 @@ class Portfolio:
                     low = price_scope.fetch(stop.symbol, PriceType.LOW)
                     return max(self._stop_data[stop.id].value, low)
         return None
+
+    def _trigger_custom_stop(
+        self,
+        stop: Stop,
+        price_scope: PriceScope,
+        entry: Entry,
+        date: np.datetime64,
+        col_scope: Optional[ColumnScope],
+        sym_end_index: Optional[Mapping[str, int]],
+    ) -> Optional[Decimal]:
+        if col_scope is None or sym_end_index is None:
+            raise ValueError(
+                "col_scope and sym_end_index must be set for custom stops."
+            )
+        if not callable(stop.fill_price):
+            raise ValueError("Custom stop callback not set.")
+        from pybroker.context import StopContext
+
+        ctx = StopContext(
+            symbol=stop.symbol,
+            date=date,
+            entry=entry,
+            pos_type=stop.pos_type,
+            col_scope=col_scope,
+            sym_end_index=sym_end_index,
+            price_scope=price_scope,
+        )
+        callback = cast("StopFn", stop.fill_price)
+        result = callback(ctx)
+        if result is None:
+            return None
+        return price_scope.fetch(stop.symbol, result)
 
     def _trigger_trailing_stop(
         self, stop: Stop, price_scope: PriceScope

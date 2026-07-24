@@ -514,7 +514,7 @@ class BacktestMixin:
                     buy_sched[date].sort(key=_sort_by_buy_score, reverse=True)
             if is_sell_sched and config.max_short_positions is not None:
                 sell_sched[date].sort(key=_sort_by_sell_score, reverse=True)
-            portfolio.check_stops(date, price_scope)
+            portfolio.check_stops(date, price_scope, col_scope, sym_end_index)
             if is_cover_sched:
                 self._place_buy_orders(
                     date=date,
