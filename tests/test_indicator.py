@@ -69,7 +69,7 @@ def cache_date_fields(data_source_df):
 
 
 @pytest.fixture(params=[True, False])
-def disable_parallel(request):
+def disable_parallel_indicators(request):
     return request.param
 
 
@@ -156,65 +156,77 @@ class TestIndicatorsMixin:
 
     @pytest.mark.usefixtures("setup_ind_cache")
     def test_compute_indicators(
-        self, ind_syms, data_source_df, cache_date_fields, disable_parallel
+        self,
+        ind_syms,
+        data_source_df,
+        cache_date_fields,
+        disable_parallel_indicators,
     ):
         mixin = IndicatorsMixin()
         ind_data = mixin.compute_indicators(
             df=data_source_df,
             indicator_syms=ind_syms,
             cache_date_fields=cache_date_fields,
-            disable_parallel=disable_parallel,
+            disable_parallel_indicators=disable_parallel_indicators,
         )
         self._assert_indicators(ind_data, ind_syms, data_source_df)
 
     @pytest.mark.usefixtures("setup_ind_cache")
     def test_compute_indicators_when_empty_data(
-        self, ind_syms, cache_date_fields, disable_parallel
+        self, ind_syms, cache_date_fields, disable_parallel_indicators
     ):
         mixin = IndicatorsMixin()
         ind_data = mixin.compute_indicators(
             df=pd.DataFrame(columns=[col.value for col in DataCol]),
             indicator_syms=ind_syms,
             cache_date_fields=cache_date_fields,
-            disable_parallel=disable_parallel,
+            disable_parallel_indicators=disable_parallel_indicators,
         )
         assert len(ind_data) == 0
 
     @pytest.mark.usefixtures("setup_enabled_ind_cache")
     def test_compute_indicators_data_when_cached(
-        self, ind_syms, cache_date_fields, data_source_df, disable_parallel
+        self,
+        ind_syms,
+        cache_date_fields,
+        data_source_df,
+        disable_parallel_indicators,
     ):
         mixin = IndicatorsMixin()
         mixin.compute_indicators(
             df=data_source_df,
             indicator_syms=ind_syms,
             cache_date_fields=cache_date_fields,
-            disable_parallel=disable_parallel,
+            disable_parallel_indicators=disable_parallel_indicators,
         )
         ind_data = mixin.compute_indicators(
             df=data_source_df,
             indicator_syms=ind_syms,
             cache_date_fields=cache_date_fields,
-            disable_parallel=disable_parallel,
+            disable_parallel_indicators=disable_parallel_indicators,
         )
         self._assert_indicators(ind_data, ind_syms, data_source_df)
 
     @pytest.mark.usefixtures("setup_enabled_ind_cache")
     def test_compute_indicators_when_partial_cached(
-        self, ind_syms, cache_date_fields, data_source_df, disable_parallel
+        self,
+        ind_syms,
+        cache_date_fields,
+        data_source_df,
+        disable_parallel_indicators,
     ):
         mixin = IndicatorsMixin()
         mixin.compute_indicators(
             df=data_source_df,
             indicator_syms=ind_syms[:1],
             cache_date_fields=cache_date_fields,
-            disable_parallel=disable_parallel,
+            disable_parallel_indicators=disable_parallel_indicators,
         )
         ind_data = mixin.compute_indicators(
             df=data_source_df,
             indicator_syms=ind_syms,
             cache_date_fields=cache_date_fields,
-            disable_parallel=disable_parallel,
+            disable_parallel_indicators=disable_parallel_indicators,
         )
         self._assert_indicators(ind_data, ind_syms, data_source_df)
 
@@ -245,20 +257,22 @@ class TestIndicatorSet:
     @pytest.mark.parametrize(
         "df", [pd.DataFrame(), LazyFixture("data_source_df")]
     )
-    def test_call(self, df, hhv_ind, llv_ind, disable_parallel, request):
+    def test_call(
+        self, df, hhv_ind, llv_ind, disable_parallel_indicators, request
+    ):
         df = get_fixture(request, df)
         ind_set = IndicatorSet()
         ind_set.add([hhv_ind, llv_ind])
-        result = ind_set(df, disable_parallel)
+        result = ind_set(df, disable_parallel_indicators)
         assert len(result) == len(df)
         assert set(result.columns) == set(["date", "symbol", "hhv", "llv"])
 
     def test_call_per_symbol_layout_and_values(
-        self, data_source_df, hhv_ind, llv_ind, disable_parallel
+        self, data_source_df, hhv_ind, llv_ind, disable_parallel_indicators
     ):
         ind_set = IndicatorSet()
         ind_set.add([hhv_ind, llv_ind])
-        result = ind_set(data_source_df, disable_parallel)
+        result = ind_set(data_source_df, disable_parallel_indicators)
 
         sym_col = DataCol.SYMBOL.value
         date_col = DataCol.DATE.value

@@ -18,13 +18,16 @@ from pybroker.common import (
     to_datetime,
 )
 from pybroker.indicator import Indicator
+from pybroker.parallel import parallel
 from pybroker.scope import StaticScope
 from dataclasses import asdict
 from datetime import datetime
+from joblib import delayed
 from numpy.typing import NDArray
 from typing import (
     Any,
     Callable,
+    Collection,
     Iterable,
     Mapping,
     NamedTuple,
@@ -293,6 +296,23 @@ class CachedModel(NamedTuple):
     input_cols: Optional[tuple[str]]
 
 
+def _train_model_sym(
+    source: ModelTrainer,
+    model_sym: ModelSymbol,
+    sym_train_data: pd.DataFrame,
+    sym_test_data: pd.DataFrame,
+) -> tuple[ModelSymbol, Any, Optional[tuple[str]]]:
+    model_name, sym = model_sym
+    model_result = source(sym, sym_train_data, sym_test_data)
+    input_cols: Optional[tuple[str]] = None
+    if isinstance(model_result, tuple):
+        model = model_result[0]
+        input_cols = tuple(model_result[1])  # type: ignore[assignment]
+    else:
+        model = model_result
+    return model_sym, model, input_cols
+
+
 class ModelsMixin:
     """Mixin implementing model related functionality."""
 
@@ -303,6 +323,7 @@ class ModelsMixin:
         test_data: pd.DataFrame,
         indicator_data: Mapping[IndicatorSymbol, pd.Series],
         cache_date_fields: CacheDateFields,
+        enable_parallel_models: bool = False,
     ) -> dict[ModelSymbol, TrainedModel]:
         """Trains models for the provided :class:`pybroker.common.ModelSymbol`
         pairs.
@@ -317,6 +338,9 @@ class ModelsMixin:
                 ``pandas.Series`` of :class:`pybroker.indicator.Indicator`
                 values.
             cache_date_fields: Date fields used to key cache data.
+            enable_parallel_models: If ``True``, :class:`.ModelTrainer` models
+                are trained in parallel using multiple processes. Defaults to
+                ``False``.
 
         Returns:
             ``dict`` mapping each :class:`pybroker.common.ModelSymbol` pair
@@ -340,6 +364,10 @@ class ModelsMixin:
             scope.logger.info_loaded_models(models.keys())
         start_date = to_datetime(train_dates[0])
         end_date = to_datetime(train_dates[-1])
+        trainer_tasks: list[
+            tuple[ModelTrainer, ModelSymbol, pd.DataFrame, pd.DataFrame]
+        ] = []
+        loader_syms: list[tuple[ModelLoader, ModelSymbol]] = []
         for model_sym in uncached_model_syms:
             if model_sym in models:
                 continue
@@ -358,15 +386,38 @@ class ModelsMixin:
                         sym_test_data[ind_name] = ind_series[
                             ind_series.index.isin(test_dates)
                         ].values
-                scope.logger.info_train_model_start(model_sym)
-                model_result = source(sym, sym_train_data, sym_test_data)
-                scope.logger.info_train_model_completed(model_sym)
+                trainer_tasks.append(
+                    (source, model_sym, sym_train_data, sym_test_data)
+                )
             elif isinstance(source, ModelLoader):
-                model_result = source(sym, start_date, end_date)
-                scope.logger.info_loaded_model(model_sym)
+                loader_syms.append((source, model_sym))
             else:
                 raise TypeError(f"Invalid ModelSource type: {type(source)}")
-            input_cols: Optional[tuple[str]] = None
+        trainer_results = self._run_model_trainers(
+            trainer_tasks, enable_parallel_models
+        )
+        for (source, model_sym, _, _), (
+            _,
+            model,
+            input_cols,
+        ) in zip(trainer_tasks, trainer_results):
+            model_name, _ = model_sym
+            scope.logger.info_train_model_start(model_sym)
+            models[model_sym] = TrainedModel(
+                name=model_name,
+                instance=model,
+                predict_fn=source._predict_fn,
+                input_cols=input_cols,
+            )
+            self._set_cached_model(
+                model, input_cols, model_sym, cache_date_fields
+            )
+            scope.logger.info_train_model_completed(model_sym)
+        for source, model_sym in loader_syms:
+            model_name, sym = model_sym
+            scope.logger.info_loaded_model(model_sym)
+            model_result = source(sym, start_date, end_date)
+            input_cols = None
             if isinstance(model_result, tuple):
                 model = model_result[0]
                 input_cols = tuple(model_result[1])  # type: ignore[assignment]
@@ -383,6 +434,30 @@ class ModelsMixin:
             )
         scope.logger.train_split_completed()
         return models
+
+    def _run_model_trainers(
+        self,
+        trainer_tasks: Collection[
+            tuple[ModelTrainer, ModelSymbol, pd.DataFrame, pd.DataFrame]
+        ],
+        enable_parallel_models: bool,
+    ) -> list[tuple[ModelSymbol, Any, Optional[tuple[str]]]]:
+        if enable_parallel_models and len(trainer_tasks) > 1:
+            with parallel() as pool:
+                return pool(
+                    delayed(_train_model_sym)(
+                        source, model_sym, sym_train_data, sym_test_data
+                    )
+                    for source, model_sym, sym_train_data, sym_test_data in (
+                        trainer_tasks
+                    )
+                )
+        return [
+            _train_model_sym(source, model_sym, sym_train_data, sym_test_data)
+            for source, model_sym, sym_train_data, sym_test_data in (
+                trainer_tasks
+            )
+        ]
 
     def _slice_by_symbol(self, symbol: str, df: pd.DataFrame) -> pd.DataFrame:
         return (

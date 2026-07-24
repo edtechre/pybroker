@@ -180,7 +180,7 @@ class IndicatorsMixin:
         df: pd.DataFrame,
         indicator_syms: Iterable[IndicatorSymbol],
         cache_date_fields: Optional[CacheDateFields],
-        disable_parallel: bool,
+        disable_parallel_indicators: bool,
     ) -> dict[IndicatorSymbol, pd.Series]:
         """Computes indicator data for the provided
         :class:`pybroker.common.IndicatorSymbol` pairs.
@@ -192,10 +192,11 @@ class IndicatorsMixin:
                 to compute.
             cache_date_fields: Date fields used to key cache data. Pass
                 ``None`` to disable caching.
-            disable_parallel: If ``True``, indicator data is computed
-                serially for all :class:`pybroker.common.IndicatorSymbol`
-                pairs. If ``False``, indicator data is computed in parallel
-                using multiple processes.
+            disable_parallel_indicators: If ``True``, indicator data is
+                computed serially for all
+                :class:`pybroker.common.IndicatorSymbol` pairs. If ``False``,
+                indicator data is computed in parallel using multiple
+                processes.
 
         Returns:
             ``dict`` mapping each :class:`pybroker.common.IndicatorSymbol` pair
@@ -231,7 +232,9 @@ class IndicatorsMixin:
                 for col in scope.all_data_cols
             }
         for i, (ind_sym, series) in enumerate(
-            self._run_indicators(sym_data, uncached_ind_syms, disable_parallel)
+            self._run_indicators(
+                sym_data, uncached_ind_syms, disable_parallel_indicators
+            )
         ):
             indicator_data[ind_sym] = series
             self._set_cached_indicator(series, ind_sym, cache_date_fields)
@@ -288,7 +291,7 @@ class IndicatorsMixin:
         self,
         sym_data: Mapping[str, Mapping[str, Optional[NDArray]]],
         ind_syms: Collection[IndicatorSymbol],
-        disable_parallel: bool,
+        disable_parallel_indicators: bool,
     ) -> Iterable[tuple[IndicatorSymbol, pd.Series]]:
         fns = {}
         for ind_name, _ in ind_syms:
@@ -307,7 +310,7 @@ class IndicatorsMixin:
                 **{col: sym_data[sym][col] for col in scope.default_data_cols},
             }
 
-        if disable_parallel or len(ind_syms) == 1:
+        if disable_parallel_indicators or len(ind_syms) == 1:
             scope.logger.debug_compute_indicators(is_parallel=False)
             return tuple(
                 fns[ind_name](**args_fn(ind_name, sym))
@@ -352,15 +355,15 @@ class IndicatorSet(IndicatorsMixin):
         self._ind_names.clear()
 
     def __call__(
-        self, df: pd.DataFrame, disable_parallel: bool = False
+        self, df: pd.DataFrame, disable_parallel_indicators: bool = False
     ) -> pd.DataFrame:
         """Computes indicator data.
 
         Args:
             df: :class:`pandas.DataFrame` of input data.
-            disable_parallel: If ``True``, indicator data is computed serially.
-                If ``False``, indicator data is computed in parallel using
-                multiple processes. Defaults to ``False``.
+            disable_parallel_indicators: If ``True``, indicator data is
+                computed serially. If ``False``, indicator data is computed in
+                parallel using multiple processes. Defaults to ``False``.
 
         Returns:
             :class:`pandas.DataFrame` containing the computed indicator data.
@@ -382,7 +385,7 @@ class IndicatorSet(IndicatorsMixin):
             df=df,
             indicator_syms=ind_syms,
             cache_date_fields=None,
-            disable_parallel=disable_parallel,
+            disable_parallel_indicators=disable_parallel_indicators,
         )
         sym_dict: dict[str, dict[str, pd.Series]] = defaultdict(dict)
         for ind_sym, series in ind_dict.items():

@@ -11,6 +11,7 @@ import os
 import pandas as pd
 import pytest
 import re
+from importlib import import_module
 from .fixtures import *  # noqa: F401
 from collections import defaultdict, deque
 from datetime import datetime
@@ -20,6 +21,7 @@ from pybroker.config import StrategyConfig
 from pybroker.context import ExecContext
 from pybroker.data import DataSource
 from pybroker.eval import EvalMetrics
+from pybroker.parallel import get_parallel_config, parallel, set_parallel
 from pybroker.portfolio import (
     Order,
     Portfolio,
@@ -36,7 +38,7 @@ from pybroker.strategy import (
     TestResult,
     WalkforwardMixin,
 )
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 
 @pytest.fixture(params=[200, 202])
@@ -1149,7 +1151,7 @@ def calc_bootstrap(request):
 
 
 @pytest.fixture(params=[True, False])
-def disable_parallel(request):
+def disable_parallel_indicators(request):
     return request.param
 
 
@@ -1176,6 +1178,48 @@ START_DATE = "2020-01-02"
 END_DATE = "2021-12-31"
 
 
+def _picklable_train_fake_model(sym, train_data, test_data):
+    return FakeModel(
+        sym,
+        np.full(train_data.shape[0] + test_data.shape[0], 100),
+    )
+
+
+@pytest.fixture()
+def ray_backend():
+    ray = pytest.importorskip("ray")
+    from ray.util.joblib import register_ray
+
+    ray.init(num_cpus=2, ignore_reinit_error=True, include_dashboard=False)
+    register_ray()
+    yield
+    ray.shutdown()
+
+
+@pytest.fixture()
+def exec_picklable_model_source(scope, indicators):
+    return model(
+        MODEL_NAME,
+        _picklable_train_fake_model,
+        indicators,
+        pretrained=False,
+    )
+
+
+@pytest.fixture()
+def executions_with_picklable_models(
+    executions_only, exec_picklable_model_source
+):
+    def exec_fn(ctx):
+        assert isinstance(
+            ctx.model(exec_picklable_model_source.name), FakeModel
+        )
+
+    executions_only[0]["models"] = exec_picklable_model_source
+    executions_only[0]["fn"] = exec_fn
+    return executions_only
+
+
 class TestStrategy:
     @pytest.mark.parametrize(
         "data_source",
@@ -1199,7 +1243,7 @@ class TestStrategy:
         days,
         between_time,
         calc_bootstrap,
-        disable_parallel,
+        disable_parallel_indicators,
         request,
     ):
         data_source = get_fixture(request, data_source)
@@ -1219,7 +1263,7 @@ class TestStrategy:
             days=days,
             between_time=between_time,
             calc_bootstrap=calc_bootstrap,
-            disable_parallel=disable_parallel,
+            disable_parallel_indicators=disable_parallel_indicators,
             adjust="adjustment",
         )
         if date_range[0] is None:
@@ -1256,6 +1300,87 @@ class TestStrategy:
             assert not result.bootstrap.drawdown_conf.empty
         else:
             assert result.bootstrap is None
+
+    def test_walkforward_enable_parallel_models(
+        self, data_source_df, executions_with_models
+    ):
+        _parallel_mod = import_module("pybroker.parallel")
+        saved = get_parallel_config()
+        try:
+            set_parallel(n_jobs=2, backend="threading")
+            config = StrategyConfig()
+            strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+            for exec in executions_with_models:
+                strategy.add_execution(**exec)
+            serial_result = strategy.walkforward(
+                windows=1,
+                lookahead=1,
+                timeframe="1d",
+                train_size=0.5,
+                enable_parallel_models=False,
+                seed=42,
+            )
+            parallel_result = strategy.walkforward(
+                windows=1,
+                lookahead=1,
+                timeframe="1d",
+                train_size=0.5,
+                enable_parallel_models=True,
+                seed=42,
+            )
+            pd.testing.assert_frame_equal(
+                serial_result.portfolio, parallel_result.portfolio
+            )
+            assert serial_result.metrics == parallel_result.metrics
+            with patch("pybroker.model.parallel", wraps=parallel) as (
+                mock_parallel
+            ):
+                strategy.walkforward(
+                    windows=1,
+                    lookahead=1,
+                    timeframe="1d",
+                    train_size=0.5,
+                    enable_parallel_models=True,
+                    seed=42,
+                )
+                mock_parallel.assert_called()
+        finally:
+            _parallel_mod._config = saved
+
+    @pytest.mark.xdist_group(name="ray")
+    def test_walkforward_enable_parallel_models_ray(
+        self, data_source_df, executions_with_picklable_models, ray_backend
+    ):
+        _parallel_mod = import_module("pybroker.parallel")
+        saved = get_parallel_config()
+        try:
+            set_parallel(n_jobs=2, backend="ray")
+            config = StrategyConfig()
+            strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+            for exec in executions_with_picklable_models:
+                strategy.add_execution(**exec)
+            serial_result = strategy.walkforward(
+                windows=1,
+                lookahead=1,
+                timeframe="1d",
+                train_size=0.5,
+                enable_parallel_models=False,
+                seed=42,
+            )
+            parallel_result = strategy.walkforward(
+                windows=1,
+                lookahead=1,
+                timeframe="1d",
+                train_size=0.5,
+                enable_parallel_models=True,
+                seed=42,
+            )
+            pd.testing.assert_frame_equal(
+                serial_result.portfolio, parallel_result.portfolio
+            )
+            assert serial_result.metrics == parallel_result.metrics
+        finally:
+            _parallel_mod._config = saved
 
     @pytest.mark.parametrize("return_signals", [True, False])
     @pytest.mark.parametrize("return_stops", [True, False])

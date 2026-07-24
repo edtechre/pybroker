@@ -90,7 +90,7 @@ class Walkforward:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=True,
-            disable_parallel=True,
+            disable_parallel_indicators=True,
         )
 
     def time_walkforward(self) -> None:
@@ -98,7 +98,7 @@ class Walkforward:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=True,
-            disable_parallel=True,
+            disable_parallel_indicators=True,
         )
 
     def peakmem_walkforward(self) -> None:
@@ -106,7 +106,7 @@ class Walkforward:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=True,
-            disable_parallel=True,
+            disable_parallel_indicators=True,
         )
 
 
@@ -124,7 +124,7 @@ class WalkforwardCold:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=True,
-            disable_parallel=True,
+            disable_parallel_indicators=True,
         )
 
 
@@ -200,7 +200,7 @@ class WalkforwardScaled:
             windows=windows,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            disable_parallel=True,
+            disable_parallel_indicators=True,
         )
 
     def time_walkforward_scaled(self, windows: int, symbols: int) -> None:
@@ -208,7 +208,7 @@ class WalkforwardScaled:
             windows=windows,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            disable_parallel=True,
+            disable_parallel_indicators=True,
         )
 
 
@@ -228,7 +228,7 @@ class WalkforwardLarge:
             windows=5,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            disable_parallel=True,
+            disable_parallel_indicators=True,
         )
 
     def time_walkforward_large(self) -> None:
@@ -236,7 +236,7 @@ class WalkforwardLarge:
             windows=5,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            disable_parallel=True,
+            disable_parallel_indicators=True,
         )
 
     def peakmem_walkforward_large(self) -> None:
@@ -244,7 +244,7 @@ class WalkforwardLarge:
             windows=5,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            disable_parallel=True,
+            disable_parallel_indicators=True,
         )
 
 
@@ -303,7 +303,7 @@ class ExitOnLastBarPreprocess:
             windows=1,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            disable_parallel=True,
+            disable_parallel_indicators=True,
         )
 
     def time_exit_on_last_bar_preprocess(self, n_symbols: int) -> None:
@@ -311,7 +311,7 @@ class ExitOnLastBarPreprocess:
             windows=1,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            disable_parallel=True,
+            disable_parallel_indicators=True,
         )
 
     def _build_strategy(self) -> "_PreprocessOnlyStrategy":
@@ -373,12 +373,12 @@ class IndicatorPreprocess:
         for name, fn in kernels[:n_indicators]:
             ind_set.add(pybroker.indicator(name, fn))
         self._ind_set = ind_set
-        self._ind_set(self.df, disable_parallel=True)
+        self._ind_set(self.df, disable_parallel_indicators=True)
 
     def time_indicator_set_call(
         self, n_symbols: int, n_indicators: int
     ) -> None:
-        self._ind_set(self.df, disable_parallel=True)
+        self._ind_set(self.df, disable_parallel_indicators=True)
 
 
 class IndicatorKernels:
@@ -543,7 +543,7 @@ class WalkforwardProperCold:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            disable_parallel=True,
+            disable_parallel_indicators=True,
         )
 
 
@@ -571,7 +571,7 @@ class Determinism:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            disable_parallel=True,
+            disable_parallel_indicators=True,
         )
         equity = result.portfolio["equity"].to_numpy()
         digest = hashlib.sha256(equity.tobytes()).hexdigest()

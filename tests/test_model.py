@@ -10,13 +10,18 @@ import pandas as pd
 import pytest
 import re
 from .fixtures import *  # noqa: F401
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from pybroker.cache import CacheDateFields
 from pybroker.common import ModelSymbol, TrainedModel, to_datetime
 from pybroker.model import ModelLoader, ModelsMixin, ModelTrainer, model
 
 TF_SECONDS = 60
 BETWEEN_TIME = ("10:00", "15:30")
+
+
+@pytest.fixture(params=[True, False])
+def enable_parallel_models(request):
+    return request.param
 
 
 @pytest.fixture()
@@ -189,6 +194,7 @@ class TestModelsMixin:
         param_test_data,
         ind_data,
         cache_date_fields,
+        enable_parallel_models,
         request,
     ):
         param_test_data = get_fixture(request, param_test_data)
@@ -199,6 +205,7 @@ class TestModelsMixin:
             param_test_data,
             ind_data,
             cache_date_fields,
+            enable_parallel_models=enable_parallel_models,
         )
         self._assert_models(models, model_syms)
 
@@ -237,3 +244,43 @@ class TestModelsMixin:
             model_syms, train_data, test_data, ind_data, cache_date_fields
         )
         self._assert_models(models, model_syms)
+
+    @pytest.mark.usefixtures("setup_model_cache")
+    def test_train_models_parallel_invokes_pool(
+        self,
+        train_data,
+        test_data,
+        ind_data,
+        cache_date_fields,
+        indicators,
+    ):
+        trainer = model(
+            "parallel_trainer",
+            lambda sym, *_: FakeModel(sym, np.array([1.0])),
+            indicators,
+            pretrained=False,
+        )
+        trainer_syms = sorted(
+            ModelSymbol(trainer.name, sym)
+            for sym in train_data["symbol"].unique()
+        )
+        fake_results = [
+            (model_sym, FakeModel(model_sym.symbol, np.array([1.0])), None)
+            for model_sym in trainer_syms
+        ]
+        mixin = ModelsMixin()
+        with patch("pybroker.model.parallel") as mock_parallel:
+            mock_pool = Mock(return_value=fake_results)
+            mock_parallel.return_value.__enter__ = Mock(return_value=mock_pool)
+            mock_parallel.return_value.__exit__ = Mock(return_value=False)
+            models = mixin.train_models(
+                trainer_syms,
+                train_data,
+                test_data,
+                ind_data,
+                cache_date_fields,
+                enable_parallel_models=True,
+            )
+            mock_parallel.assert_called_once()
+            mock_pool.assert_called_once()
+        self._assert_models(models, trainer_syms)
