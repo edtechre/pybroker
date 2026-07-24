@@ -1137,15 +1137,16 @@ class Portfolio:
             high = None
             idx = sym_end_index.get(sym, 0) - 1
             if idx >= 0:
-                date_arr = col_scope.fetch(sym, DataCol.DATE.value)
+                cols = col_scope.fetch_dict(sym, _CAPTURE_BAR_COLS)
+                date_arr = cols[_COL_DATE]
                 if (
                     date_arr is not None
                     and idx < len(date_arr)
                     and date_arr[idx] == date
                 ):
-                    close_arr = col_scope.fetch(sym, DataCol.CLOSE.value)
-                    low_arr = col_scope.fetch(sym, DataCol.LOW.value)
-                    high_arr = col_scope.fetch(sym, DataCol.HIGH.value)
+                    close_arr = cols[_COL_CLOSE]
+                    low_arr = cols[_COL_LOW]
+                    high_arr = cols[_COL_HIGH]
                     if close_arr is not None:
                         close = to_decimal(float(close_arr[idx]))
                     if low_arr is not None:
