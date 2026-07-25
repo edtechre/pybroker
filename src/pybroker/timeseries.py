@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from numba import njit
 from pybroker.common import DataCol
 from dataclasses import dataclass
+from numpy.typing import NDArray
 from typing import Callable, Iterable, Mapping, Optional, TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
@@ -129,16 +131,49 @@ def _as_float64_contiguous(values: np.ndarray) -> np.ndarray:
     return np.ascontiguousarray(values, dtype=np.float64)
 
 
-def _build_stacked_lags(values: np.ndarray, lags: int) -> np.ndarray:
-    """Returns lag-expanded history with shape ``(lags + 1, len(values))``."""
+@njit(cache=True)
+def _build_stacked_lags_njit(
+    values: NDArray[np.float64], lags: int
+) -> NDArray[np.float64]:
     n = len(values)
     stacked = np.empty((lags + 1, n), dtype=np.float64)
     stacked[0] = values
     for lag in range(1, lags + 1):
-        row = stacked[lag]
-        row[:lag] = np.nan
-        row[lag:] = values[:-lag]
+        stacked[lag, :lag] = np.nan
+        stacked[lag, lag:] = values[:-lag]
     return stacked
+
+
+@njit(cache=True)
+def _fill_lag_feature_block_njit(
+    matrix: NDArray[np.float64],
+    col_start: int,
+    lags: int,
+    stacked: NDArray[np.float64],
+    base_col: NDArray[np.float64],
+    offset: int,
+    n_rows: int,
+) -> None:
+    n_lag_cols = lags + 1
+    for r in range(n_rows):
+        for c in range(n_lag_cols):
+            matrix[r, col_start + c] = stacked[c, offset + r]
+        matrix[r, col_start] = base_col[r]
+
+
+@njit(cache=True)
+def _scatter_matrix_rows_njit(
+    matrix: NDArray[np.float64],
+    idx: NDArray[np.int64],
+    sym_matrix: NDArray[np.float64],
+) -> None:
+    for i in range(len(idx)):
+        matrix[idx[i]] = sym_matrix[i]
+
+
+def _build_stacked_lags(values: np.ndarray, lags: int) -> np.ndarray:
+    """Returns lag-expanded history with shape ``(lags + 1, len(values))``."""
+    return _build_stacked_lags_njit(_as_float64_contiguous(values), lags)
 
 
 def _store_stacked_lags_in_cache(
@@ -376,10 +411,15 @@ def build_lag_feature_matrix(
     col_idx = 0
     for col in columns:
         stacked = lag_cache[LagSeriesKey(symbol, col, 0, interval)]
-        matrix[:, col_idx : col_idx + lags + 1] = stacked[
-            :, offset : offset + n_rows
-        ].T
-        matrix[:, col_idx] = _as_float64_contiguous(base_arrays[col])
+        _fill_lag_feature_block_njit(
+            matrix,
+            col_idx,
+            lags,
+            stacked,
+            _as_float64_contiguous(base_arrays[col]),
+            offset,
+            n_rows,
+        )
         col_idx += lags + 1
     return matrix
 
@@ -426,7 +466,7 @@ def build_lag_feature_matrix_pooled(
             lag_cache,
             interval,
         )
-        matrix[idx] = sym_matrix
+        _scatter_matrix_rows_njit(matrix, idx.astype(np.int64), sym_matrix)
     return matrix
 
 
