@@ -2067,7 +2067,29 @@ class Strategy(
             self._liquidate_dropped_symbols(
                 portfolio, selected_syms, test_data
             )
+            train_store = None
+            test_store = None
+            history_store = None
+            if not test_data.empty:
+                test_dates_arr = _unique_dates_from_rows(
+                    master_dates_arr, test_rows
+                )
+                test_store = slice_symbol_array_store_by_dates(
+                    master_store, test_dates_arr
+                )
             if not train_data.empty:
+                train_dates_arr = _unique_dates_from_rows(
+                    master_dates_arr, train_rows
+                )
+                train_store = slice_symbol_array_store_by_dates(
+                    master_store, train_dates_arr
+                )
+                if test_store is not None:
+                    history_store = merge_symbol_array_stores(
+                        train_store, test_store
+                    )
+                else:
+                    history_store = train_store
                 train_symbols = set(train_data[sym_col].unique())
                 model_syms: set[ModelSymbol] = set()
                 for sym in train_symbols:
@@ -2132,26 +2154,13 @@ class Strategy(
                     enable_parallel_models=enable_parallel_models,
                     pooled_model_groups=pooled_model_groups,
                     timeframe_data=timeframe_data,
+                    history_store=history_store,
+                    train_store=train_store,
+                    test_store=test_store,
                 )
             if test_data.empty:
                 return signals
-            test_dates_arr = _unique_dates_from_rows(
-                master_dates_arr, test_rows
-            )
-            test_store = slice_symbol_array_store_by_dates(
-                master_store, test_dates_arr
-            )
-            if not train_data.empty:
-                train_dates_arr = _unique_dates_from_rows(
-                    master_dates_arr, train_rows
-                )
-                train_store = slice_symbol_array_store_by_dates(
-                    master_store, train_dates_arr
-                )
-                history_store = merge_symbol_array_stores(
-                    train_store, test_store
-                )
-            else:
+            if history_store is None:
                 history_store = test_store
             history_col_scope = ColumnScope(history_store)
             test_col_scope = ColumnScope(test_store)

@@ -1158,3 +1158,168 @@ class WalkforwardModels:
             indicators=[hhv20],
         )
         return strategy
+
+
+class ModelTrainPrep:
+    """Isolated train_models input prep with a no-op trainer."""
+
+    timeout = 120
+
+    def setup(self) -> None:
+        from pybroker.cache import CacheDateFields
+        from pybroker.common import DataCol, ModelSymbol, to_datetime
+        from pybroker.model import ModelsMixin, model
+
+        pybroker.clear_params()
+        pybroker.disable_logging()
+        pybroker.disable_progress_bar()
+        self._mixin = ModelsMixin()
+        self._df = _load_dataset()
+        split = len(self._df) // 2
+        self._train_data = self._df.iloc[:split]
+        self._test_data = self._df.iloc[split:]
+        date_col = DataCol.DATE.value
+        train_dates = sorted(self._train_data[date_col].unique())
+        self._cache_date_fields = CacheDateFields(
+            start_date=to_datetime(train_dates[0]),
+            end_date=to_datetime(train_dates[-1]),
+            tf_seconds=86400,
+            between_time=None,
+            days=None,
+        )
+        self._symbols = sorted(self._df["symbol"].unique().tolist())
+        self._model_syms = [
+            ModelSymbol("bench_sym", sym) for sym in self._symbols
+        ]
+        self._pooled_model_syms = [
+            ModelSymbol("bench_pooled", sym) for sym in self._symbols
+        ]
+        self._pooled_model_groups = {
+            ("bench_pooled", 1): frozenset(self._symbols)
+        }
+        self._ind_data = {}
+
+        def train_sym(_symbol, _train_df, _test_df):
+            class _ConstantModel:
+                def predict(self, _x):
+                    return np.ones(len(_x))
+
+            return _ConstantModel()
+
+        def train_pooled(_train_df, _test_df):
+            return train_sym(None, _train_df, _test_df)
+
+        model("bench_sym", train_sym)
+        model("bench_pooled", train_pooled, pooled=True)
+        self._run_per_symbol()
+        self._run_pooled()
+
+    def _constant_model(self):
+        class _ConstantModel:
+            def predict(self, _x):
+                return np.ones(len(_x))
+
+        return _ConstantModel()
+
+    def _run_per_symbol(self) -> None:
+        self._mixin.train_models(
+            self._model_syms,
+            self._train_data,
+            self._test_data,
+            self._ind_data,
+            self._cache_date_fields,
+        )
+
+    def _run_pooled(self) -> None:
+        from pybroker.model import model
+
+        pybroker.clear_params()
+        model(
+            "bench_pooled",
+            lambda _train_df, _test_df: self._constant_model(),
+            pooled=True,
+        )
+        self._mixin.train_models(
+            self._pooled_model_syms,
+            self._train_data,
+            self._test_data,
+            self._ind_data,
+            self._cache_date_fields,
+            pooled_model_groups=self._pooled_model_groups,
+        )
+
+    def time_train_models_per_symbol(self) -> None:
+        from pybroker.model import model
+
+        pybroker.clear_params()
+        model(
+            "bench_sym",
+            lambda _symbol, _train_df, _test_df: self._constant_model(),
+        )
+        self._run_per_symbol()
+
+    def time_train_models_pooled(self) -> None:
+        self._run_pooled()
+
+
+class WalkforwardModelsPerSymbol:
+    """End-to-end walkforward with per-symbol model training."""
+
+    timeout = 600
+
+    def setup(self) -> None:
+        np.random.seed(SEED)
+        self.df = _load_dataset()
+        self._build_strategy().walkforward(
+            windows=WINDOWS,
+            lookahead=LOOKAHEAD,
+            calc_bootstrap=False,
+            disable_parallel_indicators=True,
+        )
+
+    def time_walkforward_models_per_symbol(self) -> None:
+        self._build_strategy().walkforward(
+            windows=WINDOWS,
+            lookahead=LOOKAHEAD,
+            calc_bootstrap=False,
+            disable_parallel_indicators=True,
+        )
+
+    def _build_strategy(self) -> Strategy:
+        from pybroker.model import model
+
+        pybroker.clear_params()
+        pybroker.disable_logging()
+        pybroker.disable_progress_bar()
+
+        class _ConstantModel:
+            def predict(self, _x):
+                return np.ones(len(_x))
+
+        hhv20 = pybroker.indicator(
+            "hhv20", lambda bar_data: highv(bar_data.close, 20)
+        )
+
+        def train_sym(_symbol, _train_df, _test_df):
+            del _train_df, _test_df
+            return _ConstantModel()
+
+        bench_sym = model(
+            "bench_sym", train_sym, indicators=(hhv20,), pooled=False
+        )
+
+        def exec_fn(ctx: ExecContext) -> None:
+            preds = ctx.preds("bench_sym")
+            if len(preds) and preds[-1] > 0:
+                ctx.buy_shares = 1
+
+        start = self.df["date"].min().strftime("%Y-%m-%d")
+        end = self.df["date"].max().strftime("%Y-%m-%d")
+        strategy = Strategy(self.df, start, end, StrategyConfig())
+        strategy.add_execution(
+            exec_fn,
+            symbols=sorted(self.df["symbol"].unique().tolist()),
+            models=bench_sym,
+            indicators=[hhv20],
+        )
+        return strategy

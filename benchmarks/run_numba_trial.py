@@ -71,15 +71,23 @@ def _run_store_micro() -> dict[str, float]:
 
 
 def _run_model_prep_micro() -> dict[str, float]:
-    from benchmarks.bench_backtest import ModelPrepKernels
+    from benchmarks.bench_backtest import ModelPrepKernels, ModelTrainPrep
 
+    out: dict[str, float] = {}
     b = ModelPrepKernels()
     b.setup()
-    return {
-        "ModelPrepKernels.time_indicator_values_for_dates": _median_ms(
-            b.time_indicator_values_for_dates
-        )
-    }
+    out["ModelPrepKernels.time_indicator_values_for_dates"] = _median_ms(
+        b.time_indicator_values_for_dates
+    )
+    prep = ModelTrainPrep()
+    prep.setup()
+    out["ModelTrainPrep.time_train_models_per_symbol"] = _median_ms(
+        prep.time_train_models_per_symbol
+    )
+    out["ModelTrainPrep.time_train_models_pooled"] = _median_ms(
+        prep.time_train_models_pooled
+    )
+    return out
 
 
 def _run_macro() -> dict[str, float]:
@@ -89,6 +97,7 @@ def _run_macro() -> dict[str, float]:
         Walkforward,
         WalkforwardLarge,
         WalkforwardModels,
+        WalkforwardModelsPerSymbol,
         WalkforwardTimeframes,
     )
 
@@ -104,6 +113,10 @@ def _run_macro() -> dict[str, float]:
             WalkforwardTimeframes,
         ),
         ("WalkforwardModels.time_walkforward_models", WalkforwardModels),
+        (
+            "WalkforwardModelsPerSymbol.time_walkforward_models_per_symbol",
+            WalkforwardModelsPerSymbol,
+        ),
     ]
     out: dict[str, float] = {}
     for name, cls in specs:

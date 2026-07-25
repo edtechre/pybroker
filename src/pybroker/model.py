@@ -69,13 +69,15 @@ def _indicator_values_for_dates_njit(
     values: NDArray[np.float64],
     dates: NDArray,
 ) -> NDArray[np.float64]:
-    """Aligns indicator values to ``dates`` via sorted datetime search."""
+    """Aligns indicator values to ``dates`` via batched sorted datetime search."""
     n = len(dates)
     result = np.full(n, np.nan, dtype=np.float64)
+    pos = np.searchsorted(ind_dates, dates)
+    m = len(ind_dates)
     for i in range(n):
-        pos = np.searchsorted(ind_dates, dates[i])
-        if pos < len(ind_dates) and ind_dates[pos] == dates[i]:
-            result[i] = values[pos]
+        p = pos[i]
+        if p < m and ind_dates[p] == dates[i]:
+            result[i] = values[p]
     return result
 
 
@@ -89,12 +91,140 @@ def _indicator_values_for_dates(
     index = ind_series.index
     if getattr(index, "is_monotonic_increasing", False):
         ind_dates = index.to_numpy(dtype="datetime64[ns]", copy=False)
-        return _indicator_values_for_dates_njit(ind_dates, values, dates)
+        pos = np.searchsorted(ind_dates, dates)
+        valid = pos < len(ind_dates)
+        matched = np.zeros(len(dates), dtype=bool)
+        matched[valid] = ind_dates[pos[valid]] == dates[valid]
+        result = np.full(len(dates), np.nan, dtype=np.float64)
+        result[matched] = values[pos[matched]]
+        return result
     positions = ind_series.index.get_indexer(dates)
     result = np.full(len(dates), np.nan, dtype=np.float64)
     valid = positions >= 0
     result[valid] = values[positions[valid]]
     return result
+
+
+def _model_input_columns(
+    indicators: tuple[str, ...],
+    available: frozenset[str],
+    *,
+    pooled: bool = False,
+) -> tuple[str, ...]:
+    """Returns ordered model input columns present in ``available``."""
+    sym_col = DataCol.SYMBOL.value
+    date_col = DataCol.DATE.value
+    scope = StaticScope.instance()
+    columns: list[str] = [sym_col, date_col] if pooled else [date_col]
+    for col in scope.all_data_cols:
+        if col in (sym_col, date_col) or col not in available:
+            continue
+        columns.append(col)
+    for ind_name in indicators:
+        columns.append(ind_name)
+    return tuple(dict.fromkeys(columns))
+
+
+def _empty_model_input(
+    columns: tuple[str, ...], *, pooled: bool
+) -> ModelInput:
+    sym_col = DataCol.SYMBOL.value
+    arrays = {col: np.array([], dtype=np.float64) for col in columns}
+    if pooled and sym_col in arrays:
+        arrays[sym_col] = np.array([], dtype=object)
+    return model_input_from_arrays(
+        columns, arrays, np.array([], dtype="datetime64[ns]")
+    )
+
+
+def _symbol_model_input_from_store(
+    store: SymbolArrayStore,
+    symbol: str,
+    indicator_data: Mapping[IndicatorSymbol, pd.Series],
+    indicators: tuple[str, ...],
+) -> ModelInput:
+    """Builds per-symbol :class:`ModelInput` from a :class:`SymbolArrayStore`."""
+    date_col = DataCol.DATE.value
+    if symbol not in store.sym_arrays:
+        available: frozenset[str] = frozenset()
+        for sym_data in store.sym_arrays.values():
+            available |= frozenset(sym_data.keys())
+        columns = _model_input_columns(indicators, available, pooled=False)
+        return _empty_model_input(columns, pooled=False)
+    sym_data = store.sym_arrays[symbol]
+    available = frozenset(sym_data.keys())
+    columns_tuple = _model_input_columns(indicators, available, pooled=False)
+    dates_arr = sym_data.get(date_col)
+    if dates_arr is None or len(dates_arr) == 0:
+        return _empty_model_input(columns_tuple, pooled=False)
+    dates = np.asarray(dates_arr, dtype="datetime64[ns]")
+    arrays: dict[str, NDArray] = {date_col: dates}
+    for col in columns_tuple:
+        if col == date_col:
+            continue
+        if col in sym_data:
+            arrays[col] = sym_data[col]
+        elif col in indicators:
+            arrays[col] = _indicator_values_for_dates(
+                indicator_data[IndicatorSymbol(col, symbol)], dates
+            )
+    return model_input_from_arrays(columns_tuple, arrays, dates)
+
+
+def _pooled_model_input_from_store(
+    store: SymbolArrayStore,
+    symbols: frozenset[str],
+    indicator_data: Mapping[IndicatorSymbol, pd.Series],
+    indicators: tuple[str, ...],
+) -> ModelInput:
+    """Builds pooled multi-symbol :class:`ModelInput` from a store."""
+    sym_col = DataCol.SYMBOL.value
+    date_col = DataCol.DATE.value
+    available: set[str] = set()
+    for sym in symbols:
+        if sym in store.sym_arrays:
+            available.update(store.sym_arrays[sym].keys())
+    columns_tuple = _model_input_columns(
+        indicators, frozenset(available), pooled=True
+    )
+    sym_parts: list[NDArray] = []
+    date_parts: list[NDArray] = []
+    col_parts: dict[str, list[NDArray]] = {
+        col: [] for col in columns_tuple if col not in (sym_col, date_col)
+    }
+    has_rows = False
+    for sym in symbols:
+        if sym not in store.sym_arrays:
+            continue
+        sym_data = store.sym_arrays[sym]
+        dates_arr = sym_data.get(date_col)
+        if dates_arr is None or len(dates_arr) == 0:
+            continue
+        has_rows = True
+        dates = np.asarray(dates_arr, dtype="datetime64[ns]")
+        n = len(dates)
+        sym_parts.append(np.full(n, sym, dtype=object))
+        date_parts.append(dates)
+        for col in col_parts:
+            if col in sym_data:
+                col_parts[col].append(sym_data[col])
+            elif col in indicators:
+                col_parts[col].append(
+                    _indicator_values_for_dates(
+                        indicator_data[IndicatorSymbol(col, sym)], dates
+                    )
+                )
+    if not has_rows:
+        return _empty_model_input(columns_tuple, pooled=True)
+    sym_vals = np.concatenate(sym_parts)
+    dates = np.concatenate(date_parts)
+    order = np.lexsort((dates, sym_vals))
+    sym_vals = sym_vals[order]
+    dates = dates[order]
+    arrays: dict[str, NDArray] = {sym_col: sym_vals, date_col: dates}
+    for col, parts in col_parts.items():
+        arrays[col] = np.concatenate(parts)[order]
+    return model_input_from_arrays(columns_tuple, arrays, dates)
 
 
 def _symbol_model_input(
@@ -108,29 +238,18 @@ def _symbol_model_input(
     date_col = DataCol.DATE.value
     if df.empty:
         return ModelInput((), {}, np.array([], dtype="datetime64[ns]"))
+    available = frozenset(df.columns)
+    columns_tuple = _model_input_columns(indicators, available, pooled=False)
     sym_arr = df[sym_col].to_numpy()
     mask = sym_arr == symbol
-    scope = StaticScope.instance()
-    columns: list[str] = [date_col]
-    for col in scope.all_data_cols:
-        if col == date_col or col == sym_col or col not in df.columns:
-            continue
-        columns.append(col)
-    for ind_name in indicators:
-        columns.append(ind_name)
-    columns_tuple = tuple(dict.fromkeys(columns))
-    arrays: dict[str, NDArray]
     if not mask.any():
-        arrays = {col: np.array([], dtype=np.float64) for col in columns_tuple}
-        return model_input_from_arrays(
-            columns_tuple, arrays, np.array([], dtype="datetime64[ns]")
-        )
+        return _empty_model_input(columns_tuple, pooled=False)
     rows = np.flatnonzero(mask)
     dates = df[date_col].to_numpy(copy=False)[rows]
     order = np.argsort(dates)
     rows = rows[order]
     dates = dates[order]
-    arrays = {date_col: dates}
+    arrays: dict[str, NDArray] = {date_col: dates}
     for col in columns_tuple:
         if col == date_col:
             continue
@@ -152,25 +271,16 @@ def _pooled_model_input(
     """Builds pooled multi-symbol :class:`ModelInput` without frame copies."""
     sym_col = DataCol.SYMBOL.value
     date_col = DataCol.DATE.value
+    if df.empty:
+        available: frozenset[str] = frozenset()
+        columns = _model_input_columns(indicators, available, pooled=True)
+        return _empty_model_input(columns, pooled=True)
+    available = frozenset(df.columns)
+    columns_tuple = _model_input_columns(indicators, available, pooled=True)
     sym_arr = df[sym_col].to_numpy()
     mask = np.isin(sym_arr, tuple(symbols))
-    scope = StaticScope.instance()
-    columns: list[str] = [sym_col, date_col]
-    for col in scope.all_data_cols:
-        if col in (sym_col, date_col) or col not in df.columns:
-            continue
-        columns.append(col)
-    for ind_name in indicators:
-        columns.append(ind_name)
-    columns_tuple = tuple(dict.fromkeys(columns))
-    arrays: dict[str, NDArray]
-    if df.empty or not mask.any():
-        arrays = {col: np.array([], dtype=np.float64) for col in columns_tuple}
-        if sym_col in arrays:
-            arrays[sym_col] = np.array([], dtype=object)
-        return model_input_from_arrays(
-            columns_tuple, arrays, np.array([], dtype="datetime64[ns]")
-        )
+    if not mask.any():
+        return _empty_model_input(columns_tuple, pooled=True)
     rows = np.flatnonzero(mask)
     dates = df[date_col].to_numpy(copy=False)[rows]
     sym_vals = sym_arr[rows]
@@ -178,7 +288,7 @@ def _pooled_model_input(
     rows = rows[order]
     dates = dates[order]
     sym_vals = sym_vals[order]
-    arrays = {sym_col: sym_vals, date_col: dates}
+    arrays: dict[str, NDArray] = {sym_col: sym_vals, date_col: dates}
     for col in columns_tuple:
         if col in (sym_col, date_col):
             continue
@@ -199,8 +309,30 @@ def _pooled_model_input(
 
 
 def _history_store(
-    train_data: pd.DataFrame, test_data: pd.DataFrame
+    train_data: pd.DataFrame,
+    test_data: pd.DataFrame,
+    *,
+    train_store: Optional[SymbolArrayStore] = None,
+    test_store: Optional[SymbolArrayStore] = None,
 ) -> SymbolArrayStore:
+    if train_store is not None and test_store is not None:
+        if train_data.empty:
+            return test_store
+        if test_data.empty:
+            return train_store
+        return merge_symbol_array_stores(train_store, test_store)
+    if train_store is not None:
+        if test_data.empty:
+            return train_store
+        return merge_symbol_array_stores(
+            train_store, symbol_array_store_from_frame(test_data)
+        )
+    if test_store is not None:
+        if train_data.empty:
+            return test_store
+        return merge_symbol_array_stores(
+            symbol_array_store_from_frame(train_data), test_store
+        )
     if train_data.empty:
         return symbol_array_store_from_frame(test_data)
     if test_data.empty:
@@ -696,6 +828,10 @@ class ModelsMixin:
             Mapping[tuple[str, int], frozenset[str]]
         ] = None,
         timeframe_data: Optional[TimeframeData] = None,
+        *,
+        history_store: Optional[SymbolArrayStore] = None,
+        train_store: Optional[SymbolArrayStore] = None,
+        test_store: Optional[SymbolArrayStore] = None,
     ) -> dict[ModelSymbol, TrainedModel]:
         """Trains models for the provided :class:`pybroker.common.ModelSymbol`
         pairs.
@@ -723,7 +859,16 @@ class ModelsMixin:
         """
         if train_data.empty or not model_syms:
             return {}
-        history_store = _history_store(train_data, test_data)
+        if train_store is None and not train_data.empty:
+            train_store = symbol_array_store_from_frame(train_data)
+        if test_store is None and not test_data.empty:
+            test_store = symbol_array_store_from_frame(test_data)
+        history_store = _history_store(
+            train_data,
+            test_data,
+            train_store=train_store,
+            test_store=test_store,
+        )
         lag_series_cache: LagSeriesCache = {}
         history_dates: dict[str, np.ndarray] = {}
         if pooled_model_groups is None:
@@ -795,6 +940,8 @@ class ModelsMixin:
                         history_store,
                         lag_series_cache,
                         history_dates,
+                        train_store=train_store,
+                        test_store=test_store,
                     )
                 )
             trainer_tasks.append(
@@ -841,12 +988,22 @@ class ModelsMixin:
             elif isinstance(source, ModelTrainer):
                 if source.pooled:
                     continue
-                sym_train_data = _symbol_model_input(
-                    sym, train_data, indicator_data, source.indicators
-                )
-                sym_test_data = _symbol_model_input(
-                    sym, test_data, indicator_data, source.indicators
-                )
+                if train_store is not None:
+                    sym_train_data = _symbol_model_input_from_store(
+                        train_store, sym, indicator_data, source.indicators
+                    )
+                else:
+                    sym_train_data = _symbol_model_input(
+                        sym, train_data, indicator_data, source.indicators
+                    )
+                if test_store is not None:
+                    sym_test_data = _symbol_model_input_from_store(
+                        test_store, sym, indicator_data, source.indicators
+                    )
+                else:
+                    sym_test_data = _symbol_model_input(
+                        sym, test_data, indicator_data, source.indicators
+                    )
                 if source.lags is not None:
                     lag_cols = _lag_feature_cols(
                         sym_train_data,
@@ -1006,14 +1163,27 @@ class ModelsMixin:
         history_store: SymbolArrayStore,
         lag_series_cache: LagSeriesCache,
         history_dates: dict[str, np.ndarray],
+        *,
+        train_store: Optional[SymbolArrayStore] = None,
+        test_store: Optional[SymbolArrayStore] = None,
     ) -> tuple[ModelInput, ModelInput]:
         del train_dates, test_dates
-        pooled_train_input = _pooled_model_input(
-            train_data, symbols, indicator_data, source.indicators
-        )
-        pooled_test_input = _pooled_model_input(
-            test_data, symbols, indicator_data, source.indicators
-        )
+        if train_store is not None:
+            pooled_train_input = _pooled_model_input_from_store(
+                train_store, symbols, indicator_data, source.indicators
+            )
+        else:
+            pooled_train_input = _pooled_model_input(
+                train_data, symbols, indicator_data, source.indicators
+            )
+        if test_store is not None:
+            pooled_test_input = _pooled_model_input_from_store(
+                test_store, symbols, indicator_data, source.indicators
+            )
+        else:
+            pooled_test_input = _pooled_model_input(
+                test_data, symbols, indicator_data, source.indicators
+            )
         if source.lags is not None:
             lag_cols = _lag_feature_cols(
                 pooled_train_input,
@@ -1253,6 +1423,48 @@ class ModelsMixin:
             sym_train_data = sym_train_data.drop_lag_warmup()
         return sym_train_data, sym_test_data
 
+    def _load_pooled_group_cache(
+        self,
+        model_name: str,
+        symbols: frozenset[str],
+        cache_date_fields: CacheDateFields,
+    ) -> tuple[bool, dict[ModelSymbol, TrainedModel]]:
+        """Loads a fully cached pooled group in a single cache pass."""
+        scope = StaticScope.instance()
+        model_cache = scope.model_cache
+        if model_cache is None:
+            return False, {}
+        cached_by_sym: dict[ModelSymbol, Union[CachedModel, Any]] = {}
+        for sym in symbols:
+            group_model_sym = ModelSymbol(model_name, sym)
+            cache_key = ModelCacheKey(
+                symbol=group_model_sym.symbol,
+                model_name=group_model_sym.model_name,
+                **asdict(cache_date_fields),
+            )
+            scope.logger.debug_get_model_cache(cache_key)
+            cached_data = model_cache.get(repr(cache_key))
+            if cached_data is None:
+                return False, {}
+            cached_by_sym[group_model_sym] = cached_data
+        loaded: dict[ModelSymbol, TrainedModel] = {}
+        for group_model_sym, cached_data in cached_by_sym.items():
+            input_cols = None
+            if isinstance(cached_data, CachedModel):
+                model = cached_data.model
+                input_cols = cached_data.input_cols
+            else:
+                model = cached_data
+            source = scope.get_model_source(group_model_sym.model_name)
+            loaded[group_model_sym] = TrainedModel(
+                name=group_model_sym.model_name,
+                instance=model,
+                predict_fn=source._predict_fn,
+                input_cols=input_cols,
+                per_bar=source.per_bar,
+            )
+        return True, loaded
+
     def _get_cached_models(
         self,
         model_syms: Iterable[ModelSymbol],
@@ -1264,60 +1476,28 @@ class ModelsMixin:
         scope = StaticScope.instance()
         if scope.model_cache is None:
             return models, model_syms
-        uncached_model_syms = []
+        uncached_model_syms: list[ModelSymbol] = []
         pooled_groups_by_model_sym: dict[ModelSymbol, frozenset[str]] = {}
         for (model_name, _), symbols in pooled_model_groups.items():
             for sym in symbols:
                 pooled_groups_by_model_sym[ModelSymbol(model_name, sym)] = (
                     symbols
                 )
+        processed_pooled_groups: set[tuple[str, frozenset[str]]] = set()
         for model_sym in model_syms:
             if model_sym in pooled_groups_by_model_sym:
                 symbols = pooled_groups_by_model_sym[model_sym]
-                group_cached = True
-                for sym in symbols:
-                    group_model_sym = ModelSymbol(model_sym.model_name, sym)
-                    cache_key = ModelCacheKey(
-                        symbol=group_model_sym.symbol,
-                        model_name=group_model_sym.model_name,
-                        **asdict(cache_date_fields),
-                    )
-                    scope.logger.debug_get_model_cache(cache_key)
-                    cached_data = scope.model_cache.get(repr(cache_key))
-                    if cached_data is None:
-                        group_cached = False
-                        break
-                if group_cached:
-                    for sym in symbols:
-                        group_model_sym = ModelSymbol(
-                            model_sym.model_name, sym
-                        )
-                        if group_model_sym in models:
-                            continue
-                        cache_key = ModelCacheKey(
-                            symbol=group_model_sym.symbol,
-                            model_name=group_model_sym.model_name,
-                            **asdict(cache_date_fields),
-                        )
-                        cached_data = scope.model_cache.get(repr(cache_key))
-                        input_cols = None
-                        if isinstance(cached_data, CachedModel):
-                            model = cached_data.model
-                            input_cols = cached_data.input_cols
-                        else:
-                            model = cached_data
-                        source = scope.get_model_source(
-                            group_model_sym.model_name
-                        )
-                        models[group_model_sym] = TrainedModel(
-                            name=group_model_sym.model_name,
-                            instance=model,
-                            predict_fn=source._predict_fn,
-                            input_cols=input_cols,
-                            per_bar=source.per_bar,
-                        )
+                group_key = (model_sym.model_name, symbols)
+                if group_key in processed_pooled_groups:
                     continue
-                uncached_model_syms.append(model_sym)
+                processed_pooled_groups.add(group_key)
+                group_cached, loaded = self._load_pooled_group_cache(
+                    model_sym.model_name, symbols, cache_date_fields
+                )
+                if group_cached:
+                    models.update(loaded)
+                else:
+                    uncached_model_syms.append(model_sym)
                 continue
             cache_key = ModelCacheKey(
                 symbol=model_sym.symbol,

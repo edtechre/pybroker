@@ -18,7 +18,7 @@ MIGRATION_BENCH_RE = re.compile(
     r"Walkforward|WalkforwardLarge|WalkforwardScaled|PortfolioHeldStops|"
     r"WalkforwardMultiWindow|BacktestBarLoop|WalkforwardPerBar|"
     r"StoreSliceKernels|"
-    r"WalkforwardTimeframes|WalkforwardModels|Determinism"
+    r"WalkforwardTimeframes|WalkforwardModels|WalkforwardModelsPerSymbol|Determinism"
     r")\."
 )
 

@@ -1066,3 +1066,157 @@ def test_indicator_values_for_dates_matches_get_indexer(data_source_df):
     valid = positions >= 0
     expected[valid] = ind.to_numpy(dtype=np.float64)[positions[valid]]
     assert np.array_equal(aligned, expected, equal_nan=True)
+
+    sparse_dates = dates[::7]
+    aligned_sparse = _indicator_values_for_dates(ind, sparse_dates)
+    positions_sparse = ind.index.get_indexer(sparse_dates)
+    expected_sparse = np.full(len(sparse_dates), np.nan, dtype=np.float64)
+    valid_sparse = positions_sparse >= 0
+    expected_sparse[valid_sparse] = ind.to_numpy(dtype=np.float64)[
+        positions_sparse[valid_sparse]
+    ]
+    assert np.array_equal(aligned_sparse, expected_sparse, equal_nan=True)
+
+
+def _model_inputs_equal(left, right) -> bool:
+    if left.columns != right.columns:
+        return False
+    if not np.array_equal(left.dates, right.dates):
+        return False
+    for col in left.columns:
+        if col not in left.arrays or col not in right.arrays:
+            return False
+        left_arr = left.arrays[col]
+        right_arr = right.arrays[col]
+        if left_arr.dtype == object or right_arr.dtype == object:
+            if not np.array_equal(left_arr, right_arr):
+                return False
+        elif not np.array_equal(left_arr, right_arr, equal_nan=True):
+            return False
+    return True
+
+
+def test_symbol_model_input_from_store_matches_frame(
+    data_source_df, ind_data, indicators
+):
+    from pybroker.model import (
+        _symbol_model_input,
+        _symbol_model_input_from_store,
+    )
+    from pybroker.scope import symbol_array_store_from_frame
+
+    sym = "SPY"
+    ind_names = tuple(ind.name for ind in indicators)
+    store = symbol_array_store_from_frame(data_source_df)
+    frame_input = _symbol_model_input(sym, data_source_df, ind_data, ind_names)
+    store_input = _symbol_model_input_from_store(
+        store, sym, ind_data, ind_names
+    )
+    assert _model_inputs_equal(frame_input, store_input)
+
+
+def test_pooled_model_input_from_store_matches_frame(
+    data_source_df, ind_data, indicators
+):
+    from pybroker.model import (
+        _pooled_model_input,
+        _pooled_model_input_from_store,
+    )
+    from pybroker.scope import symbol_array_store_from_frame
+
+    symbols = frozenset(data_source_df["symbol"].unique())
+    ind_names = tuple(ind.name for ind in indicators)
+    store = symbol_array_store_from_frame(data_source_df)
+    frame_input = _pooled_model_input(
+        data_source_df, symbols, ind_data, ind_names
+    )
+    store_input = _pooled_model_input_from_store(
+        store, symbols, ind_data, ind_names
+    )
+    assert _model_inputs_equal(frame_input, store_input)
+
+
+def test_train_models_reuses_history_store(
+    scope,
+    indicators,
+    train_data,
+    test_data,
+    ind_data,
+    cache_date_fields,
+):
+    from pybroker.scope import (
+        merge_symbol_array_stores,
+        symbol_array_store_from_frame,
+    )
+
+    sym = sorted(train_data["symbol"].unique())[0]
+    model(
+        "store_model",
+        lambda symbol, train_df, test_df: FakeModel(symbol, np.array([1.0])),
+        indicators,
+    )
+    train_store = symbol_array_store_from_frame(train_data)
+    test_store = symbol_array_store_from_frame(test_data)
+    history_store = merge_symbol_array_stores(train_store, test_store)
+    mixin = ModelsMixin()
+    with patch(
+        "pybroker.model.symbol_array_store_from_frame"
+    ) as store_from_frame:
+        mixin.train_models(
+            [ModelSymbol("store_model", sym)],
+            train_data,
+            test_data,
+            ind_data,
+            cache_date_fields,
+            history_store=history_store,
+            train_store=train_store,
+            test_store=test_store,
+        )
+        store_from_frame.assert_not_called()
+
+
+def test_get_cached_models_pooled_single_pass(
+    scope,
+    setup_enabled_model_cache,
+    cache_date_fields,
+):
+    from dataclasses import asdict
+
+    from pybroker.cache import ModelCacheKey
+    from pybroker.model import CachedModel, ModelsMixin
+
+    model(
+        "pooled_cache",
+        lambda train_df, test_df: FakeModel("pooled_cache", np.array([1.0])),
+        [],
+        pooled=True,
+    )
+    pooled_symbols = frozenset({"SPY", "AAPL"})
+    model_syms = [
+        ModelSymbol("pooled_cache", sym) for sym in sorted(pooled_symbols)
+    ]
+    pooled_model_groups = {("pooled_cache", 1): pooled_symbols}
+    shared = FakeModel("pooled_cache", np.array([1.0]))
+    input_cols = ("close",)
+    for sym in pooled_symbols:
+        cache_key = ModelCacheKey(
+            symbol=sym,
+            model_name="pooled_cache",
+            **asdict(cache_date_fields),
+        )
+        scope.model_cache.set(repr(cache_key), CachedModel(shared, input_cols))
+    get_calls: list[str] = []
+    original_get = scope.model_cache.get
+
+    def counting_get(key):
+        get_calls.append(key)
+        return original_get(key)
+
+    scope.model_cache.get = counting_get
+    mixin = ModelsMixin()
+    models, uncached = mixin._get_cached_models(
+        model_syms, cache_date_fields, pooled_model_groups
+    )
+    assert len(models) == 2
+    assert uncached == []
+    assert len(get_calls) == 2
