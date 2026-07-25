@@ -63,8 +63,6 @@ class StrategyConfig:
             Must be > ``0``.
         bootstrap_samples: Number of samples used to compute boostrap metrics.
             Defaults to ``10_000``.
-        bootstrap_sample_size: Size of each random sample used to compute
-            bootstrap metrics. Defaults to ``1_000``.
         exit_on_last_bar: Whether to automatically exit any open positions
             on the last bar of data available for a symbol. Defaults to
             ``False``.
@@ -119,7 +117,6 @@ class StrategyConfig:
     buy_delay: int = field(default=1)
     sell_delay: int = field(default=1)
     bootstrap_samples: int = field(default=10_000)
-    bootstrap_sample_size: int = field(default=1_000)
     exit_on_last_bar: bool = field(default=False)
     exit_cover_fill_price: Union[
         PriceType, Callable[[str, BarData], Union[int, float, Decimal]]

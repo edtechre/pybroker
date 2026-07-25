@@ -2358,7 +2358,7 @@ class TestStrategy:
         data_source = get_fixture(request, data_source)
         executions = get_fixture(request, executions)
         config = StrategyConfig(
-            bootstrap_samples=100, bootstrap_sample_size=10
+            bootstrap_samples=100,
         )
         strategy = Strategy(data_source, START_DATE, END_DATE, config)
         for exec in executions:
@@ -2809,7 +2809,7 @@ class TestStrategy:
             data_source_df,
             START_DATE,
             END_DATE,
-            StrategyConfig(bootstrap_samples=10, bootstrap_sample_size=10),
+            StrategyConfig(bootstrap_samples=10),
         )
         default_strategy.add_execution(exec_fn, symbols)
         default_result = default_strategy.walkforward(
@@ -2825,7 +2825,6 @@ class TestStrategy:
             END_DATE,
             StrategyConfig(
                 bootstrap_samples=10,
-                bootstrap_sample_size=10,
                 record_portfolio_bars=True,
                 record_position_bars=True,
             ),
@@ -3043,7 +3042,7 @@ class TestStrategy:
 
     @pytest.mark.parametrize(
         "initial_cash, max_long_positions, max_short_positions, buy_delay,"
-        "sell_delay, bootstrap_samples, bootstrap_sample_size, expected_msg",
+        "sell_delay, bootstrap_samples, expected_msg",
         [
             (
                 -1,
@@ -3052,7 +3051,6 @@ class TestStrategy:
                 1,
                 1,
                 100,
-                10,
                 "initial_cash must be greater than 0.",
             ),
             (
@@ -3062,7 +3060,6 @@ class TestStrategy:
                 1,
                 1,
                 100,
-                10,
                 "max_long_positions must be greater than 0.",
             ),
             (
@@ -3072,7 +3069,6 @@ class TestStrategy:
                 1,
                 1,
                 100,
-                10,
                 "max_short_positions must be greater than 0.",
             ),
             (
@@ -3082,7 +3078,6 @@ class TestStrategy:
                 0,
                 1,
                 100,
-                10,
                 "buy_delay must be greater than 0.",
             ),
             (
@@ -3092,7 +3087,6 @@ class TestStrategy:
                 1,
                 0,
                 100,
-                10,
                 "sell_delay must be greater than 0.",
             ),
             (
@@ -3102,18 +3096,7 @@ class TestStrategy:
                 1,
                 1,
                 0,
-                10,
                 "bootstrap_samples must be greater than 0.",
-            ),
-            (
-                10_000,
-                None,
-                None,
-                1,
-                1,
-                100,
-                0,
-                "bootstrap_sample_size must be greater than 0.",
             ),
         ],
     )
@@ -3126,7 +3109,6 @@ class TestStrategy:
         buy_delay,
         sell_delay,
         bootstrap_samples,
-        bootstrap_sample_size,
         expected_msg,
     ):
         config = StrategyConfig(
@@ -3136,7 +3118,6 @@ class TestStrategy:
             buy_delay=buy_delay,
             sell_delay=sell_delay,
             bootstrap_samples=bootstrap_samples,
-            bootstrap_sample_size=bootstrap_sample_size,
         )
         with pytest.raises(ValueError, match=re.escape(expected_msg)):
             Strategy(data_source_df, START_DATE, END_DATE, config)

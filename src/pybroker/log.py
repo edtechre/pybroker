@@ -250,10 +250,9 @@ class Logger:
         )
         self._walkforward_start_time = None
 
-    def calc_bootstrap_metrics_start(self, samples, sample_size):
+    def calc_bootstrap_metrics_start(self, samples, bars):
         self._out(
-            f"Calculating bootstrap metrics: sample_size={sample_size}, "
-            f"samples={samples}..."
+            f"Calculating bootstrap metrics: bars={bars}, samples={samples}..."
         )
         self._bootstrap_start_time = time.time()
 
@@ -430,12 +429,6 @@ class Logger:
         if not self._debug_enabled():
             return
         self._debug(f"Unscheduled order:\n{exec_result}")
-
-    def warn_bootstrap_sample_size(self, n: int, sample_size: int):
-        self._warn(
-            f"Returns length {n} < sample size {sample_size}.\n"
-            "Setting number of bootstraps to 1."
-        )
 
     def debug_enable_data_source_cache(self, ns: str, cache_dir: str):
         self._debug(

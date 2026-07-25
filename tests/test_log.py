@@ -37,7 +37,6 @@ class TestLogger:
         logger.info_indicator_data_start([])
         logger.debug_compute_indicators(is_parallel=False)
         logger.loaded_indicator_data()
-        logger.warn_bootstrap_sample_size(10, 100)
         assert capsys.readouterr() == ("", "")
         assert not caplog.record_tuples
         logger.enable()
@@ -45,11 +44,10 @@ class TestLogger:
         logger.info_indicator_data_start([])
         logger.debug_compute_indicators(is_parallel=False)
         logger.loaded_indicator_data()
-        logger.warn_bootstrap_sample_size(10, 100)
         captured = capsys.readouterr()
         assert captured.out
         assert captured.err == ""
-        assert len(caplog.record_tuples) == 3
+        assert len(caplog.record_tuples) == 2
 
     def test_enable_and_disable_progress_bar(scope, capsys):
         logger = Logger(scope)

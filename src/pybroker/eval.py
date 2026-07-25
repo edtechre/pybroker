@@ -41,7 +41,6 @@ class BootConfIntervals(NamedTuple):
 @njit(cache=True)
 def bca_boot_conf(
     x: NDArray[np.float64],
-    n: int,
     n_boot: int,
     fn: Callable[[NDArray[np.float64]], float],
 ) -> BootConfIntervals:
@@ -52,7 +51,6 @@ def bca_boot_conf(
     Args:
         x: :class:`numpy.ndarray` containing the data for the randomized
             bootstrap sampling.
-        n: Number of elements in each random bootstrap sample.
         n_boot: Number of random bootstrap samples to use.
         fn: :class:`Callable` for computing the parameter used for the
             confidence intervals.
@@ -62,27 +60,22 @@ def bca_boot_conf(
         intervals.
     """
 
-    if n <= 0:
-        raise ValueError("Bootstrap sample size must be greater than 0.")
     if n_boot <= 0:
         raise ValueError("Number of boostrap samples must be greater than 0.")
-    n_x = len(x)
-    if not n_x:
+    n = len(x)
+    if not n:
         return BootConfIntervals(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    if n_x <= n:
-        n = n_x
-        n_boot = 1
 
     def clamp(k: int):
         return min(max(k, 0), n_boot - 1)
 
     x_buff = np.zeros(n)
     boot = np.zeros(n_boot)
-    theta_hat = fn(x[:n])
+    theta_hat = fn(x)
     z0_count = 0
     for i in range(n_boot):
         for j in range(n):
-            k = np.random.choice(n_x)
+            k = np.random.choice(n)
             x_buff[j] = x[k]
         param = fn(x_buff)
         boot[i] = param
@@ -219,10 +212,10 @@ def sortino_ratio(
 
 
 def conf_profit_factor(
-    x: NDArray[np.float64], n: int, n_boot: int
+    x: NDArray[np.float64], n_boot: int
 ) -> BootConfIntervals:
     """Computes confidence intervals for :func:`.profit_factor`."""
-    intervals = bca_boot_conf(x, n, n_boot, log_profit_factor)  # type: ignore[arg-type]
+    intervals = bca_boot_conf(x, n_boot, log_profit_factor)  # type: ignore[arg-type]
     return BootConfIntervals(
         low_2p5=np.exp(intervals.low_2p5),
         high_2p5=np.exp(intervals.high_2p5),
@@ -234,10 +227,10 @@ def conf_profit_factor(
 
 
 def conf_sharpe_ratio(
-    x: NDArray[np.float64], n: int, n_boot: int, obs: Optional[int] = None
+    x: NDArray[np.float64], n_boot: int, obs: Optional[int] = None
 ) -> BootConfIntervals:
     """Computes confidence intervals for :func:`.sharpe_ratio`."""
-    intervals = bca_boot_conf(x, n, n_boot, sharpe_ratio)  # type: ignore[arg-type]
+    intervals = bca_boot_conf(x, n_boot, sharpe_ratio)  # type: ignore[arg-type]
     if obs is not None:
         factor = np.sqrt(obs)
         intervals = BootConfIntervals(
@@ -363,12 +356,11 @@ class DrawdownMetrics(NamedTuple):
 @njit(cache=True)
 def _dd_confs(boot: NDArray[np.float64]) -> DrawdownConfs:
     boot.sort()
-    boot = boot[::-1]
     return DrawdownConfs(
-        _dd_conf(0.999, boot),
-        _dd_conf(0.99, boot),
-        _dd_conf(0.95, boot),
-        _dd_conf(0.9, boot),
+        _dd_conf(0.001, boot),
+        _dd_conf(0.01, boot),
+        _dd_conf(0.05, boot),
+        _dd_conf(0.1, boot),
     )
 
 
@@ -376,7 +368,6 @@ def _dd_confs(boot: NDArray[np.float64]) -> DrawdownConfs:
 def drawdown_conf(
     changes: NDArray[np.float64],
     returns: NDArray[np.float64],
-    n: int,
     n_boot: int,
 ) -> DrawdownMetrics:
     """Computes upper bounds of confidence intervals for maximum drawdown using
@@ -385,28 +376,26 @@ def drawdown_conf(
     Args:
         changes: Array of differences between each bar and the previous bar.
         returns: Array of returns centered at 0.
-        n: Number of elements in each random bootstrap sample.
         n_boot: Number of random bootstrap samples to use.
 
     Returns:
         :class:`.DrawdownMetrics` containing the confidence bounds.
     """
-    if n <= 0:
-        raise ValueError("Bootstrap sample size must be greater than 0.")
     if n_boot <= 0:
         raise ValueError("Number of boostrap samples must be greater than 0.")
     n_changes = len(changes)
     if n_changes != len(returns):
         raise ValueError("Param changes length does not match returns length.")
-    if n_changes <= n:
-        n = n_changes
-        n_boot = 1
-    changes_sample = np.zeros(n)
-    returns_sample = np.zeros(n)
+    if not n_changes:
+        empty = DrawdownConfs(0.0, 0.0, 0.0, 0.0)
+        return DrawdownMetrics(empty, empty)
+    n_trades = n_changes
+    changes_sample = np.zeros(n_trades)
+    returns_sample = np.zeros(n_trades)
     boot_dd = np.zeros(n_boot)
     boot_dd_pct = np.zeros(n_boot)
     for i in range(n_boot):
-        for j in range(n):
+        for j in range(n_trades):
             k = np.random.choice(n_changes)
             changes_sample[j] = changes[k]
             returns_sample[j] = returns[k]
@@ -837,7 +826,6 @@ class EvaluateMixin:
         portfolio_df: pd.DataFrame,
         trades_df: pd.DataFrame,
         calc_bootstrap: bool,
-        bootstrap_sample_size: int,
         bootstrap_samples: int,
         bars_per_year: Optional[int],
         seed: Optional[int] = 42,
@@ -849,7 +837,6 @@ class EvaluateMixin:
                 per bar.
             trades_df: :class:`pandas.DataFrame` of trades.
             calc_bootstrap: ``True`` to calculate randomized bootstrap metrics.
-            bootstrap_sample_size: Size of each random bootstrap sample.
             bootstrap_samples: Number of random bootstrap samples to use.
             bars_per_year: Number of observations per years that will be used
                 to annualize evaluation metrics. For example, a value of
@@ -919,24 +906,18 @@ class EvaluateMixin:
         logger = StaticScope.instance().logger
         if not calc_bootstrap:
             return EvalResult(metrics, None)
-        if len(bar_returns) <= bootstrap_sample_size:
-            logger.warn_bootstrap_sample_size(
-                len(bar_returns), bootstrap_sample_size
-            )
         logger.calc_bootstrap_metrics_start(
-            samples=bootstrap_samples, sample_size=bootstrap_sample_size
+            samples=bootstrap_samples, bars=len(bar_returns)
         )
         confs_result = self._calc_conf_intervals(
             changes=bar_changes,
             returns=bar_returns,
-            sample_size=bootstrap_sample_size,
             samples=bootstrap_samples,
             bars_per_year=bars_per_year,
         )
         dd_result = self._calc_drawdown_conf(
             changes=bar_changes,
             returns=bar_returns,
-            sample_size=bootstrap_sample_size,
             samples=bootstrap_samples,
         )
         bootstrap = BootstrapResult(
@@ -1105,15 +1086,12 @@ class EvaluateMixin:
         self,
         changes: NDArray[np.float64],
         returns: NDArray[np.float64],
-        sample_size: int,
         samples: int,
         bars_per_year: Optional[int],
     ) -> _ConfsResult:
-        pf_intervals = conf_profit_factor(changes, sample_size, samples)
+        pf_intervals = conf_profit_factor(changes, samples)
         pf_conf = self._to_conf_intervals("Profit Factor", pf_intervals)
-        sr_intervals = conf_sharpe_ratio(
-            returns, sample_size, samples, bars_per_year
-        )
+        sr_intervals = conf_sharpe_ratio(returns, samples, bars_per_year)
         sharpe_conf = self._to_conf_intervals("Sharpe Ratio", sr_intervals)
         df = pd.DataFrame.from_records(
             pf_conf + sharpe_conf, columns=ConfInterval._fields
@@ -1138,10 +1116,9 @@ class EvaluateMixin:
         self,
         changes: NDArray[np.float64],
         returns: NDArray[np.float64],
-        sample_size: int,
         samples: int,
     ) -> _DrawdownResult:
-        metrics = drawdown_conf(changes, returns, sample_size, samples)
+        metrics = drawdown_conf(changes, returns, samples)
         df = pd.DataFrame(
             zip(("99.9%", "99%", "95%", "90%"), *metrics),
             columns=("conf", "amount", "percent"),

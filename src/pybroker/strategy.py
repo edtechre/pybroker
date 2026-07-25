@@ -1334,8 +1334,6 @@ class Strategy(
             raise ValueError("sell_delay must be greater than 0.")
         if config.bootstrap_samples <= 0:
             raise ValueError("bootstrap_samples must be greater than 0.")
-        if config.bootstrap_sample_size <= 0:
-            raise ValueError("bootstrap_sample_size must be greater than 0.")
         if config.leverage < 1:
             raise ValueError("leverage must be greater than or equal to 1.")
         if config.interest_rate < 0:
@@ -2400,7 +2398,6 @@ class Strategy(
             portfolio_df=portfolio_df,
             trades_df=trades_df,
             calc_bootstrap=calc_bootstrap,
-            bootstrap_sample_size=self._config.bootstrap_sample_size,
             bootstrap_samples=self._config.bootstrap_samples,
             bars_per_year=self._config.bars_per_year,
             seed=seed,

@@ -69,7 +69,6 @@ def _build_strategy(df: pd.DataFrame) -> Strategy:
     end = df["date"].max().strftime("%Y-%m-%d")
     config = StrategyConfig(
         bootstrap_samples=100,
-        bootstrap_sample_size=10,
     )
     strategy = Strategy(df, start, end, config)
     strategy.add_execution(
@@ -663,7 +662,7 @@ class EvalKernels:
         self._max_drawdown(self._changes)
         self._sharpe_ratio(self._returns)
         self._profit_factor(self._changes)
-        self._bca_boot_conf(self._changes, 500, 200, self._sharpe_ratio)
+        self._bca_boot_conf(self._changes, 200, self._sharpe_ratio)
 
     def time_max_drawdown(self) -> None:
         self._max_drawdown(self._changes)
@@ -675,7 +674,7 @@ class EvalKernels:
         self._profit_factor(self._changes)
 
     def time_bca_boot_conf(self) -> None:
-        self._bca_boot_conf(self._changes, 500, 200, self._sharpe_ratio)
+        self._bca_boot_conf(self._changes, 200, self._sharpe_ratio)
 
 
 class CacheHit:

@@ -85,51 +85,47 @@ def truncate(value, n):
 
 
 @pytest.mark.parametrize(
-    "n, n_boot, expected_msg",
+    "n_boot, expected_msg",
     [
-        (0, 100, "Bootstrap sample size must be greater than 0."),
-        (-1, 100, "Bootstrap sample size must be greater than 0."),
-        (10, 0, "Number of boostrap samples must be greater than 0."),
-        (10, -1, "Number of boostrap samples must be greater than 0."),
+        (0, "Number of boostrap samples must be greater than 0."),
+        (-1, "Number of boostrap samples must be greater than 0."),
     ],
 )
-def test_bca_boot_conf_when_invalid_params_then_error(n, n_boot, expected_msg):
+def test_bca_boot_conf_when_invalid_params_then_error(n_boot, expected_msg):
     with pytest.raises(ValueError, match=re.escape(expected_msg)):
-        bca_boot_conf(np.random.rand(100), n, n_boot, profit_factor)
+        bca_boot_conf(np.random.rand(100), n_boot, profit_factor)
 
 
-@pytest.mark.parametrize("n, n_boot", [(1, 100), (1, 1), (10, 100), (10, 1)])
-def test_conf_profit_factor(n, n_boot, rand_values):
-    intervals = conf_profit_factor(rand_values, n, n_boot)
+@pytest.mark.parametrize("n_boot", [1, 100])
+def test_conf_profit_factor(n_boot, rand_values):
+    intervals = conf_profit_factor(rand_values, n_boot)
     assert len(intervals) == 6
 
 
-@pytest.mark.parametrize("n, n_boot", [(1, 100), (1, 1), (10, 100), (10, 1)])
-def test_conf_sharpe_ratio(n, n_boot, rand_values):
-    intervals = conf_sharpe_ratio(rand_values, n, n_boot)
+@pytest.mark.parametrize("n_boot", [1, 100])
+def test_conf_sharpe_ratio(n_boot, rand_values):
+    intervals = conf_sharpe_ratio(rand_values, n_boot)
     assert len(intervals) == 6
 
 
-@pytest.mark.parametrize("n, n_boot", [(1, 100), (1, 1), (10, 100), (10, 1)])
-def test_drawdown_conf(n, n_boot, rand_values):
-    dd, dd_pct = drawdown_conf(rand_values * 1000, rand_values, n, n_boot)
+@pytest.mark.parametrize("n_boot", [1, 100])
+def test_drawdown_conf(n_boot, rand_values):
+    dd, dd_pct = drawdown_conf(rand_values * 1000, rand_values, n_boot)
     assert len(dd) == 4
     assert len(dd_pct) == 4
 
 
 @pytest.mark.parametrize(
-    "n, n_boot, expected_msg",
+    "n_boot, expected_msg",
     [
-        (0, 100, "Bootstrap sample size must be greater than 0."),
-        (-1, 100, "Bootstrap sample size must be greater than 0."),
-        (10, 0, "Number of boostrap samples must be greater than 0."),
-        (10, -1, "Number of boostrap samples must be greater than 0."),
+        (0, "Number of boostrap samples must be greater than 0."),
+        (-1, "Number of boostrap samples must be greater than 0."),
     ],
 )
-def test_drawdown_conf_when_invalid_params_then_error(n, n_boot, expected_msg):
+def test_drawdown_conf_when_invalid_params_then_error(n_boot, expected_msg):
     values = np.random.rand(100)
     with pytest.raises(ValueError, match=re.escape(expected_msg)):
-        drawdown_conf(values, values, n, n_boot)
+        drawdown_conf(values, values, n_boot)
 
 
 def test_drawdown_conf_when_length_mismatch_then_error():
@@ -137,7 +133,35 @@ def test_drawdown_conf_when_length_mismatch_then_error():
         ValueError,
         match=re.escape("Param changes length does not match returns length."),
     ):
-        drawdown_conf(np.random.rand(100), np.random.rand(101), 10, 100)
+        drawdown_conf(np.random.rand(100), np.random.rand(101), 100)
+
+
+def test_bca_boot_conf_uses_full_data():
+    np.random.seed(123)
+    x = np.random.rand(50)
+    full = bca_boot_conf(x, 200, profit_factor)
+    np.random.seed(123)
+    prefix = bca_boot_conf(x[:10], 200, profit_factor)
+    assert full != prefix
+
+
+def test_bca_boot_conf_short_data_keeps_n_boot():
+    np.random.seed(456)
+    x = np.random.rand(5)
+    intervals = bca_boot_conf(x, 100, profit_factor)
+    assert intervals.low_2p5 != intervals.high_2p5
+
+
+def test_drawdown_conf_uses_full_history():
+    np.random.seed(789)
+    changes = np.concatenate(
+        [np.full(20, 100.0), np.full(10, -150.0), np.full(20, 50.0)]
+    )
+    returns = changes / 10_000.0
+    full = drawdown_conf(changes, returns, 200)
+    np.random.seed(789)
+    short = drawdown_conf(changes[:10], returns[:10], 200)
+    assert full.confs.q_001 != short.confs.q_001
 
 
 @pytest.mark.parametrize(
@@ -492,12 +516,9 @@ class TestEvaluateMixin:
             ),
         ],
     )
-    @pytest.mark.parametrize(
-        "bootstrap_sample_size, bootstrap_samples", [(10, 100), (100_000, 100)]
-    )
+    @pytest.mark.parametrize("bootstrap_samples", [10, 100])
     def test_evaluate(
         self,
-        bootstrap_sample_size,
         bootstrap_samples,
         portfolio_df,
         trades_df,
@@ -511,7 +532,6 @@ class TestEvaluateMixin:
             portfolio_df,
             trades_df,
             calc_bootstrap,
-            bootstrap_sample_size=bootstrap_sample_size,
             bootstrap_samples=bootstrap_samples,
             bars_per_year=bars_per_year,
         )
@@ -601,7 +621,6 @@ class TestEvaluateMixin:
             pd.DataFrame(columns=["market_value", "fees"]),
             trades_df,
             calc_bootstrap,
-            bootstrap_sample_size=10,
             bootstrap_samples=100,
             bars_per_year=None,
         )
@@ -631,7 +650,6 @@ class TestEvaluateMixin:
             ),
             trades_df,
             calc_bootstrap,
-            bootstrap_sample_size=10,
             bootstrap_samples=100,
             bars_per_year=None,
         )
@@ -655,7 +673,6 @@ class TestEvaluateMixin:
             portfolio_df,
             pd.DataFrame(columns=["pnl", "return_pct", "bars"]),
             calc_bootstrap,
-            bootstrap_sample_size=10,
             bootstrap_samples=100,
             bars_per_year=None,
         )
