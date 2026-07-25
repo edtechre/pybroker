@@ -210,6 +210,139 @@ class TestRollingWindowKernels:
         )
 
 
+def _brute_stochastic(
+    high: np.ndarray,
+    low: np.ndarray,
+    close: np.ndarray,
+    lookback: int,
+    smoothing: int = 0,
+) -> np.ndarray:
+    """Pre-optimization reference for stochastic regression tests."""
+    n = len(close)
+    front_bad = lookback - 1
+    if front_bad > n:
+        front_bad = n
+    output = np.zeros(n)
+    for i in range(front_bad, n):
+        min_val = 1.0e60
+        max_val = -1.0e60
+        for j in range(lookback):
+            if high[i - j] > max_val:
+                max_val = high[i - j]
+            if low[i - j] < min_val:
+                min_val = low[i - j]
+        sto_0 = (close[i] - min_val) / (max_val - min_val + 1.0e-60)
+        if smoothing == 0:
+            output[i] = 100.0 * sto_0 - 50
+        else:
+            if i == front_bad:
+                sto_1 = sto_0
+                output[i] = 100.0 * sto_0 - 50
+            else:
+                sto_1 = 0.33333333 * sto_0 + 0.66666667 * sto_1
+                if smoothing == 1:
+                    output[i] = 100.0 * sto_1 - 50
+                else:
+                    if i == front_bad + 1:
+                        sto_2 = sto_1
+                        output[i] = 100.0 * sto_1 - 50
+                    else:
+                        sto_2 = 0.33333333 * sto_1 + 0.66666667 * sto_2
+                        output[i] = 100.0 * sto_2 - 50
+    return output
+
+
+class TestStochasticKernels:
+    @pytest.mark.parametrize(
+        "high, low, close, lookback, smoothing",
+        [
+            (
+                [10, 12, 11, 13, 12, 14],
+                [8, 9, 8, 10, 9, 11],
+                [9, 11, 10, 12, 11, 13],
+                3,
+                0,
+            ),
+            (
+                [10, 12, 11, 13, 12, 14],
+                [8, 9, 8, 10, 9, 11],
+                [9, 11, 10, 12, 11, 13],
+                5,
+                1,
+            ),
+            (
+                [10, 12, 11, 13, 12, 14],
+                [8, 9, 8, 10, 9, 11],
+                [9, 11, 10, 12, 11, 13],
+                5,
+                2,
+            ),
+        ],
+    )
+    def test_stochastic_matches_brute_force_fixtures(
+        self, high, low, close, lookback, smoothing
+    ):
+        high_arr = np.array(high, dtype=np.float64)
+        low_arr = np.array(low, dtype=np.float64)
+        close_arr = np.array(close, dtype=np.float64)
+        expected = _brute_stochastic(
+            high_arr, low_arr, close_arr, lookback, smoothing
+        )
+        result = stochastic(high_arr, low_arr, close_arr, lookback, smoothing)
+        np.testing.assert_allclose(result, expected, rtol=0, atol=0)
+
+    @pytest.mark.parametrize(
+        "length, lookback, smoothing",
+        [
+            (100, 5, 0),
+            (100, 20, 1),
+            (100, 50, 2),
+            (10_000, 5, 0),
+            (10_000, 20, 1),
+            (10_000, 200, 2),
+        ],
+    )
+    def test_stochastic_matches_brute_force_random(
+        self, length, lookback, smoothing
+    ):
+        rng = np.random.default_rng(42 + length + lookback + smoothing)
+        close = rng.standard_normal(length) + 100.0
+        high = close + rng.uniform(0.1, 2.0, length)
+        low = close - rng.uniform(0.1, 2.0, length)
+        expected = _brute_stochastic(high, low, close, lookback, smoothing)
+        result = stochastic(high, low, close, lookback, smoothing)
+        np.testing.assert_allclose(result, expected, rtol=0, atol=0)
+
+    def test_stochastic_empty_arrays(self):
+        high = np.array([], dtype=np.float64)
+        low = np.array([], dtype=np.float64)
+        close = np.array([], dtype=np.float64)
+        result = stochastic(high, low, close, 5, 0)
+        assert len(result) == 0
+
+    def test_stochastic_single_bar(self):
+        high = np.array([10.0])
+        low = np.array([8.0])
+        close = np.array([9.0])
+        result = stochastic(high, low, close, 5, 0)
+        np.testing.assert_array_equal(result, np.zeros(1))
+
+    def test_stochastic_lookback_greater_than_length(self):
+        high = np.array([10.0, 12.0, 11.0])
+        low = np.array([8.0, 9.0, 8.0])
+        close = np.array([9.0, 11.0, 10.0])
+        result = stochastic(high, low, close, 5, 1)
+        np.testing.assert_array_equal(result, np.zeros(3))
+
+    def test_stochastic_lookback_equals_length(self):
+        high = np.array([10.0, 12.0, 11.0, 13.0, 12.0])
+        low = np.array([8.0, 9.0, 8.0, 10.0, 9.0])
+        close = np.array([9.0, 11.0, 10.0, 12.0, 11.0])
+        expected = _brute_stochastic(high, low, close, 5, 0)
+        result = stochastic(high, low, close, 5, 0)
+        np.testing.assert_allclose(result, expected, rtol=0, atol=0)
+
+
 @pytest.mark.parametrize(
     "a, b, expected",
     [

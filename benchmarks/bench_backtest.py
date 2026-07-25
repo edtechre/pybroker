@@ -645,22 +645,27 @@ class IndicatorKernels:
     param_names = ("length",)
 
     def setup(self, length: int) -> None:
-        from pybroker.vect import highv, lowv, sumv, returnv, cross
+        from pybroker.vect import highv, lowv, sumv, returnv, cross, stochastic
 
         rng = np.random.default_rng(SEED)
         self._arr = rng.standard_normal(length)
         self._arr2 = rng.standard_normal(length)
+        self._close = self._arr + 100.0
+        self._high = self._close + rng.uniform(0.1, 2.0, length)
+        self._low = self._close - rng.uniform(0.1, 2.0, length)
         self._highv = highv
         self._lowv = lowv
         self._sumv = sumv
         self._returnv = returnv
         self._cross = cross
+        self._stochastic = stochastic
         # Warmup compile for each kernel so timings reflect steady state.
         self._highv(self._arr, 20)
         self._lowv(self._arr, 20)
         self._sumv(self._arr, 20)
         self._returnv(self._arr, 1)
         self._cross(self._arr, self._arr2)
+        self._stochastic(self._high, self._low, self._close, 20, 1)
 
     def time_highv(self, length: int) -> None:
         self._highv(self._arr, 20)
@@ -676,6 +681,9 @@ class IndicatorKernels:
 
     def time_cross(self, length: int) -> None:
         self._cross(self._arr, self._arr2)
+
+    def time_stochastic(self, length: int) -> None:
+        self._stochastic(self._high, self._low, self._close, 20, 1)
 
 
 class EvalKernels:

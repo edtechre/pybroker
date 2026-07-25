@@ -446,19 +446,16 @@ def stochastic(
     assert lookback > 0
     assert smoothing == 0 or smoothing == 1 or smoothing == 2
     n = len(close)
+    if lookback > n:
+        return np.zeros(n)
     front_bad = lookback - 1
-    if front_bad > n:
-        front_bad = n
+    min_vals = lowv(low, lookback)
+    max_vals = highv(high, lookback)
     output = np.zeros(n)
     for i in range(front_bad, n):
-        min_val = 1.0e60
-        max_val = -1.0e60
-        for j in range(lookback):
-            if high[i - j] > max_val:
-                max_val = high[i - j]
-            if low[i - j] < min_val:
-                min_val = low[i - j]
-        sto_0 = (close[i] - min_val) / (max_val - min_val + 1.0e-60)
+        sto_0 = (close[i] - min_vals[i]) / (
+            max_vals[i] - min_vals[i] + 1.0e-60
+        )
         if smoothing == 0:
             output[i] = 100.0 * sto_0 - 50
         else:
