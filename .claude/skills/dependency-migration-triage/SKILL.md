@@ -139,6 +139,22 @@ Phase 5 regression test. If something needs a genuinely new concept adopted (not
 find-replace), implement it, but flag in the PR description that this is a judgment call the
 maintainer may want to review more closely than a mechanical fix.
 
+**If this phase produced a real code change** (skip this entirely for a comment-only, nothing-
+to-fix outcome — running either of these against a no-op finding is pure overhead), close the
+loop on your own work before moving to Phase 7:
+
+- Run the `silent-failure-hunter` agent (from the `pr-review-toolkit` plugin, if available in
+  this environment — otherwise apply the same lens yourself: does the fix swallow an error
+  anywhere, degrade to a fallback without surfacing it, or introduce a new way for something
+  to fail quietly?) against the diff. This is the same failure class the whole skill exists to
+  catch in third-party dependencies — pointing it at your own fix before a maintainer sees it
+  is the same discipline turned inward, not a generic review step.
+- If the fix touches secrets, authentication, or a publish/release pipeline (long-lived
+  tokens, credential handling, OIDC/trusted-publishing config, CI steps that push artifacts
+  somewhere), run `/security-review` (or apply that scrutiny yourself if unavailable) before
+  proceeding. Skip this for everything else — most triages never go near credentials, and
+  running it by default would be blanket overhead for no signal.
+
 ## Phase 7 — Open a PR that mirrors the migration
 
 Open a PR (same repo/branch conventions as the rest of this project — check recent merged
