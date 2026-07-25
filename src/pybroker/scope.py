@@ -10,6 +10,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 
 import numpy as np
 import pandas as pd
+from numba import njit
 from pybroker.common import (
     BarData,
     DataCol,
@@ -295,6 +296,56 @@ class SymbolArrayStore:
     sym_arrays: Mapping[str, Mapping[str, NDArray]]
 
 
+@njit(cache=True)
+def _extract_f64_bins_njit(
+    col_stack: NDArray[np.float64],
+    starts: NDArray[np.int64],
+    ends: NDArray[np.int64],
+) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
+    n_bins = len(starts)
+    n_cols = col_stack.shape[0]
+    max_width = 0
+    for b in range(n_bins):
+        width = ends[b] - starts[b] + 1
+        if width > max_width:
+            max_width = width
+    out = np.empty((n_bins, n_cols, max_width), dtype=np.float64)
+    lengths = np.empty(n_bins, dtype=np.int64)
+    for b in range(n_bins):
+        start = starts[b]
+        end = ends[b] + 1
+        width = end - start
+        lengths[b] = width
+        for c in range(n_cols):
+            for j in range(width):
+                out[b, c, j] = col_stack[c, start + j]
+    return out, lengths
+
+
+@njit(cache=True)
+def _extract_dt64_bins_njit(
+    dates: NDArray[np.datetime64],
+    starts: NDArray[np.int64],
+    ends: NDArray[np.int64],
+) -> tuple[NDArray[np.datetime64], NDArray[np.int64]]:
+    n_bins = len(starts)
+    max_width = 0
+    for b in range(n_bins):
+        width = ends[b] - starts[b] + 1
+        if width > max_width:
+            max_width = width
+    out = np.empty((n_bins, max_width), dtype=dates.dtype)
+    lengths = np.empty(n_bins, dtype=np.int64)
+    for b in range(n_bins):
+        start = starts[b]
+        end = ends[b] + 1
+        width = end - start
+        lengths[b] = width
+        for j in range(width):
+            out[b, j] = dates[start + j]
+    return out, lengths
+
+
 def symbol_array_store_from_indexed_df(df: pd.DataFrame) -> SymbolArrayStore:
     """Builds a :class:`SymbolArrayStore` from a sorted MultiIndex frame."""
     df = df.sort_index()
@@ -337,21 +388,47 @@ def symbol_array_store_from_flat_frame(
     starts, ends = _find_bin_starts_ends(sorted_sym_ids)
     sym_arrays: dict[str, dict[str, NDArray]] = {}
     data_cols = [col for col in df.columns if col != sym_col]
-    col_arrays = {col: df[col].to_numpy(copy=True)[order] for col in data_cols}
-    sorted_dates = date_arr[order]
-    for bin_idx in range(len(starts)):
+    float_cols: list[str] = []
+    other_cols: list[str] = []
+    other_arrays: dict[str, NDArray] = {}
+    for col in data_cols:
+        if col == date_col:
+            continue
+        col_arr = np.asarray(df[col].to_numpy(copy=True)[order])
+        if np.issubdtype(col_arr.dtype, np.number):
+            float_cols.append(col)
+        else:
+            other_cols.append(col)
+            other_arrays[col] = col_arr
+    n_rows = len(order)
+    sorted_dates = np.ascontiguousarray(
+        date_arr[order], dtype="datetime64[ns]"
+    )
+    col_stack = np.empty((len(float_cols), n_rows), dtype=np.float64)
+    for c, col in enumerate(float_cols):
+        col_stack[c] = np.ascontiguousarray(
+            df[col].to_numpy(copy=True)[order], dtype=np.float64
+        )
+    f64_bins, lengths = _extract_f64_bins_njit(col_stack, starts, ends)
+    dt_bins, _ = _extract_dt64_bins_njit(sorted_dates, starts, ends)
+    n_bins = len(starts)
+    for bin_idx in range(n_bins):
         sym_key = str(unique_syms[sorted_sym_ids[starts[bin_idx]]])
         if symbols is not None and sym_key not in symbols:
             continue
+        width = int(lengths[bin_idx])
         start = int(starts[bin_idx])
         end = int(ends[bin_idx]) + 1
         sym_arrays[sym_key] = {
-            col: col_arrays[col][start:end] for col in data_cols
+            col: f64_bins[bin_idx, c, :width].copy()
+            for c, col in enumerate(float_cols)
         }
-        if date_col not in sym_arrays[sym_key]:
-            sym_arrays[sym_key][date_col] = np.asarray(
-                sorted_dates[start:end], copy=True
+        for col in other_cols:
+            sym_arrays[sym_key][col] = np.asarray(
+                other_arrays[col][start:end], copy=True
             )
+        if date_col not in sym_arrays[sym_key]:
+            sym_arrays[sym_key][date_col] = dt_bins[bin_idx, :width].copy()
     return SymbolArrayStore(frozenset(sym_arrays.keys()), sym_arrays)
 
 

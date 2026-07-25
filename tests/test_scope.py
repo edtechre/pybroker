@@ -29,9 +29,11 @@ from pybroker.scope import (
     register_columns,
     slice_symbol_array_store_by_dates,
     symbol_array_store_from_frame,
+    symbol_array_store_from_flat_frame,
     symbol_array_store_from_indexed_df,
     unregister_columns,
 )
+from pybroker.common import DataCol
 from unittest.mock import Mock
 
 
@@ -686,3 +688,98 @@ def test_slice_symbol_array_store_by_dates_non_contiguous(data_source_df):
     sliced = slice_symbol_array_store_by_dates(store, selected)
     np.testing.assert_array_equal(sliced.sym_arrays[sym]["date"], selected)
     assert len(sliced.sym_arrays[sym]["close"]) == len(selected)
+
+
+def _symbol_array_store_from_flat_frame_reference(
+    df: pd.DataFrame,
+    sym_col: str = DataCol.SYMBOL.value,
+    date_col: str = DataCol.DATE.value,
+    symbols: frozenset[str] | None = None,
+):
+    """Pre-optimization flat-frame store build for regression tests."""
+    from pybroker.scope import SymbolArrayStore
+    from pybroker.timeframe import _find_bin_starts_ends
+
+    if df.empty:
+        return SymbolArrayStore(frozenset(), {})
+    sym_values = df[sym_col].astype(str).to_numpy()
+    date_arr = df[date_col].to_numpy(dtype="datetime64[ns]", copy=False)
+    unique_syms, sym_ids = np.unique(sym_values, return_inverse=True)
+    order = np.lexsort((date_arr, sym_ids.astype(np.int64)))
+    sorted_sym_ids = sym_ids[order].astype(np.int64)
+    starts, ends = _find_bin_starts_ends(sorted_sym_ids)
+    sym_arrays: dict[str, dict[str, np.ndarray]] = {}
+    data_cols = [col for col in df.columns if col != sym_col]
+    col_arrays = {col: df[col].to_numpy(copy=True)[order] for col in data_cols}
+    sorted_dates = date_arr[order]
+    for bin_idx in range(len(starts)):
+        sym_key = str(unique_syms[sorted_sym_ids[starts[bin_idx]]])
+        if symbols is not None and sym_key not in symbols:
+            continue
+        start = int(starts[bin_idx])
+        end = int(ends[bin_idx]) + 1
+        sym_arrays[sym_key] = {
+            col: col_arrays[col][start:end] for col in data_cols
+        }
+        if date_col not in sym_arrays[sym_key]:
+            sym_arrays[sym_key][date_col] = np.asarray(
+                sorted_dates[start:end], copy=True
+            )
+    return SymbolArrayStore(frozenset(sym_arrays.keys()), sym_arrays)
+
+
+def _synthetic_flat_ohlcv(n_symbols: int, n_days: int) -> pd.DataFrame:
+    dates = pd.date_range("2020-01-02", periods=n_days, freq="B")
+    frames: list[pd.DataFrame] = []
+    for i in range(n_symbols):
+        sym = f"SYM{i:02d}"
+        close = np.linspace(100.0 + i, 150.0 + i, n_days)
+        frames.append(
+            pd.DataFrame(
+                {
+                    DataCol.SYMBOL.value: [sym] * n_days,
+                    DataCol.DATE.value: dates,
+                    DataCol.OPEN.value: close,
+                    DataCol.HIGH.value: close + 1.0,
+                    DataCol.LOW.value: close - 1.0,
+                    DataCol.CLOSE.value: close,
+                    DataCol.VOLUME.value: np.ones(n_days) * 1_000_000,
+                }
+            )
+        )
+    return pd.concat(frames, ignore_index=True)
+
+
+class TestSymbolArrayStoreNumba:
+    @pytest.mark.parametrize("n_symbols,n_days", [(1, 1), (4, 504), (10, 500)])
+    def test_flat_frame_matches_reference(self, n_symbols, n_days):
+        df = _synthetic_flat_ohlcv(n_symbols, n_days)
+        reference = _symbol_array_store_from_flat_frame_reference(df)
+        built = symbol_array_store_from_flat_frame(df)
+        assert built.symbols == reference.symbols
+        for sym in reference.symbols:
+            for col in reference.sym_arrays[sym]:
+                np.testing.assert_array_equal(
+                    built.sym_arrays[sym][col],
+                    reference.sym_arrays[sym][col],
+                )
+
+    def test_symbols_filter(self):
+        df = _synthetic_flat_ohlcv(4, 100)
+        built = symbol_array_store_from_flat_frame(
+            df, symbols=frozenset({"SYM00"})
+        )
+        assert built.symbols == frozenset({"SYM00"})
+        assert len(built.sym_arrays["SYM00"]["close"]) == 100
+
+    def test_empty_frame(self):
+        df = pd.DataFrame(
+            columns=[
+                DataCol.SYMBOL.value,
+                DataCol.DATE.value,
+                DataCol.CLOSE.value,
+            ]
+        )
+        built = symbol_array_store_from_flat_frame(df)
+        assert not built.symbols
+        assert built.sym_arrays == {}

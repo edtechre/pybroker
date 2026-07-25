@@ -172,11 +172,19 @@ class TestRollingWindowKernels:
             sumv(arr, n), _brute_sumv(arr, n), rtol=0, atol=0, equal_nan=True
         )
 
-    @pytest.mark.parametrize("length", [100, 10_000])
-    @pytest.mark.parametrize("window", [2, 20, 50, 200])
+    @pytest.mark.parametrize(
+        "length, window",
+        [
+            (100, 2),
+            (100, 20),
+            (100, 50),
+            (10_000, 2),
+            (10_000, 20),
+            (10_000, 50),
+            (10_000, 200),
+        ],
+    )
     def test_rolling_kernels_match_brute_force_random(self, length, window):
-        if window > length:
-            pytest.skip("window exceeds array length")
         rng = np.random.default_rng(42 + length + window)
         arr = rng.standard_normal(length)
         np.testing.assert_allclose(
