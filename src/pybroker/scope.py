@@ -56,7 +56,6 @@ from typing import (
     Optional,
     Sequence,
     Union,
-    cast,
 )
 
 if TYPE_CHECKING:
@@ -1195,6 +1194,113 @@ class PriceScope:
         self._col_scope = col_scope
         self._sym_end_index = sym_end_index
         self._round_fill_price = round_fill_price
+        self._bar_cache: dict[tuple[str, PriceType], float] = {}
+
+    def reset_bar(self) -> None:
+        """Clears the per-bar OHLC cache. Call once at the start of each bar."""
+        self._bar_cache.clear()
+
+    def _column_value(self, symbol: str, col: str) -> float:
+        end_index = self._sym_end_index[symbol]
+        if end_index <= 0:
+            raise ValueError(f"{col} price not found.")
+        sym_data = self._col_scope.store.sym_arrays[symbol]
+        if col not in sym_data:
+            raise ValueError(f"{col} price not found.")
+        array = sym_data[col]
+        if end_index > len(array):
+            end_index = len(array)
+        return float(array[end_index - 1])
+
+    def _round_float(self, fill_price: float) -> float:
+        if not self._round_fill_price:
+            return fill_price
+        if fill_price >= 0.0:
+            return int(fill_price * 100.0 + 0.5) / 100.0
+        return -int(-fill_price * 100.0 + 0.5) / 100.0
+
+    def _fetch_price_type(self, symbol: str, price: PriceType) -> float:
+        key = (symbol, price)
+        cached = self._bar_cache.get(key)
+        if cached is not None:
+            return cached
+        if price is _PRICE_OPEN:
+            fill_price = self._column_value(symbol, _COL_OPEN)
+        elif price is _PRICE_HIGH:
+            fill_price = self._column_value(symbol, _COL_HIGH)
+        elif price is _PRICE_LOW:
+            fill_price = self._column_value(symbol, _COL_LOW)
+        elif price is _PRICE_CLOSE:
+            fill_price = self._column_value(symbol, _COL_CLOSE)
+        elif price is _PRICE_MIDDLE:
+            low = self._fetch_price_type(symbol, _PRICE_LOW)
+            high = self._fetch_price_type(symbol, _PRICE_HIGH)
+            fill_price = low + (high - low) / 2.0
+        elif price is _PRICE_AVERAGE:
+            open_ = self._fetch_price_type(symbol, _PRICE_OPEN)
+            low = self._fetch_price_type(symbol, _PRICE_LOW)
+            high = self._fetch_price_type(symbol, _PRICE_HIGH)
+            close = self._fetch_price_type(symbol, _PRICE_CLOSE)
+            fill_price = (open_ + low + high + close) / 4.0
+        else:
+            raise ValueError(f"Unknown price: {price!r}")
+        self._bar_cache[key] = fill_price
+        return fill_price
+
+    def fetch_float(
+        self,
+        symbol: str,
+        price: Union[
+            int,
+            float,
+            np.floating,
+            Decimal,
+            PriceType,
+            Callable[[str, BarData], Union[int, float, Decimal]],
+        ],
+    ) -> float:
+        """Returns a bar price as ``float`` using the per-bar cache when possible."""
+        if isinstance(price, PriceType):
+            fill_price = self._fetch_price_type(symbol, price)
+        elif isinstance(price, (int, float, np.floating, Decimal)):
+            fill_price = float(price)
+        elif callable(price):
+            bar_data = self._col_scope.bar_data_from_data_columns(
+                symbol, self._sym_end_index[symbol]
+            )
+            fill_price = float(price(symbol, bar_data))
+        else:
+            raise ValueError(f"Unknown price: {type(price)!r}")
+        return self._round_float(fill_price)
+
+    def fetch_bar_ohlc(
+        self,
+        symbol: str,
+        date: np.datetime64,
+    ) -> tuple[Optional[float], Optional[float], Optional[float]]:
+        """Returns ``(close, low, high)`` for ``symbol`` on ``date``, or Nones."""
+        end_index = self._sym_end_index[symbol]
+        if end_index <= 0:
+            return None, None, None
+        date_arr = self._col_scope.fetch(symbol, _COL_DATE)
+        if date_arr is None:
+            return None, None, None
+        if end_index > len(date_arr):
+            end_index = len(date_arr)
+        idx = end_index - 1
+        if date_arr[idx] != date:
+            return None, None, None
+        close = low = high = None
+        close_arr = self._col_scope.fetch(symbol, _COL_CLOSE)
+        if close_arr is not None:
+            close = float(close_arr[idx])
+        low_arr = self._col_scope.fetch(symbol, _COL_LOW)
+        if low_arr is not None:
+            low = float(low_arr[idx])
+        high_arr = self._col_scope.fetch(symbol, _COL_HIGH)
+        if high_arr is not None:
+            high = float(high_arr[idx])
+        return close, low, high
 
     def fetch(
         self,
@@ -1208,81 +1314,7 @@ class PriceScope:
             Callable[[str, BarData], Union[int, float, Decimal]],
         ],
     ) -> Decimal:
-        end_index = self._sym_end_index[symbol]
-        price_type = type(price)
-        fill_price = None
-        if price_type is PriceType:
-            if price is _PRICE_OPEN:
-                open_ = self._col_scope.fetch(symbol, _COL_OPEN, end_index)
-                if open_ is None:
-                    raise ValueError("Open price not found.")
-                fill_price = open_[-1]
-            elif price is _PRICE_HIGH:
-                high = self._col_scope.fetch(symbol, _COL_HIGH, end_index)
-                if high is None:
-                    raise ValueError("High price not found.")
-                fill_price = high[-1]
-            elif price is _PRICE_LOW:
-                low = self._col_scope.fetch(symbol, _COL_LOW, end_index)
-                if low is None:
-                    raise ValueError("Low price not found.")
-                fill_price = low[-1]
-            elif price is _PRICE_CLOSE:
-                close = self._col_scope.fetch(symbol, _COL_CLOSE, end_index)
-                if close is None:
-                    raise ValueError("Close price not found.")
-                fill_price = close[-1]
-            elif price is _PRICE_MIDDLE:
-                low = self._col_scope.fetch(symbol, _COL_LOW, end_index)
-                if low is None:
-                    raise ValueError("Low price not found.")
-                high = self._col_scope.fetch(symbol, _COL_HIGH, end_index)
-                if high is None:
-                    raise ValueError("High price not found.")
-                fill_price = low[-1] + (high[-1] - low[-1]) / 2.0
-            elif price is _PRICE_AVERAGE:
-                open_ = self._col_scope.fetch(symbol, _COL_OPEN, end_index)
-                if open_ is None:
-                    raise ValueError("Open price not found.")
-                high = self._col_scope.fetch(symbol, _COL_HIGH, end_index)
-                if high is None:
-                    raise ValueError("High price not found.")
-                low = self._col_scope.fetch(symbol, _COL_LOW, end_index)
-                if low is None:
-                    raise ValueError("Low price not found.")
-                close = self._col_scope.fetch(symbol, _COL_CLOSE, end_index)
-                if close is None:
-                    raise ValueError("Close price not found.")
-                fill_price = (open_[-1] + low[-1] + high[-1] + close[-1]) / 4.0
-            else:
-                raise ValueError(f"Unknown price: {price_type}")
-        elif (
-            price_type is float
-            or price_type is int
-            or isinstance(price, np.floating)
-            or isinstance(price, Decimal)
-        ):
-            fill_price = price
-        elif callable(price):
-            bar_data = self._col_scope.bar_data_from_data_columns(
-                symbol, self._sym_end_index[symbol]
-            )
-            fill_price = price(symbol, bar_data)
-        else:
-            raise ValueError(f"Unknown price: {price_type}")
-        if self._round_fill_price:
-            # Fast 2-decimal rounding. builtins.round(float, 2) costs
-            # ~7 us/call; the integer divmod-100 form is ~0.5 us/call and
-            # yields the same clean decimal string when the result is then
-            # wrapped via Decimal(str(x)). Must divide by 100.0 (integer
-            # ratio), NOT multiply by 0.01 (binary float 0.01 re-introduces
-            # the rounding artifact we just removed).
-            fp = float(fill_price)  # type: ignore[arg-type]
-            if fp >= 0.0:
-                fill_price = int(fp * 100.0 + 0.5) / 100.0
-            else:
-                fill_price = -int(-fp * 100.0 + 0.5) / 100.0
-        return to_decimal(cast(float, fill_price))
+        return to_decimal(self.fetch_float(symbol, price))
 
 
 class PendingOrder(NamedTuple):

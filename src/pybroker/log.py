@@ -273,6 +273,8 @@ class Logger:
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
+        if self._disabled:
+            return
         order = self._format_order(
             date=date,
             symbol=symbol,
@@ -292,6 +294,8 @@ class Logger:
         cash: Decimal,
         clamped_shares: Decimal,
     ):
+        if self._disabled:
+            return
         order = self._format_order(
             date=date,
             symbol=symbol,
@@ -312,6 +316,8 @@ class Logger:
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
+        if self._disabled:
+            return
         order = self._format_order(
             date=date,
             symbol=symbol,
@@ -329,6 +335,8 @@ class Logger:
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
+        if self._disabled:
+            return
         order = self._format_order(
             date=date,
             symbol=symbol,
@@ -346,6 +354,8 @@ class Logger:
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
+        if self._disabled:
+            return
         order = self._format_order(
             date=date,
             symbol=symbol,
@@ -363,6 +373,8 @@ class Logger:
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
+        if self._disabled:
+            return
         order = self._format_order(
             date=date,
             symbol=symbol,
@@ -380,6 +392,8 @@ class Logger:
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
+        if self._disabled:
+            return
         order = self._format_order(
             date=date,
             symbol=symbol,

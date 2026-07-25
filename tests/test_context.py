@@ -203,8 +203,7 @@ def ctx_with_orders(
 ):
     portfolio.orders = deque(orders)
     portfolio.trades = deque(trades)
-    portfolio.win_rate = 1
-    portfolio.lose_rate = 0
+    portfolio._wins = Decimal(len(portfolio.trades))
     ctx = ExecContext(
         symbol=symbol,
         config=StrategyConfig(max_long_positions=5),

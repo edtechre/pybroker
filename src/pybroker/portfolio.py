@@ -170,7 +170,7 @@ class Entry:
 
 @dataclass
 class _StopData:
-    value: Decimal
+    value: float
     stop: Stop
     entry: Entry
 
@@ -203,6 +203,7 @@ class Position:
     pnl: Decimal = field(default_factory=Decimal)
     entries: deque[Entry] = field(default_factory=deque)
     bars: int = field(default=0)
+    entry_notional: Decimal = field(default_factory=Decimal)
 
 
 class Trade(NamedTuple):
@@ -357,32 +358,39 @@ class _OrderResult(NamedTuple):
 
 def _calculate_pnl_mae_mfe(
     pos: Position,
-    close: Decimal,
-    low: Optional[Decimal],
-    high: Optional[Decimal],
+    close: float,
+    low: Optional[float],
+    high: Optional[float],
 ):
     if pos.type != "long" and pos.type != "short":
         raise ValueError(f"Unknown position type: {pos.type}")
     pnl = Decimal()
     for entry in pos.entries:
-        loss = Decimal()
-        profit = Decimal()
+        close_d = to_decimal(close)
+        loss = 0.0
+        profit = 0.0
+        loss_d = Decimal()
+        profit_d = Decimal()
         if pos.type == "long":
-            pnl += (close - entry.price) * entry.shares
+            pnl += (close_d - entry.price) * entry.shares
             if low is not None:
-                loss = low - entry.price
+                loss_d = to_decimal(low) - entry.price
+                loss = float(loss_d)
             if high is not None:
-                profit = high - entry.price
+                profit_d = to_decimal(high) - entry.price
+                profit = float(profit_d)
         elif pos.type == "short":
-            pnl += (entry.price - close) * entry.shares
+            pnl += (entry.price - close_d) * entry.shares
             if high is not None:
-                loss = entry.price - high
+                loss_d = entry.price - to_decimal(high)
+                loss = float(loss_d)
             if low is not None:
-                profit = entry.price - low
-        if loss < 0 and loss < entry.mae:
-            entry.mae = loss
-        if profit > 0 and profit > entry.mfe:
-            entry.mfe = profit
+                profit_d = entry.price - to_decimal(low)
+                profit = float(profit_d)
+        if loss < 0 and loss < float(entry.mae):
+            entry.mae = loss_d
+        if profit > 0 and profit > float(entry.mfe):
+            entry.mfe = profit_d
     pos.pnl = pnl
 
 
@@ -446,6 +454,8 @@ class Portfolio:
         leverage: float = 1.0,
         interest_rate: float = 0.0,
         bars_per_year: Optional[int] = None,
+        record_portfolio_bars: bool = False,
+        record_position_bars: bool = False,
     ):
         self.cash: Decimal = to_decimal(cash)
         self._initial_market_value = self.cash
@@ -461,6 +471,8 @@ class Portfolio:
         self._max_long_positions = max_long_positions
         self._max_short_positions = max_short_positions
         self._record_stops = record_stops
+        self._record_portfolio_bars = record_portfolio_bars
+        self._record_position_bars = record_position_bars
         self._leverage = leverage
         self._interest_rate = interest_rate
         self._bars_per_year = bars_per_year
@@ -474,15 +486,29 @@ class Portfolio:
         self.symbols: set[str] = set()
         self.bars: deque[PortfolioBar] = deque()
         self.position_bars: deque[PositionBar] = deque()
-        self.win_rate: Decimal = Decimal()
-        self.loss_rate: Decimal = Decimal()
+        self._metrics_bars: list[PortfolioBar] = []
         self._wins: Decimal = Decimal()
+        self._cached_long_mv: Optional[Decimal] = None
+        self._cached_short_mv: Optional[Decimal] = None
         self._logger = StaticScope.instance().logger
         self._stop_data: dict[int, _StopData] = {}
+        self._active_stops: dict[str, list[_StopData]] = {}
         self._order_id: int = 0
         self._entry_id: int = 0
         self._trade_id: int = 0
         self._stop_records: list[StopRecord] = []
+
+    @property
+    def win_rate(self) -> Decimal:
+        if not self.trades:
+            return Decimal()
+        return self._wins / len(self.trades)
+
+    @property
+    def loss_rate(self) -> Decimal:
+        if not self.trades:
+            return Decimal()
+        return Decimal(1) - self.win_rate
 
     def _calculate_fees(
         self,
@@ -622,16 +648,20 @@ class Portfolio:
         self.trades.append(trade)
         if pnl > 0:
             self._wins += 1
-        self.win_rate = self._wins / len(self.trades)
-        self.loss_rate = 1 - self.win_rate
+
+    def _invalidate_mv_cache(self):
+        self._cached_long_mv = None
+        self._cached_short_mv = None
+
+    def _get_stop_amount_f(self, stop: Stop, price: float) -> float:
+        if stop.percent is not None:
+            return price * float(stop.percent) / 100.0
+        if stop.points is not None:
+            return float(stop.points)
+        raise ValueError("Stop amount not set.")
 
     def _get_stop_amount(self, stop: Stop, price: Decimal) -> Decimal:
-        if stop.percent is not None:
-            return price * stop.percent / 100
-        elif stop.points is not None:
-            return stop.points
-        else:
-            raise ValueError("Stop amount not set.")
+        return to_decimal(self._get_stop_amount_f(stop, float(price)))
 
     def _add_stops(self, entry: Entry, stops: Iterable[Stop]):
         for stop in stops:
@@ -640,7 +670,8 @@ class Portfolio:
             entry.stops.append(stop)
             if stop.stop_type in (StopType.BAR, StopType.CUSTOM):
                 continue
-            amount = self._get_stop_amount(stop, entry.price)
+            amount = self._get_stop_amount_f(stop, float(entry.price))
+            entry_price = float(entry.price)
             if (
                 stop.pos_type == "long" and stop.stop_type == StopType.PROFIT
             ) or (
@@ -650,43 +681,53 @@ class Portfolio:
                     or stop.stop_type == StopType.TRAILING
                 )
             ):
-                stop_value = entry.price + amount
+                stop_value = entry_price + amount
             else:
-                stop_value = entry.price - amount
-            self._stop_data[stop.id] = _StopData(
-                value=stop_value, stop=stop, entry=entry
-            )
+                stop_value = entry_price - amount
+            stop_data = _StopData(value=stop_value, stop=stop, entry=entry)
+            self._stop_data[stop.id] = stop_data
+            self._active_stops.setdefault(stop.symbol, []).append(stop_data)
 
     def _remove_stop_data(self, entry: Entry):
         for stop in entry.stops:
-            if stop.id in self._stop_data:
-                del self._stop_data[stop.id]
+            if stop.id not in self._stop_data:
+                continue
+            stop_data = self._stop_data.pop(stop.id)
+            sym_stops = self._active_stops.get(stop.symbol)
+            if sym_stops is not None:
+                try:
+                    sym_stops.remove(stop_data)
+                except ValueError:
+                    pass
+                if not sym_stops:
+                    del self._active_stops[stop.symbol]
 
     def _long_market_value(self) -> Decimal:
+        if self._cached_long_mv is not None:
+            return self._cached_long_mv
         total = Decimal()
         for pos in self.long_positions.values():
             if pos.close > 0:
                 total += pos.shares * pos.close
             else:
-                for entry in pos.entries:
-                    total += entry.shares * entry.price
+                total += pos.entry_notional
+        self._cached_long_mv = total
         return total
 
     def _short_market_value(self) -> Decimal:
+        if self._cached_short_mv is not None:
+            return self._cached_short_mv
         total = Decimal()
         for pos in self.short_positions.values():
             if pos.close > 0:
                 total += pos.shares * pos.close
             else:
-                for entry in pos.entries:
-                    total += entry.shares * entry.price
+                total += pos.entry_notional
+        self._cached_short_mv = total
         return total
 
     def _short_entry_notional(self, pos: Position) -> Decimal:
-        total = Decimal()
-        for entry in pos.entries:
-            total += entry.shares * entry.price
-        return total
+        return pos.entry_notional
 
     def _post_collateral(self, notional: Decimal):
         if self._leverage > 1:
@@ -696,6 +737,7 @@ class Portfolio:
             self.margin_loan += notional - collateral
         else:
             self.cash -= notional
+        self._invalidate_mv_cache()
 
     def _release_short_collateral(self, entry_notional: Decimal, pnl: Decimal):
         if self._leverage > 1:
@@ -856,6 +898,7 @@ class Portfolio:
         self._release_short_collateral(entry_amount, entry_pnl)
         pos.shares -= shares
         entry.shares -= shares
+        pos.entry_notional -= entry_amount
         pnl_per_bar = entry_pnl if not entry.bars else entry_pnl / entry.bars
         return_pct = ((entry.price / fill_price) - 1) * 100
         pnl = entry.price - fill_price
@@ -878,6 +921,7 @@ class Portfolio:
             mae=mae,
             mfe=mfe,
         )
+        self._invalidate_mv_cache()
 
     def _long(
         self,
@@ -929,6 +973,8 @@ class Portfolio:
         )
         if stops is not None:
             self._add_stops(entry, stops)
+        pos.entry_notional += shares * fill_price
+        self._invalidate_mv_cache()
         return shares
 
     def sell(
@@ -1040,6 +1086,7 @@ class Portfolio:
         self.cash += order_amount - loan_repayment
         pos.shares -= shares
         entry.shares -= shares
+        pos.entry_notional -= entry_amount
         pnl_per_bar = entry_pnl if not entry.bars else entry_pnl / entry.bars
         return_pct = ((fill_price / entry.price) - 1) * 100
         pnl = fill_price - entry.price
@@ -1062,6 +1109,7 @@ class Portfolio:
             mae=mae,
             mfe=mfe,
         )
+        self._invalidate_mv_cache()
 
     def _update_position(self, pos: Position):
         if pos.entries:
@@ -1130,6 +1178,8 @@ class Portfolio:
         )
         if stops is not None:
             self._add_stops(entry, stops)
+        pos.entry_notional += shares * fill_price
+        self._invalidate_mv_cache()
         return shares
 
     def exit_position(
@@ -1162,45 +1212,38 @@ class Portfolio:
         date: np.datetime64,
         col_scope: ColumnScope,
         sym_end_index: Mapping[str, int],
+        price_scope: Optional[PriceScope] = None,
     ):
-        """Captures portfolio state of the current bar.
-
-        Args:
-            date: Date of current bar.
-            col_scope: ``ColumnScope`` providing per-symbol
-                column NumPy arrays (close/low/high). Using integer indexing
-                here avoids the MultiIndex ``.loc[(sym, date)]`` lookup that
-                dominated the pre-V2 hot path.
-            sym_end_index: Mapping from symbol to the 1-based count of bars
-                seen so far for that symbol. The current-bar row index into
-                each symbol's column array is ``sym_end_index[sym] - 1``.
-        """
+        """Captures portfolio state of the current bar."""
         self._apply_interest()
-        total_equity = self.cash - self.margin_loan
+        cash_f = float(self.cash)
+        margin_loan_f = float(self.margin_loan)
+        total_equity = cash_f - margin_loan_f
         total_market_value = total_equity
-        total_margin = Decimal()
+        total_margin = 0.0
         for sym in self.symbols:
-            close = None
-            low = None
-            high = None
-            idx = sym_end_index.get(sym, 0) - 1
-            if idx >= 0:
-                cols = col_scope.fetch_dict(sym, _CAPTURE_BAR_COLS)
-                date_arr = cols[_COL_DATE]
-                if (
-                    date_arr is not None
-                    and idx < len(date_arr)
-                    and date_arr[idx] == date
-                ):
-                    close_arr = cols[_COL_CLOSE]
-                    low_arr = cols[_COL_LOW]
-                    high_arr = cols[_COL_HIGH]
-                    if close_arr is not None:
-                        close = to_decimal(float(close_arr[idx]))
-                    if low_arr is not None:
-                        low = to_decimal(float(low_arr[idx]))
-                    if high_arr is not None:
-                        high = to_decimal(float(high_arr[idx]))
+            close_f = low_f = high_f = None
+            if price_scope is not None:
+                close_f, low_f, high_f = price_scope.fetch_bar_ohlc(sym, date)
+            else:
+                idx = sym_end_index.get(sym, 0) - 1
+                if idx >= 0:
+                    cols = col_scope.fetch_dict(sym, _CAPTURE_BAR_COLS)
+                    date_arr = cols[_COL_DATE]
+                    if (
+                        date_arr is not None
+                        and idx < len(date_arr)
+                        and date_arr[idx] == date
+                    ):
+                        close_arr = cols[_COL_CLOSE]
+                        low_arr = cols[_COL_LOW]
+                        high_arr = cols[_COL_HIGH]
+                        if close_arr is not None:
+                            close_f = float(close_arr[idx])
+                        if low_arr is not None:
+                            low_f = float(low_arr[idx])
+                        if high_arr is not None:
+                            high_f = float(high_arr[idx])
             pos_long_shares = Decimal()
             pos_short_shares = Decimal()
             pos_equity = Decimal()
@@ -1209,10 +1252,11 @@ class Portfolio:
             pos_pnl = Decimal()
             if sym in self.long_positions:
                 pos = self.long_positions[sym]
-                if close is not None:
+                if close_f is not None:
                     _calculate_pnl_mae_mfe(
-                        pos, close=close, low=low, high=high
+                        pos, close=close_f, low=low_f, high=high_f
                     )
+                    close = to_decimal(close_f)
                     pos.equity = pos.shares * close
                     pos.market_value = pos.equity
                     pos.close = close
@@ -1220,15 +1264,16 @@ class Portfolio:
                     pos_equity += pos.equity
                     pos_market_value += pos.market_value
                     pos_pnl += pos.pnl
-                total_equity += pos.equity
-                total_market_value += pos.equity
+                total_equity += float(pos.equity)
+                total_market_value += float(pos.equity)
             if sym in self.short_positions:
                 pos = self.short_positions[sym]
-                entry_notional = self._short_entry_notional(pos)
-                if close is not None:
+                entry_notional = pos.entry_notional
+                if close_f is not None:
                     _calculate_pnl_mae_mfe(
-                        pos, close=close, low=low, high=high
+                        pos, close=close_f, low=low_f, high=high_f
                     )
+                    close = to_decimal(close_f)
                     pos.close = close
                     pos.margin = close * pos.shares
                     pos.market_value = pos.margin + pos.pnl
@@ -1238,19 +1283,19 @@ class Portfolio:
                     pos_equity += short_equity
                     pos_market_value += pos.market_value
                     pos_pnl += pos.pnl
-                    total_equity += short_equity
-                    total_market_value += pos.pnl
+                    total_equity += float(short_equity)
+                    total_market_value += float(pos.pnl)
                 else:
-                    total_equity += entry_notional
-                total_margin += pos.margin
-            if close is not None:
+                    total_equity += float(entry_notional)
+                total_margin += float(pos.margin)
+            if close_f is not None and self._record_position_bars:
                 self.position_bars.append(
                     PositionBar(
                         symbol=sym,
                         date=date,
                         long_shares=pos_long_shares,
                         short_shares=pos_short_shares,
-                        close=close,
+                        close=to_decimal(close_f),
                         equity=pos_equity,
                         market_value=pos_market_value,
                         margin=pos_margin,
@@ -1258,40 +1303,49 @@ class Portfolio:
                     )
                 )
 
-        self.equity = total_equity
-        self.market_value = total_market_value
-        self.margin = total_margin
+        self.equity = to_decimal(total_equity)
+        self.market_value = to_decimal(total_market_value)
+        self.margin = to_decimal(total_margin)
+        self._cached_long_mv = None
+        self._cached_short_mv = None
 
         net_cash_balance = self._net_cash_balance()
-        self.bars.append(
-            PortfolioBar(
-                date=date,
-                cash=self.cash,
-                equity=self.equity,
-                market_value=self.market_value,
-                margin=self.margin,
-                margin_loan=self.margin_loan,
-                net_cash_balance=net_cash_balance,
-                pnl=self.equity - self._initial_market_value,
-                unrealized_pnl=self.market_value - self.equity,
-                fees=self.fees,
-            )
+        bar = PortfolioBar(
+            date=date,
+            cash=self.cash,
+            equity=self.equity,
+            market_value=self.market_value,
+            margin=self.margin,
+            margin_loan=self.margin_loan,
+            net_cash_balance=net_cash_balance,
+            pnl=self.equity - self._initial_market_value,
+            unrealized_pnl=self.market_value - self.equity,
+            fees=self.fees,
         )
+        self._metrics_bars.append(bar)
+        if self._record_portfolio_bars:
+            self.bars.append(bar)
 
     def incr_bars(self):
         """Increments the number of bars held by every trade entry."""
         for pos in itertools.chain(
             self.long_positions.values(), self.short_positions.values()
         ):
-            pos.bars += 1
             for entry in pos.entries:
                 entry.bars += 1
 
     def remove_stop(self, stop_id: int) -> bool:
         """Removes a :class:`.Stop` with ``stop_id``."""
         if stop_id in self._stop_data:
-            stop_data = self._stop_data[stop_id]
-            del self._stop_data[stop_id]
+            stop_data = self._stop_data.pop(stop_id)
+            sym_stops = self._active_stops.get(stop_data.stop.symbol)
+            if sym_stops is not None:
+                try:
+                    sym_stops.remove(stop_data)
+                except ValueError:
+                    pass
+                if not sym_stops:
+                    del self._active_stops[stop_data.stop.symbol]
             if stop_data.stop in stop_data.entry.stops:
                 stop_data.entry.stops.remove(stop_data.stop)
             return True
@@ -1358,12 +1412,58 @@ class Portfolio:
         sym_end_index: Optional[Mapping[str, int]] = None,
     ):
         """Checks whether stops are triggered."""
+        price_scope.reset_bar()
         executed: deque[tuple[Position, Entry]] = deque()
+        triggered_entry_ids: set[int] = set()
+        for sym, sym_stops in self._active_stops.items():
+            for stop_data in sym_stops:
+                stop = stop_data.stop
+                entry = stop_data.entry
+                if entry.id in triggered_entry_ids:
+                    continue
+                if stop.pos_type == "long":
+                    pos = self.long_positions.get(sym)
+                else:
+                    pos = self.short_positions.get(sym)
+                if pos is None:
+                    continue
+                triggered, fill_price = self._trigger_stop(
+                    date,
+                    price_scope,
+                    pos,
+                    entry,
+                    stop,
+                    col_scope,
+                    sym_end_index,
+                )
+                if self._record_stops:
+                    self._capture_stop(date, entry, stop, fill_price)
+                if triggered:
+                    executed.append((pos, entry))
+                    triggered_entry_ids.add(entry.id)
+
         for pos in itertools.chain(
             self.long_positions.values(), self.short_positions.values()
         ):
             for entry in pos.entries:
                 for stop in entry.stops:
+                    if stop.stop_type not in (StopType.BAR, StopType.CUSTOM):
+                        continue
+                    already_triggered = entry.id in triggered_entry_ids
+                    if already_triggered:
+                        if not self._record_stops:
+                            continue
+                        fill_price = self._stop_fill_price_only(
+                            date,
+                            price_scope,
+                            pos,
+                            entry,
+                            stop,
+                            col_scope,
+                            sym_end_index,
+                        )
+                        self._capture_stop(date, entry, stop, fill_price)
+                        continue
                     triggered, fill_price = self._trigger_stop(
                         date,
                         price_scope,
@@ -1377,10 +1477,14 @@ class Portfolio:
                         self._capture_stop(date, entry, stop, fill_price)
                     if triggered:
                         executed.append((pos, entry))
+                        triggered_entry_ids.add(entry.id)
                         break
 
         for pos, entry in executed:
-            pos.entries.remove(entry)
+            if pos.entries and pos.entries[0] is entry:
+                pos.entries.popleft()
+            else:
+                pos.entries.remove(entry)
             self._remove_stop_data(entry)
             self._update_position(pos)
 
@@ -1398,7 +1502,7 @@ class Portfolio:
             stop_type=stop.stop_type.value,
             pos_type=stop.pos_type,
             curr_value=(
-                self._stop_data[stop.id].value
+                to_decimal(self._stop_data[stop.id].value)
                 if stop.id in self._stop_data
                 else None
             ),
@@ -1411,6 +1515,24 @@ class Portfolio:
             fill_price=fill_price,
         )
         self._stop_records.append(stop_record)
+
+    def _stop_fill_price_only(
+        self,
+        date: np.datetime64,
+        price_scope: PriceScope,
+        pos: Position,
+        entry: Entry,
+        stop: Stop,
+        col_scope: Optional[ColumnScope],
+        sym_end_index: Optional[Mapping[str, int]],
+    ) -> Optional[Decimal]:
+        if stop.stop_type == StopType.BAR:
+            return self._trigger_bar_stop(stop, price_scope, entry)
+        if stop.stop_type == StopType.CUSTOM:
+            return self._trigger_custom_stop(
+                stop, price_scope, entry, date, col_scope, sym_end_index
+            )
+        return None
 
     def _trigger_stop(
         self,
@@ -1516,6 +1638,7 @@ class Portfolio:
     def _trigger_profit_or_loss_stop(
         self, stop: Stop, price_scope: PriceScope
     ) -> Optional[Decimal]:
+        stop_value = self._stop_data[stop.id].value
         if (
             stop.pos_type == "long"
             and (
@@ -1524,14 +1647,16 @@ class Portfolio:
             )
         ) or (stop.pos_type == "short" and stop.stop_type == StopType.PROFIT):
             if stop.exit_price is not None:
-                exit_price = price_scope.fetch(stop.symbol, stop.exit_price)
-                if exit_price <= self._stop_data[stop.id].value:
-                    return exit_price
+                exit_price = price_scope.fetch_float(
+                    stop.symbol, stop.exit_price
+                )
+                if exit_price <= stop_value:
+                    return to_decimal(exit_price)
             else:
-                low = price_scope.fetch(stop.symbol, PriceType.LOW)
-                if low <= self._stop_data[stop.id].value:
-                    high = price_scope.fetch(stop.symbol, PriceType.HIGH)
-                    return min(self._stop_data[stop.id].value, high)
+                low = price_scope.fetch_float(stop.symbol, PriceType.LOW)
+                if low <= stop_value:
+                    high = price_scope.fetch_float(stop.symbol, PriceType.HIGH)
+                    return to_decimal(min(stop_value, high))
         elif (
             stop.pos_type == "long" and stop.stop_type == StopType.PROFIT
         ) or (
@@ -1542,14 +1667,16 @@ class Portfolio:
             )
         ):
             if stop.exit_price is not None:
-                exit_price = price_scope.fetch(stop.symbol, stop.exit_price)
-                if exit_price >= self._stop_data[stop.id].value:
-                    return exit_price
+                exit_price = price_scope.fetch_float(
+                    stop.symbol, stop.exit_price
+                )
+                if exit_price >= stop_value:
+                    return to_decimal(exit_price)
             else:
-                high = price_scope.fetch(stop.symbol, PriceType.HIGH)
-                if high >= self._stop_data[stop.id].value:
-                    low = price_scope.fetch(stop.symbol, PriceType.LOW)
-                    return max(self._stop_data[stop.id].value, low)
+                high = price_scope.fetch_float(stop.symbol, PriceType.HIGH)
+                if high >= stop_value:
+                    low = price_scope.fetch_float(stop.symbol, PriceType.LOW)
+                    return to_decimal(max(stop_value, low))
         return None
 
     def _trigger_custom_stop(
@@ -1590,16 +1717,13 @@ class Portfolio:
         fill_price = self._trigger_profit_or_loss_stop(stop, price_scope)
         if fill_price is not None:
             return fill_price
+        stop_data = self._stop_data[stop.id]
         if stop.pos_type == "long":
-            high = price_scope.fetch(stop.symbol, PriceType.HIGH)
-            amount = self._get_stop_amount(stop, high)
-            self._stop_data[stop.id].value = max(
-                high - amount, self._stop_data[stop.id].value
-            )
+            high = price_scope.fetch_float(stop.symbol, PriceType.HIGH)
+            amount = self._get_stop_amount_f(stop, high)
+            stop_data.value = max(high - amount, stop_data.value)
         else:
-            low = price_scope.fetch(stop.symbol, PriceType.LOW)
-            amount = self._get_stop_amount(stop, low)
-            self._stop_data[stop.id].value = min(
-                low + amount, self._stop_data[stop.id].value
-            )
+            low = price_scope.fetch_float(stop.symbol, PriceType.LOW)
+            amount = self._get_stop_amount_f(stop, low)
+            stop_data.value = min(low + amount, stop_data.value)
         return None

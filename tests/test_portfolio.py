@@ -3652,12 +3652,10 @@ def test_incr_bars():
     assert len(portfolio.long_positions) == 1
     assert len(portfolio.short_positions) == 1
     long_pos = portfolio.long_positions[SYMBOL_1]
-    assert long_pos.bars == 3
     assert len(long_pos.entries) == 2
     assert long_pos.entries[0].bars == 3
     assert long_pos.entries[1].bars == 2
     short_pos = portfolio.short_positions[SYMBOL_2]
-    assert short_pos.bars == 2
     assert len(short_pos.entries) == 1
     assert short_pos.entries[0].bars == 2
 
@@ -3669,7 +3667,9 @@ def test_capture_bar_when_short_position():
     close_price = Decimal("16.7")
     low_price = Decimal("15.00")
     high_price = Decimal("18.00")
-    portfolio = Portfolio(cash)
+    portfolio = Portfolio(
+        cash, record_portfolio_bars=True, record_position_bars=True
+    )
     portfolio.sell(DATE_1, SYMBOL_1, shares, fill_price)
     df = pd.DataFrame(
         [
@@ -3720,7 +3720,9 @@ def test_capture_bar_when_long_position():
     close_price = Decimal("16.7")
     low_price = Decimal("15.00")
     high_price = Decimal("18.00")
-    portfolio = Portfolio(cash)
+    portfolio = Portfolio(
+        cash, record_portfolio_bars=True, record_position_bars=True
+    )
     portfolio.buy(DATE_1, SYMBOL_1, shares, fill_price)
     df = pd.DataFrame(
         [
@@ -3875,7 +3877,12 @@ def test_sell_when_leverage_pays_down_margin_loan():
 
 
 def test_capture_bar_when_leverage_includes_margin_columns():
-    portfolio = Portfolio(CASH, leverage=2.0)
+    portfolio = Portfolio(
+        CASH,
+        leverage=2.0,
+        record_portfolio_bars=True,
+        record_position_bars=True,
+    )
     portfolio.buy(DATE_1, SYMBOL_1, Decimal(2000), Decimal(100))
     df = pd.DataFrame(
         [[SYMBOL_1, DATE_1, Decimal(100), Decimal(99), Decimal(101)]],

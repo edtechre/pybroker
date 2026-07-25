@@ -92,6 +92,17 @@ class StrategyConfig:
             (``cash - margin_loan``). Charges interest when net cash is
             negative and credits interest when net cash is positive.
             Defaults to ``0`` (disabled).
+        record_portfolio_bars: When ``True``, append full
+            :class:`pybroker.portfolio.PortfolioBar` snapshots to
+            :attr:`pybroker.portfolio.Portfolio.bars` on every bar. When
+            ``False`` (default), per-bar metrics are stored in a compact
+            buffer used for :class:`pybroker.strategy.TestResult` and
+            :class:`pybroker.eval.EvalMetrics`.
+        record_position_bars: When ``True``, append full
+            :class:`pybroker.portfolio.PositionBar` snapshots to
+            :attr:`pybroker.portfolio.Portfolio.position_bars` on every bar.
+            When ``False`` (default), :attr:`pybroker.strategy.TestResult.positions`
+            is empty.
     """
 
     initial_cash: float = field(default=100_000)
@@ -122,3 +133,5 @@ class StrategyConfig:
     round_test_result: bool = field(default=True)
     leverage: float = field(default=1.0)
     interest_rate: float = field(default=0.0)
+    record_portfolio_bars: bool = field(default=False)
+    record_position_bars: bool = field(default=False)

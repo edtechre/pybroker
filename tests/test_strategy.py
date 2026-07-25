@@ -713,7 +713,9 @@ class TestBacktestMixin:
             portfolio=portfolio,
             exit_dates={},
         )
-        assert len(portfolio.bars) == len(data_source_df["date"].unique())
+        assert len(portfolio._metrics_bars) == len(
+            data_source_df["date"].unique()
+        )
         assert not len(portfolio.position_bars)
         assert not len(portfolio.orders)
         assert not len(portfolio.trades)
@@ -744,7 +746,9 @@ class TestBacktestMixin:
             portfolio=portfolio,
             exit_dates={},
         )
-        assert len(portfolio.bars) == len(data_source_df["date"].unique())
+        assert len(portfolio._metrics_bars) == len(
+            data_source_df["date"].unique()
+        )
         assert not len(portfolio.position_bars)
         assert not len(portfolio.orders)
         assert not len(portfolio.trades)
@@ -778,7 +782,9 @@ class TestBacktestMixin:
             exit_dates={},
         )
 
-        assert len(portfolio.bars) == len(data_source_df["date"].unique())
+        assert len(portfolio._metrics_bars) == len(
+            data_source_df["date"].unique()
+        )
         assert not len(portfolio.position_bars)
         assert not len(portfolio.orders)
         assert not len(portfolio.trades)
@@ -811,7 +817,7 @@ class TestBacktestMixin:
             portfolio=portfolio,
             exit_dates={},
         )
-        assert len(portfolio.bars)
+        assert len(portfolio._metrics_bars)
         assert not len(portfolio.position_bars)
         assert not len(portfolio.orders)
         assert not len(portfolio.trades)
@@ -2738,7 +2744,9 @@ class TestStrategy:
             data_source_df["date"] <= to_datetime(END_DATE)
         ]
         config = StrategyConfig(
-            return_signals=return_signals, return_stops=return_stops
+            return_signals=return_signals,
+            return_stops=return_stops,
+            record_position_bars=True,
         )
         strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
         strategy.add_execution(exec_fn, ["AAPL", "SPY"])
@@ -2786,6 +2794,54 @@ class TestStrategy:
             }
         else:
             assert result.stops is None
+
+    def test_record_portfolio_bars_metrics_parity(self, data_source_df):
+        def exec_fn(ctx):
+            if not ctx.long_pos():
+                ctx.buy_shares = 100
+                ctx.stop_loss_pct = 5
+
+        data_source_df = data_source_df[
+            data_source_df["date"] <= to_datetime(END_DATE)
+        ]
+        symbols = ["AAPL", "SPY"]
+        default_strategy = Strategy(
+            data_source_df,
+            START_DATE,
+            END_DATE,
+            StrategyConfig(bootstrap_samples=10, bootstrap_sample_size=10),
+        )
+        default_strategy.add_execution(exec_fn, symbols)
+        default_result = default_strategy.walkforward(
+            windows=1,
+            lookahead=1,
+            train_size=0.5,
+            calc_bootstrap=False,
+            disable_parallel_indicators=True,
+        )
+        recorded_strategy = Strategy(
+            data_source_df,
+            START_DATE,
+            END_DATE,
+            StrategyConfig(
+                bootstrap_samples=10,
+                bootstrap_sample_size=10,
+                record_portfolio_bars=True,
+                record_position_bars=True,
+            ),
+        )
+        recorded_strategy.add_execution(exec_fn, symbols)
+        recorded_result = recorded_strategy.walkforward(
+            windows=1,
+            lookahead=1,
+            train_size=0.5,
+            calc_bootstrap=False,
+            disable_parallel_indicators=True,
+        )
+        pd.testing.assert_frame_equal(
+            default_result.portfolio, recorded_result.portfolio
+        )
+        assert default_result.metrics == recorded_result.metrics
 
     def test_walkforward_when_no_executions_then_error(self, data_source_df):
         strategy = Strategy(data_source_df, START_DATE, END_DATE)

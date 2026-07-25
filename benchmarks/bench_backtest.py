@@ -128,6 +128,52 @@ class WalkforwardCold:
         )
 
 
+def _build_held_stops_strategy(df: pd.DataFrame) -> Strategy:
+    """No indicators; buy once per symbol with stops, then hold."""
+    pybroker.clear_params()
+    pybroker.disable_logging()
+    pybroker.disable_progress_bar()
+
+    def exec_fn(ctx: ExecContext) -> None:
+        if not ctx.long_pos():
+            ctx.buy_shares = 100
+            ctx.stop_loss_pct = 5
+            ctx.stop_profit_pct = 15
+
+    start = df["date"].min().strftime("%Y-%m-%d")
+    end = df["date"].max().strftime("%Y-%m-%d")
+    strategy = Strategy(df, start, end, StrategyConfig())
+    strategy.add_execution(
+        exec_fn,
+        symbols=sorted(df["symbol"].unique().tolist()),
+    )
+    return strategy
+
+
+class PortfolioHeldStops:
+    """Walkforward stressing portfolio check_stops + capture_bar with held stops."""
+
+    timeout = 300
+
+    def setup(self) -> None:
+        np.random.seed(SEED)
+        self.df = _load_dataset()
+        _build_held_stops_strategy(self.df).walkforward(
+            windows=WINDOWS,
+            lookahead=LOOKAHEAD,
+            calc_bootstrap=False,
+            disable_parallel_indicators=True,
+        )
+
+    def time_portfolio_held_stops(self) -> None:
+        _build_held_stops_strategy(self.df).walkforward(
+            windows=WINDOWS,
+            lookahead=LOOKAHEAD,
+            calc_bootstrap=False,
+            disable_parallel_indicators=True,
+        )
+
+
 # ---------------------------------------------------------------------------
 # Group A — scenario scaling (asv parametrization + large fixture)
 # ---------------------------------------------------------------------------

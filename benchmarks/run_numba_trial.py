@@ -85,6 +85,7 @@ def _run_model_prep_micro() -> dict[str, float]:
 def _run_macro() -> dict[str, float]:
     from benchmarks.bench_backtest import (
         Determinism,
+        PortfolioHeldStops,
         Walkforward,
         WalkforwardLarge,
         WalkforwardModels,
@@ -93,6 +94,10 @@ def _run_macro() -> dict[str, float]:
 
     specs = [
         ("Walkforward.time_walkforward", Walkforward),
+        (
+            "PortfolioHeldStops.time_portfolio_held_stops",
+            PortfolioHeldStops,
+        ),
         ("WalkforwardLarge.time_walkforward_large", WalkforwardLarge),
         (
             "WalkforwardTimeframes.time_walkforward_timeframes",
@@ -182,9 +187,9 @@ def compare(
             continue
         ch = _pct(b, c)
         print(f"{name:<56} {b:>10.2f} {c:>10.2f} {ch:>8}")
-        if name.startswith(("Walkforward.", "WalkforwardLarge.")) and c > b * (
-            1 + macro_regression
-        ):
+        if name.startswith(
+            ("Walkforward.", "WalkforwardLarge.", "PortfolioHeldStops.")
+        ) and c > b * (1 + macro_regression):
             failed = True
 
     print()

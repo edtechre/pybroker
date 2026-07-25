@@ -499,6 +499,7 @@ class BacktestMixin:
         active_ctxs: dict[str, ExecContext] = {}
         for i, date in enumerate(test_dates):
             active_ctxs.clear()
+            price_scope.reset_bar()
             for sym, ctx in exec_ctxs.items():
                 if date not in sym_exec_dates[sym]:
                     continue
@@ -561,7 +562,9 @@ class BacktestMixin:
                 portfolio=portfolio,
                 enable_fractional_shares=enable_fractional_shares,
             )
-            portfolio.capture_bar(date, col_scope, sym_end_index)
+            portfolio.capture_bar(
+                date, col_scope, sym_end_index, price_scope=price_scope
+            )
             if before_exec_fn is not None and active_ctxs:
                 before_exec_fn(active_ctxs)
             for sym, ctx in active_ctxs.items():
@@ -1823,6 +1826,8 @@ class Strategy(
                     self._config.leverage,
                     self._config.interest_rate,
                     self._config.bars_per_year,
+                    record_portfolio_bars=self._config.record_portfolio_bars,
+                    record_position_bars=self._config.record_position_bars,
                 )
             signals = self._run_walkforward(
                 portfolio=portfolio,
@@ -2252,10 +2257,17 @@ class Strategy(
             "margin",
             "unrealized_pnl",
         ):
-            pos_df[col] = quantize(pos_df, col, self._config.round_test_result)
-        pos_df.set_index(["symbol", "date"], inplace=True)
+            if not pos_df.empty:
+                pos_df[col] = quantize(
+                    pos_df, col, self._config.round_test_result
+                )
+        if not pos_df.empty:
+            pos_df.set_index(["symbol", "date"], inplace=True)
+        bar_records = (
+            portfolio.bars if portfolio.bars else portfolio._metrics_bars
+        )
         portfolio_df = pd.DataFrame.from_records(
-            portfolio.bars, columns=PortfolioBar._fields, index="date"
+            bar_records, columns=PortfolioBar._fields, index="date"
         )
         for col in (
             "cash",
