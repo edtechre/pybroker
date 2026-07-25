@@ -129,6 +129,79 @@ def test_when_n_invalid_then_error(fnv, array, n, expected_msg):
         fnv(np.array(array), n)
 
 
+def _brute_lowv(array: np.ndarray, n: int) -> np.ndarray:
+    out = np.full(len(array), np.nan)
+    for i in range(n, len(array) + 1):
+        out[i - 1] = np.min(array[i - n : i])
+    return out
+
+
+def _brute_highv(array: np.ndarray, n: int) -> np.ndarray:
+    out = np.full(len(array), np.nan)
+    for i in range(n, len(array) + 1):
+        out[i - 1] = np.max(array[i - n : i])
+    return out
+
+
+def _brute_sumv(array: np.ndarray, n: int) -> np.ndarray:
+    out = np.full(len(array), np.nan)
+    for i in range(n, len(array) + 1):
+        out[i - 1] = np.sum(array[i - n : i])
+    return out
+
+
+class TestRollingWindowKernels:
+    @pytest.mark.parametrize(
+        "array, n",
+        [
+            ([3, 3, 4, 2, 5, 6, 1, 3], 3),
+            ([3, 3, 4, 2, 5, 6, 1, 3], 1),
+            ([4, 3, 2, 1], 4),
+            ([1], 1),
+        ],
+    )
+    def test_rolling_kernels_match_brute_force_fixtures(self, array, n):
+        arr = np.array(array, dtype=np.float64)
+        np.testing.assert_allclose(
+            lowv(arr, n), _brute_lowv(arr, n), rtol=0, atol=0, equal_nan=True
+        )
+        np.testing.assert_allclose(
+            highv(arr, n), _brute_highv(arr, n), rtol=0, atol=0, equal_nan=True
+        )
+        np.testing.assert_allclose(
+            sumv(arr, n), _brute_sumv(arr, n), rtol=0, atol=0, equal_nan=True
+        )
+
+    @pytest.mark.parametrize("length", [100, 10_000])
+    @pytest.mark.parametrize("window", [2, 20, 50, 200])
+    def test_rolling_kernels_match_brute_force_random(self, length, window):
+        if window > length:
+            pytest.skip("window exceeds array length")
+        rng = np.random.default_rng(42 + length + window)
+        arr = rng.standard_normal(length)
+        np.testing.assert_allclose(
+            lowv(arr, window),
+            _brute_lowv(arr, window),
+            rtol=0,
+            atol=0,
+            equal_nan=True,
+        )
+        np.testing.assert_allclose(
+            highv(arr, window),
+            _brute_highv(arr, window),
+            rtol=0,
+            atol=0,
+            equal_nan=True,
+        )
+        np.testing.assert_allclose(
+            sumv(arr, window),
+            _brute_sumv(arr, window),
+            rtol=1e-12,
+            atol=1e-12,
+            equal_nan=True,
+        )
+
+
 @pytest.mark.parametrize(
     "a, b, expected",
     [

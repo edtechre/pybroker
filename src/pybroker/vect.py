@@ -19,6 +19,64 @@ def _verify_input(array: NDArray[np.float64], n: int):
 
 
 @njit(cache=True)
+def _rolling_sum_njit(
+    array: NDArray[np.float64], window: int
+) -> NDArray[np.float64]:
+    n = len(array)
+    out = np.full(n, np.nan)
+    running = 0.0
+    for i in range(n):
+        running += array[i]
+        if i >= window:
+            running -= array[i - window]
+        if i >= window - 1:
+            out[i] = running
+    return out
+
+
+@njit(cache=True)
+def _rolling_min_njit(
+    array: NDArray[np.float64], window: int
+) -> NDArray[np.float64]:
+    n = len(array)
+    out = np.full(n, np.nan)
+    deq = np.empty(n, dtype=np.int64)
+    head = 0
+    tail = 0
+    for i in range(n):
+        while head < tail and deq[head] <= i - window:
+            head += 1
+        while head < tail and array[deq[tail - 1]] >= array[i]:
+            tail -= 1
+        deq[tail] = i
+        tail += 1
+        if i >= window - 1:
+            out[i] = array[deq[head]]
+    return out
+
+
+@njit(cache=True)
+def _rolling_max_njit(
+    array: NDArray[np.float64], window: int
+) -> NDArray[np.float64]:
+    n = len(array)
+    out = np.full(n, np.nan)
+    deq = np.empty(n, dtype=np.int64)
+    head = 0
+    tail = 0
+    for i in range(n):
+        while head < tail and deq[head] <= i - window:
+            head += 1
+        while head < tail and array[deq[tail - 1]] <= array[i]:
+            tail -= 1
+        deq[tail] = i
+        tail += 1
+        if i >= window - 1:
+            out[i] = array[deq[head]]
+    return out
+
+
+@njit(cache=True)
 def lowv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
     """Calculates the lowest values for every ``n`` period in ``array``.
 
@@ -33,11 +91,7 @@ def lowv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
     if not len(array):
         return np.array(tuple())
     _verify_input(array, n)
-    out_len = len(array)
-    out = np.array([np.nan for _ in range(out_len)])
-    for i in range(n, out_len + 1):
-        out[i - 1] = np.min(array[i - n : i])
-    return out
+    return _rolling_min_njit(array, n)
 
 
 @njit(cache=True)
@@ -55,11 +109,7 @@ def highv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
     if not len(array):
         return np.array(tuple())
     _verify_input(array, n)
-    out_len = len(array)
-    out = np.array([np.nan for _ in range(out_len)])
-    for i in range(n, out_len + 1):
-        out[i - 1] = np.max(array[i - n : i])
-    return out
+    return _rolling_max_njit(array, n)
 
 
 @njit(cache=True)
@@ -76,11 +126,7 @@ def sumv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
     if not len(array):
         return np.array(tuple())
     _verify_input(array, n)
-    out_len = len(array)
-    out = np.array([np.nan for _ in range(out_len)])
-    for i in range(n, out_len + 1):
-        out[i - 1] = np.sum(array[i - n : i])
-    return out
+    return _rolling_sum_njit(array, n)
 
 
 @njit(cache=True)
