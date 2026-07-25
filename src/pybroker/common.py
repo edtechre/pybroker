@@ -34,6 +34,14 @@ _tf_abbr: Final = {
     "d": "day",
     "w": "week",
 }
+_TF_UNITS: Final = frozenset(_tf_abbr.values())
+_TF_SECONDS: Final = {
+    "sec": 1,
+    "min": 60,
+    "hour": 60 * 60,
+    "day": 24 * 60 * 60,
+    "week": 7 * 24 * 60 * 60,
+}
 _CENTS: Final = Decimal(".01")
 
 
@@ -279,10 +287,10 @@ def to_datetime(
         return date.to_pydatetime()  # type: ignore[union-attr]
     elif isinstance(date, datetime):
         return date  # type: ignore[return-value]
-    elif isinstance(date, str):
-        return pd.to_datetime(date).to_pydatetime()
     elif isinstance(date, np.datetime64):
         return pd.Timestamp(date).to_pydatetime()
+    elif isinstance(date, str):
+        return pd.to_datetime(date).to_pydatetime()
     else:
         raise TypeError(f"Unsupported date type: {type(date)}")
 
@@ -314,16 +322,16 @@ def parse_timeframe(timeframe: str) -> list[tuple[int, str]]:
         ``hour``, ``day``, ``week``.
     """
     parts = _tf_pattern.findall(timeframe)
-    if not parts or len(parts) != len(timeframe.split()):
+    tokens = timeframe.split()
+    if not parts or len(parts) != len(tokens):
         raise ValueError("Invalid timeframe format.")
     result = []
-    units = frozenset(_tf_abbr.values())
     seen_units = set()
     for part in parts:
         unit = part[1].lower()
         if unit in _tf_abbr:
             unit = _tf_abbr[unit]
-        if unit not in units:
+        if unit not in _TF_UNITS:
             raise ValueError("Invalid timeframe format.")
         if unit in seen_units:
             raise ValueError("Invalid timeframe format.")
@@ -349,15 +357,8 @@ def to_seconds(timeframe: Optional[str]) -> int:
     """
     if not timeframe:
         return 0
-    seconds = {
-        "sec": 1,
-        "min": 60,
-        "hour": 60 * 60,
-        "day": 24 * 60 * 60,
-        "week": 7 * 24 * 60 * 60,
-    }
     return sum(
-        part[0] * seconds[part[1]] for part in parse_timeframe(timeframe)
+        part[0] * _TF_SECONDS[part[1]] for part in parse_timeframe(timeframe)
     )
 
 
@@ -370,11 +371,12 @@ def quantize(df: pd.DataFrame, col: str, round: bool) -> pd.Series:
     """
     if col not in df.columns:
         raise ValueError(f"Column {col!r} not found in DataFrame.")
-    df = df[~df[col].isna()]
-    values = df[col]
-    if round:
-        values = values.apply(lambda d: d.quantize(_CENTS, ROUND_HALF_UP))
-    return values.astype(float)
+    values = df[col].dropna()
+    if not round:
+        return values.astype(float)
+    raw = values.to_numpy(dtype=object, copy=False)
+    out = [float(val.quantize(_CENTS, ROUND_HALF_UP)) for val in raw]
+    return pd.Series(out, index=values.index)
 
 
 def verify_data_source_columns(df: pd.DataFrame):
@@ -416,7 +418,7 @@ def get_unique_sorted_dates_array(
         arr = np.asarray(dates, dtype="datetime64[ns]")
     if arr.size == 0:
         return arr
-    return np.sort(np.unique(arr))
+    return np.unique(arr)
 
 
 def get_unique_sorted_dates(col: pd.Series) -> Sequence[np.datetime64]:
