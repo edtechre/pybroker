@@ -222,7 +222,7 @@ def conf_profit_factor(
     x: NDArray[np.float64], n: int, n_boot: int
 ) -> BootConfIntervals:
     """Computes confidence intervals for :func:`.profit_factor`."""
-    intervals = bca_boot_conf(x, n, n_boot, log_profit_factor)  # type: ignore[arg-type]
+    intervals = bca_boot_conf(x, n, n_boot, log_profit_factor)
     return BootConfIntervals(
         low_2p5=np.exp(intervals.low_2p5),
         high_2p5=np.exp(intervals.high_2p5),
@@ -237,7 +237,7 @@ def conf_sharpe_ratio(
     x: NDArray[np.float64], n: int, n_boot: int, obs: Optional[int] = None
 ) -> BootConfIntervals:
     """Computes confidence intervals for :func:`.sharpe_ratio`."""
-    intervals = bca_boot_conf(x, n, n_boot, sharpe_ratio)  # type: ignore[arg-type]
+    intervals = bca_boot_conf(x, n, n_boot, sharpe_ratio)
     if obs is not None:
         factor = np.sqrt(obs)
         intervals = BootConfIntervals(

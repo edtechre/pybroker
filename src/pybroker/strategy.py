@@ -769,9 +769,9 @@ class WalkforwardMixin:
             yield WalkforwardWindow(train_idx, test_idx)
         else:
             res = len(window_dates) - (lookahead - 1) * windows
-            window_length = res / windows  # type: ignore[assignment]
-            train_length = int(window_length * train_size)
-            test_length = int(window_length * (1 - train_size))
+            avg_window_length = res / windows
+            train_length = int(avg_window_length * train_size)
+            test_length = int(avg_window_length * (1 - train_size))
             if train_length < 0 or test_length < 0:
                 raise ValueError(error_msg)
             while True:
@@ -1347,8 +1347,8 @@ class Strategy(
         )
         return tuple(
             sorted(
-                (day.value if isinstance(day, Day) else Day[day.upper()].value)  # type: ignore[union-attr]
-                for day in set(days)  # type: ignore[arg-type]
+                (day.value if isinstance(day, Day) else Day[day.upper()].value)
+                for day in set(days)
             )
         )  # type: ignore[return-value]
 
