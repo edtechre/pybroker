@@ -22,7 +22,6 @@ from typing import (
     Optional,
     Sequence,
     Union,
-    cast,
 )
 
 SymbolSelector = Callable[[pd.DataFrame], list[str]]
@@ -407,12 +406,21 @@ def verify_date_range(start_date: datetime, end_date: datetime):
         )
 
 
+def get_unique_sorted_dates_array(
+    dates: Union[pd.Series, NDArray[np.datetime64], Sequence[np.datetime64]],
+) -> NDArray[np.datetime64]:
+    """Returns sorted unique dates from a numpy date array or Series."""
+    if isinstance(dates, pd.Series):
+        arr = dates.to_numpy(copy=False)
+    else:
+        arr = np.asarray(dates, dtype="datetime64[ns]")
+    if arr.size == 0:
+        return arr
+    return np.sort(np.unique(arr))
+
+
 def get_unique_sorted_dates(col: pd.Series) -> Sequence[np.datetime64]:
     """Returns sorted unique values from a DataFrame column of dates.
     Guarantees compatability between Pandas 1 and 2.
     """
-    result = col.unique()
-    # TODO: Remove after Pandas 1.0 is no longer supported.
-    if hasattr(result, "to_numpy"):
-        result = result.to_numpy(copy=True)
-    return cast(Sequence[np.datetime64], np.sort(result))
+    return list(get_unique_sorted_dates_array(col))

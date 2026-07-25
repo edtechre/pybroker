@@ -190,8 +190,8 @@ class TestSymbolSelector:
         for train_idx, test_idx in mixin.walkforward_split(
             df=df, windows=2, lookahead=1, train_size=0.5, shuffle=False
         ):
-            train_data = df.loc[train_idx]
-            test_data = df.loc[test_idx]
+            train_data = df.iloc[train_idx]
+            test_data = df.iloc[test_idx]
             test_dates.append(set(test_data["date"]))
             _resolve_executions(strategy._executions, train_data)
 
@@ -2747,7 +2747,7 @@ class TestStrategy:
         for _, test_idx in strategy.walkforward_split(
             data_source_df, windows=3, lookahead=1, train_size=0.5
         ):
-            df = data_source_df.loc[test_idx]
+            df = data_source_df.iloc[test_idx]
             df = df[df["symbol"].isin(["AAPL", "SPY"])]
             dates.update(df["date"].values)
         assert result.start_date == to_datetime(START_DATE)

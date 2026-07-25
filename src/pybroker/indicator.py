@@ -232,15 +232,14 @@ class IndicatorsMixin:
         scope.logger.info_indicator_data_start(uncached_ind_syms)
         needed_syms = {sym for _, sym in uncached_ind_syms}
         sym_data: dict[str, dict[str, Optional[NDArray]]] = {}
-        for sym, group in df.groupby(
-            DataCol.SYMBOL.value, sort=False, observed=True
-        ):
-            if sym not in needed_syms:
-                continue
+        sym_col = DataCol.SYMBOL.value
+        symbols_arr = df[sym_col].to_numpy()
+        for sym in needed_syms:
+            rows = np.flatnonzero(symbols_arr == sym)
             sym_data[sym] = {
                 col: (
-                    group[col].to_numpy(copy=True)
-                    if col in group.columns
+                    df[col].to_numpy(copy=True)[rows]
+                    if col in df.columns
                     else None
                 )
                 for col in scope.all_data_cols
@@ -434,12 +433,11 @@ class IndicatorSet(IndicatorsMixin):
         sym_dict: dict[str, dict[str, pd.Series]] = defaultdict(dict)
         for ind_sym, series in ind_dict.items():
             sym_dict[ind_sym.symbol][ind_sym.ind_name] = series
-        date_by_sym = {
-            sym: group[DataCol.DATE.value]
-            for sym, group in df.groupby(
-                DataCol.SYMBOL.value, sort=False, observed=True
-            )
-        }
+        sym_col = DataCol.SYMBOL.value
+        date_col = DataCol.DATE.value
+        symbols_arr = df[sym_col].to_numpy()
+        dates_arr = df[date_col].to_numpy()
+        date_by_sym = {sym: dates_arr[symbols_arr == sym] for sym in sym_dict}
         data: dict[str, list] = defaultdict(list)
         for sym, ind_series in sym_dict.items():
             dates = date_by_sym[sym]

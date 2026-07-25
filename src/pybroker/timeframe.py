@@ -467,7 +467,10 @@ def build_compressed_symbol_df(
     indicator_names: Iterable[str],
     custom_cols: Iterable[str],
 ) -> pd.DataFrame:
-    """Builds a compressed-bar DataFrame with base indicator column names."""
+    """Builds a compressed-bar DataFrame with base indicator column names.
+
+    Not used on the backtest hot path; prefer :func:`build_compressed_symbol_arrays`.
+    """
     columns, arrays, _dates = build_compressed_symbol_arrays(
         symbol,
         interval,
@@ -483,7 +486,10 @@ def build_compressed_symbol_df(
 def slice_compressed_df_by_dates(
     df: pd.DataFrame, dates: Iterable[np.datetime64]
 ) -> pd.DataFrame:
-    """Filters a compressed DataFrame to rows whose dates are in ``dates``."""
+    """Filters a compressed DataFrame to rows whose dates are in ``dates``.
+
+    Not used on the backtest hot path; prefer :func:`slice_arrays_by_dates`.
+    """
     if len(df) == 0:
         return df
     date_col = DataCol.DATE.value

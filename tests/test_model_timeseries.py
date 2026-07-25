@@ -137,7 +137,6 @@ class TestGarchIntegration:
         return data_source_df[data_source_df[DataCol.SYMBOL.value] == "SPY"]
 
     def test_garch_vol_walkforward(self, spy_df):
-
         def train_fn(symbol, train_data, test_data):
             returns = train_data["close"].pct_change().dropna() * 100
             return arch.arch_model(returns, vol="GARCH", p=1, q=1).fit(
@@ -176,7 +175,6 @@ class TestGarchIntegration:
         assert all(np.isfinite(p) and p > 0 for p in preds)
 
     def test_garch_with_lags(self, spy_df):
-
         def train_fn(symbol, train_data, test_data):
             returns = train_data["close"].pct_change().dropna() * 100
             model = arch.arch_model(returns, vol="GARCH", p=1, q=1).fit(

@@ -39,6 +39,7 @@ from pybroker.timeframe import (
     parse_indicator_timeframe_name,
 )
 from collections import defaultdict
+from dataclasses import dataclass
 from decimal import Decimal
 from diskcache import Cache
 from numpy.typing import NDArray
@@ -268,19 +269,121 @@ def clear_params():
     StaticScope.instance().clear_params()
 
 
+@dataclass(frozen=True)
+class SymbolArrayStore:
+    """Internal numpy-backed OHLCV/custom columns keyed by symbol."""
+
+    symbols: frozenset[str]
+    sym_arrays: Mapping[str, Mapping[str, NDArray]]
+
+
+def symbol_array_store_from_indexed_df(df: pd.DataFrame) -> SymbolArrayStore:
+    """Builds a :class:`SymbolArrayStore` from a sorted MultiIndex frame."""
+    df = df.sort_index()
+    sym_arrays: dict[str, dict[str, NDArray]] = {}
+    date_col = DataCol.DATE.value
+    for sym in df.index.get_level_values(0).unique():
+        sym_key = str(sym)
+        sym_df = df.loc[pd.IndexSlice[sym_key, :]]
+        sym_arrays[sym_key] = {
+            col: np.asarray(sym_df[col].to_numpy(copy=True))
+            for col in sym_df.columns
+        }
+        if date_col not in sym_arrays[sym_key]:
+            idx = sym_df.index
+            if isinstance(idx, pd.MultiIndex):
+                sym_arrays[sym_key][date_col] = np.asarray(
+                    idx.get_level_values(-1).to_numpy(copy=True)
+                )
+            else:
+                sym_arrays[sym_key][date_col] = np.asarray(
+                    idx.to_numpy(copy=True)
+                )
+    return SymbolArrayStore(frozenset(sym_arrays.keys()), sym_arrays)
+
+
+def symbol_array_store_from_frame(
+    df: pd.DataFrame,
+    sym_col: str = DataCol.SYMBOL.value,
+    date_col: str = DataCol.DATE.value,
+) -> SymbolArrayStore:
+    """Builds a store from a flat or MultiIndex OHLCV frame."""
+    if isinstance(df.index, pd.MultiIndex) and df.index.nlevels >= 2:
+        return symbol_array_store_from_indexed_df(df)
+    indexed = df.set_index([sym_col, date_col]).sort_index()
+    return symbol_array_store_from_indexed_df(indexed)
+
+
+def merge_symbol_array_stores(
+    left: SymbolArrayStore,
+    right: SymbolArrayStore,
+) -> SymbolArrayStore:
+    """Concatenates per-symbol column arrays from two stores."""
+    all_symbols = left.symbols | right.symbols
+    merged: dict[str, dict[str, NDArray]] = {}
+    for sym in all_symbols:
+        cols: set[str] = set()
+        if sym in left.sym_arrays:
+            cols.update(left.sym_arrays[sym].keys())
+        if sym in right.sym_arrays:
+            cols.update(right.sym_arrays[sym].keys())
+        merged[sym] = {}
+        for col in cols:
+            parts: list[NDArray] = []
+            if sym in left.sym_arrays and col in left.sym_arrays[sym]:
+                parts.append(left.sym_arrays[sym][col])
+            if sym in right.sym_arrays and col in right.sym_arrays[sym]:
+                parts.append(right.sym_arrays[sym][col])
+            if len(parts) == 1:
+                merged[sym][col] = parts[0]
+            else:
+                merged[sym][col] = np.concatenate(parts)
+    return SymbolArrayStore(all_symbols, merged)
+
+
+def column_scope_from_frame(
+    df: pd.DataFrame,
+    sym_col: str = DataCol.SYMBOL.value,
+    date_col: str = DataCol.DATE.value,
+) -> "ColumnScope":
+    """Creates a :class:`ColumnScope` with upfront numpy extraction."""
+    return ColumnScope(symbol_array_store_from_frame(df, sym_col, date_col))
+
+
+def sym_exec_dates_from_store(
+    store: SymbolArrayStore,
+) -> dict[str, frozenset[np.datetime64]]:
+    """Returns per-symbol test dates from a column store."""
+    date_col = DataCol.DATE.value
+    result: dict[str, frozenset[np.datetime64]] = {}
+    for sym in store.symbols:
+        dates = store.sym_arrays[sym].get(date_col)
+        if dates is not None:
+            result[sym] = frozenset(np.asarray(dates, dtype="datetime64[ns]"))
+    return result
+
+
 class ColumnScope:
-    """Caches and retrieves column data queried from :class:`pandas.DataFrame`.
+    """Caches and retrieves column data from a :class:`SymbolArrayStore`.
 
     Args:
-        df: :class:`pandas.DataFrame` containing the column data.
+        store: Pre-built numpy column store, or a MultiIndex
+            :class:`pandas.DataFrame` (legacy convenience).
     """
 
-    def __init__(self, df: pd.DataFrame):
-        self._df = df.sort_index()
-        self._symbols = frozenset(df.index.get_level_values(0).unique())
-        self._sym_cols: dict[str, dict[str, Optional[NDArray]]] = defaultdict(
-            dict
-        )
+    def __init__(
+        self,
+        store: Union[SymbolArrayStore, pd.DataFrame],
+    ):
+        if isinstance(store, pd.DataFrame):
+            self._store = symbol_array_store_from_frame(store)
+        else:
+            self._store = store
+        self._symbols = self._store.symbols
+
+    @property
+    def store(self) -> SymbolArrayStore:
+        return self._store
 
     def fetch_dict(
         self,
@@ -303,27 +406,15 @@ class ColumnScope:
         result: dict[str, Optional[NDArray]] = {}
         if not names:
             return result
-        sym_dfs: dict[str, pd.DataFrame] = {}
+        if symbol not in self._symbols:
+            raise ValueError(f"Symbol not found: {symbol}.")
+        sym_data = self._store.sym_arrays[symbol]
         for name in names:
-            if symbol in self._sym_cols and name in self._sym_cols[symbol]:
-                result[name] = self._sym_cols[symbol][name]
-                if result[name] is not None:
-                    result[name] = result[name][:end_index]  # type: ignore[index]
-                continue
-            if symbol in sym_dfs:
-                sym_df = sym_dfs[symbol]
-            else:
-                if symbol not in self._symbols:
-                    raise ValueError(f"Symbol not found: {symbol}.")
-                sym_df = self._df.loc[pd.IndexSlice[symbol, :]].reset_index()
-                sym_dfs[symbol] = sym_df
-            if name not in sym_df.columns:
-                self._sym_cols[symbol][name] = None
+            if name not in sym_data:
                 result[name] = None
                 continue
-            array = sym_df[name].to_numpy(copy=True)
-            self._sym_cols[symbol][name] = array
-            result[name] = array[:end_index]
+            array = sym_data[name]
+            result[name] = array if end_index is None else array[:end_index]
         return result
 
     def fetch(
@@ -411,14 +502,23 @@ class IndicatorScope:
             return cached if end_index is None else cached[:end_index]
         if ind_sym not in self._indicator_data:
             raise ValueError(f"Indicator {name!r} not found for {symbol}.")
-        ind_series = self._indicator_data[ind_sym]
+        raw = self._indicator_data[ind_sym]
         _, token = parse_indicator_timeframe_name(name)
-        if token is not None:
-            ind_data = ind_series.to_numpy(copy=True)
+        if isinstance(raw, np.ndarray):
+            ind_data = np.asarray(raw, dtype=np.float64)
+        elif token is not None:
+            ind_data = np.asarray(raw.to_numpy(copy=False), dtype=np.float64)
         else:
-            ind_data = ind_series[
-                ind_series.index.isin(self._filter_dates)
-            ].to_numpy(copy=True)
+            if isinstance(raw, pd.Series):
+                filter_arr = np.asarray(
+                    self._filter_dates, dtype="datetime64[ns]"
+                )
+                ind_dates = raw.index.to_numpy(dtype="datetime64[ns]")
+                ind_values = raw.to_numpy(copy=False)
+                mask = np.isin(ind_dates, filter_arr)
+                ind_data = np.asarray(ind_values[mask], dtype=np.float64)
+            else:
+                ind_data = np.asarray(raw, dtype=np.float64)
         self._sym_inds[ind_sym] = ind_data
         return ind_data if end_index is None else ind_data[:end_index]
 
@@ -604,9 +704,7 @@ class TimeframeScope:
                     "Consider passing input_data_fn to pybroker#model() if "
                     "custom columns were registered."
                 )
-            pred = self._run_predict(
-                trained_model, model_input_to_dataframe(input_)
-            )
+            pred = self._run_predict(trained_model, input_)
             self._sym_preds[model_sym] = pred
         pred = self._sym_preds[model_sym]
         idx = self.completed_index(symbol, interval, end_index)
@@ -631,40 +729,30 @@ class TimeframeScope:
             return np.array([], dtype=pred.dtype)
         while len(pred) < target_len:
             bar_end_index = len(pred) + 1
-            input_ = self.fetch_input(
-                symbol, interval, base_model_name, bar_end_index
+            model_input = self._prepare_full_input(
+                symbol, interval, base_model_name
             )
-            scalar = self._run_predict_scalar(trained_model, input_)
+            idx = self.completed_index(symbol, interval, bar_end_index)
+            if idx < 0:
+                sliced = model_input.slice(0)
+            else:
+                sliced = model_input.slice(idx + 1)
+            scalar = self._run_predict_scalar(trained_model, sliced)
             pred = np.append(pred, scalar)
             self._sym_preds[model_sym] = pred
         return pred[:target_len]
 
     @staticmethod
     def _run_predict(
-        trained_model: TrainedModel, input_: pd.DataFrame
+        trained_model: TrainedModel,
+        input_: Union[ModelInput, pd.DataFrame],
     ) -> NDArray:
-        if trained_model.predict_fn is not None:
-            pred = trained_model.predict_fn(trained_model.instance, input_)
-        else:
-            predict_fn = getattr(trained_model.instance, "predict", None)
-            if predict_fn is not None and callable(predict_fn):
-                pred = trained_model.instance.predict(input_)
-            else:
-                raise ValueError(
-                    f"Model instance trained for {trained_model.name!r} "
-                    "does not define a predict function. Please pass a "
-                    "predict_fn to pybroker.model()."
-                )
-        pred_arr = np.asarray(pred)
-        if pred_arr.ndim == 0:
-            return np.array([pred_arr.item()])
-        if len(pred_arr.shape) > 1:
-            pred_arr = np.squeeze(pred_arr)
-        return pred_arr
+        return PredictionScope._run_predict(trained_model, input_)
 
     @staticmethod
     def _run_predict_scalar(
-        trained_model: TrainedModel, input_: pd.DataFrame
+        trained_model: TrainedModel,
+        input_: Union[ModelInput, pd.DataFrame],
     ) -> float:
         pred = TimeframeScope._run_predict(trained_model, input_)
         return float(np.asarray(pred).reshape(-1)[0])
@@ -851,6 +939,25 @@ class ModelInputScope:
         model_input = self._fetch_model_input(symbol, name, end_index)
         return model_input_to_dataframe(model_input)
 
+    def fetch_model_input(
+        self, symbol: str, name: str, end_index: Optional[int] = None
+    ) -> ModelInput:
+        """Fetches model input as internal :class:`ModelInput` (no DataFrame).
+
+        Args:
+            symbol: Ticker symbol to query.
+            name: Name of :class:`pybroker.model.ModelSource` to query input
+                data.
+            end_index: Truncates the array of model input data returned
+                (exclusive). If ``None``, then model input data is not
+                truncated.
+
+        Returns:
+            :class:`pybroker.timeseries.ModelInput` for every bar until
+            ``end_index`` (when specified).
+        """
+        return self._fetch_model_input(symbol, name, end_index)
+
     def _fetch_model_input(
         self, symbol: str, name: str, end_index: Optional[int] = None
     ) -> ModelInput:
@@ -959,8 +1066,8 @@ class PredictionScope:
             )
         if model_sym in self._sym_preds:
             return self._sym_preds[model_sym][:end_index]
-        input_ = self._input_scope.fetch(symbol, name)
-        if input_.empty or len(input_.columns) == 0:
+        model_input = self._input_scope._fetch_model_input(symbol, name)
+        if model_input.empty() or not model_input.columns:
             raise ValueError(
                 f"No input data found for model {name!r}. Consider "
                 "passing input_data_fn to pybroker#model() if custom columns "
@@ -969,7 +1076,7 @@ class PredictionScope:
         if model_sym not in self._models:
             raise ValueError(f"Model {name!r} not found for {symbol}.")
         trained_model = self._models[model_sym]
-        pred = self._run_predict(trained_model, input_)
+        pred = self._run_predict(trained_model, model_input)
         self._sym_preds[model_sym] = pred
         return pred[:end_index]
 
@@ -985,28 +1092,40 @@ class PredictionScope:
             self._sym_preds[model_sym] = np.array([], dtype=np.float64)
         pred = self._sym_preds[model_sym]
         if end_index is None:
-            input_full = self._input_scope.fetch(symbol, name)
-            target_len = len(input_full)
+            input_full = self._input_scope._fetch_model_input(symbol, name)
+            target_len = len(input_full.dates)
         else:
             target_len = end_index
         while len(pred) < target_len:
             bar_end_index = len(pred) + 1
-            input_ = self._input_scope.fetch(symbol, name, bar_end_index)
-            scalar = self._run_predict_scalar(trained_model, input_)
+            model_input = self._input_scope._fetch_model_input(
+                symbol, name, bar_end_index
+            )
+            scalar = self._run_predict_scalar(trained_model, model_input)
             pred = np.append(pred, scalar)
             self._sym_preds[model_sym] = pred
         return pred if end_index is None else pred[:end_index]
 
     @staticmethod
+    def _predict_input_df(
+        input_: Union[ModelInput, pd.DataFrame],
+    ) -> pd.DataFrame:
+        if isinstance(input_, ModelInput):
+            return model_input_to_dataframe(input_)
+        return input_
+
+    @staticmethod
     def _run_predict(
-        trained_model: TrainedModel, input_: pd.DataFrame
+        trained_model: TrainedModel,
+        input_: Union[ModelInput, pd.DataFrame],
     ) -> NDArray:
+        input_df = PredictionScope._predict_input_df(input_)
         if trained_model.predict_fn is not None:
-            pred = trained_model.predict_fn(trained_model.instance, input_)
+            pred = trained_model.predict_fn(trained_model.instance, input_df)
         else:
             predict_fn = getattr(trained_model.instance, "predict", None)
             if predict_fn is not None and callable(predict_fn):
-                pred = trained_model.instance.predict(input_)
+                pred = trained_model.instance.predict(input_df)
             else:
                 raise ValueError(
                     f"Model instance trained for {trained_model.name!r} "
@@ -1022,7 +1141,8 @@ class PredictionScope:
 
     @staticmethod
     def _run_predict_scalar(
-        trained_model: TrainedModel, input_: pd.DataFrame
+        trained_model: TrainedModel,
+        input_: Union[ModelInput, pd.DataFrame],
     ) -> float:
         pred = PredictionScope._run_predict(trained_model, input_)
         return float(np.asarray(pred).reshape(-1)[0])
@@ -1309,11 +1429,13 @@ def get_signals(
     cols = static_scope.all_data_cols
     inds = static_scope._indicators.keys()
     models = static_scope._model_sources.keys()
-    dates = col_scope._df.index.get_level_values(1)
     dfs: dict[str, pd.DataFrame] = {}
     for sym in symbols:
-        data = {DataCol.DATE.value: dates}
+        dates_arr = col_scope.fetch(sym, DataCol.DATE.value)
+        data: dict[str, Any] = {DataCol.DATE.value: dates_arr}
         for col in cols:
+            if col == DataCol.DATE.value:
+                continue
             data[col] = col_scope.fetch(sym, col)
         for ind in inds:
             try:

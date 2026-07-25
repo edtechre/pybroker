@@ -579,3 +579,114 @@ class Determinism:
         return int(digest[:8], 16)
 
     track_walkforward_equity_hash.unit = "hash"  # type: ignore[attr-defined]
+
+
+# ---------------------------------------------------------------------------
+# Group E — v2 macro scenario benches (migration gates)
+# ---------------------------------------------------------------------------
+
+
+class WalkforwardTimeframes:
+    """End-to-end walkforward with multi-timeframe compression enabled."""
+
+    timeout = 600
+
+    def setup(self) -> None:
+        np.random.seed(SEED)
+        self.df = _synthetic_ohlcv(n_symbols=10, n_days=252 * 2, seed=SEED)
+        self._build_strategy().walkforward(
+            windows=WINDOWS,
+            lookahead=LOOKAHEAD,
+            calc_bootstrap=False,
+            disable_parallel_indicators=True,
+        )
+
+    def time_walkforward_timeframes(self) -> None:
+        self._build_strategy().walkforward(
+            windows=WINDOWS,
+            lookahead=LOOKAHEAD,
+            calc_bootstrap=False,
+            disable_parallel_indicators=True,
+        )
+
+    def _build_strategy(self) -> Strategy:
+        pybroker.clear_params()
+        pybroker.disable_logging()
+        pybroker.disable_progress_bar()
+
+        def exec_fn(ctx: ExecContext) -> None:
+            weekly = ctx.timeframe("weekly")
+            if len(weekly.close) > 0 and ctx.close[-1] > weekly.close[-1]:
+                ctx.buy_shares = 10
+
+        start = self.df["date"].min().strftime("%Y-%m-%d")
+        end = self.df["date"].max().strftime("%Y-%m-%d")
+        strategy = Strategy(self.df, start, end, StrategyConfig())
+        strategy.enable_timeframes("weekly", base_timeframe="1d")
+        strategy.add_execution(
+            exec_fn, symbols=sorted(self.df["symbol"].unique().tolist())
+        )
+        return strategy
+
+
+class WalkforwardModels:
+    """End-to-end walkforward with pooled multi-symbol model training."""
+
+    timeout = 600
+
+    def setup(self) -> None:
+        np.random.seed(SEED)
+        self.df = _load_dataset()
+        self._build_strategy().walkforward(
+            windows=WINDOWS,
+            lookahead=LOOKAHEAD,
+            calc_bootstrap=False,
+            disable_parallel_indicators=True,
+        )
+
+    def time_walkforward_models(self) -> None:
+        self._build_strategy().walkforward(
+            windows=WINDOWS,
+            lookahead=LOOKAHEAD,
+            calc_bootstrap=False,
+            disable_parallel_indicators=True,
+        )
+
+    def _build_strategy(self) -> Strategy:
+        from pybroker.model import model
+
+        pybroker.clear_params()
+        pybroker.disable_logging()
+        pybroker.disable_progress_bar()
+
+        class _ConstantModel:
+            def predict(self, _x):
+                return np.ones(len(_x))
+
+        hhv20 = pybroker.indicator(
+            "hhv20", lambda bar_data: highv(bar_data.close, 20)
+        )
+
+        def train_pooled(train_df, test_df):
+            del train_df, test_df
+            return _ConstantModel()
+
+        bench_pooled = model(
+            "bench_pooled", train_pooled, indicators=(hhv20,), pooled=True
+        )
+
+        def exec_fn(ctx: ExecContext) -> None:
+            preds = ctx.preds("bench_pooled")
+            if len(preds) and preds[-1] > 0:
+                ctx.buy_shares = 1
+
+        start = self.df["date"].min().strftime("%Y-%m-%d")
+        end = self.df["date"].max().strftime("%Y-%m-%d")
+        strategy = Strategy(self.df, start, end, StrategyConfig())
+        strategy.add_execution(
+            exec_fn,
+            symbols=sorted(self.df["symbol"].unique().tolist()),
+            models=bench_pooled,
+            indicators=[hhv20],
+        )
+        return strategy

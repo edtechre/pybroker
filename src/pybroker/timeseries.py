@@ -6,7 +6,10 @@ import numpy as np
 import pandas as pd
 from pybroker.common import DataCol
 from dataclasses import dataclass
-from typing import Callable, Iterable, Mapping, Optional, Union
+from typing import Callable, Iterable, Mapping, Optional, TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    from pybroker.scope import SymbolArrayStore
 
 ArrayDict = dict[str, np.ndarray]
 
@@ -176,16 +179,19 @@ def symbol_history_arrays(
     """Extracts sorted full-history date and column arrays for one symbol."""
     sym_col = DataCol.SYMBOL.value
     date_col = DataCol.DATE.value
-    sym_df = history_df.loc[history_df[sym_col] == symbol].sort_values(
-        date_col
-    )
-    if sym_df.empty:
+    sym_arr = history_df[sym_col].to_numpy()
+    mask = sym_arr == symbol
+    if not mask.any():
         return np.array([], dtype="datetime64[ns]"), {}
-    dates = sym_df[date_col].to_numpy()
+    rows = np.flatnonzero(mask)
+    dates = history_df[date_col].to_numpy(copy=False)[rows]
+    order = np.argsort(dates)
+    rows = rows[order]
+    dates = dates[order]
     arrays = {
-        col: sym_df[col].to_numpy(dtype=np.float64, copy=False)
+        col: history_df[col].to_numpy(dtype=np.float64, copy=False)[rows]
         for col in columns
-        if col in sym_df.columns
+        if col in history_df.columns
     }
     for col in columns:
         if col not in arrays:
@@ -204,6 +210,33 @@ def compute_lag_series_cache(
     """Computes full-history lag arrays for daily/base bars."""
     cache: LagSeriesCache = {}
     merge_lag_series_cache(cache, df, symbols, columns, lags)
+    return cache
+
+
+def merge_lag_series_cache_from_store(
+    cache: LagSeriesCache,
+    store: "SymbolArrayStore",
+    symbols: Iterable[str],
+    columns: tuple[str, ...],
+    lags: int,
+    history_dates: Optional[dict[str, np.ndarray]] = None,
+) -> LagSeriesCache:
+    """Adds full-history lag arrays from a :class:`SymbolArrayStore`."""
+    if history_dates is None:
+        history_dates = {}
+    date_col = DataCol.DATE.value
+    for sym in symbols:
+        if sym not in store.symbols:
+            continue
+        sym_data = store.sym_arrays[sym]
+        dates = sym_data.get(date_col)
+        if dates is None or len(dates) == 0:
+            continue
+        history_dates[sym] = np.asarray(dates, dtype="datetime64[ns]")
+        col_arrays = {col: sym_data[col] for col in columns if col in sym_data}
+        merge_lag_series_cache_from_arrays(
+            cache, sym, columns, lags, history_dates[sym], col_arrays
+        )
     return cache
 
 

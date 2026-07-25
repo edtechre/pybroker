@@ -21,6 +21,7 @@ from pybroker.common import (
     PriceType,
     SymbolSelector,
     get_unique_sorted_dates,
+    get_unique_sorted_dates_array,
     quantize,
     to_datetime,
     to_decimal,
@@ -61,11 +62,16 @@ from pybroker.scope import (
     PriceScope,
     StaticScope,
     TimeframeScope,
+    column_scope_from_frame,
     get_signals,
+    merge_symbol_array_stores,
+    sym_exec_dates_from_store,
+    symbol_array_store_from_frame,
 )
 from pybroker.timeframe import (
     TimeframeData,
     TimeframeInterval,
+    _iter_symbol_date_groups,
     compress_symbol_from_frame,
     indicator_timeframe_name,
     model_timeframe_name,
@@ -108,10 +114,18 @@ def _between(
 ) -> pd.DataFrame:
     if df.empty:
         return df
-    return df[
-        (df[DataCol.DATE.value].dt.tz_localize(None) >= start_date)
-        & (df[DataCol.DATE.value].dt.tz_localize(None) <= end_date)
-    ]
+    date_col = DataCol.DATE.value
+    col = df[date_col]
+    if col.dt.tz is not None:
+        col = col.dt.tz_convert(None)
+    dates = col.to_numpy(dtype="datetime64[ns]", copy=False)
+    start = np.datetime64(start_date)
+    end = np.datetime64(end_date)
+    mask = (dates >= start) & (dates <= end)
+    rows = np.flatnonzero(mask)
+    if len(rows) == len(df):
+        return df
+    return df.iloc[rows]
 
 
 def _is_symbol_selector(
@@ -415,12 +429,7 @@ class BacktestMixin:
         """
         test_dates = get_unique_sorted_dates(test_data[DataCol.DATE.value])
         test_syms = sorted(test_data[DataCol.SYMBOL.value].unique())
-        test_data = (
-            test_data.reset_index(drop=True)
-            .set_index([DataCol.SYMBOL.value, DataCol.DATE.value])
-            .sort_index()
-        )
-        col_scope = ColumnScope(test_data)
+        col_scope = column_scope_from_frame(test_data.reset_index(drop=True))
         ind_scope = IndicatorScope(indicator_data, test_dates)
         input_scope = ModelInputScope(
             col_scope,
@@ -472,8 +481,11 @@ class BacktestMixin:
                 if exec.fn is not None:
                     exec_fns[sym] = exec.fn
         sym_exec_dates = {
-            sym: frozenset(test_data.loc[pd.IndexSlice[sym, :]].index.values)
-            for sym in exec_ctxs.keys()
+            sym: dates
+            for sym, dates in sym_exec_dates_from_store(
+                col_scope.store
+            ).items()
+            if sym in exec_ctxs
         }
         cover_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
         buy_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
@@ -970,17 +982,34 @@ class BacktestMixin:
 
 
 class WalkforwardWindow(NamedTuple):
-    """Contains ``train_data`` and ``test_data`` of a time window used for
-    `Walkforward Analysis
-    <https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis>`_.
+    """Contains train/test row indices for a walkforward window.
 
     Attributes:
-        train_data: Train data.
-        test_data: Test data.
+        train_data: Integer row indices into the master frame for training.
+        test_data: Integer row indices into the master frame for testing.
     """
 
     train_data: NDArray[np.int_]
     test_data: NDArray[np.int_]
+
+
+def _walkforward_row_mask(
+    dates: NDArray[np.datetime64],
+    low: np.datetime64,
+    high: np.datetime64,
+    *,
+    below_low: bool = False,
+    above_high: bool = False,
+) -> NDArray[np.int_]:
+    if below_low:
+        lo = dates > low
+    else:
+        lo = dates >= low
+    if above_high:
+        hi = dates < high
+    else:
+        hi = dates <= high
+    return np.flatnonzero(lo & hi).astype(np.int_)
 
 
 class WalkforwardMixin:
@@ -1029,8 +1058,8 @@ class WalkforwardMixin:
         if df.empty:
             raise ValueError("DataFrame is empty.")
         date_col = DataCol.DATE.value
-        dates = df[[date_col]]
-        window_dates = get_unique_sorted_dates(df[date_col])
+        dates_arr = df[date_col].to_numpy(copy=False, dtype="datetime64[ns]")
+        window_dates = get_unique_sorted_dates_array(dates_arr)
         error_msg = f"""
         Invalid params for {len(window_dates)} dates:
         windows: {windows}
@@ -1044,21 +1073,25 @@ class WalkforwardMixin:
                 start = offset + i * window_length
                 end = start + window_length
                 if train_size == 0:
-                    test_idx = dates[
-                        (dates[date_col] >= window_dates[start])
-                        & (dates[date_col] <= window_dates[end - 1])
-                    ]
-                    test_idx = test_idx.index.to_numpy(copy=True)
-                    yield WalkforwardWindow(np.array(tuple()), test_idx)
+                    test_rows = _walkforward_row_mask(
+                        dates_arr,
+                        window_dates[start],
+                        window_dates[end - 1],
+                    )
+                    yield WalkforwardWindow(
+                        np.array((), dtype=np.int_), test_rows
+                    )
                 else:
-                    train_idx = dates[
-                        (dates[date_col] >= window_dates[start])
-                        & (dates[date_col] <= window_dates[end - 1])
-                    ]
-                    train_idx = train_idx.index.to_numpy(copy=True)
+                    train_rows = _walkforward_row_mask(
+                        dates_arr,
+                        window_dates[start],
+                        window_dates[end - 1],
+                    )
                     if shuffle:
-                        np.random.shuffle(train_idx)
-                    yield WalkforwardWindow(train_idx, np.array(tuple()))
+                        np.random.shuffle(train_rows)
+                    yield WalkforwardWindow(
+                        train_rows, np.array((), dtype=np.int_)
+                    )
         elif windows == 1:
             res = len(window_dates) - 1 - lookahead
             if res <= 0:
@@ -1073,19 +1106,19 @@ class WalkforwardMixin:
             if test_start >= len(window_dates):
                 raise ValueError(error_msg)
             test_end = len(window_dates) - 1
-            train_idx = dates[
-                (dates[date_col] >= window_dates[train_start])
-                & (dates[date_col] <= window_dates[train_end])
-            ]
-            test_idx = dates[
-                (dates[date_col] >= window_dates[test_start])
-                & (dates[date_col] <= window_dates[test_end])
-            ]
-            train_idx = train_idx.index.to_numpy(copy=True)
-            test_idx = test_idx.index.to_numpy(copy=True)
+            train_rows = _walkforward_row_mask(
+                dates_arr,
+                window_dates[train_start],
+                window_dates[train_end],
+            )
+            test_rows = _walkforward_row_mask(
+                dates_arr,
+                window_dates[test_start],
+                window_dates[test_end],
+            )
             if shuffle:
-                np.random.shuffle(train_idx)
-            yield WalkforwardWindow(train_idx, test_idx)
+                np.random.shuffle(train_rows)
+            yield WalkforwardWindow(train_rows, test_rows)
         else:
             res = len(window_dates) - (lookahead - 1) * windows
             window_length = res / windows  # type: ignore[assignment]
@@ -1113,21 +1146,23 @@ class WalkforwardMixin:
                     (train_start, train_end, test_start, test_end)
                 )
             window_idx.reverse()
-            window_dates = window_dates[::-1]
+            reversed_dates = window_dates[::-1]
             for train_start, train_end, test_start, test_end in window_idx:
-                train_idx = dates[
-                    (dates[date_col] > window_dates[train_start])
-                    & (dates[date_col] <= window_dates[train_end])
-                ]
-                test_idx = dates[
-                    (dates[date_col] > window_dates[test_start])
-                    & (dates[date_col] <= window_dates[test_end])
-                ]
-                train_idx = train_idx.index.to_numpy(copy=True)
-                test_idx = test_idx.index.to_numpy(copy=True)
+                train_rows = _walkforward_row_mask(
+                    dates_arr,
+                    reversed_dates[train_start],
+                    reversed_dates[train_end],
+                    below_low=True,
+                )
+                test_rows = _walkforward_row_mask(
+                    dates_arr,
+                    reversed_dates[test_start],
+                    reversed_dates[test_end],
+                    below_low=True,
+                )
                 if shuffle:
-                    np.random.shuffle(train_idx)
-                yield WalkforwardWindow(train_idx, test_idx)
+                    np.random.shuffle(train_rows)
+                yield WalkforwardWindow(train_rows, test_rows)
 
 
 @dataclass(frozen=True)
@@ -1851,23 +1886,20 @@ class Strategy(
         dropped = held - selected_syms
         if not dropped or test_data.empty:
             return
-        sym_col = DataCol.SYMBOL.value
-        date_col = DataCol.DATE.value
-        scoped = (
+        test_store = symbol_array_store_from_frame(
             test_data.reset_index(drop=True)
-            .set_index([sym_col, date_col])
-            .sort_index()
         )
-        col_scope = ColumnScope(scoped)
+        col_scope = ColumnScope(test_store)
         sym_end_index = {sym: 1 for sym in dropped}
         price_scope = PriceScope(
             col_scope, sym_end_index, self._config.round_fill_price
         )
+        store_dates = sym_exec_dates_from_store(test_store)
         for sym in dropped:
-            sym_rows = test_data[test_data[sym_col] == sym]
-            if sym_rows.empty:
+            sym_dates = store_dates.get(sym)
+            if not sym_dates:
                 continue
-            date = np.datetime64(sym_rows.iloc[0][date_col])
+            date = min(sym_dates)
             buy_fill = price_scope.fetch(
                 sym, self._config.exit_cover_fill_price
             )
@@ -1917,14 +1949,13 @@ class Strategy(
                 }
             if exit_symbols and not df.empty:
                 mask = df[sym_col].isin(exit_symbols)
-                grouped = (
-                    df.loc[mask].groupby(sym_col, sort=False)[date_col].max()
-                )
-                exit_dates = {
-                    sym: np.datetime64(date) for sym, date in grouped.items()
-                }
+                masked = df.loc[mask]
+                for sym, sym_dates in _iter_symbol_date_groups(masked):
+                    if sym in exit_symbols:
+                        exit_dates[sym] = np.datetime64(sym_dates.max())
         signals: dict[str, pd.DataFrame] = {}
-        for train_idx, test_idx in self.walkforward_split(
+        signal_frames: dict[str, list[pd.DataFrame]] = defaultdict(list)
+        for train_rows, test_rows in self.walkforward_split(
             df=df,
             windows=windows,
             lookahead=lookahead,
@@ -1932,8 +1963,10 @@ class Strategy(
             shuffle=shuffle,
         ):
             models: dict[ModelSymbol, TrainedModel] = {}
-            train_data = df.loc[train_idx]
-            test_data = df.loc[test_idx]
+            train_data = (
+                df.iloc[train_rows] if len(train_rows) else df.iloc[:0]
+            )
+            test_data = df.iloc[test_rows] if len(test_rows) else df.iloc[:0]
             selection_data = _selection_df(train_data, test_data)
             if has_selector:
                 if global_cache_date_fields is None:
@@ -2027,14 +2060,14 @@ class Strategy(
                 )
             if test_data.empty:
                 return signals
-            window_history = (
-                pd.concat([train_data, test_data], ignore_index=True)
-                if not train_data.empty
-                else test_data
-            )
-            history_col_scope = ColumnScope(
-                window_history.set_index([sym_col, date_col]).sort_index()
-            )
+            if not train_data.empty:
+                history_store = merge_symbol_array_stores(
+                    symbol_array_store_from_frame(train_data),
+                    symbol_array_store_from_frame(test_data),
+                )
+            else:
+                history_store = symbol_array_store_from_frame(test_data)
+            history_col_scope = ColumnScope(history_store)
             split_signals = self.backtest_executions(
                 config=self._config,
                 executions=window_executions,
@@ -2058,10 +2091,13 @@ class Strategy(
                 history_col_scope=history_col_scope,
             )
             for sym, signals_df in split_signals.items():
-                if sym in signals:
-                    signals[sym] = pd.concat([signals[sym], signals_df])
-                else:
-                    signals[sym] = signals_df
+                signal_frames[sym].append(signals_df)
+        for sym, frames in signal_frames.items():
+            signals[sym] = (
+                frames[0]
+                if len(frames) == 1
+                else pd.concat(frames, ignore_index=True)
+            )
         return signals
 
     def _filter_dates(

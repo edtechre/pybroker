@@ -24,14 +24,18 @@ from pybroker.timeseries import (
     ModelInput,
     apply_lags_to_model_input,
     apply_lags_to_model_input_pooled,
-    merge_lag_series_cache,
+    merge_lag_series_cache_from_store,
     merge_timeframe_lag_series_cache,
     model_input_from_arrays,
-    model_input_from_frame,
     model_input_to_dataframe,
 )
 from pybroker.parallel import parallel
-from pybroker.scope import StaticScope
+from pybroker.scope import (
+    StaticScope,
+    SymbolArrayStore,
+    merge_symbol_array_stores,
+    symbol_array_store_from_frame,
+)
 from pybroker.timeframe import (
     TimeframeData,
     TimeframeInterval,
@@ -56,6 +60,134 @@ from typing import (
     Union,
     cast,
 )
+
+
+def _indicator_values_for_dates(
+    ind_series: pd.Series, dates: np.ndarray
+) -> NDArray[np.float64]:
+    """Aligns indicator values to ``dates`` without pandas indexing."""
+    if len(dates) == 0:
+        return np.array([], dtype=np.float64)
+    values = ind_series.to_numpy(dtype=np.float64, copy=False)
+    positions = ind_series.index.get_indexer(dates)
+    result = np.full(len(dates), np.nan, dtype=np.float64)
+    valid = positions >= 0
+    result[valid] = values[positions[valid]]
+    return result
+
+
+def _symbol_model_input(
+    symbol: str,
+    df: pd.DataFrame,
+    indicator_data: Mapping[IndicatorSymbol, pd.Series],
+    indicators: tuple[str, ...],
+) -> ModelInput:
+    """Builds per-symbol :class:`ModelInput` via boolean masks."""
+    sym_col = DataCol.SYMBOL.value
+    date_col = DataCol.DATE.value
+    if df.empty:
+        return ModelInput((), {}, np.array([], dtype="datetime64[ns]"))
+    sym_arr = df[sym_col].to_numpy()
+    mask = sym_arr == symbol
+    scope = StaticScope.instance()
+    columns: list[str] = [date_col]
+    for col in scope.all_data_cols:
+        if col == date_col or col == sym_col or col not in df.columns:
+            continue
+        columns.append(col)
+    for ind_name in indicators:
+        columns.append(ind_name)
+    columns_tuple = tuple(dict.fromkeys(columns))
+    arrays: dict[str, NDArray]
+    if not mask.any():
+        arrays = {col: np.array([], dtype=np.float64) for col in columns_tuple}
+        return model_input_from_arrays(
+            columns_tuple, arrays, np.array([], dtype="datetime64[ns]")
+        )
+    rows = np.flatnonzero(mask)
+    dates = df[date_col].to_numpy(copy=False)[rows]
+    order = np.argsort(dates)
+    rows = rows[order]
+    dates = dates[order]
+    arrays = {date_col: dates}
+    for col in columns_tuple:
+        if col == date_col:
+            continue
+        if col in df.columns:
+            arrays[col] = df[col].to_numpy(copy=False)[rows]
+        elif col in indicators:
+            arrays[col] = _indicator_values_for_dates(
+                indicator_data[IndicatorSymbol(col, symbol)], dates
+            )
+    return model_input_from_arrays(columns_tuple, arrays, dates)
+
+
+def _pooled_model_input(
+    df: pd.DataFrame,
+    symbols: frozenset[str],
+    indicator_data: Mapping[IndicatorSymbol, pd.Series],
+    indicators: tuple[str, ...],
+) -> ModelInput:
+    """Builds pooled multi-symbol :class:`ModelInput` without frame copies."""
+    sym_col = DataCol.SYMBOL.value
+    date_col = DataCol.DATE.value
+    sym_arr = df[sym_col].to_numpy()
+    mask = np.isin(sym_arr, tuple(symbols))
+    scope = StaticScope.instance()
+    columns: list[str] = [sym_col, date_col]
+    for col in scope.all_data_cols:
+        if col in (sym_col, date_col) or col not in df.columns:
+            continue
+        columns.append(col)
+    for ind_name in indicators:
+        columns.append(ind_name)
+    columns_tuple = tuple(dict.fromkeys(columns))
+    arrays: dict[str, NDArray]
+    if df.empty or not mask.any():
+        arrays = {col: np.array([], dtype=np.float64) for col in columns_tuple}
+        if sym_col in arrays:
+            arrays[sym_col] = np.array([], dtype=object)
+        return model_input_from_arrays(
+            columns_tuple, arrays, np.array([], dtype="datetime64[ns]")
+        )
+    rows = np.flatnonzero(mask)
+    dates = df[date_col].to_numpy(copy=False)[rows]
+    sym_vals = sym_arr[rows]
+    order = np.lexsort((dates, sym_vals))
+    rows = rows[order]
+    dates = dates[order]
+    sym_vals = sym_vals[order]
+    arrays = {sym_col: sym_vals, date_col: dates}
+    for col in columns_tuple:
+        if col in (sym_col, date_col):
+            continue
+        if col in df.columns:
+            arrays[col] = df[col].to_numpy(copy=False)[rows]
+        elif col in indicators:
+            ind_values = np.empty(len(rows), dtype=np.float64)
+            for sym in symbols:
+                sym_mask = sym_vals == sym
+                if not sym_mask.any():
+                    continue
+                ind_values[sym_mask] = _indicator_values_for_dates(
+                    indicator_data[IndicatorSymbol(col, sym)],
+                    dates[sym_mask],
+                )
+            arrays[col] = ind_values
+    return model_input_from_arrays(columns_tuple, arrays, dates)
+
+
+def _history_store(
+    train_data: pd.DataFrame, test_data: pd.DataFrame
+) -> SymbolArrayStore:
+    if train_data.empty:
+        return symbol_array_store_from_frame(test_data)
+    if test_data.empty:
+        return symbol_array_store_from_frame(train_data)
+    return merge_symbol_array_stores(
+        symbol_array_store_from_frame(train_data),
+        symbol_array_store_from_frame(test_data),
+    )
 
 
 class ModelSource:
@@ -446,16 +578,6 @@ def _lag_feature_cols(
     )
 
 
-def _history_df(
-    train_data: pd.DataFrame, test_data: pd.DataFrame
-) -> pd.DataFrame:
-    if train_data.empty:
-        return test_data
-    if test_data.empty:
-        return train_data
-    return pd.concat([train_data, test_data], ignore_index=True)
-
-
 def _parse_model_result(
     model_result: Union[Any, tuple[Any, Iterable[str]]],
     train_data: ModelInput,
@@ -580,7 +702,7 @@ class ModelsMixin:
         """
         if train_data.empty or not model_syms:
             return {}
-        history_df = _history_df(train_data, test_data)
+        history_store = _history_store(train_data, test_data)
         lag_series_cache: LagSeriesCache = {}
         history_dates: dict[str, np.ndarray] = {}
         if pooled_model_groups is None:
@@ -649,7 +771,7 @@ class ModelsMixin:
                         source,
                         train_dates,
                         test_dates,
-                        history_df,
+                        history_store,
                         lag_series_cache,
                         history_dates,
                     )
@@ -698,29 +820,21 @@ class ModelsMixin:
             elif isinstance(source, ModelTrainer):
                 if source.pooled:
                     continue
-                sym_train_df = self._slice_by_symbol(sym, train_data)
-                sym_test_df = self._slice_by_symbol(sym, test_data)
-                for ind_name in source.indicators:
-                    ind_series = indicator_data[IndicatorSymbol(ind_name, sym)]
-                    if not sym_train_df.empty:
-                        sym_train_df[ind_name] = ind_series[
-                            ind_series.index.isin(train_dates)
-                        ].values
-                    if not sym_test_df.empty:
-                        sym_test_df[ind_name] = ind_series[
-                            ind_series.index.isin(test_dates)
-                        ].values
-                sym_train_data = model_input_from_frame(sym_train_df)
-                sym_test_data = model_input_from_frame(sym_test_df)
+                sym_train_data = _symbol_model_input(
+                    sym, train_data, indicator_data, source.indicators
+                )
+                sym_test_data = _symbol_model_input(
+                    sym, test_data, indicator_data, source.indicators
+                )
                 if source.lags is not None:
                     lag_cols = _lag_feature_cols(
                         sym_train_data,
                         pooled=False,
                         indicators=source.indicators,
                     )
-                    merge_lag_series_cache(
+                    merge_lag_series_cache_from_store(
                         lag_series_cache,
-                        history_df,
+                        history_store,
                         (sym,),
                         lag_cols,
                         source.lags,
@@ -868,49 +982,31 @@ class ModelsMixin:
         source: ModelTrainer,
         train_dates: Collection,
         test_dates: Collection,
-        history_df: pd.DataFrame,
+        history_store: SymbolArrayStore,
         lag_series_cache: LagSeriesCache,
         history_dates: dict[str, np.ndarray],
     ) -> tuple[ModelInput, ModelInput]:
-        sym_col = DataCol.SYMBOL.value
-        date_col = DataCol.DATE.value
-        pooled_train = train_data[train_data[sym_col].isin(symbols)].copy()
-        pooled_test = test_data[test_data[sym_col].isin(symbols)].copy()
-        if not pooled_train.empty:
-            pooled_train = pooled_train.sort_values([sym_col, date_col])
-        if not pooled_test.empty:
-            pooled_test = pooled_test.sort_values([sym_col, date_col])
-        for sym in symbols:
-            for ind_name in source.indicators:
-                ind_series = indicator_data[IndicatorSymbol(ind_name, sym)]
-                train_mask = pooled_train[sym_col] == sym
-                if train_mask.any():
-                    sym_train_dates = pooled_train.loc[train_mask, date_col]
-                    pooled_train.loc[train_mask, ind_name] = ind_series[
-                        ind_series.index.isin(sym_train_dates)
-                    ].values
-                test_mask = pooled_test[sym_col] == sym
-                if test_mask.any():
-                    sym_test_dates = pooled_test.loc[test_mask, date_col]
-                    pooled_test.loc[test_mask, ind_name] = ind_series[
-                        ind_series.index.isin(sym_test_dates)
-                    ].values
+        del train_dates, test_dates
+        pooled_train_input = _pooled_model_input(
+            train_data, symbols, indicator_data, source.indicators
+        )
+        pooled_test_input = _pooled_model_input(
+            test_data, symbols, indicator_data, source.indicators
+        )
         if source.lags is not None:
             lag_cols = _lag_feature_cols(
-                model_input_from_frame(pooled_train),
+                pooled_train_input,
                 pooled=True,
                 indicators=source.indicators,
             )
-            merge_lag_series_cache(
+            merge_lag_series_cache_from_store(
                 lag_series_cache,
-                history_df,
+                history_store,
                 symbols,
                 lag_cols,
                 source.lags,
                 history_dates,
             )
-            pooled_train_input = model_input_from_frame(pooled_train)
-            pooled_test_input = model_input_from_frame(pooled_test)
             apply_lags_to_model_input_pooled(
                 pooled_train_input,
                 lag_cols,
@@ -928,11 +1024,7 @@ class ModelsMixin:
                 symbols,
             )
             pooled_train_input = pooled_train_input.drop_lag_warmup()
-            return pooled_train_input, pooled_test_input
-        return (
-            model_input_from_frame(pooled_train),
-            model_input_from_frame(pooled_test),
-        )
+        return pooled_train_input, pooled_test_input
 
     def _prepare_pooled_timeframe_data(
         self,
@@ -946,16 +1038,10 @@ class ModelsMixin:
         lag_series_cache: LagSeriesCache,
     ) -> tuple[ModelInput, ModelInput]:
         sym_col = DataCol.SYMBOL.value
-        date_col = DataCol.DATE.value
         scope = StaticScope.instance()
-        train_date_set = set(
-            np.asarray(list(train_dates), dtype="datetime64[ns]")
-        )
-        test_date_set = set(
-            np.asarray(list(test_dates), dtype="datetime64[ns]")
-        )
-        train_frames: list[pd.DataFrame] = []
-        test_frames: list[pd.DataFrame] = []
+        train_parts: dict[str, list[NDArray]] = {}
+        test_parts: dict[str, list[NDArray]] = {}
+        columns: tuple[str, ...] = ()
         history_dates: dict[str, np.ndarray] = {}
         for sym in symbols:
             key = (sym, token)
@@ -964,7 +1050,7 @@ class ModelsMixin:
                     f"Timeframe {token!r} data not found for {sym!r}."
                 )
             compressed = timeframe_data.compressed[key]
-            columns, arrays, bar_dates = build_compressed_symbol_arrays(
+            sym_columns, arrays, bar_dates = build_compressed_symbol_arrays(
                 sym,
                 token,
                 compressed,
@@ -972,32 +1058,52 @@ class ModelsMixin:
                 source.indicators,
                 scope.custom_data_cols,
             )
-            sym_df = pd.DataFrame({col: arrays[col] for col in columns})
-            sym_df[sym_col] = sym
+            columns = sym_columns + (sym_col,)
             history_dates[sym] = np.asarray(bar_dates, dtype="datetime64[ns]")
-            train_mask = sym_df[date_col].isin(train_date_set)
-            test_mask = sym_df[date_col].isin(test_date_set)
-            if train_mask.any():
-                train_frames.append(sym_df.loc[train_mask])
-            if test_mask.any():
-                test_frames.append(sym_df.loc[test_mask])
-        pooled_train = (
-            pd.concat(train_frames, ignore_index=True)
-            if train_frames
-            else pd.DataFrame()
-        )
-        pooled_test = (
-            pd.concat(test_frames, ignore_index=True)
-            if test_frames
-            else pd.DataFrame()
-        )
-        if not pooled_train.empty:
-            pooled_train = pooled_train.sort_values([sym_col, date_col])
-        if not pooled_test.empty:
-            pooled_test = pooled_test.sort_values([sym_col, date_col])
+            _, train_arrays, train_dates_arr = slice_arrays_by_dates(
+                sym_columns,
+                arrays,
+                bar_dates,
+                train_dates,
+            )
+            _, test_arrays, test_dates_arr = slice_arrays_by_dates(
+                sym_columns,
+                arrays,
+                bar_dates,
+                test_dates,
+            )
+            if train_dates_arr.size:
+                for col in sym_columns:
+                    train_parts.setdefault(col, []).append(train_arrays[col])
+                train_parts.setdefault(sym_col, []).append(
+                    np.full(train_dates_arr.size, sym)
+                )
+            if test_dates_arr.size:
+                for col in sym_columns:
+                    test_parts.setdefault(col, []).append(test_arrays[col])
+                test_parts.setdefault(sym_col, []).append(
+                    np.full(test_dates_arr.size, sym)
+                )
+
+        def _concat_pooled(
+            parts: dict[str, list[NDArray]],
+        ) -> ModelInput:
+            if not parts or sym_col not in parts:
+                return ModelInput((), {}, np.array([], dtype="datetime64[ns]"))
+            date_col = DataCol.DATE.value
+            pooled: dict[str, NDArray] = {
+                col: np.concatenate(arrs) for col, arrs in parts.items()
+            }
+            order = np.lexsort((pooled[date_col], pooled[sym_col]))
+            for col in pooled:
+                pooled[col] = pooled[col][order]
+            return model_input_from_arrays(columns, pooled, pooled[date_col])
+
+        pooled_train_input = _concat_pooled(train_parts)
+        pooled_test_input = _concat_pooled(test_parts)
         if source.lags is not None:
             lag_cols = _lag_feature_cols(
-                model_input_from_frame(pooled_train),
+                pooled_train_input,
                 pooled=True,
                 indicators=source.indicators,
             )
@@ -1017,8 +1123,6 @@ class ModelsMixin:
                 interval,
                 bars_by_symbol,
             )
-            pooled_train_input = model_input_from_frame(pooled_train)
-            pooled_test_input = model_input_from_frame(pooled_test)
             apply_lags_to_model_input_pooled(
                 pooled_train_input,
                 lag_cols,
@@ -1038,18 +1142,7 @@ class ModelsMixin:
                 interval=interval,
             )
             pooled_train_input = pooled_train_input.drop_lag_warmup()
-            return pooled_train_input, pooled_test_input
-        return (
-            model_input_from_frame(pooled_train),
-            model_input_from_frame(pooled_test),
-        )
-
-    def _slice_by_symbol(self, symbol: str, df: pd.DataFrame) -> pd.DataFrame:
-        return (
-            df.loc[df[DataCol.SYMBOL.value] == symbol]
-            .drop(columns=DataCol.SYMBOL.value)
-            .sort_values(DataCol.DATE.value)
-        )
+        return pooled_train_input, pooled_test_input
 
     def _prepare_timeframe_symbol_data(
         self,
