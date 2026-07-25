@@ -783,3 +783,113 @@ class TestSymbolArrayStoreNumba:
         built = symbol_array_store_from_flat_frame(df)
         assert not built.symbols
         assert built.sym_arrays == {}
+
+
+def _slice_symbol_array_store_by_dates_reference(store, selected_dates):
+    """Pre-optimization per-symbol mask slice for regression tests."""
+    from pybroker.scope import SymbolArrayStore, _dates_in_target_mask
+
+    if not store.symbols:
+        return SymbolArrayStore(frozenset(), {})
+    date_col = DataCol.DATE.value
+    target = np.asarray(selected_dates, dtype="datetime64[ns]")
+    if len(target) == 0:
+        return SymbolArrayStore(frozenset(), {})
+    sym_arrays: dict[str, dict[str, np.ndarray]] = {}
+    for sym in store.symbols:
+        sym_data = store.sym_arrays[sym]
+        dates = sym_data.get(date_col)
+        if dates is None or len(dates) == 0:
+            continue
+        mask = _dates_in_target_mask(
+            np.asarray(dates, dtype="datetime64[ns]"), target
+        )
+        if not mask.any():
+            continue
+        sym_arrays[sym] = {col: arr[mask] for col, arr in sym_data.items()}
+    return SymbolArrayStore(frozenset(sym_arrays.keys()), sym_arrays)
+
+
+def _assert_stores_equal(left, right):
+    assert left.symbols == right.symbols
+    for sym in left.symbols:
+        for col in left.sym_arrays[sym]:
+            np.testing.assert_array_equal(
+                left.sym_arrays[sym][col],
+                right.sym_arrays[sym][col],
+            )
+
+
+class TestSliceStoreNumba:
+    @pytest.mark.parametrize(
+        "n_symbols,n_days", [(1, 1), (4, 504), (10, 1260)]
+    )
+    def test_every_other_date_matches_reference(self, n_symbols, n_days):
+        df = _synthetic_flat_ohlcv(n_symbols, n_days)
+        store = symbol_array_store_from_flat_frame(df)
+        sym = "SYM00"
+        selected = store.sym_arrays[sym]["date"][::2]
+        reference = _slice_symbol_array_store_by_dates_reference(
+            store, selected
+        )
+        sliced = slice_symbol_array_store_by_dates(store, selected)
+        _assert_stores_equal(reference, sliced)
+
+    @pytest.mark.parametrize("n_symbols,n_days", [(4, 504), (10, 1260)])
+    def test_scattered_dates_matches_reference(self, n_symbols, n_days):
+        df = _synthetic_flat_ohlcv(n_symbols, n_days)
+        store = symbol_array_store_from_flat_frame(df)
+        sym = "SYM00"
+        all_dates = store.sym_arrays[sym]["date"]
+        selected = np.sort(all_dates[[0, 2, 5, 9, 50, 100, 200]])
+        reference = _slice_symbol_array_store_by_dates_reference(
+            store, selected
+        )
+        sliced = slice_symbol_array_store_by_dates(store, selected)
+        _assert_stores_equal(reference, sliced)
+
+    @pytest.mark.parametrize("window", [63, 126, 252])
+    def test_contiguous_window_blocks_match_reference(self, window):
+        n_days = 1260
+        df = _synthetic_flat_ohlcv(10, n_days)
+        store = symbol_array_store_from_flat_frame(df)
+        sym = "SYM00"
+        all_dates = store.sym_arrays[sym]["date"]
+        for start in (0, 252, 504, 756):
+            selected = all_dates[start : start + window]
+            reference = _slice_symbol_array_store_by_dates_reference(
+                store, selected
+            )
+            sliced = slice_symbol_array_store_by_dates(store, selected)
+            _assert_stores_equal(reference, sliced)
+
+    def test_unsorted_target_fallback_matches_reference(self):
+        df = _synthetic_flat_ohlcv(4, 200)
+        store = symbol_array_store_from_flat_frame(df)
+        sym = "SYM00"
+        all_dates = store.sym_arrays[sym]["date"]
+        selected = all_dates[[10, 3, 7, 1, 15]]
+        reference = _slice_symbol_array_store_by_dates_reference(
+            store, selected
+        )
+        sliced = slice_symbol_array_store_by_dates(store, selected)
+        _assert_stores_equal(reference, sliced)
+
+    def test_empty_target(self):
+        df = _synthetic_flat_ohlcv(2, 50)
+        store = symbol_array_store_from_flat_frame(df)
+        sliced = slice_symbol_array_store_by_dates(
+            store, np.array([], dtype="datetime64[ns]")
+        )
+        assert not sliced.symbols
+
+    def test_single_date_single_symbol(self):
+        df = _synthetic_flat_ohlcv(1, 30)
+        store = symbol_array_store_from_flat_frame(df)
+        selected = store.sym_arrays["SYM00"]["date"][[5]]
+        reference = _slice_symbol_array_store_by_dates_reference(
+            store, selected
+        )
+        sliced = slice_symbol_array_store_by_dates(store, selected)
+        _assert_stores_equal(reference, sliced)
+        assert len(sliced.sym_arrays["SYM00"]["close"]) == 1

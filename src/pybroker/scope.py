@@ -346,6 +346,106 @@ def _extract_dt64_bins_njit(
     return out, lengths
 
 
+@njit(cache=True)
+def _sorted_dates_indices_njit(
+    dates: NDArray[np.datetime64],
+    target: NDArray[np.datetime64],
+) -> NDArray[np.int64]:
+    n_dates = len(dates)
+    n_target = len(target)
+    if n_dates == 0 or n_target == 0:
+        return np.empty(0, dtype=np.int64)
+    out = np.empty(n_target, dtype=np.int64)
+    n_matches = 0
+    i = 0
+    j = 0
+    while i < n_dates and j < n_target:
+        if dates[i] == target[j]:
+            out[n_matches] = i
+            n_matches += 1
+            i += 1
+            j += 1
+        elif dates[i] < target[j]:
+            i += 1
+        else:
+            j += 1
+    return out[:n_matches]
+
+
+@njit(cache=True)
+def _gather_f64_by_indices_njit(
+    col_stack: NDArray[np.float64],
+    indices: NDArray[np.int64],
+) -> NDArray[np.float64]:
+    n_cols = col_stack.shape[0]
+    n_out = len(indices)
+    out = np.empty((n_cols, n_out), dtype=np.float64)
+    for c in range(n_cols):
+        for j in range(n_out):
+            out[c, j] = col_stack[c, indices[j]]
+    return out
+
+
+@njit(cache=True)
+def _gather_dt64_by_indices_njit(
+    dates: NDArray[np.datetime64],
+    indices: NDArray[np.int64],
+) -> NDArray[np.datetime64]:
+    n_out = len(indices)
+    out = np.empty(n_out, dtype=dates.dtype)
+    for j in range(n_out):
+        out[j] = dates[indices[j]]
+    return out
+
+
+def _build_sliced_sym_arrays(
+    sym_data: Mapping[str, NDArray],
+    indices: NDArray[np.int64],
+    date_col: str,
+) -> dict[str, NDArray]:
+    """Builds per-symbol column arrays for ``indices`` row selection."""
+    if len(indices) == 0:
+        return {}
+    if len(indices) > 0 and indices[-1] - indices[0] + 1 == len(indices):
+        start = int(indices[0])
+        end = int(indices[-1]) + 1
+        return {
+            col: np.asarray(arr[start:end], copy=True)
+            for col, arr in sym_data.items()
+        }
+    float_cols: list[str] = []
+    other_cols: list[str] = []
+    for col, arr in sym_data.items():
+        if col == date_col:
+            continue
+        if np.issubdtype(np.asarray(arr).dtype, np.number):
+            float_cols.append(col)
+        else:
+            other_cols.append(col)
+    result: dict[str, NDArray] = {}
+    if float_cols:
+        sample = sym_data[float_cols[0]]
+        n_rows = len(sample)
+        col_stack = np.empty((len(float_cols), n_rows), dtype=np.float64)
+        for c, col in enumerate(float_cols):
+            col_stack[c] = np.ascontiguousarray(
+                sym_data[col], dtype=np.float64
+            )
+        gathered = _gather_f64_by_indices_njit(col_stack, indices)
+        for c, col in enumerate(float_cols):
+            result[col] = gathered[c].copy()
+    for col in other_cols:
+        result[col] = np.asarray(sym_data[col][indices], copy=True)
+    if date_col in sym_data:
+        dates_arr = np.ascontiguousarray(
+            sym_data[date_col], dtype="datetime64[ns]"
+        )
+        result[date_col] = _gather_dt64_by_indices_njit(
+            dates_arr, indices
+        ).copy()
+    return result
+
+
 def symbol_array_store_from_indexed_df(df: pd.DataFrame) -> SymbolArrayStore:
     """Builds a :class:`SymbolArrayStore` from a sorted MultiIndex frame."""
     df = df.sort_index()
@@ -510,18 +610,27 @@ def slice_symbol_array_store_by_dates(
     target = np.asarray(selected_dates, dtype="datetime64[ns]")
     if len(target) == 0:
         return SymbolArrayStore(frozenset(), {})
+    target_sorted = len(target) <= 1 or bool(np.all(target[:-1] <= target[1:]))
     sym_arrays: dict[str, dict[str, NDArray]] = {}
     for sym in store.symbols:
         sym_data = store.sym_arrays[sym]
         dates = sym_data.get(date_col)
         if dates is None or len(dates) == 0:
             continue
-        mask = _dates_in_target_mask(
-            np.asarray(dates, dtype="datetime64[ns]"), target
+        dates_arr = np.ascontiguousarray(dates, dtype="datetime64[ns]")
+        dates_sorted = len(dates_arr) <= 1 or bool(
+            np.all(dates_arr[:-1] <= dates_arr[1:])
         )
-        if not mask.any():
-            continue
-        sym_arrays[sym] = {col: arr[mask] for col, arr in sym_data.items()}
+        if target_sorted and dates_sorted:
+            indices = _sorted_dates_indices_njit(dates_arr, target)
+        else:
+            mask = _dates_in_target_mask(dates_arr, target)
+            if not mask.any():
+                continue
+            indices = np.flatnonzero(mask).astype(np.int64)
+        sliced = _build_sliced_sym_arrays(sym_data, indices, date_col)
+        if sliced:
+            sym_arrays[sym] = sliced
     return SymbolArrayStore(frozenset(sym_arrays.keys()), sym_arrays)
 
 
