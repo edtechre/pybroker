@@ -1050,3 +1050,19 @@ class TestTimeSeriesModelOptions:
             cache_date_fields,
         )
         assert models[ModelSymbol("pb_model", sym)].per_bar is True
+
+
+def test_indicator_values_for_dates_matches_get_indexer(data_source_df):
+    from pybroker.model import _indicator_values_for_dates
+
+    sym_df = data_source_df[data_source_df["symbol"] == "SPY"].sort_values(
+        "date"
+    )
+    ind = sym_df.set_index("date")["close"]
+    dates = sym_df["date"].to_numpy(dtype="datetime64[ns]")
+    aligned = _indicator_values_for_dates(ind, dates)
+    positions = ind.index.get_indexer(dates)
+    expected = np.full(len(dates), np.nan, dtype=np.float64)
+    valid = positions >= 0
+    expected[valid] = ind.to_numpy(dtype=np.float64)[positions[valid]]
+    assert np.array_equal(aligned, expected, equal_nan=True)

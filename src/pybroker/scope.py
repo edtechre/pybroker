@@ -32,6 +32,7 @@ from pybroker.log import Logger
 from pybroker.timeframe import (
     TimeframeData,
     TimeframeInterval,
+    _find_bin_starts_ends,
     format_timeframe_interval,
     indicator_timeframe_name,
     model_timeframe_name,
@@ -302,6 +303,38 @@ def symbol_array_store_from_indexed_df(df: pd.DataFrame) -> SymbolArrayStore:
     return SymbolArrayStore(frozenset(sym_arrays.keys()), sym_arrays)
 
 
+def symbol_array_store_from_flat_frame(
+    df: pd.DataFrame,
+    sym_col: str = DataCol.SYMBOL.value,
+    date_col: str = DataCol.DATE.value,
+) -> SymbolArrayStore:
+    """Builds a store from a flat frame via numpy lex-sort and bin slicing."""
+    if df.empty:
+        return SymbolArrayStore(frozenset(), {})
+    sym_values = df[sym_col].astype(str).to_numpy()
+    date_arr = df[date_col].to_numpy(dtype="datetime64[ns]", copy=False)
+    unique_syms, sym_ids = np.unique(sym_values, return_inverse=True)
+    order = np.lexsort((date_arr, sym_ids.astype(np.int64)))
+    sorted_sym_ids = sym_ids[order].astype(np.int64)
+    starts, ends = _find_bin_starts_ends(sorted_sym_ids)
+    sym_arrays: dict[str, dict[str, NDArray]] = {}
+    data_cols = [col for col in df.columns if col != sym_col]
+    col_arrays = {col: df[col].to_numpy(copy=True)[order] for col in data_cols}
+    sorted_dates = date_arr[order]
+    for bin_idx in range(len(starts)):
+        sym_key = str(unique_syms[sorted_sym_ids[starts[bin_idx]]])
+        start = int(starts[bin_idx])
+        end = int(ends[bin_idx]) + 1
+        sym_arrays[sym_key] = {
+            col: col_arrays[col][start:end] for col in data_cols
+        }
+        if date_col not in sym_arrays[sym_key]:
+            sym_arrays[sym_key][date_col] = np.asarray(
+                sorted_dates[start:end], copy=True
+            )
+    return SymbolArrayStore(frozenset(sym_arrays.keys()), sym_arrays)
+
+
 def symbol_array_store_from_frame(
     df: pd.DataFrame,
     sym_col: str = DataCol.SYMBOL.value,
@@ -310,6 +343,8 @@ def symbol_array_store_from_frame(
     """Builds a store from a flat or MultiIndex OHLCV frame."""
     if isinstance(df.index, pd.MultiIndex) and df.index.nlevels >= 2:
         return symbol_array_store_from_indexed_df(df)
+    if sym_col in df.columns and date_col in df.columns:
+        return symbol_array_store_from_flat_frame(df, sym_col, date_col)
     indexed = df.set_index([sym_col, date_col]).sort_index()
     return symbol_array_store_from_indexed_df(indexed)
 

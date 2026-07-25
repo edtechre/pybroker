@@ -506,6 +506,152 @@ class CacheHit:
 
 
 # ---------------------------------------------------------------------------
+# Group F — Numba candidate micro benches (profiling only, not migration gates)
+# ---------------------------------------------------------------------------
+
+
+class TimeseriesKernels:
+    """Lag prep kernels in timeseries.py."""
+
+    timeout = 120
+    params = ([1_000, 100_000], [1, 5])
+    param_names = ("length", "lags")
+
+    def setup(self, length: int, lags: int) -> None:
+        from pybroker.timeseries import (
+            LagSeriesKey,
+            build_lag_feature_matrix,
+            build_lag_feature_matrix_pooled,
+            compute_lag_series_cache,
+            shift_array,
+        )
+
+        rng = np.random.default_rng(SEED)
+        self._shift_array = shift_array
+        self._build_lag_feature_matrix = build_lag_feature_matrix
+        self._build_lag_feature_matrix_pooled = build_lag_feature_matrix_pooled
+        self._lag = lags
+        self._values = rng.standard_normal(length)
+        df = _synthetic_ohlcv(
+            n_symbols=4, n_days=max(length // 4, 50), seed=SEED
+        )
+        self._cache = compute_lag_series_cache(
+            df, ("SYM000", "SYM001"), ("close",), lags
+        )
+        sym = "SYM000"
+        sym_df = df[df["symbol"] == sym].drop(columns="symbol")
+        self._history_dates = sym_df["date"].to_numpy(dtype="datetime64[ns]")
+        self._row_dates = self._history_dates[
+            -min(len(self._history_dates), 200) :
+        ]
+        row_count = len(self._row_dates)
+        self._base_arrays = {
+            "close": sym_df["close"].to_numpy(dtype=np.float64)[-row_count:],
+        }
+        self._sym_col = df["symbol"].to_numpy()
+        self._all_dates = df["date"].to_numpy(dtype="datetime64[ns]")
+        self._pooled_close = df["close"].to_numpy(dtype=np.float64)
+        self._history_by_sym = {
+            s: df.loc[df["symbol"] == s, "date"].to_numpy(
+                dtype="datetime64[ns]"
+            )
+            for s in df["symbol"].unique()[:2]
+        }
+        # Warmup (includes Numba compile when enabled).
+        self._shift_array(self._values, lags)
+        self._build_lag_feature_matrix(
+            sym,
+            ("close",),
+            lags,
+            self._base_arrays,
+            self._row_dates,
+            self._history_dates,
+            self._cache,
+        )
+        self._build_lag_feature_matrix_pooled(
+            self._sym_col,
+            ("close",),
+            lags,
+            {"close": self._pooled_close},
+            self._all_dates,
+            self._history_by_sym,
+            self._cache,
+            ("SYM000", "SYM001"),
+        )
+
+    def time_shift_array(self, length: int, lags: int) -> None:
+        self._shift_array(self._values, lags)
+
+    def time_build_lag_feature_matrix(self, length: int, lags: int) -> None:
+        self._build_lag_feature_matrix(
+            "SYM000",
+            ("close",),
+            lags,
+            self._base_arrays,
+            self._row_dates,
+            self._history_dates,
+            self._cache,
+        )
+
+    def time_build_lag_feature_matrix_pooled(
+        self, length: int, lags: int
+    ) -> None:
+        self._build_lag_feature_matrix_pooled(
+            self._sym_col,
+            ("close",),
+            lags,
+            {"close": self._pooled_close},
+            self._all_dates,
+            self._history_by_sym,
+            self._cache,
+            ("SYM000", "SYM001"),
+        )
+
+
+class StoreBuildKernels:
+    """SymbolArrayStore build from flat frames."""
+
+    timeout = 120
+    params = ([4, 10], [504, 1260])
+    param_names = ("n_symbols", "n_days")
+
+    def setup(self, n_symbols: int, n_days: int) -> None:
+        from pybroker.scope import symbol_array_store_from_frame
+
+        self._df = _synthetic_ohlcv(
+            n_symbols=n_symbols, n_days=n_days, seed=SEED
+        )
+        self._build = symbol_array_store_from_frame
+        self._build(self._df)
+
+    def time_symbol_array_store_from_frame(
+        self, n_symbols: int, n_days: int
+    ) -> None:
+        self._build(self._df)
+
+
+class ModelPrepKernels:
+    """Model input indicator alignment."""
+
+    timeout = 60
+
+    def setup(self) -> None:
+        from pybroker.model import _indicator_values_for_dates
+
+        df = _load_dataset()
+        sym = df["symbol"].iloc[0]
+        sym_df = df[df["symbol"] == sym].sort_values("date")
+        self._align = _indicator_values_for_dates
+        ind = sym_df.set_index("date")["close"]
+        self._ind = ind
+        self._dates = sym_df["date"].to_numpy(dtype="datetime64[ns]")
+        self._align(ind, self._dates)
+
+    def time_indicator_values_for_dates(self) -> None:
+        self._align(self._ind, self._dates)
+
+
+# ---------------------------------------------------------------------------
 # Group C — cold-start rigor (properly wipe JIT cache before timing)
 # ---------------------------------------------------------------------------
 

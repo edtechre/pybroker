@@ -9,6 +9,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 import functools
 import numpy as np
 import pandas as pd
+from numba import njit
 from pybroker.cache import CacheDateFields, ModelCacheKey
 from pybroker.common import (
     DataCol,
@@ -62,6 +63,22 @@ from typing import (
 )
 
 
+@njit(cache=True)
+def _indicator_values_for_dates_njit(
+    ind_dates: NDArray,
+    values: NDArray[np.float64],
+    dates: NDArray,
+) -> NDArray[np.float64]:
+    """Aligns indicator values to ``dates`` via sorted datetime search."""
+    n = len(dates)
+    result = np.full(n, np.nan, dtype=np.float64)
+    for i in range(n):
+        pos = np.searchsorted(ind_dates, dates[i])
+        if pos < len(ind_dates) and ind_dates[pos] == dates[i]:
+            result[i] = values[pos]
+    return result
+
+
 def _indicator_values_for_dates(
     ind_series: pd.Series, dates: np.ndarray
 ) -> NDArray[np.float64]:
@@ -69,6 +86,10 @@ def _indicator_values_for_dates(
     if len(dates) == 0:
         return np.array([], dtype=np.float64)
     values = ind_series.to_numpy(dtype=np.float64, copy=False)
+    index = ind_series.index
+    if getattr(index, "is_monotonic_increasing", False):
+        ind_dates = index.to_numpy(dtype="datetime64[ns]", copy=False)
+        return _indicator_values_for_dates_njit(ind_dates, values, dates)
     positions = ind_series.index.get_indexer(dates)
     result = np.full(len(dates), np.nan, dtype=np.float64)
     valid = positions >= 0

@@ -18,6 +18,7 @@ from pybroker.indicator import IndicatorSymbol
 from pybroker.model import model
 from pybroker.scope import (
     PriceScope,
+    column_scope_from_frame,
     enable_logging,
     enable_progress_bar,
     disable_logging,
@@ -25,6 +26,8 @@ from pybroker.scope import (
     get_signals,
     param,
     register_columns,
+    symbol_array_store_from_frame,
+    symbol_array_store_from_indexed_df,
     unregister_columns,
 )
 from unittest.mock import Mock
@@ -486,6 +489,38 @@ class TestPendingOrderScope:
             [pending_orders[0]]
         )
         assert not tuple(pending_order_scope.orders("FOO"))
+
+
+def test_symbol_array_store_from_frame_matches_indexed(
+    data_source_df,
+):
+    """Flat-frame store build matches legacy MultiIndex path."""
+    sym_col = "symbol"
+    date_col = "date"
+    reference = symbol_array_store_from_indexed_df(
+        data_source_df.set_index([sym_col, date_col]).sort_index()
+    )
+    built = symbol_array_store_from_frame(data_source_df)
+    assert built.symbols == reference.symbols
+    for sym in reference.symbols:
+        ref_cols = reference.sym_arrays[sym]
+        built_cols = built.sym_arrays[sym]
+        assert set(built_cols.keys()) == set(ref_cols.keys())
+        for col in ref_cols:
+            assert np.array_equal(built_cols[col], ref_cols[col])
+
+
+def test_column_scope_from_frame_fetch_parity(data_source_df, symbols):
+    """column_scope_from_frame fetch matches indexed ColumnScope."""
+    from pybroker.scope import ColumnScope
+
+    flat_scope = column_scope_from_frame(data_source_df)
+    indexed_scope = ColumnScope(data_source_df.set_index(["symbol", "date"]))
+    for sym in symbols:
+        for col in ("open", "high", "low", "close", "volume"):
+            flat_vals = flat_scope.fetch(sym, col)
+            indexed_vals = indexed_scope.fetch(sym, col)
+            assert np.array_equal(flat_vals, indexed_vals)
 
 
 def test_get_signals(
