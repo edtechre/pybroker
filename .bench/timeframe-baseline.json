@@ -1,0 +1,10 @@
+{
+  "metrics": {
+    "compress_5m_390": 12.99227587878704,
+    "compress_5m_large": 3356.1703376471996,
+    "compress_every5_large": 3293.883642181754,
+    "compress_symbol_df_weekly_252": 590.3713218867779,
+    "compress_timeframes_multi": 9920.406504534185,
+    "compress_weekly_252": 9.008278138935566
+  }
+}

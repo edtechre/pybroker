@@ -686,6 +686,37 @@ def _duration_bin_ids(
     return epoch_ns // (seconds * 1_000_000_000)
 
 
+def _ascontiguous_f64(arr: NDArray[np.float64]) -> NDArray[np.float64]:
+    if arr.dtype == np.float64 and arr.flags.c_contiguous:
+        return arr
+    return np.ascontiguousarray(arr, dtype=np.float64)
+
+
+def _ascontiguous_dt64(
+    arr: NDArray[np.datetime64],
+) -> NDArray[np.datetime64]:
+    if arr.dtype == np.dtype("datetime64[ns]") and arr.flags.c_contiguous:
+        return arr
+    return np.ascontiguousarray(arr, dtype="datetime64[ns]")
+
+
+def _empty_compressed_symbol_data() -> CompressedSymbolData:
+    empty_f = np.array([], dtype=np.float64)
+    empty_d = np.array([], dtype="datetime64[ns]")
+    empty_i = np.array([], dtype=np.int64)
+    bars = CompressedBars(
+        open=empty_f,
+        high=empty_f,
+        low=empty_f,
+        close=empty_f,
+        volume=empty_f,
+        dates=empty_d,
+    )
+    return CompressedSymbolData(
+        bars=bars, completed=empty_i, base_dates=empty_d
+    )
+
+
 @njit(cache=True)
 def _find_bin_starts_ends(
     bin_ids: NDArray[np.int64],
@@ -767,24 +798,94 @@ def _aggregate_custom_cols(
     return out
 
 
-@njit(cache=True)
 def _compute_completed(
     n: int,
     starts: NDArray[np.int64],
     ends: NDArray[np.int64],
     interval_n: int,
 ) -> NDArray[np.int64]:
-    completed = np.empty(n, dtype=np.int64)
-    for t in range(n):
-        completed[t] = np.searchsorted(ends, t, side="right") - 1
+    completed = (
+        np.searchsorted(ends, np.arange(n, dtype=np.int64), side="right") - 1
+    )
     if interval_n > 0 and len(ends) > 0:
         last_bin = len(ends) - 1
         last_bin_size = ends[last_bin] - starts[last_bin] + 1
         if last_bin_size < interval_n:
-            for t in range(n):
-                if completed[t] == last_bin:
-                    completed[t] = last_bin - 1
+            mask = completed == last_bin
+            completed = completed.copy()
+            completed[mask] = last_bin - 1
     return completed
+
+
+def _compress_every_n_bars(
+    k: int,
+    dates: NDArray[np.datetime64],
+    open_: NDArray[np.float64],
+    high: NDArray[np.float64],
+    low: NDArray[np.float64],
+    close: NDArray[np.float64],
+    volume: NDArray[np.float64],
+    custom_cols: Optional[Mapping[str, NDArray[np.float64]]] = None,
+) -> tuple[CompressedBars, NDArray[np.int64]]:
+    n = len(dates)
+    n_full = (n // k) * k
+    o_parts: list[NDArray[np.float64]] = []
+    h_parts: list[NDArray[np.float64]] = []
+    l_parts: list[NDArray[np.float64]] = []
+    c_parts: list[NDArray[np.float64]] = []
+    v_parts: list[NDArray[np.float64]] = []
+    d_parts: list[NDArray[np.datetime64]] = []
+    ends_parts: list[NDArray[np.int64]] = []
+
+    if n_full > 0:
+        o_r = open_[:n_full].reshape(-1, k)
+        h_r = high[:n_full].reshape(-1, k)
+        l_r = low[:n_full].reshape(-1, k)
+        c_r = close[:n_full].reshape(-1, k)
+        v_r = volume[:n_full].reshape(-1, k)
+        o_parts.append(o_r[:, 0])
+        h_parts.append(h_r.max(axis=1))
+        l_parts.append(l_r.min(axis=1))
+        c_parts.append(c_r[:, -1])
+        v_parts.append(v_r.sum(axis=1))
+        full_ends = np.arange(k - 1, n_full, k, dtype=np.int64)
+        d_parts.append(dates[full_ends])
+        ends_parts.append(full_ends)
+
+    if n_full < n:
+        tail = slice(n_full, n)
+        o_parts.append(np.array([open_[n_full]], dtype=np.float64))
+        h_parts.append(np.array([high[tail].max()], dtype=np.float64))
+        l_parts.append(np.array([low[tail].min()], dtype=np.float64))
+        c_parts.append(np.array([close[n - 1]], dtype=np.float64))
+        v_parts.append(np.array([volume[tail].sum()], dtype=np.float64))
+        d_parts.append(np.array([dates[n - 1]], dtype="datetime64[ns]"))
+        ends_parts.append(np.array([n - 1], dtype=np.int64))
+
+    ends = np.concatenate(ends_parts)
+    custom: dict[str, NDArray[np.float64]] = {}
+    if custom_cols:
+        for col, values in custom_cols.items():
+            custom[col] = values[ends]
+
+    idx = np.arange(n, dtype=np.int64)
+    bin_idx = idx // k
+    pos_in_bin = idx % k
+    completed = np.where(pos_in_bin == k - 1, bin_idx, bin_idx - 1)
+    if n % k != 0:
+        last_bin = bin_idx[-1]
+        completed[bin_idx == last_bin] = last_bin - 1
+
+    bars = CompressedBars(
+        open=np.concatenate(o_parts),
+        high=np.concatenate(h_parts),
+        low=np.concatenate(l_parts),
+        close=np.concatenate(c_parts),
+        volume=np.concatenate(v_parts),
+        dates=np.concatenate(d_parts),
+        custom=custom,
+    )
+    return bars, completed
 
 
 def compress(
@@ -821,17 +922,27 @@ def compress(
             empty_i,
         )
 
-    open_ = np.ascontiguousarray(open_, dtype=np.float64)
-    high = np.ascontiguousarray(high, dtype=np.float64)
-    low = np.ascontiguousarray(low, dtype=np.float64)
-    close = np.ascontiguousarray(close, dtype=np.float64)
-    volume = np.ascontiguousarray(volume, dtype=np.float64)
-    dates = np.ascontiguousarray(dates, dtype="datetime64[ns]")
+    open_ = _ascontiguous_f64(open_)
+    high = _ascontiguous_f64(high)
+    low = _ascontiguous_f64(low)
+    close = _ascontiguous_f64(close)
+    volume = _ascontiguous_f64(volume)
+    dates = _ascontiguous_dt64(dates)
+
+    if isinstance(interval, int):
+        return _compress_every_n_bars(
+            interval,
+            dates,
+            open_,
+            high,
+            low,
+            close,
+            volume,
+            custom_cols,
+        )
 
     bin_ids: NDArray[np.int64]
-    if isinstance(interval, int):
-        bin_ids = np.arange(n, dtype=np.int64) // interval
-    elif interval in _CALENDAR_INTERVALS:
+    if interval in _CALENDAR_INTERVALS:
         bin_ids = _calendar_bin_ids(dates, cast(CalendarInterval, interval))
     else:
         bin_ids = _duration_bin_ids(dates, interval)
@@ -928,41 +1039,88 @@ def compress_bars(
     return compressed_bars_to_bar_data(bars)
 
 
+def compress_symbol_intervals_from_frame(
+    df: pd.DataFrame,
+    symbol: str,
+    intervals: Iterable[TimeframeInterval],
+    custom_cols: Iterable[str],
+    base_bar_seconds: float,
+    *,
+    validate_dates: bool = True,
+) -> dict[TimeframeInterval, CompressedSymbolData]:
+    """Compresses one symbol to multiple intervals with a single OHLCV extract."""
+    interval_tuple = tuple(intervals)
+    sym_col = DataCol.SYMBOL.value
+    symbols = df[sym_col].to_numpy(copy=False)
+    row_mask = symbols == symbol
+    if not row_mask.any():
+        empty = _empty_compressed_symbol_data()
+        return {interval: empty for interval in interval_tuple}
+
+    arrays = _extract_ohlcv_arrays_masked(
+        df, row_mask, extra_custom_cols=custom_cols
+    )
+    if validate_dates:
+        _validate_symbol_dates_for_base(symbol, arrays.date, base_bar_seconds)
+
+    result: dict[TimeframeInterval, CompressedSymbolData] = {}
+    for interval in interval_tuple:
+        validate_timeframe_interval(interval, base_bar_seconds)
+        bars, completed = _compress_ohlcv(arrays, interval)
+        result[interval] = CompressedSymbolData(
+            bars=bars, completed=completed, base_dates=arrays.date
+        )
+    return result
+
+
+def compress_timeframes_from_frame(
+    df: pd.DataFrame,
+    symbols: Iterable[str],
+    intervals: Iterable[TimeframeInterval],
+    custom_cols: Iterable[str],
+    base_bar_seconds: float,
+) -> TimeframeData:
+    """Compresses multiple symbols and intervals from one multi-symbol frame."""
+    interval_tuple = tuple(intervals)
+    symbol_set = set(symbols)
+    sym_col = DataCol.SYMBOL.value
+    all_symbols = df[sym_col].to_numpy(copy=False)
+    timeframe_data = TimeframeData()
+    for sym in np.unique(all_symbols):
+        if sym not in symbol_set:
+            continue
+        sym_str = str(sym)
+        compressed = compress_symbol_intervals_from_frame(
+            df,
+            sym_str,
+            interval_tuple,
+            custom_cols,
+            base_bar_seconds,
+            validate_dates=False,
+        )
+        for interval, data in compressed.items():
+            timeframe_data.compressed[(sym_str, interval)] = data
+    return timeframe_data
+
+
 def compress_symbol_from_frame(
     df: pd.DataFrame,
     symbol: str,
     interval: TimeframeInterval,
     custom_cols: Iterable[str],
     base_bar_seconds: float,
+    *,
+    validate_dates: bool = True,
 ) -> CompressedSymbolData:
     """Compresses one symbol from a multi-symbol frame without copying rows."""
-    validate_timeframe_interval(interval, base_bar_seconds)
-    sym_col = DataCol.SYMBOL.value
-    symbols = df[sym_col].to_numpy(copy=False)
-    row_mask = symbols == symbol
-    if not row_mask.any():
-        empty_f = np.array([], dtype=np.float64)
-        empty_d = np.array([], dtype="datetime64[ns]")
-        empty_i = np.array([], dtype=np.int64)
-        bars = CompressedBars(
-            open=empty_f,
-            high=empty_f,
-            low=empty_f,
-            close=empty_f,
-            volume=empty_f,
-            dates=empty_d,
-        )
-        return CompressedSymbolData(
-            bars=bars, completed=empty_i, base_dates=empty_d
-        )
-    arrays = _extract_ohlcv_arrays_masked(
-        df, row_mask, extra_custom_cols=custom_cols
-    )
-    _validate_symbol_dates_for_base(symbol, arrays.date, base_bar_seconds)
-    bars, completed = _compress_ohlcv(arrays, interval)
-    return CompressedSymbolData(
-        bars=bars, completed=completed, base_dates=arrays.date
-    )
+    return compress_symbol_intervals_from_frame(
+        df,
+        symbol,
+        (interval,),
+        custom_cols,
+        base_bar_seconds,
+        validate_dates=validate_dates,
+    )[interval]
 
 
 def compress_symbol_df(
@@ -970,25 +1128,15 @@ def compress_symbol_df(
     interval: TimeframeInterval,
     custom_cols: Iterable[str],
     base_bar_seconds: float,
+    *,
+    validate_dates: bool = True,
 ) -> CompressedSymbolData:
     """Compresses a single-symbol DataFrame."""
     validate_timeframe_interval(interval, base_bar_seconds)
     if len(sym_df) == 0:
-        empty_f = np.array([], dtype=np.float64)
-        empty_d = np.array([], dtype="datetime64[ns]")
-        empty_i = np.array([], dtype=np.int64)
-        bars = CompressedBars(
-            open=empty_f,
-            high=empty_f,
-            low=empty_f,
-            close=empty_f,
-            volume=empty_f,
-            dates=empty_d,
-        )
-        return CompressedSymbolData(
-            bars=bars, completed=empty_i, base_dates=empty_d
-        )
-    validate_base_timeframe_data(sym_df, base_bar_seconds)
+        return _empty_compressed_symbol_data()
+    if validate_dates:
+        validate_base_timeframe_data(sym_df, base_bar_seconds)
     arrays = _extract_ohlcv_arrays(sym_df, extra_custom_cols=custom_cols)
     bars, completed = _compress_ohlcv(arrays, interval)
     return CompressedSymbolData(

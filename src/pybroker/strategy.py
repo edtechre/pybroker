@@ -74,7 +74,7 @@ from pybroker.timeframe import (
     TimeframeData,
     TimeframeInterval,
     _iter_symbol_date_groups,
-    compress_symbol_from_frame,
+    compress_timeframes_from_frame,
     indicator_timeframe_name,
     model_timeframe_name,
     normalize_timeframe_interval,
@@ -1467,24 +1467,13 @@ class Strategy(
             raise ValueError(
                 "Base timeframe must be resolved before compressing timeframes."
             )
-        timeframe_data = TimeframeData()
-        custom_cols = self._scope.custom_data_cols
-        sym_col = DataCol.SYMBOL.value
-        symbol_set = set(symbols)
-        all_symbols = df[sym_col].to_numpy(copy=False)
-        for sym in np.unique(all_symbols):
-            if sym not in symbol_set:
-                continue
-            for interval in self._timeframes:
-                data = compress_symbol_from_frame(
-                    df,
-                    sym,
-                    interval,
-                    custom_cols,
-                    self._base_bar_seconds,
-                )
-                timeframe_data.compressed[(sym, interval)] = data
-        return timeframe_data
+        return compress_timeframes_from_frame(
+            df,
+            symbols,
+            self._timeframes,
+            self._scope.custom_data_cols,
+            self._base_bar_seconds,
+        )
 
     def add_execution(
         self,

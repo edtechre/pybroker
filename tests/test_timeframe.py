@@ -13,6 +13,9 @@ from pybroker.timeframe import (
     compress,
     compress_bars,
     compress_symbol_df,
+    compress_symbol_from_frame,
+    compress_symbol_intervals_from_frame,
+    compress_timeframes_from_frame,
     compressed_bars_to_bar_data,
     format_timeframe_interval,
     indicator_timeframe_name,
@@ -673,6 +676,72 @@ class TestCompressSymbolDfValidation:
             sym_df, "5m", frozenset(), ONE_MINUTE_BASE_SECONDS
         )
         assert len(data.bars.close) == 2
+
+
+class TestBatchCompressionFromFrame:
+    def _multi_symbol_df(self) -> pd.DataFrame:
+        dates = pd.date_range("2020-01-06", periods=10, freq="B")
+        frames = []
+        for sym in ("SPY", "QQQ"):
+            close = np.arange(10, dtype=np.float64) + (
+                1 if sym == "SPY" else 11
+            )
+            frames.append(
+                pd.DataFrame(
+                    {
+                        DataCol.SYMBOL.value: [sym] * 10,
+                        DataCol.DATE.value: dates,
+                        DataCol.OPEN.value: close,
+                        DataCol.HIGH.value: close + 1,
+                        DataCol.LOW.value: close - 1,
+                        DataCol.CLOSE.value: close,
+                        DataCol.VOLUME.value: np.ones(10),
+                    }
+                )
+            )
+        return pd.concat(frames, ignore_index=True)
+
+    def test_symbol_intervals_matches_single_interval_calls(self):
+        df = self._multi_symbol_df()
+        intervals = ("weekly", 2)
+        custom_cols: frozenset[str] = frozenset()
+        batch = compress_symbol_intervals_from_frame(
+            df, "SPY", intervals, custom_cols, DAILY_BASE_SECONDS
+        )
+        for interval in intervals:
+            single = compress_symbol_from_frame(
+                df, "SPY", interval, custom_cols, DAILY_BASE_SECONDS
+            )
+            expected = batch[interval]
+            np.testing.assert_array_equal(
+                expected.bars.close, single.bars.close
+            )
+            np.testing.assert_array_equal(expected.completed, single.completed)
+            np.testing.assert_array_equal(
+                expected.base_dates, single.base_dates
+            )
+
+    def test_timeframes_from_frame_matches_per_symbol_calls(self):
+        df = self._multi_symbol_df()
+        symbols = {"SPY", "QQQ"}
+        intervals = frozenset({"weekly", 2})
+        custom_cols: frozenset[str] = frozenset()
+        batch = compress_timeframes_from_frame(
+            df, symbols, intervals, custom_cols, DAILY_BASE_SECONDS
+        )
+        expected = TimeframeData()
+        for sym in symbols:
+            for interval in intervals:
+                expected.compressed[(sym, interval)] = (
+                    compress_symbol_from_frame(
+                        df, sym, interval, custom_cols, DAILY_BASE_SECONDS
+                    )
+                )
+        assert set(batch.compressed) == set(expected.compressed)
+        for key, data in batch.compressed.items():
+            ref = expected.compressed[key]
+            np.testing.assert_array_equal(data.bars.close, ref.bars.close)
+            np.testing.assert_array_equal(data.completed, ref.completed)
 
 
 class TestModelTimeframeNaming:
