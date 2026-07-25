@@ -369,7 +369,7 @@ class ModelsMixin:
             input_cols: Optional[tuple[str]] = None
             if isinstance(model_result, tuple):
                 model = model_result[0]
-                input_cols = tuple(model_result[1])  # type: ignore[assignment]
+                input_cols = tuple(model_result[1])
             else:
                 model = model_result
             models[model_sym] = TrainedModel(

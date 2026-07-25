@@ -467,7 +467,7 @@ class AlpacaCrypto(DataSource):
             timeframe=TimeFrame(amount, unit),
             limit=None,
         )
-        df = _get_alpaca_crypto_bars(self._api, request).df  # type: ignore[union-attr]
+        df = _get_alpaca_crypto_bars(self._api, request).df
         if df.columns.empty:
             return pd.DataFrame(columns=self.COLUMNS)
         if df.empty:

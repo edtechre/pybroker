@@ -271,9 +271,9 @@ def to_datetime(
 ) -> datetime:
     """Converts ``date`` to :class:`datetime`."""
     if isinstance(date, pd.Timestamp):
-        return date.to_pydatetime()  # type: ignore[union-attr]
+        return date.to_pydatetime()
     elif isinstance(date, datetime):
-        return date  # type: ignore[return-value]
+        return date
     elif isinstance(date, str):
         return pd.to_datetime(date).to_pydatetime()
     elif isinstance(date, np.datetime64):
