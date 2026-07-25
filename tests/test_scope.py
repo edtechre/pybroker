@@ -276,6 +276,32 @@ class TestIndicatorScope:
         ):
             ind_scope.fetch(sym, name)
 
+    def test_fetch_value(self, ind_scope, symbol, ind_data, ind_name):
+        end_index = 10
+        result = ind_scope.fetch_value(symbol, ind_name, end_index)
+        expected = ind_data[IndicatorSymbol(ind_name, symbol)].values[
+            end_index - 1
+        ]
+        assert result == float(expected)
+
+    def test_fetch_value_when_cached(
+        self, ind_scope, symbol, ind_data, ind_name
+    ):
+        end_index = 10
+        ind_scope.fetch_value(symbol, ind_name, end_index)
+        result = ind_scope.fetch_value(symbol, ind_name, end_index)
+        expected = ind_data[IndicatorSymbol(ind_name, symbol)].values[
+            end_index - 1
+        ]
+        assert result == float(expected)
+
+    def test_fetch_value_when_not_found_then_error(self, ind_scope):
+        with pytest.raises(
+            ValueError,
+            match=re.escape("Indicator 'foo' not found for SPY."),
+        ):
+            ind_scope.fetch_value("SPY", "foo", 1)
+
 
 class TestModelInputScope:
     def test_fetch(

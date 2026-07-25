@@ -32,7 +32,7 @@ from pybroker.portfolio import (
     Trade,
 )
 from pybroker.scope import PendingOrder
-from pybroker.slippage import SlippageModel
+from pybroker.slippage import FixedSlippageModel, SlippageModel
 from pybroker.strategy import (
     BacktestMixin,
     Execution,
@@ -3883,12 +3883,6 @@ class TestStrategy:
         assert (result.trades["stop"] == "bar").all()
 
     def test_backtest_when_slippage(self, data_source_df):
-        class FakeSlippageModel(SlippageModel):
-            def apply_slippage(
-                self, ctx: ExecContext, buy_shares, sell_shares
-            ):
-                ctx.buy_shares = 99
-
         def buy_exec_fn(ctx):
             ctx.buy_fill_price = PriceType.CLOSE
             ctx.sell_fill_price = PriceType.OPEN
@@ -3900,35 +3894,83 @@ class TestStrategy:
         dates = dates[dates <= np.datetime64(END_DATE)]
         buy_dates = dates[1:]
         sell_dates = dates[3:]
+        bps = 5
         config = StrategyConfig(initial_cash=500_000)
         strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
-        strategy.set_slippage_model(FakeSlippageModel())
+        strategy.set_slippage_model(FixedSlippageModel(bps=bps))
         strategy.add_execution(buy_exec_fn, "SPY")
         result = strategy.backtest(calc_bootstrap=False)
         orders = result.orders
+        buy_factor = 1 + bps / 10_000
         buy_orders = orders[orders["type"] == "buy"]
         assert len(buy_orders) == len(buy_dates)
         for buy_date in buy_dates:
             row = buy_orders[buy_orders["date"] == buy_date]
             assert row["symbol"].item() == "SPY"
-            assert row["shares"].item() == 99
+            assert row["shares"].item() == 100
             assert np.isnan(row["limit_price"].item())
-            assert row["fill_price"].item() == round(
-                df[df["date"] == buy_date]["close"].item(), 2
-            )
+            base = round(df[df["date"] == buy_date]["close"].item(), 2)
+            assert row["fill_price"].item() == round(base * buy_factor, 2)
             assert row["fees"].item() == 0
         sell_orders = orders[orders["type"] == "sell"]
         assert len(sell_orders) == len(sell_dates)
         for sell_date in sell_dates:
             row = sell_orders[sell_orders["date"] == sell_date]
             assert row["symbol"].item() == "SPY"
-            assert row["shares"].item() == 99
+            assert row["shares"].item() == 100
             assert np.isnan(row["limit_price"].item())
+            # Bar-stop exits bypass the fill-time slippage hook.
             assert row["fill_price"].item() == round(
                 df[df["date"] == sell_date]["open"].item(), 2
             )
             assert row["fees"].item() == 0
         assert (result.trades["stop"] == "bar").all()
+
+    def test_backtest_and_walkforward_when_slippage_then_uniform(
+        self, data_source_df
+    ):
+        def buy_exec_fn(ctx):
+            ctx.buy_fill_price = PriceType.CLOSE
+            ctx.buy_shares = 100
+            ctx.hold_bars = 2
+
+        config = StrategyConfig(initial_cash=500_000)
+
+        def make_strategy():
+            strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+            strategy.set_slippage_model(FixedSlippageModel(bps=5))
+            strategy.add_execution(buy_exec_fn, "SPY")
+            return strategy
+
+        backtest_result = make_strategy().backtest(calc_bootstrap=False)
+        walkforward_result = make_strategy().walkforward(
+            windows=1, train_size=0, calc_bootstrap=False
+        )
+        pd.testing.assert_frame_equal(
+            backtest_result.orders.reset_index(drop=True),
+            walkforward_result.orders.reset_index(drop=True),
+        )
+
+    def test_backtest_when_slippage_then_deterministic(self, data_source_df):
+        def buy_exec_fn(ctx):
+            ctx.buy_fill_price = PriceType.CLOSE
+            ctx.buy_shares = 100
+            ctx.hold_bars = 2
+
+        config = StrategyConfig(initial_cash=500_000)
+
+        def run_backtest():
+            strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+            strategy.set_slippage_model(FixedSlippageModel(bps=5))
+            strategy.add_execution(buy_exec_fn, "SPY")
+            return strategy.backtest(calc_bootstrap=False)
+
+        first = run_backtest()
+        second = run_backtest()
+        pd.testing.assert_frame_equal(
+            first.orders.reset_index(drop=True),
+            second.orders.reset_index(drop=True),
+        )
 
     def test_backtest_when_slippage_and_sell_all_shares(self, data_source_df):
         class FakeSlippageModel(SlippageModel):
@@ -3951,7 +3993,7 @@ class TestStrategy:
         orders = result.orders
         sell_orders = orders[orders["type"] == "sell"]
         assert len(sell_orders) == 1
-        assert sell_orders.iloc[0]["shares"] == 100
+        assert sell_orders.iloc[0]["shares"] == 90
 
     def test_backtest_when_slippage_and_cover_all_shares(self, data_source_df):
         class FakeSlippageModel(SlippageModel):
@@ -3974,7 +4016,7 @@ class TestStrategy:
         orders = result.orders
         buy_orders = orders[orders["type"] == "buy"]
         assert len(buy_orders) == 1
-        assert buy_orders.iloc[0]["shares"] == 100
+        assert buy_orders.iloc[0]["shares"] == 90
 
     def test_backtest_when_stop_loss(self, data_source_df):
         def exec_fn(ctx):

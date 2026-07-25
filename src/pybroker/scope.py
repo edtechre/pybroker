@@ -692,6 +692,15 @@ class IndicatorScope:
         """Fetches the full indicator array without truncation."""
         return self.fetch(symbol, name, end_index=None)
 
+    def fetch_value(self, symbol: str, name: str, end_index: int) -> float:
+        """Returns the scalar value at ``end_index - 1`` without slicing."""
+        array = self.fetch_full(symbol, name)
+        if end_index <= 0:
+            raise ValueError(f"{name!r} value not found.")
+        if end_index > len(array):
+            end_index = len(array)
+        return float(array[end_index - 1])
+
 
 class TimeframeScope:
     """Serves compressed bar and indicator data through alignment maps."""

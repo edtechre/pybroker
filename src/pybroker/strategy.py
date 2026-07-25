@@ -85,7 +85,11 @@ from pybroker.timeframe import (
     validate_base_timeframe_data,
     validate_timeframe_interval,
 )
-from pybroker.slippage import SlippageModel
+from pybroker.slippage import (
+    FillSlippageContext,
+    FixedSlippageModel,
+    SlippageModel,
+)
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime
@@ -589,6 +593,10 @@ class BacktestMixin:
                 self._place_buy_orders(
                     date=date,
                     price_scope=price_scope,
+                    col_scope=col_scope,
+                    ind_scope=ind_scope,
+                    sym_end_index=sym_end_index,
+                    slippage_model=slippage_model,
                     pending_order_scope=pending_order_scope,
                     buy_sched=cover_sched,
                     portfolio=portfolio,
@@ -598,6 +606,10 @@ class BacktestMixin:
                 self._place_sell_orders(
                     date=date,
                     price_scope=price_scope,
+                    col_scope=col_scope,
+                    ind_scope=ind_scope,
+                    sym_end_index=sym_end_index,
+                    slippage_model=slippage_model,
                     pending_order_scope=pending_order_scope,
                     sell_sched=sell_sched,
                     portfolio=portfolio,
@@ -607,6 +619,10 @@ class BacktestMixin:
                 self._place_buy_orders(
                     date=date,
                     price_scope=price_scope,
+                    col_scope=col_scope,
+                    ind_scope=ind_scope,
+                    sym_end_index=sym_end_index,
+                    slippage_model=slippage_model,
                     pending_order_scope=pending_order_scope,
                     buy_sched=buy_sched,
                     portfolio=portfolio,
@@ -616,6 +632,9 @@ class BacktestMixin:
                 date=date,
                 sym_end_index=sym_end_index,
                 price_scope=price_scope,
+                col_scope=col_scope,
+                ind_scope=ind_scope,
+                slippage_model=slippage_model,
                 pending_order_scope=pending_order_scope,
                 portfolio=portfolio,
                 enable_fractional_shares=enable_fractional_shares,
@@ -639,7 +658,7 @@ class BacktestMixin:
             for ctx in active_ctxs.values():
                 if (
                     slippage_model
-                    and not ctx._exiting_pos
+                    and slippage_model.uses_signal_slippage
                     and (ctx.buy_shares or ctx.sell_shares)
                 ):
                     self._apply_slippage(slippage_model, ctx)
@@ -816,6 +835,10 @@ class BacktestMixin:
         self,
         date: np.datetime64,
         price_scope: PriceScope,
+        col_scope: ColumnScope,
+        ind_scope: IndicatorScope,
+        sym_end_index: Mapping[str, int],
+        slippage_model: Optional[SlippageModel],
         pending_order_scope: PendingOrderScope,
         buy_sched: dict[np.datetime64, list[ExecResult]],
         portfolio: Portfolio,
@@ -834,22 +857,22 @@ class BacktestMixin:
             pending = pending_order_scope.get(result.pending_order_id)
             if pending is None:
                 continue
-            order = self._attempt_pending_order(
+            order, shares, fill_price = self._attempt_pending_order(
                 pending=pending,
                 date=date,
                 price_scope=price_scope,
+                col_scope=col_scope,
+                ind_scope=ind_scope,
+                sym_end_index=sym_end_index,
+                slippage_model=slippage_model,
                 portfolio=portfolio,
                 enable_fractional_shares=enable_fractional_shares,
             )
-            buy_shares = self._get_shares(
-                pending.shares, enable_fractional_shares
-            )
-            fill_price = price_scope.fetch(pending.symbol, pending.fill_price)
             if order is None:
                 logger.debug_unfilled_buy_order(
                     date=date,
                     symbol=pending.symbol,
-                    shares=buy_shares,
+                    shares=shares,
                     fill_price=fill_price,
                     limit_price=pending.limit_price,
                 )
@@ -857,7 +880,7 @@ class BacktestMixin:
                 logger.debug_filled_buy_order(
                     date=date,
                     symbol=pending.symbol,
-                    shares=buy_shares,
+                    shares=shares,
                     fill_price=fill_price,
                     limit_price=pending.limit_price,
                 )
@@ -869,6 +892,10 @@ class BacktestMixin:
         self,
         date: np.datetime64,
         price_scope: PriceScope,
+        col_scope: ColumnScope,
+        ind_scope: IndicatorScope,
+        sym_end_index: Mapping[str, int],
+        slippage_model: Optional[SlippageModel],
         pending_order_scope: PendingOrderScope,
         sell_sched: dict[np.datetime64, list[ExecResult]],
         portfolio: Portfolio,
@@ -887,22 +914,22 @@ class BacktestMixin:
             pending = pending_order_scope.get(result.pending_order_id)
             if pending is None:
                 continue
-            order = self._attempt_pending_order(
+            order, shares, fill_price = self._attempt_pending_order(
                 pending=pending,
                 date=date,
                 price_scope=price_scope,
+                col_scope=col_scope,
+                ind_scope=ind_scope,
+                sym_end_index=sym_end_index,
+                slippage_model=slippage_model,
                 portfolio=portfolio,
                 enable_fractional_shares=enable_fractional_shares,
             )
-            sell_shares = self._get_shares(
-                pending.shares, enable_fractional_shares
-            )
-            fill_price = price_scope.fetch(pending.symbol, pending.fill_price)
             if order is None:
                 logger.debug_unfilled_sell_order(
                     date=date,
                     symbol=pending.symbol,
-                    shares=sell_shares,
+                    shares=shares,
                     fill_price=fill_price,
                     limit_price=pending.limit_price,
                 )
@@ -910,7 +937,7 @@ class BacktestMixin:
                 logger.debug_filled_sell_order(
                     date=date,
                     symbol=pending.symbol,
-                    shares=sell_shares,
+                    shares=shares,
                     fill_price=fill_price,
                     limit_price=pending.limit_price,
                 )
@@ -923,6 +950,9 @@ class BacktestMixin:
         date: np.datetime64,
         sym_end_index: Mapping[str, int],
         price_scope: PriceScope,
+        col_scope: ColumnScope,
+        ind_scope: IndicatorScope,
+        slippage_model: Optional[SlippageModel],
         pending_order_scope: PendingOrderScope,
         portfolio: Portfolio,
         enable_fractional_shares: bool,
@@ -945,15 +975,17 @@ class BacktestMixin:
                 pending_order_scope.remove(pending.id)
                 logger.debug_timeout_order(date=date, pending_order=pending)
                 continue
-            order = self._attempt_pending_order(
+            order, shares, fill_price = self._attempt_pending_order(
                 pending=pending,
                 date=date,
                 price_scope=price_scope,
+                col_scope=col_scope,
+                ind_scope=ind_scope,
+                sym_end_index=sym_end_index,
+                slippage_model=slippage_model,
                 portfolio=portfolio,
                 enable_fractional_shares=enable_fractional_shares,
             )
-            shares = self._get_shares(pending.shares, enable_fractional_shares)
-            fill_price = price_scope.fetch(pending.symbol, pending.fill_price)
             if order is None:
                 if pending.type == "buy":
                     logger.debug_unfilled_buy_order(
@@ -996,18 +1028,58 @@ class BacktestMixin:
         pending: PendingOrder,
         date: np.datetime64,
         price_scope: PriceScope,
+        col_scope: ColumnScope,
+        ind_scope: IndicatorScope,
+        sym_end_index: Mapping[str, int],
+        slippage_model: Optional[SlippageModel],
         portfolio: Portfolio,
         enable_fractional_shares: bool,
-    ) -> Optional[Order]:
+    ) -> tuple[Optional[Order], Decimal, Decimal]:
         shares = self._get_shares(pending.shares, enable_fractional_shares)
         fill_price = price_scope.fetch(pending.symbol, pending.fill_price)
+        if slippage_model is not None:
+            if isinstance(slippage_model, FixedSlippageModel):
+                fill_price = slippage_model.adjust_fill_price(
+                    pending.type, fill_price
+                )
+            elif not slippage_model.is_fill_noop:
+                fill_ctx = FillSlippageContext(
+                    side=pending.type,
+                    symbol=pending.symbol,
+                    shares=shares,
+                    fill_price=fill_price,
+                    col_scope=col_scope,
+                    ind_scope=ind_scope,
+                    sym_end_index=sym_end_index,
+                )
+                shares, fill_price = slippage_model.apply_at_fill(fill_ctx)
         if pending.type == "buy":
             order_type = (
                 OrderType.LIMIT
                 if pending.limit_price is not None
                 else OrderType.MARKET
             )
-            return portfolio.buy(
+            return (
+                portfolio.buy(
+                    date=date,
+                    symbol=pending.symbol,
+                    shares=shares,
+                    fill_price=fill_price,
+                    limit_price=pending.limit_price,
+                    stops=pending.stops,
+                    created=pending.created,
+                    order_type=order_type,
+                ),
+                shares,
+                fill_price,
+            )
+        order_type = (
+            OrderType.LIMIT
+            if pending.limit_price is not None
+            else OrderType.MARKET
+        )
+        return (
+            portfolio.sell(
                 date=date,
                 symbol=pending.symbol,
                 shares=shares,
@@ -1016,21 +1088,9 @@ class BacktestMixin:
                 stops=pending.stops,
                 created=pending.created,
                 order_type=order_type,
-            )
-        order_type = (
-            OrderType.LIMIT
-            if pending.limit_price is not None
-            else OrderType.MARKET
-        )
-        return portfolio.sell(
-            date=date,
-            symbol=pending.symbol,
-            shares=shares,
-            fill_price=fill_price,
-            limit_price=pending.limit_price,
-            stops=pending.stops,
-            created=pending.created,
-            order_type=order_type,
+            ),
+            shares,
+            fill_price,
         )
 
     def _get_shares(
@@ -1793,6 +1853,8 @@ class Strategy(
             scope.freeze_data_cols()
             if not self._executions:
                 raise ValueError("No executions were added.")
+            if self._slippage_model is not None:
+                self._slippage_model.validate(self)
             start_dt = (
                 self._start_date
                 if start_date is None

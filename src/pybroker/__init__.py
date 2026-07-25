@@ -77,7 +77,13 @@ from pybroker.scope import (
     register_columns as register_columns,
     unregister_columns as unregister_columns,
 )
-from pybroker.slippage import RandomSlippageModel as RandomSlippageModel
+from pybroker.slippage import (
+    FillSlippageContext as FillSlippageContext,
+    FixedSlippageModel as FixedSlippageModel,
+    SlippageModel as SlippageModel,
+    VolatilitySlippageModel as VolatilitySlippageModel,
+    VolumeSlippageModel as VolumeSlippageModel,
+)
 from pybroker.strategy import Strategy as Strategy, TestResult as TestResult
 from pybroker.timeframe import (
     TimeframeInterval as TimeframeInterval,
