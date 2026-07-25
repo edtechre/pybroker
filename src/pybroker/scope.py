@@ -348,6 +348,30 @@ def symbol_array_store_from_frame(
     return symbol_array_store_from_indexed_df(indexed)
 
 
+def slice_symbol_array_store_by_dates(
+    store: SymbolArrayStore,
+    selected_dates: Union[Sequence[np.datetime64], NDArray[np.datetime64]],
+) -> SymbolArrayStore:
+    """Filters a store to rows whose dates are in ``selected_dates``."""
+    if not store.symbols:
+        return SymbolArrayStore(frozenset(), {})
+    date_col = DataCol.DATE.value
+    target = np.asarray(selected_dates, dtype="datetime64[ns]")
+    if len(target) == 0:
+        return SymbolArrayStore(frozenset(), {})
+    sym_arrays: dict[str, dict[str, NDArray]] = {}
+    for sym in store.symbols:
+        sym_data = store.sym_arrays[sym]
+        dates = sym_data.get(date_col)
+        if dates is None or len(dates) == 0:
+            continue
+        mask = np.isin(dates, target)
+        if not mask.any():
+            continue
+        sym_arrays[sym] = {col: arr[mask] for col, arr in sym_data.items()}
+    return SymbolArrayStore(frozenset(sym_arrays.keys()), sym_arrays)
+
+
 def merge_symbol_array_stores(
     left: SymbolArrayStore,
     right: SymbolArrayStore,
@@ -1370,6 +1394,10 @@ class PendingOrderScope:
         ``order_id``.
         """
         return order_id in self._orders
+
+    def has_orders(self) -> bool:
+        """Returns whether any pending orders exist."""
+        return bool(self._orders)
 
     def get(self, order_id: int) -> Optional[PendingOrder]:
         """Returns a :class:`.PendingOrder` with ``order_id``."""

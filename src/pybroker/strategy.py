@@ -61,10 +61,12 @@ from pybroker.scope import (
     PredictionScope,
     PriceScope,
     StaticScope,
+    SymbolArrayStore,
     TimeframeScope,
     column_scope_from_frame,
     get_signals,
     merge_symbol_array_stores,
+    slice_symbol_array_store_by_dates,
     sym_exec_dates_from_store,
     symbol_array_store_from_frame,
 )
@@ -99,6 +101,7 @@ from typing import (
     MutableMapping,
     NamedTuple,
     Optional,
+    Sequence,
     TypeGuard,
     Union,
     cast,
@@ -107,6 +110,45 @@ from typing_extensions import Concatenate, ParamSpec
 
 
 P = ParamSpec("P")
+
+_EMPTY_KWARGS: dict[str, Any] = {}
+
+
+def _ensure_range_index(df: pd.DataFrame) -> pd.DataFrame:
+    if (
+        isinstance(df.index, pd.RangeIndex)
+        and df.index.start == 0
+        and df.index.step == 1
+        and len(df.index) == len(df)
+    ):
+        return df
+    return df.reset_index(drop=True)
+
+
+def _unique_dates_from_rows(
+    dates_arr: NDArray[np.datetime64],
+    row_indices: NDArray[np.int_],
+) -> NDArray[np.datetime64]:
+    if len(row_indices) == 0:
+        return np.array([], dtype="datetime64[ns]")
+    return get_unique_sorted_dates_array(dates_arr[row_indices])
+
+
+def _date_to_active_syms(
+    sym_exec_dates: Mapping[str, frozenset[np.datetime64]],
+    test_dates: Sequence[np.datetime64],
+) -> tuple[dict[np.datetime64, tuple[str, ...]], bool]:
+    test_dates_set = frozenset(test_dates)
+    if not sym_exec_dates:
+        return {}, True
+    aligned = all(dates == test_dates_set for dates in sym_exec_dates.values())
+    if aligned:
+        return {}, True
+    date_to_syms: dict[np.datetime64, list[str]] = defaultdict(list)
+    for sym, dates in sym_exec_dates.items():
+        for date in dates:
+            date_to_syms[date].append(sym)
+    return {date: tuple(syms) for date, syms in date_to_syms.items()}, False
 
 
 def _between(
@@ -395,6 +437,7 @@ class BacktestMixin:
         timeframe_data: TimeframeData = TimeframeData(),
         declared_timeframes: frozenset[TimeframeInterval] = frozenset(),
         history_col_scope: Optional[ColumnScope] = None,
+        test_col_scope: Optional[ColumnScope] = None,
     ) -> dict[str, pd.DataFrame]:
         r"""Backtests a ``set`` of :class:`.Execution`\ s that implement
         trading logic.
@@ -429,7 +472,10 @@ class BacktestMixin:
         """
         test_dates = get_unique_sorted_dates(test_data[DataCol.DATE.value])
         test_syms = sorted(test_data[DataCol.SYMBOL.value].unique())
-        col_scope = column_scope_from_frame(test_data.reset_index(drop=True))
+        if test_col_scope is not None:
+            col_scope = test_col_scope
+        else:
+            col_scope = column_scope_from_frame(_ensure_range_index(test_data))
         ind_scope = IndicatorScope(indicator_data, test_dates)
         input_scope = ModelInputScope(
             col_scope,
@@ -456,7 +502,7 @@ class BacktestMixin:
         exec_ctxs: dict[str, ExecContext] = {}
         exec_fns: dict[str, Callable[[ExecContext], None]] = {}
         exec_args: dict[str, tuple[Any, ...]] = {}
-        exec_kwargs: dict[str, tuple[tuple[str, Any], ...]] = {}
+        exec_kwargs: dict[str, dict[str, Any]] = {}
         for sym in test_syms:
             for exec in executions:
                 if sym not in _static_symbols(exec.symbols):
@@ -477,7 +523,7 @@ class BacktestMixin:
                     session=sessions[sym],
                 )
                 exec_args[sym] = exec.args
-                exec_kwargs[sym] = exec.kwargs
+                exec_kwargs[sym] = dict(exec.kwargs)
                 if exec.fn is not None:
                     exec_fns[sym] = exec.fn
         sym_exec_dates = {
@@ -487,6 +533,9 @@ class BacktestMixin:
             ).items()
             if sym in exec_ctxs
         }
+        date_to_syms, calendar_aligned = _date_to_active_syms(
+            sym_exec_dates, test_dates
+        )
         cover_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
         buy_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
         sell_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
@@ -500,9 +549,17 @@ class BacktestMixin:
         for i, date in enumerate(test_dates):
             active_ctxs.clear()
             price_scope.reset_bar()
-            for sym, ctx in exec_ctxs.items():
-                if date not in sym_exec_dates[sym]:
-                    continue
+            if calendar_aligned:
+                active_iter: Iterable[tuple[str, ExecContext]] = (
+                    exec_ctxs.items()
+                )
+            else:
+                active_iter = (
+                    (sym, exec_ctxs[sym])
+                    for sym in date_to_syms.get(date, ())
+                    if sym in exec_ctxs
+                )
+            for sym, ctx in active_iter:
                 sym_end_index[sym] += 1
                 if warmup and sym_end_index[sym] <= warmup:
                     continue
@@ -572,7 +629,7 @@ class BacktestMixin:
                     exec_fns[sym](
                         ctx,
                         *exec_args.get(sym, ()),
-                        **dict(exec_kwargs.get(sym, ())),
+                        **exec_kwargs.get(sym, _EMPTY_KWARGS),
                     )
             if after_exec_fn is not None and active_ctxs:
                 after_exec_fn(active_ctxs)
@@ -869,8 +926,10 @@ class BacktestMixin:
         portfolio: Portfolio,
         enable_fractional_shares: bool,
     ):
+        if not pending_order_scope.has_orders():
+            return
         logger = StaticScope.instance().logger
-        for pending in tuple(pending_order_scope.orders()):
+        for pending in list(pending_order_scope.orders()):
             if pending.exec_date >= date:
                 continue
             if pending.timeout_bars is None:
@@ -1799,6 +1858,13 @@ class Strategy(
                 between_time=between_time,
                 days=day_ids,
             )
+            date_col = DataCol.DATE.value
+            master_store = symbol_array_store_from_frame(
+                _ensure_range_index(df)
+            )
+            master_dates_arr = df[date_col].to_numpy(
+                dtype="datetime64[ns]", copy=False
+            )
             if has_selector:
                 indicator_data: dict[IndicatorSymbol, pd.Series] = {}
             else:
@@ -1832,6 +1898,8 @@ class Strategy(
             signals = self._run_walkforward(
                 portfolio=portfolio,
                 df=df,
+                master_store=master_store,
+                master_dates_arr=master_dates_arr,
                 indicator_data=indicator_data,
                 timeframe_data=timeframe_data,
                 declared_timeframes=self._timeframes,
@@ -1892,7 +1960,7 @@ class Strategy(
         if not dropped or test_data.empty:
             return
         test_store = symbol_array_store_from_frame(
-            test_data.reset_index(drop=True)
+            _ensure_range_index(test_data)
         )
         col_scope = ColumnScope(test_store)
         sym_end_index = {sym: 1 for sym in dropped}
@@ -1922,6 +1990,8 @@ class Strategy(
         self,
         portfolio: Portfolio,
         df: pd.DataFrame,
+        master_store: SymbolArrayStore,
+        master_dates_arr: NDArray[np.datetime64],
         indicator_data: dict[IndicatorSymbol, pd.Series],
         timeframe_data: TimeframeData,
         declared_timeframes: frozenset[TimeframeInterval],
@@ -2065,14 +2135,26 @@ class Strategy(
                 )
             if test_data.empty:
                 return signals
+            test_dates_arr = _unique_dates_from_rows(
+                master_dates_arr, test_rows
+            )
+            test_store = slice_symbol_array_store_by_dates(
+                master_store, test_dates_arr
+            )
             if not train_data.empty:
+                train_dates_arr = _unique_dates_from_rows(
+                    master_dates_arr, train_rows
+                )
+                train_store = slice_symbol_array_store_by_dates(
+                    master_store, train_dates_arr
+                )
                 history_store = merge_symbol_array_stores(
-                    symbol_array_store_from_frame(train_data),
-                    symbol_array_store_from_frame(test_data),
+                    train_store, test_store
                 )
             else:
-                history_store = symbol_array_store_from_frame(test_data)
+                history_store = test_store
             history_col_scope = ColumnScope(history_store)
+            test_col_scope = ColumnScope(test_store)
             split_signals = self.backtest_executions(
                 config=self._config,
                 executions=window_executions,
@@ -2094,6 +2176,7 @@ class Strategy(
                 round_fill_price=self._config.round_fill_price,
                 warmup=warmup,
                 history_col_scope=history_col_scope,
+                test_col_scope=test_col_scope,
             )
             for sym, signals_df in split_signals.items():
                 signal_frames[sym].append(signals_df)
@@ -2114,7 +2197,8 @@ class Strategy(
         days: Optional[tuple[int]],
     ) -> pd.DataFrame:
         if start_date != self._start_date or end_date != self._end_date:
-            df = _between(df, start_date, end_date).reset_index(drop=True)
+            df = _between(df, start_date, end_date)
+            df = _ensure_range_index(df)
         if df[DataCol.DATE.value].dt.tz is not None:
             # Fixes bug on Windows.
             # https://stackoverflow.com/questions/51827582/message-exception-ignored-when-dealing-pandas-datetime-type
@@ -2221,7 +2305,7 @@ class Strategy(
                 df = df[df[DataCol.SYMBOL.value].isin(unique_syms)]
         if df.empty:
             raise ValueError("DataSource is empty.")
-        return df.reset_index(drop=True)
+        return _ensure_range_index(df)
 
     def _to_test_result(
         self,

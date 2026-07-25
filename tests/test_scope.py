@@ -26,6 +26,7 @@ from pybroker.scope import (
     get_signals,
     param,
     register_columns,
+    slice_symbol_array_store_by_dates,
     symbol_array_store_from_frame,
     symbol_array_store_from_indexed_df,
     unregister_columns,
@@ -561,3 +562,27 @@ def test_clear_params(scope):
     assert scope._params == {"alpha": 0.1, "beta": 0.2}
     scope.clear_params()
     assert scope._params == {}
+
+
+def test_slice_symbol_array_store_by_dates(data_source_df):
+    store = symbol_array_store_from_frame(data_source_df)
+    sym = "SPY"
+    all_dates = store.sym_arrays[sym]["date"]
+    selected = all_dates[::2]
+    sliced = slice_symbol_array_store_by_dates(store, selected)
+    assert sym in sliced.symbols
+    np.testing.assert_array_equal(
+        sliced.sym_arrays[sym]["date"],
+        selected,
+    )
+    assert len(sliced.sym_arrays[sym]["close"]) == len(selected)
+
+
+def test_slice_symbol_array_store_by_dates_when_empty_selection(
+    data_source_df,
+):
+    store = symbol_array_store_from_frame(data_source_df)
+    sliced = slice_symbol_array_store_by_dates(
+        store, np.array([], dtype="datetime64[ns]")
+    )
+    assert not sliced.symbols

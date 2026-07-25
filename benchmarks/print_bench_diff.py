@@ -14,7 +14,11 @@ DEFAULT_BASELINE = REPO_ROOT / ".asv" / "baseline-pre-numpy.json"
 RESULTS_DIR = REPO_ROOT / ".asv" / "results"
 
 MIGRATION_BENCH_RE = re.compile(
-    r"^(Walkforward|WalkforwardLarge|WalkforwardTimeframes|WalkforwardModels|Determinism)\."
+    r"^bench_backtest\.("
+    r"Walkforward|WalkforwardLarge|WalkforwardScaled|PortfolioHeldStops|"
+    r"WalkforwardMultiWindow|BacktestBarLoop|"
+    r"WalkforwardTimeframes|WalkforwardModels|Determinism"
+    r")\."
 )
 
 
@@ -24,30 +28,48 @@ def _load_json(path: Path) -> dict[str, Any]:
 
 
 def _latest_result_file(machine: str, commit: str) -> Path | None:
-    base = RESULTS_DIR / machine / commit
+    base = RESULTS_DIR / machine
     if not base.is_dir():
         return None
-    json_files = sorted(base.glob("*.json"))
-    return json_files[-1] if json_files else None
+    prefix = commit[:8]
+    matches = sorted(
+        p for p in base.glob(f"{prefix}*.json") if p.name != "machine.json"
+    )
+    return matches[-1] if matches else None
 
 
 def _parse_asv_results(path: Path) -> dict[str, dict[str, float | int | None]]:
     data = _load_json(path)
+    columns = data.get("result_columns", ["result"])
+    result_idx = columns.index("result") if "result" in columns else 0
     out: dict[str, dict[str, float | int | None]] = {}
     for bench_name, entries in data.get("results", {}).items():
         if not MIGRATION_BENCH_RE.match(bench_name):
             continue
-        if not entries:
+        if not entries or len(entries) <= result_idx:
             continue
-        entry = entries[-1]
+        result_vals = entries[result_idx]
+        if bench_name.startswith("bench_backtest.Determinism."):
+            time_val = None
+            track_val = (
+                result_vals[0]
+                if isinstance(result_vals, list) and result_vals
+                else result_vals
+            )
+        elif isinstance(result_vals, list) and len(result_vals) > 1:
+            time_val = max(v for v in result_vals if v is not None)
+            track_val = None
+        else:
+            time_val = (
+                result_vals[0]
+                if isinstance(result_vals, list) and result_vals
+                else result_vals
+            )
+            track_val = None
         out[bench_name] = {
-            "time": entry.get("result", [None])[0],
-            "peakmem": entry.get("peakmem", [None])[0]
-            if "peakmem" in entry
-            else None,
-            "track": entry.get("result", [None])[0]
-            if bench_name.startswith("Determinism.")
-            else None,
+            "time": time_val,
+            "peakmem": None,
+            "track": track_val,
         }
     return out
 
@@ -121,7 +143,7 @@ def print_diff(
         c = cur_metrics.get(name, {})
         b_time = b.get("time")
         c_time = c.get("time")
-        if name.startswith("Determinism."):
+        if name.startswith("bench_backtest.Determinism."):
             b_hash = b.get("track")
             c_hash = c.get("track")
             status = "OK" if b_hash == c_hash else "FAIL"
@@ -138,7 +160,12 @@ def print_diff(
         if (
             b_time is not None
             and c_time is not None
-            and name.startswith(("Walkforward.", "WalkforwardLarge."))
+            and name.startswith(
+                (
+                    "bench_backtest.Walkforward.",
+                    "bench_backtest.WalkforwardLarge.",
+                )
+            )
             and c_time > b_time * (1 + regression_threshold)
         ):
             failed = True

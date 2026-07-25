@@ -19,7 +19,9 @@ import pandas as pd
 
 import pybroker
 from pybroker import ExecContext, Strategy, StrategyConfig
+from pybroker.strategy import BacktestMixin, Execution
 from pybroker.vect import highv, lowv
+from collections import defaultdict
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_PATH = REPO_ROOT / "tests" / "testdata" / "daily_1.pkl"
@@ -294,6 +296,95 @@ class WalkforwardLarge:
         )
 
 
+def _noop_exec_fn(_ctx: ExecContext) -> None:
+    pass
+
+
+def _build_noop_strategy(df: pd.DataFrame) -> Strategy:
+    pybroker.clear_params()
+    pybroker.disable_logging()
+    pybroker.disable_progress_bar()
+    start = df["date"].min().strftime("%Y-%m-%d")
+    end = df["date"].max().strftime("%Y-%m-%d")
+    strategy = Strategy(df, start, end, StrategyConfig())
+    strategy.add_execution(
+        _noop_exec_fn,
+        symbols=sorted(df["symbol"].unique().tolist()),
+    )
+    return strategy
+
+
+class WalkforwardMultiWindow:
+    """Walkforward with many windows stressing per-window store slicing."""
+
+    timeout = 900
+
+    def setup(self) -> None:
+        np.random.seed(SEED)
+        self.df = _synthetic_ohlcv(n_symbols=10, n_days=252 * 5, seed=SEED)
+        _build_noop_strategy(self.df).walkforward(
+            windows=10,
+            lookahead=LOOKAHEAD,
+            calc_bootstrap=False,
+            disable_parallel_indicators=True,
+        )
+
+    def time_walkforward_multi_window(self) -> None:
+        _build_noop_strategy(self.df).walkforward(
+            windows=10,
+            lookahead=LOOKAHEAD,
+            calc_bootstrap=False,
+            disable_parallel_indicators=True,
+        )
+
+
+class BacktestBarLoop:
+    """Isolates backtest_executions bar-loop overhead (date map, kwargs)."""
+
+    timeout = 600
+
+    def setup(self) -> None:
+        np.random.seed(SEED)
+        pybroker.clear_params()
+        pybroker.disable_logging()
+        pybroker.disable_progress_bar()
+        self.df = _synthetic_ohlcv(n_symbols=50, n_days=252 * 2, seed=SEED)
+        self._run_once()
+
+    def time_backtest_bar_loop(self) -> None:
+        self._run_once()
+
+    def _run_once(self) -> None:
+        from pybroker.portfolio import Portfolio
+
+        df = self.df
+        symbols = sorted(df["symbol"].unique().tolist())
+        execution = Execution(
+            id=1,
+            symbols=frozenset(symbols),
+            fn=_noop_exec_fn,
+            model_names=frozenset(),
+            indicator_names=frozenset(),
+        )
+        portfolio = Portfolio(
+            cash=100_000,
+            record_portfolio_bars=False,
+            record_position_bars=False,
+        )
+        BacktestMixin().backtest_executions(
+            config=StrategyConfig(),
+            executions={execution},
+            before_exec_fn=None,
+            after_exec_fn=None,
+            sessions=defaultdict(dict),
+            models={},
+            indicator_data={},
+            test_data=df,
+            portfolio=portfolio,
+            exit_dates={},
+        )
+
+
 class _PreprocessOnlyStrategy(Strategy):
     """Strategy whose ``walkforward_split`` yields zero windows.
 
@@ -565,7 +656,6 @@ class TimeseriesKernels:
 
     def setup(self, length: int, lags: int) -> None:
         from pybroker.timeseries import (
-            LagSeriesKey,
             build_lag_feature_matrix,
             build_lag_feature_matrix_pooled,
             compute_lag_series_cache,
