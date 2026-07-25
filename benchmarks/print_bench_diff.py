@@ -22,6 +22,18 @@ MIGRATION_BENCH_RE = re.compile(
     r")\."
 )
 
+DATA_BENCH_RE = re.compile(
+    r"^bench_data\.("
+    r"DataSourceCacheRead|DataSourceCacheWrite|YFinanceMultiSymbol"
+    r")\."
+)
+
+
+def _is_tracked_bench(bench_name: str) -> bool:
+    return bool(
+        MIGRATION_BENCH_RE.match(bench_name) or DATA_BENCH_RE.match(bench_name)
+    )
+
 
 def _load_json(path: Path) -> dict[str, Any]:
     with path.open(encoding="utf-8") as fh:
@@ -45,7 +57,7 @@ def _parse_asv_results(path: Path) -> dict[str, dict[str, float | int | None]]:
     result_idx = columns.index("result") if "result" in columns else 0
     out: dict[str, dict[str, float | int | None]] = {}
     for bench_name, entries in data.get("results", {}).items():
-        if not MIGRATION_BENCH_RE.match(bench_name):
+        if not _is_tracked_bench(bench_name):
             continue
         if not entries or len(entries) <= result_idx:
             continue
