@@ -1180,8 +1180,6 @@ def test_get_cached_models_pooled_single_pass(
     setup_enabled_model_cache,
     cache_date_fields,
 ):
-    from dataclasses import asdict
-
     from pybroker.cache import ModelCacheKey
     from pybroker.model import CachedModel, ModelsMixin
 
@@ -1199,13 +1197,13 @@ def test_get_cached_models_pooled_single_pass(
     shared = FakeModel("pooled_cache", np.array([1.0]))
     input_cols = ("close",)
     for sym in pooled_symbols:
-        cache_key = ModelCacheKey(
+        cache_key = ModelCacheKey.from_date_fields(
             symbol=sym,
             model_name="pooled_cache",
-            **asdict(cache_date_fields),
+            fields=cache_date_fields,
         )
-        scope.model_cache.set(repr(cache_key), CachedModel(shared, input_cols))
-    get_calls: list[str] = []
+        scope.model_cache.set(cache_key, CachedModel(shared, input_cols))
+    get_calls: list[ModelCacheKey] = []
     original_get = scope.model_cache.get
 
     def counting_get(key):

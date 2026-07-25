@@ -30,7 +30,6 @@ from pybroker.timeframe import (
 )
 from pybroker.vect import highv, lowv, returnv
 from collections import defaultdict
-from dataclasses import asdict
 from joblib import delayed
 from numpy.typing import NDArray
 from typing import (
@@ -340,13 +339,13 @@ class IndicatorsMixin:
             return indicator_data, indicator_syms
         uncached_ind_syms = []
         for ind_sym in indicator_syms:
-            cache_key = IndicatorCacheKey(
+            cache_key = IndicatorCacheKey.from_date_fields(
                 symbol=ind_sym.symbol,
                 ind_name=ind_sym.ind_name,
-                **asdict(cache_date_fields),
+                fields=cache_date_fields,
             )
             scope.logger.debug_get_indicator_cache(cache_key)
-            data = scope.indicator_cache.get(repr(cache_key))
+            data = scope.indicator_cache.get(cache_key)
             if data is not None:
                 indicator_data[ind_sym] = data
             else:
@@ -364,13 +363,13 @@ class IndicatorsMixin:
         scope = StaticScope.instance()
         if scope.indicator_cache is None:
             return
-        cache_key = IndicatorCacheKey(
+        cache_key = IndicatorCacheKey.from_date_fields(
             symbol=ind_sym.symbol,
             ind_name=ind_sym.ind_name,
-            **asdict(cache_date_fields),
+            fields=cache_date_fields,
         )
         scope.logger.debug_set_indicator_cache(cache_key)
-        scope.indicator_cache.set(repr(cache_key), series)
+        scope.indicator_cache.set(cache_key, series)
 
     def _run_indicators(
         self,

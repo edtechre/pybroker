@@ -45,7 +45,6 @@ from pybroker.timeframe import (
     format_timeframe_interval,
     slice_arrays_by_dates,
 )
-from dataclasses import asdict
 from datetime import datetime
 from joblib import delayed
 from numpy.typing import NDArray
@@ -1437,13 +1436,13 @@ class ModelsMixin:
         cached_by_sym: dict[ModelSymbol, Union[CachedModel, Any]] = {}
         for sym in symbols:
             group_model_sym = ModelSymbol(model_name, sym)
-            cache_key = ModelCacheKey(
+            cache_key = ModelCacheKey.from_date_fields(
                 symbol=group_model_sym.symbol,
                 model_name=group_model_sym.model_name,
-                **asdict(cache_date_fields),
+                fields=cache_date_fields,
             )
             scope.logger.debug_get_model_cache(cache_key)
-            cached_data = model_cache.get(repr(cache_key))
+            cached_data = model_cache.get(cache_key)
             if cached_data is None:
                 return False, {}
             cached_by_sym[group_model_sym] = cached_data
@@ -1499,13 +1498,13 @@ class ModelsMixin:
                 else:
                     uncached_model_syms.append(model_sym)
                 continue
-            cache_key = ModelCacheKey(
+            cache_key = ModelCacheKey.from_date_fields(
                 symbol=model_sym.symbol,
                 model_name=model_sym.model_name,
-                **asdict(cache_date_fields),
+                fields=cache_date_fields,
             )
             scope.logger.debug_get_model_cache(cache_key)
-            cached_data = scope.model_cache.get(repr(cache_key))
+            cached_data = scope.model_cache.get(cache_key)
             if cached_data is not None:
                 input_cols = None
                 if isinstance(cached_data, CachedModel):
@@ -1535,11 +1534,11 @@ class ModelsMixin:
         scope = StaticScope.instance()
         if scope.model_cache is None:
             return
-        cache_key = ModelCacheKey(
+        cache_key = ModelCacheKey.from_date_fields(
             symbol=model_sym.symbol,
             model_name=model_sym.model_name,
-            **asdict(cache_date_fields),
+            fields=cache_date_fields,
         )
         cached_model = CachedModel(model, input_cols)
         scope.logger.debug_set_model_cache(cache_key)
-        scope.model_cache.set(repr(cache_key), cached_model)
+        scope.model_cache.set(cache_key, cached_model)

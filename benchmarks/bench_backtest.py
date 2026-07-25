@@ -30,6 +30,13 @@ WINDOWS = 3
 LOOKAHEAD = 1
 
 
+class _BenchConstantModel:
+    """Picklable stand-in model for cache-enabled walkforward benches."""
+
+    def predict(self, x):
+        return np.ones(len(x))
+
+
 def _load_dataset() -> pd.DataFrame:
     # Trusted pinned fixture checked into the repo; same file used by the
     # test suite via tests/fixtures.py.
@@ -757,12 +764,46 @@ class EvalBootstrap:
         )
 
 
-class CacheHit:
-    """Direct diskcache.Cache.get benchmark on a populated cache.
+class _CacheHitBase:
+    """Shared setup for production ``_L1Cache`` read-path benchmarks."""
 
-    Measures the cost of the read path any indicator/model lookup pays.
-    V5 (in-memory L1) shows ~100x here once merged.
-    """
+    timeout = 30
+    _series_length = 50_000
+
+    def setup(self) -> None:
+        import tempfile
+
+        from pybroker.cache import IndicatorCacheKey, _L1Cache
+
+        self._cache_dir = tempfile.mkdtemp(prefix="asv_cache_hit_")
+        self._cache = _L1Cache(directory=self._cache_dir)
+        rng = np.random.default_rng(SEED)
+        self._key = IndicatorCacheKey(
+            symbol="SYM000",
+            tf_seconds=86400,
+            start_date=pd.Timestamp("2020-01-01").to_pydatetime(),
+            end_date=pd.Timestamp("2022-01-01").to_pydatetime(),
+            between_time=None,
+            days=None,
+            ind_name="hhv20",
+        )
+        self._value = pd.Series(
+            rng.standard_normal(self._series_length),
+            index=pd.date_range("2020-01-01", periods=self._series_length),
+        )
+        self._cache.set(self._key, self._value)
+        self._cache.get(self._key)
+        self._cleanup_dir = self._cache_dir
+
+    def teardown(self) -> None:
+        import shutil
+
+        self._cache.close()
+        shutil.rmtree(self._cleanup_dir, ignore_errors=True)
+
+
+class CacheHit:
+    """Legacy raw diskcache baseline retained for pre-optimization comparison."""
 
     timeout = 30
 
@@ -776,7 +817,6 @@ class CacheHit:
         rng = np.random.default_rng(SEED)
         self._key = "sym/hhv20/2020-2022"
         self._cache.set(self._key, rng.standard_normal(500))
-        # Warmup read path.
         self._cache.get(self._key)
         self._cleanup_dir = self._cache_dir
 
@@ -787,6 +827,22 @@ class CacheHit:
         shutil.rmtree(self._cleanup_dir, ignore_errors=True)
 
     def time_cache_get(self) -> None:
+        self._cache.get(self._key)
+
+
+class CacheDiskHit(_CacheHitBase):
+    """``_L1Cache`` disk hit: L1 cleared each call, pays unpickle cost."""
+
+    def time_cache_disk_get(self) -> None:
+        with self._cache._l1_lock:
+            self._cache._l1.clear()
+        self._cache.get(self._key)
+
+
+class CacheL1Hit(_CacheHitBase):
+    """``_L1Cache`` in-process hit: steady-state indicator/model re-read."""
+
+    def time_cache_l1_get(self) -> None:
         self._cache.get(self._key)
 
 
@@ -1146,17 +1202,13 @@ class WalkforwardModels:
         pybroker.disable_logging()
         pybroker.disable_progress_bar()
 
-        class _ConstantModel:
-            def predict(self, _x):
-                return np.ones(len(_x))
-
         hhv20 = pybroker.indicator(
             "hhv20", lambda bar_data: highv(bar_data.close, 20)
         )
 
         def train_pooled(train_df, test_df):
             del train_df, test_df
-            return _ConstantModel()
+            return _BenchConstantModel()
 
         bench_pooled = model(
             "bench_pooled", train_pooled, indicators=(hhv20,), pooled=True
@@ -1177,6 +1229,46 @@ class WalkforwardModels:
             indicators=[hhv20],
         )
         return strategy
+
+
+class WalkforwardModelsCached(WalkforwardModels):
+    """WalkforwardModels with disk+L1 caches enabled; times steady-state hits."""
+
+    timeout = 600
+
+    def setup(self) -> None:
+        import shutil
+        import tempfile
+
+        from pybroker.cache import disable_caches
+
+        np.random.seed(SEED)
+        self.df = _load_dataset()
+        self._cache_root = tempfile.mkdtemp(prefix="asv_wf_models_cache_")
+        disable_caches()
+        pybroker.enable_caches("bench_wf_models", cache_dir=self._cache_root)
+        self._build_strategy().walkforward(
+            windows=WINDOWS,
+            lookahead=LOOKAHEAD,
+            calc_bootstrap=False,
+            disable_parallel_indicators=True,
+        )
+
+    def teardown(self) -> None:
+        from pybroker.cache import disable_caches
+
+        disable_caches()
+        import shutil
+
+        shutil.rmtree(self._cache_root, ignore_errors=True)
+
+    def time_walkforward_models_cached(self) -> None:
+        self._build_strategy().walkforward(
+            windows=WINDOWS,
+            lookahead=LOOKAHEAD,
+            calc_bootstrap=False,
+            disable_parallel_indicators=True,
+        )
 
 
 class ModelTrainPrep:

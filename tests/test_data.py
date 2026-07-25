@@ -136,7 +136,7 @@ class TestDataSourceCacheMixin:
                 adjust=ADJUST,
             )
             cache_key, sym_df = mock_cache.set.call_args_list[i].args
-            assert cache_key == repr(expected_cache_key)
+            assert cache_key == expected_cache_key
             assert sym_df.equals(alpaca_df[alpaca_df["symbol"] == sym])
 
     @pytest.mark.usefixtures("scope")
@@ -159,7 +159,7 @@ class TestDataSourceCacheMixin:
                 adjust=ADJUST,
             )
             cache_key = mock_cache.get.call_args_list[i].args[0]
-            assert cache_key == repr(expected_cache_key)
+            assert cache_key == expected_cache_key
 
     @pytest.mark.usefixtures("setup_enabled_ds_cache")
     def test_set_and_get_cached(self, alpaca_df, symbols):

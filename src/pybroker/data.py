@@ -90,7 +90,7 @@ class DataSourceCacheMixin:
                 end_date=end_date,
                 adjust=adjust,
             )
-            cached = cache.get(repr(cache_key))
+            cached = cache.get(cache_key)
             scope.logger.debug_get_data_source_cache(cache_key)
             if cached is None:
                 uncached_syms.append(sym)
@@ -153,7 +153,7 @@ class DataSourceCacheMixin:
                 end_date=end_date,
                 adjust=adjust,
             )
-            cache.set(repr(cache_key), df)
+            cache.set(cache_key, df)
             scope.logger.debug_set_data_source_cache(cache_key)
 
 
