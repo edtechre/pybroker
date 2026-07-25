@@ -6,20 +6,24 @@ import pytest
 
 from pybroker.common import DataCol, IndicatorSymbol
 from pybroker.indicator import IndicatorsMixin, indicator
+from pybroker.scope import StaticScope
 from pybroker.timeframe import (
     TimeframeData,
     build_compressed_symbol_df,
     compress,
+    compress_bars,
     compress_symbol_df,
+    compressed_bars_to_bar_data,
     format_timeframe_interval,
     indicator_timeframe_name,
-    infer_base_bar_seconds,
     is_valid_timeframe_interval,
     model_timeframe_name,
     normalize_timeframe_interval,
     parse_indicator_timeframe_name,
     parse_model_timeframe_name,
+    resolve_base_bar_seconds,
     slice_compressed_df_by_dates,
+    validate_base_timeframe_data,
     validate_timeframe_interval,
 )
 
@@ -73,6 +77,7 @@ def _ohlcv_from_dates(dates: pd.DatetimeIndex) -> tuple:
 
 
 ONE_MINUTE_BASE_SECONDS = 60.0
+DAILY_BASE_SECONDS = 86400.0
 
 CALENDAR_INTERVALS = ("daily", "weekly", "monthly", "quarterly", "yearly")
 DURATION_UNIT_LETTERS = ("s", "m", "h", "d", "w")
@@ -163,7 +168,9 @@ class TestIntervalHierarchyOnOneMinute:
     )
     def test_declared_combo_valid_on_one_minute(self, interval):
         validate_timeframe_interval(interval, ONE_MINUTE_BASE_SECONDS)
-        data = compress_symbol_df(_minute_sym_df(), interval, frozenset())
+        data = compress_symbol_df(
+            _minute_sym_df(), interval, frozenset(), ONE_MINUTE_BASE_SECONDS
+        )
         assert len(data.bars.close) > 0
 
     @pytest.mark.parametrize(
@@ -196,16 +203,20 @@ class TestIntervalHierarchyOnOneMinute:
     def test_coarser_intervals_yield_fewer_or_equal_bars(self):
         sym_df = _minute_sym_df(periods=390)
         bar_counts = [
-            len(compress_symbol_df(sym_df, interval, frozenset()).bars.close)
+            len(
+                compress_symbol_df(
+                    sym_df, interval, frozenset(), ONE_MINUTE_BASE_SECONDS
+                ).bars.close
+            )
             for interval in (5, "5m", "1h", "weekly")
         ]
         every5, five_m, one_h, weekly = bar_counts
         assert weekly <= one_h <= five_m
         assert five_m <= every5
 
-    def test_infer_base_bar_seconds_from_one_minute_df(self):
+    def test_validate_base_from_one_minute_df(self):
         sym_df = _minute_sym_df(periods=10)
-        assert infer_base_bar_seconds(sym_df, "") == ONE_MINUTE_BASE_SECONDS
+        validate_base_timeframe_data(sym_df, ONE_MINUTE_BASE_SECONDS)
 
 
 class TestCompressAllCalendarIntervals:
@@ -539,29 +550,59 @@ class TestCompressWeekly:
         )
 
 
-class TestInferBaseBarSeconds:
-    def test_from_timeframe_string(self):
-        df = pd.DataFrame()
-        assert infer_base_bar_seconds(df, "1h") == 3600
-        assert infer_base_bar_seconds(df, "1d") == 86400
+class TestResolveBaseBarSeconds:
+    def test_from_enable_timeframe(self):
+        assert resolve_base_bar_seconds("1d", "") == DAILY_BASE_SECONDS
 
-    def test_from_dataframe(self):
+    def test_from_backtest_timeframe(self):
+        assert resolve_base_bar_seconds(None, "1h") == 3600.0
+
+    def test_both_must_match(self):
+        with pytest.raises(ValueError, match="does not match"):
+            resolve_base_bar_seconds("1d", "1h")
+
+    def test_neither_raises(self):
+        with pytest.raises(ValueError, match="require base_timeframe"):
+            resolve_base_bar_seconds(None, "")
+
+
+class TestValidateBaseTimeframeData:
+    def test_accepts_matching_daily_spacing(self):
         df = pd.DataFrame(
             {
-                "date": pd.date_range("2020-01-01", periods=5, freq="D"),
-                "symbol": ["SPY"] * 5,
+                DataCol.DATE.value: pd.date_range(
+                    "2020-01-01", periods=5, freq="D"
+                ),
+                DataCol.SYMBOL.value: ["SPY"] * 5,
             }
         )
-        assert infer_base_bar_seconds(df, "") == 86400
+        validate_base_timeframe_data(df, DAILY_BASE_SECONDS)
 
-    def test_prefers_bar_spacing_over_timeframe_string(self):
-        df = pd.DataFrame(
-            {
-                "date": pd.date_range("2020-01-01", periods=5, freq="D"),
-                "symbol": ["SPY"] * 5,
-            }
-        )
-        assert infer_base_bar_seconds(df, "1h") == 86400
+    def test_rejects_mismatch(self):
+        df = _minute_sym_df(periods=10)
+        with pytest.raises(ValueError, match="inconsistent with base"):
+            validate_base_timeframe_data(df, DAILY_BASE_SECONDS)
+
+
+class TestCompressBars:
+    def test_requires_base_timeframe(self):
+        sym_df = _minute_sym_df(periods=10)
+        with pytest.raises(TypeError):
+            compress_bars(sym_df, "5m")  # type: ignore[call-arg]
+
+    def test_returns_bar_data(self):
+        sym_df = _minute_sym_df(periods=10)
+        bars = compress_bars(sym_df, "5m", base_timeframe="1m")
+        assert len(bars.close) == 2
+
+    def test_indicator_callable(self):
+        def sma(bar_data, period):
+            return bar_data.close
+
+        sym_df = _minute_sym_df(periods=10)
+        sma_ind = indicator("sma", sma, period=5)
+        weekly = compress_bars(sym_df, 5, base_timeframe="1m")
+        assert len(sma_ind(weekly)) == 2
 
 
 class TestCompressDuration:
@@ -606,10 +647,14 @@ class TestCompressSymbolDfValidation:
 
     def test_rejects_invalid_calendar_interval(self):
         with pytest.raises(ValueError, match="Cannot compress daily bars"):
-            compress_symbol_df(self._daily_sym_df(), "daily", frozenset())
+            compress_symbol_df(
+                self._daily_sym_df(), "daily", frozenset(), DAILY_BASE_SECONDS
+            )
 
     def test_allows_valid_calendar_interval(self):
-        data = compress_symbol_df(self._daily_sym_df(), "weekly", frozenset())
+        data = compress_symbol_df(
+            self._daily_sym_df(), "weekly", frozenset(), DAILY_BASE_SECONDS
+        )
         assert len(data.bars.close) > 0
 
     def test_compress_symbol_df_valid_duration(self):
@@ -624,7 +669,9 @@ class TestCompressSymbolDfValidation:
                 DataCol.VOLUME.value: np.ones(10),
             }
         )
-        data = compress_symbol_df(sym_df, "5m", frozenset())
+        data = compress_symbol_df(
+            sym_df, "5m", frozenset(), ONE_MINUTE_BASE_SECONDS
+        )
         assert len(data.bars.close) == 2
 
 
@@ -657,7 +704,7 @@ class TestBuildCompressedSymbolDf:
                 DataCol.VOLUME.value: np.ones(n),
             }
         )
-        compressed = compress_symbol_df(df, 2, frozenset())
+        compressed = compress_symbol_df(df, 2, frozenset(), DAILY_BASE_SECONDS)
         ind_series = pd.Series(
             np.array([10.0, 20.0]), index=compressed.bars.dates
         )
@@ -691,8 +738,6 @@ class TestTimeframeIndicatorCompute:
                 out[i] = np.mean(close[i - period + 1 : i + 1])
             return out
 
-        from pybroker.scope import StaticScope
-
         StaticScope.__instance = None
         sma_ind = indicator("sma20", sma, period=5)
         sym = "SPY"
@@ -721,40 +766,24 @@ class TestTimeframeIndicatorCompute:
         )
         timeframe_data = TimeframeData()
         sym_df = df.reset_index(drop=True)
+        weekly_name = indicator_timeframe_name("sma20", "weekly")
         timeframe_data.compressed[(sym, "weekly")] = compress_symbol_df(
-            sym_df, "weekly", frozenset()
+            sym_df, "weekly", frozenset(), DAILY_BASE_SECONDS
         )
         mixin = IndicatorsMixin()
         result = mixin.compute_indicators(
             df=df,
-            indicator_syms=[
-                IndicatorSymbol(sma_ind.timeframe("weekly").name, sym)
-            ],
+            indicator_syms=[IndicatorSymbol(weekly_name, sym)],
             cache_date_fields=None,
             disable_parallel_indicators=True,
             timeframe_data=timeframe_data,
         )
         hand = sma_ind(
-            _compressed_to_bar_data(
+            compressed_bars_to_bar_data(
                 timeframe_data.compressed[(sym, "weekly")].bars
             )
         )
-        key = IndicatorSymbol(sma_ind.timeframe("weekly").name, sym)
+        key = IndicatorSymbol(weekly_name, sym)
         np.testing.assert_array_almost_equal(
             result[key].to_numpy(), hand.to_numpy()
         )
-
-
-def _compressed_to_bar_data(bars):
-    from pybroker.common import BarData
-
-    return BarData(
-        date=bars.dates,
-        open=bars.open,
-        high=bars.high,
-        low=bars.low,
-        close=bars.close,
-        volume=bars.volume,
-        vwap=None,
-        **bars.custom,
-    )

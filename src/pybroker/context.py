@@ -32,7 +32,11 @@ from pybroker.scope import (
     StaticScope,
     TimeframeScope,
 )
-from pybroker.timeframe import TimeframeInterval, normalize_timeframe_interval
+from pybroker.timeframe import (
+    TimeframeInterval,
+    model_timeframe_name,
+    normalize_timeframe_interval,
+)
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -348,8 +352,6 @@ class TimeframeContext:
 
     def model(self, name: str) -> Any:
         """Returns a trained model on the compressed timeframe."""
-        from pybroker.timeframe import model_timeframe_name
-
         model_sym = ModelSymbol(
             model_timeframe_name(name, self._interval), self._symbol
         )
@@ -957,7 +959,7 @@ class ExecContext:
         r"""Returns a read-only view of compressed bar data for ``interval``.
 
         ``interval`` must match a value previously passed to
-        :meth:`pybroker.strategy.Strategy.set_timeframes`. The same
+        :meth:`pybroker.strategy.Strategy.enable_timeframes`. The same
         :class:`~pybroker.TimeframeInterval` forms are supported:
 
         - **Every-n-bars** (``int``): e.g. ``ctx.timeframe(5)`` for bars
@@ -971,7 +973,7 @@ class ExecContext:
 
         For example::
 
-            strategy.set_timeframes("weekly", "5m")
+            strategy.enable_timeframes("weekly", "5m", base_timeframe="1m")
 
             def exec_fn(ctx):
                 weekly = ctx.timeframe("weekly")
@@ -981,7 +983,7 @@ class ExecContext:
 
         Args:
             interval: Compression interval declared with
-                :meth:`pybroker.strategy.Strategy.set_timeframes`.
+                :meth:`pybroker.strategy.Strategy.enable_timeframes`.
 
         Returns:
             :class:`pybroker.context.TimeframeContext` exposing read-only
@@ -990,7 +992,7 @@ class ExecContext:
         interval = normalize_timeframe_interval(interval)
         if interval not in self._declared_timeframes:
             raise ValueError(
-                f"Timeframe {interval!r} was not declared with set_timeframes()."
+                f"Timeframe {interval!r} was not declared with enable_timeframes()."
             )
         if interval not in self._timeframe:
             self._timeframe[interval] = TimeframeContext(

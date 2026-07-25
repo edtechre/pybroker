@@ -36,8 +36,6 @@ from pybroker.timeframe import (
     TimeframeData,
     TimeframeInterval,
     build_compressed_symbol_arrays,
-    model_timeframe_name,
-    normalize_timeframe_interval,
     parse_model_timeframe_name,
     format_timeframe_interval,
     slice_arrays_by_dates,
@@ -124,27 +122,6 @@ class ModelSource:
                     )
             return df[[*self.indicators]]
         return self._input_data_fn(df)
-
-    def timeframe(self, interval: TimeframeInterval) -> "TimeframeModelSource":
-        """Returns a timeframe-bound variant trained on compressed bars."""
-        return TimeframeModelSource(self, interval)
-
-
-class TimeframeModelSource:
-    """Lightweight wrapper binding a model source to a compression timeframe."""
-
-    def __init__(self, base: ModelSource, interval: TimeframeInterval):
-        self.base = base
-        self.interval = normalize_timeframe_interval(interval)
-        self.name = model_timeframe_name(base.name, self.interval)
-        self.indicators = base.indicators
-        self.pooled = base.pooled
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __str__(self):
-        return f"TimeframeModelSource({self.base.name!r}, {self.interval!r})"
 
 
 class ModelLoader(ModelSource):
@@ -640,25 +617,43 @@ class ModelsMixin:
             if not group_model_syms & uncached_model_sym_set:
                 continue
             base_name, token = parse_model_timeframe_name(model_name)
-            if token is not None:
-                continue
             source = scope.get_model_source(base_name)
             if not isinstance(source, ModelTrainer) or not source.pooled:
                 raise TypeError(
                     f"ModelSource {model_name!r} is not a pooled ModelTrainer."
                 )
-            pooled_train_data, pooled_test_data = self._prepare_pooled_data(
-                symbols,
-                train_data,
-                test_data,
-                indicator_data,
-                source,
-                train_dates,
-                test_dates,
-                history_df,
-                lag_series_cache,
-                history_dates,
-            )
+            if token is not None:
+                if timeframe_data is None:
+                    raise ValueError(
+                        f"Timeframe data required to train model {model_name!r}."
+                    )
+                pooled_train_data, pooled_test_data = (
+                    self._prepare_pooled_timeframe_data(
+                        symbols,
+                        token,
+                        train_dates,
+                        test_dates,
+                        indicator_data,
+                        source,
+                        timeframe_data,
+                        lag_series_cache,
+                    )
+                )
+            else:
+                pooled_train_data, pooled_test_data = (
+                    self._prepare_pooled_data(
+                        symbols,
+                        train_data,
+                        test_data,
+                        indicator_data,
+                        source,
+                        train_dates,
+                        test_dates,
+                        history_df,
+                        lag_series_cache,
+                        history_dates,
+                    )
+                )
             trainer_tasks.append(
                 _TrainerTask(
                     pooled=True,
@@ -682,12 +677,7 @@ class ModelsMixin:
                 if isinstance(source, ModelLoader):
                     raise ValueError(
                         f"Pretrained model {base_name!r} does not support "
-                        f".timeframe({token!r})."
-                    )
-                if source.pooled:
-                    raise ValueError(
-                        f"Pooled model {base_name!r} does not support "
-                        f".timeframe({token!r})."
+                        f"multi-timeframe training on {token!r}."
                     )
                 if timeframe_data is None:
                     raise ValueError(
@@ -776,7 +766,7 @@ class ModelsMixin:
                 if token is not None:
                     raise ValueError(
                         f"Pretrained model {base_name!r} does not support "
-                        f".timeframe({token!r})."
+                        f"multi-timeframe training on {token!r}."
                     )
                 loader_syms.append((source, model_sym))
             else:
@@ -936,6 +926,116 @@ class ModelsMixin:
                 lag_series_cache,
                 history_dates,
                 symbols,
+            )
+            pooled_train_input = pooled_train_input.drop_lag_warmup()
+            return pooled_train_input, pooled_test_input
+        return (
+            model_input_from_frame(pooled_train),
+            model_input_from_frame(pooled_test),
+        )
+
+    def _prepare_pooled_timeframe_data(
+        self,
+        symbols: frozenset[str],
+        token: TimeframeInterval,
+        train_dates: Collection,
+        test_dates: Collection,
+        indicator_data: Mapping[IndicatorSymbol, pd.Series],
+        source: ModelTrainer,
+        timeframe_data: TimeframeData,
+        lag_series_cache: LagSeriesCache,
+    ) -> tuple[ModelInput, ModelInput]:
+        sym_col = DataCol.SYMBOL.value
+        date_col = DataCol.DATE.value
+        scope = StaticScope.instance()
+        train_date_set = set(
+            np.asarray(list(train_dates), dtype="datetime64[ns]")
+        )
+        test_date_set = set(
+            np.asarray(list(test_dates), dtype="datetime64[ns]")
+        )
+        train_frames: list[pd.DataFrame] = []
+        test_frames: list[pd.DataFrame] = []
+        history_dates: dict[str, np.ndarray] = {}
+        for sym in symbols:
+            key = (sym, token)
+            if key not in timeframe_data.compressed:
+                raise ValueError(
+                    f"Timeframe {token!r} data not found for {sym!r}."
+                )
+            compressed = timeframe_data.compressed[key]
+            columns, arrays, bar_dates = build_compressed_symbol_arrays(
+                sym,
+                token,
+                compressed,
+                indicator_data,
+                source.indicators,
+                scope.custom_data_cols,
+            )
+            sym_df = pd.DataFrame({col: arrays[col] for col in columns})
+            sym_df[sym_col] = sym
+            history_dates[sym] = np.asarray(bar_dates, dtype="datetime64[ns]")
+            train_mask = sym_df[date_col].isin(train_date_set)
+            test_mask = sym_df[date_col].isin(test_date_set)
+            if train_mask.any():
+                train_frames.append(sym_df.loc[train_mask])
+            if test_mask.any():
+                test_frames.append(sym_df.loc[test_mask])
+        pooled_train = (
+            pd.concat(train_frames, ignore_index=True)
+            if train_frames
+            else pd.DataFrame()
+        )
+        pooled_test = (
+            pd.concat(test_frames, ignore_index=True)
+            if test_frames
+            else pd.DataFrame()
+        )
+        if not pooled_train.empty:
+            pooled_train = pooled_train.sort_values([sym_col, date_col])
+        if not pooled_test.empty:
+            pooled_test = pooled_test.sort_values([sym_col, date_col])
+        if source.lags is not None:
+            lag_cols = _lag_feature_cols(
+                model_input_from_frame(pooled_train),
+                pooled=True,
+                indicators=source.indicators,
+            )
+            interval = format_timeframe_interval(token)
+
+            def bars_by_symbol(sym, token=token):
+                key = (sym, token)
+                if key not in timeframe_data.compressed:
+                    return None
+                return timeframe_data.compressed[key].bars
+
+            merge_timeframe_lag_series_cache(
+                lag_series_cache,
+                tuple(symbols),
+                lag_cols,
+                source.lags,
+                interval,
+                bars_by_symbol,
+            )
+            pooled_train_input = model_input_from_frame(pooled_train)
+            pooled_test_input = model_input_from_frame(pooled_test)
+            apply_lags_to_model_input_pooled(
+                pooled_train_input,
+                lag_cols,
+                source.lags,
+                lag_series_cache,
+                history_dates,
+                symbols,
+                interval=interval,
+            )
+            apply_lags_to_model_input_pooled(
+                pooled_test_input,
+                lag_cols,
+                source.lags,
+                lag_series_cache,
+                history_dates,
+                symbols,
+                interval=interval,
             )
             pooled_train_input = pooled_train_input.drop_lag_warmup()
             return pooled_train_input, pooled_test_input

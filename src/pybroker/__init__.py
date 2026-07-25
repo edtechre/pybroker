@@ -79,7 +79,10 @@ from pybroker.scope import (
 )
 from pybroker.slippage import RandomSlippageModel as RandomSlippageModel
 from pybroker.strategy import Strategy as Strategy, TestResult as TestResult
-from pybroker.timeframe import TimeframeInterval as TimeframeInterval
+from pybroker.timeframe import (
+    TimeframeInterval as TimeframeInterval,
+    compress_bars as compress_bars,
+)
 from pybroker.vect import (
     cross as cross,
     highv as highv,

@@ -36,13 +36,11 @@ from pybroker.context import (
 )
 from pybroker.data import AlpacaCrypto, DataSource
 from pybroker.eval import BootstrapResult, EvalMetrics, EvaluateMixin
-from pybroker.indicator import Indicator, IndicatorsMixin, TimeframeIndicator
+from pybroker.indicator import Indicator, IndicatorsMixin
 from pybroker.model import (
-    ModelLoader,
     ModelSource,
     ModelTrainer,
     ModelsMixin,
-    TimeframeModelSource,
     TrainedModel,
 )
 from pybroker.portfolio import (
@@ -70,10 +68,13 @@ from pybroker.timeframe import (
     TimeframeInterval,
     compress_symbol_df,
     indicator_timeframe_name,
-    infer_base_bar_seconds,
+    model_timeframe_name,
     normalize_timeframe_interval,
+    parse_indicator_timeframe_name,
     parse_model_timeframe_name,
+    resolve_base_bar_seconds,
     symbol_dates_from_frame,
+    validate_base_timeframe_data,
     validate_timeframe_interval,
 )
 from pybroker.slippage import SlippageModel
@@ -1212,6 +1213,8 @@ class Strategy(
         ] = None
         self._slippage_model: Optional[SlippageModel] = None
         self._timeframes: frozenset[TimeframeInterval] = frozenset()
+        self._base_timeframe: Optional[str] = None
+        self._base_bar_seconds: Optional[float] = None
         self._scope = StaticScope.instance()
         self._logger = self._scope.logger
 
@@ -1280,16 +1283,18 @@ class Strategy(
         """Sets :class:`pybroker.slippage.SlippageModel`."""
         self._slippage_model = slippage_model
 
-    def set_timeframes(self, *intervals: TimeframeInterval) -> None:
-        r"""Declares compression timeframes for multi-timeframe strategies.
+    def enable_timeframes(
+        self,
+        *timeframes: TimeframeInterval,
+        base_timeframe: Optional[str] = None,
+    ) -> None:
+        r"""Enables compression timeframes for multi-timeframe strategies.
 
-        Each interval must be strictly coarser than the base bar feed; invalid
+        Each timeframe must be strictly coarser than the base bar feed; invalid
         combinations raise ``ValueError`` when :meth:`.backtest` or
-        :meth:`.walkforward` runs. Declared intervals can be accessed in
+        :meth:`.walkforward` runs. Declared timeframes can be accessed in
         execution functions with
-        :meth:`pybroker.context.ExecContext.timeframe` and bound to indicators
-        and models with :meth:`pybroker.indicator.Indicator.timeframe` and
-        :meth:`pybroker.model.ModelSource.timeframe`.
+        :meth:`pybroker.context.ExecContext.timeframe`.
 
         A :class:`~pybroker.TimeframeInterval` is one of the following:
 
@@ -1307,20 +1312,27 @@ class Strategy(
         For example, to use weekly bars, 5-bar bins, and 1-hour duration bars
         on a 1-minute feed::
 
-            strategy.set_timeframes("weekly", 5, "1h")
+            strategy.enable_timeframes("weekly", 5, "1h", base_timeframe="1m")
             strategy.add_execution(
                 fn,
                 "SPY",
-                indicators=[sma.timeframe("weekly"), sma.timeframe(5)],
+                indicators=[sma],
             )
 
         Args:
-            *intervals: One or more compression intervals to make available
+            *timeframes: One or more compression timeframes to make available
                 for the strategy.
+            base_timeframe: Optional base bar spacing (e.g. ``"1m"``, ``"1d"``).
+                Required at backtest time unless ``timeframe`` is passed to
+                :meth:`.backtest` or :meth:`.walkforward`.
         """
+        if not timeframes:
+            raise ValueError(
+                "enable_timeframes() requires at least one timeframe."
+            )
         normalized = []
         seen = set()
-        for interval in intervals:
+        for interval in timeframes:
             norm = normalize_timeframe_interval(interval)
             if norm in seen:
                 raise ValueError(
@@ -1329,21 +1341,37 @@ class Strategy(
             seen.add(norm)
             normalized.append(norm)
         self._timeframes = frozenset(normalized)
+        self._base_timeframe = (
+            base_timeframe.strip() if base_timeframe else None
+        )
+        if self._base_timeframe:
+            base_seconds = resolve_base_bar_seconds(self._base_timeframe, "")
+            for interval in self._timeframes:
+                validate_timeframe_interval(interval, base_seconds)
 
     def _validate_timeframes_for_base(
         self, df: pd.DataFrame, timeframe: str
     ) -> None:
         if not self._timeframes:
+            self._base_bar_seconds = None
             return
-        base_bar_seconds = infer_base_bar_seconds(df, timeframe)
+        base_bar_seconds = resolve_base_bar_seconds(
+            self._base_timeframe, timeframe
+        )
+        validate_base_timeframe_data(df, base_bar_seconds)
         for interval in self._timeframes:
             validate_timeframe_interval(interval, base_bar_seconds)
+        self._base_bar_seconds = base_bar_seconds
 
     def _compress_timeframes(
         self, df: pd.DataFrame, symbols: Iterable[str]
     ) -> TimeframeData:
         if not self._timeframes:
             return TimeframeData()
+        if self._base_bar_seconds is None:
+            raise ValueError(
+                "Base timeframe must be resolved before compressing timeframes."
+            )
         timeframe_data = TimeframeData()
         custom_cols = self._scope.custom_data_cols
         sym_col = DataCol.SYMBOL.value
@@ -1353,7 +1381,12 @@ class Strategy(
                 continue
             sym_df = group.reset_index(drop=True)
             for interval in self._timeframes:
-                data = compress_symbol_df(sym_df, interval, custom_cols)
+                data = compress_symbol_df(
+                    sym_df,
+                    interval,
+                    custom_cols,
+                    self._base_bar_seconds,
+                )
                 timeframe_data.compressed[(sym, interval)] = data
         return timeframe_data
 
@@ -1407,47 +1440,18 @@ class Strategy(
             for model in (
                 (models,) if isinstance(models, ModelSource) else models
             ):
-                if isinstance(model, TimeframeModelSource):
-                    if not self._scope.has_model_source(model.base.name):
-                        raise ValueError(
-                            f"ModelSource {model.base.name!r} was not "
-                            "registered."
-                        )
-                    base_source = self._scope.get_model_source(model.base.name)
-                    if model.base is not base_source:
-                        raise ValueError(
-                            f"ModelSource {model.base.name!r} does not match "
-                            "registered ModelSource."
-                        )
-                    if model.interval not in self._timeframes:
-                        raise ValueError(
-                            f"Timeframe {model.interval!r} was not declared with "
-                            "set_timeframes()."
-                        )
-                    if model.base.pooled:
-                        raise ValueError(
-                            f"Pooled model {model.base.name!r} does not support "
-                            ".timeframe()."
-                        )
-                    if isinstance(model.base, ModelLoader):
-                        raise ValueError(
-                            f"Pretrained model {model.base.name!r} does not "
-                            "support .timeframe()."
-                        )
-                    model_name_set.add(model.name)
-                elif isinstance(model, ModelSource):
-                    if not self._scope.has_model_source(model.name):
-                        raise ValueError(
-                            f"ModelSource {model.name!r} was not registered."
-                        )
-                    if model is not self._scope.get_model_source(model.name):
-                        raise ValueError(
-                            f"ModelSource {model.name!r} does not match "
-                            "registered ModelSource."
-                        )
-                    model_name_set.add(model.name)
-                else:
+                if not isinstance(model, ModelSource):
                     raise TypeError(f"Invalid model type: {type(model)!r}.")
+                if not self._scope.has_model_source(model.name):
+                    raise ValueError(
+                        f"ModelSource {model.name!r} was not registered."
+                    )
+                if model is not self._scope.get_model_source(model.name):
+                    raise ValueError(
+                        f"ModelSource {model.name!r} does not match "
+                        "registered ModelSource."
+                    )
+                model_name_set.add(model.name)
         model_names = (
             frozenset(model_name_set) if models is not None else frozenset()
         )
@@ -1458,30 +1462,18 @@ class Strategy(
                 if isinstance(indicators, Indicator)
                 else indicators
             ):
-                if isinstance(ind, TimeframeIndicator):
-                    if not self._scope.has_indicator(ind.base.name):
-                        raise ValueError(
-                            f"Indicator {ind.base.name!r} was not registered."
-                        )
-                    if ind.interval not in self._timeframes:
-                        raise ValueError(
-                            f"Timeframe {ind.interval!r} was not declared with "
-                            "set_timeframes()."
-                        )
-                    ind_name_set.add(ind.name)
-                elif isinstance(ind, Indicator):
-                    if not self._scope.has_indicator(ind.name):
-                        raise ValueError(
-                            f"Indicator {ind.name!r} was not registered."
-                        )
-                    if ind is not self._scope.get_indicator(ind.name):
-                        raise ValueError(
-                            f"Indicator {ind.name!r} does not match registered "
-                            "Indicator."
-                        )
-                    ind_name_set.add(ind.name)
-                else:
+                if not isinstance(ind, Indicator):
                     raise TypeError(f"Invalid indicator type: {type(ind)!r}.")
+                if not self._scope.has_indicator(ind.name):
+                    raise ValueError(
+                        f"Indicator {ind.name!r} was not registered."
+                    )
+                if ind is not self._scope.get_indicator(ind.name):
+                    raise ValueError(
+                        f"Indicator {ind.name!r} does not match registered "
+                        "Indicator."
+                    )
+                ind_name_set.add(ind.name)
             ind_names = frozenset(ind_name_set)
         else:
             ind_names = frozenset()
@@ -1756,7 +1748,11 @@ class Strategy(
                     for sym in _static_symbols(execution.symbols)
                 }
             timeframe_data = self._compress_timeframes(df, unique_syms)
-            tf_seconds = to_seconds(timeframe)
+            tf_seconds = (
+                int(self._base_bar_seconds)
+                if self._base_bar_seconds is not None
+                else to_seconds(timeframe)
+            )
             cache_date_fields = CacheDateFields(
                 start_date=start_dt,
                 end_date=end_dt,
@@ -1964,14 +1960,26 @@ class Strategy(
             )
             if not train_data.empty:
                 train_symbols = set(train_data[sym_col].unique())
-                model_syms = {
-                    ModelSymbol(model_name, sym)
-                    for sym in train_symbols
-                    for execution in window_executions
-                    for model_name in execution.model_names
-                    for exec_sym in _static_symbols(execution.symbols)
-                    if sym == exec_sym
-                }
+                model_syms: set[ModelSymbol] = set()
+                for sym in train_symbols:
+                    for execution in window_executions:
+                        if sym not in _static_symbols(execution.symbols):
+                            continue
+                        for model_name in execution.model_names:
+                            base_name, token = parse_model_timeframe_name(
+                                model_name
+                            )
+                            if token is not None:
+                                model_syms.add(ModelSymbol(model_name, sym))
+                                continue
+                            model_syms.add(ModelSymbol(model_name, sym))
+                            for tf in self._timeframes:
+                                model_syms.add(
+                                    ModelSymbol(
+                                        model_timeframe_name(base_name, tf),
+                                        sym,
+                                    )
+                                )
                 pooled_model_groups: dict[tuple[str, int], frozenset[str]] = {}
                 for execution in window_executions:
                     exec_syms = frozenset(
@@ -1992,6 +2000,13 @@ class Strategy(
                             pooled_model_groups[(model_name, execution.id)] = (
                                 exec_syms
                             )
+                            for tf in self._timeframes:
+                                pooled_model_groups[
+                                    (
+                                        model_timeframe_name(base_name, tf),
+                                        execution.id,
+                                    )
+                                ] = exec_syms
                 train_dates = get_unique_sorted_dates(train_data[date_col])
                 models = self.train_models(
                     model_syms=model_syms,
@@ -2089,20 +2104,40 @@ class Strategy(
         executions: Optional[set[Execution]] = None,
     ) -> dict[IndicatorSymbol, pd.Series]:
         exec_set = executions if executions is not None else self._executions
-        indicator_syms = set()
+        indicator_syms: set[IndicatorSymbol] = set()
         for execution in exec_set:
             for sym in _static_symbols(execution.symbols):
                 for model_name in execution.model_names:
                     base_name, token = parse_model_timeframe_name(model_name)
                     ind_names = self._scope.get_indicator_names(base_name)
                     for ind_name in ind_names:
-                        if token is not None:
-                            ind_name = indicator_timeframe_name(
-                                ind_name, token
-                            )
                         indicator_syms.add(IndicatorSymbol(ind_name, sym))
+                        if token is not None:
+                            indicator_syms.add(
+                                IndicatorSymbol(
+                                    indicator_timeframe_name(ind_name, token),
+                                    sym,
+                                )
+                            )
+                        elif self._timeframes:
+                            for tf in self._timeframes:
+                                indicator_syms.add(
+                                    IndicatorSymbol(
+                                        indicator_timeframe_name(ind_name, tf),
+                                        sym,
+                                    )
+                                )
                 for ind_name in execution.indicator_names:
+                    base_name, token = parse_indicator_timeframe_name(ind_name)
                     indicator_syms.add(IndicatorSymbol(ind_name, sym))
+                    if token is None and self._timeframes:
+                        for tf in self._timeframes:
+                            indicator_syms.add(
+                                IndicatorSymbol(
+                                    indicator_timeframe_name(base_name, tf),
+                                    sym,
+                                )
+                            )
         return self.compute_indicators(
             df=df,
             indicator_syms=indicator_syms,

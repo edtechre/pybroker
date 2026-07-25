@@ -19,6 +19,8 @@ from decimal import Decimal
 from pybroker.common import DataCol, PriceType, to_datetime
 from pybroker.config import StrategyConfig
 from pybroker.context import ExecContext
+from pybroker.indicator import indicator
+from pybroker.model import model
 from pybroker.data import DataSource
 from pybroker.eval import EvalMetrics
 from pybroker.parallel import get_parallel_config, parallel, set_parallel
@@ -2483,6 +2485,42 @@ class TestStrategy:
         )
         assert not result.portfolio.empty
 
+    def test_walkforward_pooled_model_on_weekly_timeframe(
+        self, data_source_df, exec_pooled_model_source, scope, indicators
+    ):
+        _pooled_train_calls.clear()
+        saw_weekly_preds = []
+
+        def exec_fn(ctx):
+            weekly = ctx.timeframe("weekly")
+            preds = weekly.preds(POOLED_MODEL_NAME)
+            if len(preds) > 0:
+                saw_weekly_preds.append(len(preds))
+                assert isinstance(
+                    weekly.model(POOLED_MODEL_NAME), PooledFakeModel
+                )
+                assert len(preds) == len(weekly.close)
+
+        config = StrategyConfig()
+        strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+        strategy.enable_timeframes("weekly", base_timeframe="1d")
+        strategy.add_execution(
+            exec_fn,
+            ["AAPL", "MSFT"],
+            models=[exec_pooled_model_source],
+            indicators=indicators,
+        )
+        result = strategy.walkforward(
+            windows=1,
+            lookahead=1,
+            timeframe="1d",
+            train_size=0.5,
+            seed=42,
+        )
+        assert not result.portfolio.empty
+        assert len(_pooled_train_calls) == 2
+        assert saw_weekly_preds
+
     def test_walkforward_pooled_enable_parallel_models(
         self, data_source_df, executions_with_picklable_pooled_models
     ):
@@ -4256,8 +4294,6 @@ class TestStrategyTimeframes:
     def test_weekly_timeframe_backtest(
         self, data_source_df, disable_parallel_indicators, scope
     ):
-        from pybroker.indicator import indicator
-
         def sma(bar_data, period):
             close = bar_data.close
             out = np.full(len(close), np.nan)
@@ -4276,11 +4312,11 @@ class TestStrategyTimeframes:
                 )
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.set_timeframes("weekly")
+        strategy.enable_timeframes("weekly", base_timeframe="1d")
         strategy.add_execution(
             exec_fn,
             "SPY",
-            indicators=[sma_ind, sma_ind.timeframe("weekly")],
+            indicators=[sma_ind],
         )
         strategy.walkforward(
             windows=1,
@@ -4296,34 +4332,27 @@ class TestStrategyTimeframes:
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
         strategy.add_execution(exec_fn, "SPY")
-        with pytest.raises(ValueError, match=re.escape("set_timeframes()")):
+        with pytest.raises(ValueError, match=re.escape("enable_timeframes()")):
             strategy.walkforward(windows=1)
 
-    def test_timeframe_indicator_not_declared_then_error(
+    def test_timeframe_indicator_not_scheduled_then_error(
         self, data_source_df, scope
     ):
-        from pybroker.indicator import indicator
+        def exec_fn(ctx):
+            ctx.timeframe("weekly").indicator("sma20")
 
-        sma_ind = indicator(
-            "sma20",
-            lambda bar_data, period: bar_data.close,
-            period=5,
-        )
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        with pytest.raises(ValueError, match=re.escape("set_timeframes()")):
-            strategy.add_execution(
-                lambda ctx: None,
-                "SPY",
-                indicators=[sma_ind.timeframe("weekly")],
-            )
+        strategy.enable_timeframes("weekly", base_timeframe="1d")
+        strategy.add_execution(exec_fn, "SPY")
+        with pytest.raises(
+            ValueError, match="Indicator 'sma20@weekly' not found"
+        ):
+            strategy.walkforward(windows=1)
 
     @pytest.mark.parametrize("enable_parallel_models", [True, False])
     def test_weekly_timeframe_model_walkforward(
         self, data_source_df, scope, enable_parallel_models
     ):
-        from pybroker.indicator import indicator
-        from pybroker.model import model
-
         def sma(bar_data, period):
             close = bar_data.close
             out = np.full(len(close), np.nan)
@@ -4334,8 +4363,6 @@ class TestStrategyTimeframes:
         sma_ind = indicator("sma20", sma, period=5)
 
         def train_fn(sym, train_data, test_data):
-            from tests.fixtures import FakeModel
-
             return FakeModel(sym, np.zeros(len(test_data)))
 
         wk_model = model(
@@ -4355,11 +4382,11 @@ class TestStrategyTimeframes:
                 )
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.set_timeframes("weekly")
+        strategy.enable_timeframes("weekly", base_timeframe="1d")
         strategy.add_execution(
             exec_fn,
             "SPY",
-            models=[wk_model.timeframe("weekly")],
+            models=[wk_model],
         )
         strategy.walkforward(
             windows=1,
@@ -4372,10 +4399,8 @@ class TestStrategyTimeframes:
 
     def test_invalid_timeframe_granularity_raises(self, data_source_df, scope):
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.set_timeframes("daily")
-        strategy.add_execution(lambda ctx: None, "SPY")
         with pytest.raises(ValueError, match="Cannot compress daily bars"):
-            strategy.walkforward(windows=1)
+            strategy.enable_timeframes("daily", base_timeframe="1d")
 
     @pytest.mark.parametrize(
         "interval,match",
@@ -4389,23 +4414,19 @@ class TestStrategyTimeframes:
         self, data_source_df, scope, interval, match
     ):
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.set_timeframes(interval)
-        strategy.add_execution(lambda ctx: None, "SPY")
         with pytest.raises(ValueError, match=match):
-            strategy.walkforward(windows=1)
+            strategy.enable_timeframes(interval, base_timeframe="1d")
 
     @pytest.mark.parametrize("interval", ["weekly", 5])
     def test_valid_timeframe_granularity_walkforward(
         self, data_source_df, scope, interval
     ):
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.set_timeframes(interval)
+        strategy.enable_timeframes(interval, base_timeframe="1d")
         strategy.add_execution(lambda ctx: None, "SPY")
         strategy.walkforward(windows=1)
 
     def test_valid_subdaily_timeframe_walkforward(self, minute_bars_df, scope):
-        from pybroker.indicator import indicator
-
         def sma(bar_data, period):
             close = bar_data.close
             out = np.full(len(close), np.nan)
@@ -4426,19 +4447,17 @@ class TestStrategyTimeframes:
             minute_bars_df["date"].min(),
             minute_bars_df["date"].max(),
         )
-        strategy.set_timeframes("5m")
+        strategy.enable_timeframes("5m", base_timeframe="1m")
         strategy.add_execution(
             exec_fn,
             "SPY",
-            indicators=[sma_ind, sma_ind.timeframe("5m")],
+            indicators=[sma_ind],
         )
         strategy.walkforward(windows=1, timeframe="1m")
         assert seen
 
     @staticmethod
     def _sma_indicator():
-        from pybroker.indicator import indicator
-
         def sma(bar_data, period):
             close = bar_data.close
             out = np.full(len(close), np.nan)
@@ -4466,11 +4485,11 @@ class TestStrategyTimeframes:
                 )
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.set_timeframes(interval)
+        strategy.enable_timeframes(interval, base_timeframe="1d")
         strategy.add_execution(
             exec_fn,
             "SPY",
-            indicators=[sma_ind, sma_ind.timeframe(interval)],
+            indicators=[sma_ind],
         )
         strategy.walkforward(windows=1)
         assert seen
@@ -4482,13 +4501,9 @@ class TestStrategyTimeframes:
     def test_timeframe_model_walkforward(
         self, data_source_df, scope, interval, enable_parallel_models
     ):
-        from pybroker.model import model
-
         sma_ind = self._sma_indicator()
 
         def train_fn(sym, train_data, test_data):
-            from tests.fixtures import FakeModel
-
             return FakeModel(sym, np.zeros(len(test_data)))
 
         wk_model = model(
@@ -4506,11 +4521,11 @@ class TestStrategyTimeframes:
                 seen.append((len(timeframe_ctx.close), len(preds)))
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.set_timeframes(interval)
+        strategy.enable_timeframes(interval, base_timeframe="1d")
         strategy.add_execution(
             exec_fn,
             "SPY",
-            models=[wk_model.timeframe(interval)],
+            models=[wk_model],
         )
         strategy.walkforward(
             windows=1,
@@ -4523,13 +4538,9 @@ class TestStrategyTimeframes:
     def test_timeframe_indicator_and_model_same_token(
         self, data_source_df, scope
     ):
-        from pybroker.model import model
-
         sma_ind = self._sma_indicator()
 
         def train_fn(sym, train_data, test_data):
-            from tests.fixtures import FakeModel
-
             return FakeModel(sym, np.zeros(len(test_data)))
 
         wk_model = model(
@@ -4553,12 +4564,12 @@ class TestStrategyTimeframes:
                 )
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.set_timeframes("weekly")
+        strategy.enable_timeframes("weekly", base_timeframe="1d")
         strategy.add_execution(
             exec_fn,
             "SPY",
-            indicators=[sma_ind.timeframe("weekly")],
-            models=[wk_model.timeframe("weekly")],
+            indicators=[sma_ind],
+            models=[wk_model],
         )
         strategy.walkforward(windows=1)
         assert seen
@@ -4576,7 +4587,7 @@ class TestStrategyTimeframes:
                 seen.append((len(weekly.close), len(every5.close)))
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.set_timeframes("weekly", 5)
+        strategy.enable_timeframes("weekly", 5, base_timeframe="1d")
         strategy.add_execution(exec_fn, "SPY")
         strategy.walkforward(windows=1)
         assert seen

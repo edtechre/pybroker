@@ -327,6 +327,7 @@ def build_lag_feature_matrix_pooled(
     history_dates_by_symbol: dict[str, np.ndarray],
     lag_cache: LagSeriesCache,
     symbols: Iterable[str],
+    interval: Optional[str] = None,
 ) -> np.ndarray:
     """Builds a lag-expanded feature matrix for pooled multi-symbol data."""
     n_rows = len(sym_col)
@@ -351,6 +352,7 @@ def build_lag_feature_matrix_pooled(
             sym_dates,
             history_dates_by_symbol[sym],
             lag_cache,
+            interval,
         )
         matrix[mask] = sym_matrix
     return matrix
@@ -396,6 +398,7 @@ def apply_lags_to_model_input_pooled(
     lag_cache: LagSeriesCache,
     history_dates_by_symbol: dict[str, np.ndarray],
     symbols: Iterable[str],
+    interval: Optional[str] = None,
 ) -> ModelInput:
     """Attaches lag feature metadata to pooled ``model_input``."""
     n_features = len(lag_columns) * (lags + 1)
@@ -414,6 +417,7 @@ def apply_lags_to_model_input_pooled(
         history_dates_by_symbol,
         lag_cache,
         symbols,
+        interval,
     )
     model_input.lag_features = matrix
     model_input.lags = lags

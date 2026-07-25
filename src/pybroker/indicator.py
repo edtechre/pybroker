@@ -18,11 +18,9 @@ from pybroker.parallel import parallel
 from pybroker.eval import iqr, relative_entropy
 from pybroker.scope import StaticScope
 from pybroker.timeframe import (
-    CompressedBars,
     TimeframeData,
-    TimeframeInterval,
-    indicator_timeframe_name,
-    normalize_timeframe_interval,
+    CompressedBars,
+    compressed_bars_to_bar_data,
     parse_indicator_timeframe_name,
 )
 from pybroker.vect import highv, lowv, returnv
@@ -127,44 +125,11 @@ class Indicator:
     def __str__(self):
         return f"Indicator({self.name!r}, {self._kwargs})"
 
-    def timeframe(self, interval: TimeframeInterval) -> "TimeframeIndicator":
-        """Returns a timeframe-bound variant computed on compressed bars."""
-        return TimeframeIndicator(self, interval)
 
-
-class TimeframeIndicator:
-    """Lightweight wrapper binding an indicator to a compression timeframe."""
-
-    def __init__(self, base: Indicator, interval: TimeframeInterval):
-        self.base = base
-        self.interval = normalize_timeframe_interval(interval)
-        self.name = indicator_timeframe_name(base.name, self.interval)
-        self._kwargs = base._kwargs
-
-    def __call__(self, data: Union[BarData, pd.DataFrame]) -> pd.Series:
-        return self.base(data)
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __str__(self):
-        return (
-            f"TimeframeIndicator({self.base.name!r}, "
-            f"{self.interval!r}, {self._kwargs})"
-        )
-
-
-def _compressed_to_bar_data(bars: CompressedBars) -> BarData:
-    return BarData(
-        date=bars.dates,
-        open=bars.open,
-        high=bars.high,
-        low=bars.low,
-        close=bars.close,
-        volume=bars.volume,
-        vwap=None,
-        **bars.custom,
-    )
+def _compressed_to_bar_data(bars):
+    if not isinstance(bars, CompressedBars):
+        raise TypeError(f"Expected CompressedBars, received {type(bars)!r}.")
+    return compressed_bars_to_bar_data(bars)
 
 
 def _decorate_indicator_fn(ind_name: str):
@@ -359,7 +324,7 @@ class IndicatorsMixin:
                 if timeframe_data is None:
                     raise ValueError(
                         f"Timeframe indicator {ind_name!r} requires compressed "
-                        "data. Call Strategy.set_timeframes() first."
+                        "data. Call Strategy.enable_timeframes() first."
                     )
                 key = (sym, token)
                 if key not in timeframe_data.compressed:

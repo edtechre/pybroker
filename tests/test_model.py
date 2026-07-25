@@ -20,8 +20,14 @@ from pybroker.common import (
     TrainedModel,
     to_datetime,
 )
+from pybroker.indicator import IndicatorsMixin, indicator
 from pybroker.model import ModelLoader, ModelsMixin, ModelTrainer, model
-from pybroker.timeframe import TimeframeData, compress_symbol_df
+from pybroker.timeframe import (
+    TimeframeData,
+    compress_symbol_df,
+    indicator_timeframe_name,
+    model_timeframe_name,
+)
 from pybroker.scope import ModelInputScope
 
 TF_SECONDS = 60
@@ -842,15 +848,8 @@ class TestPooledModelsMixin:
 
 
 class TestTimeframeModels:
-    def test_model_timeframe_binds_name(self, scope, indicators):
-        m = model(
-            "tf_model",
-            lambda sym, train, test: FakeModel(sym, np.array([1.0])),
-            indicators,
-        )
-        tf_m = m.timeframe("weekly")
-        assert tf_m.name == "tf_model@weekly"
-        assert tf_m.base is m
+    def test_model_timeframe_name_helper(self):
+        assert model_timeframe_name("tf_model", "weekly") == "tf_model@weekly"
 
     def test_train_models_timeframe(self, scope, cache_date_fields):
         sym = "SPY"
@@ -873,18 +872,18 @@ class TestTimeframeModels:
         )
         timeframe_data = TimeframeData()
         timeframe_data.compressed[(sym, 2)] = compress_symbol_df(
-            df, 2, frozenset()
+            df, 2, frozenset(), 86400.0
         )
-        from pybroker.indicator import IndicatorsMixin, indicator
 
         sma_ind = indicator(
             "sma2",
             lambda bar_data, period: bar_data.close,
             period=2,
         )
+        tf_ind_name = indicator_timeframe_name(sma_ind.name, 2)
         ind_data = IndicatorsMixin().compute_indicators(
             df=df,
-            indicator_syms=[IndicatorSymbol(sma_ind.timeframe(2).name, sym)],
+            indicator_syms=[IndicatorSymbol(tf_ind_name, sym)],
             cache_date_fields=cache_date_fields,
             disable_parallel_indicators=True,
             timeframe_data=timeframe_data,
@@ -897,17 +896,109 @@ class TestTimeframeModels:
         mixin = ModelsMixin()
         train_dates = dates[:2]
         test_dates = dates[2:]
+        tf_model_name = model_timeframe_name(m.name, 2)
         models = mixin.train_models(
-            model_syms=[ModelSymbol(m.timeframe(2).name, sym)],
+            model_syms=[ModelSymbol(tf_model_name, sym)],
             train_data=df[df[DataCol.DATE.value].isin(train_dates)],
             test_data=df[df[DataCol.DATE.value].isin(test_dates)],
             indicator_data=ind_data,
             cache_date_fields=cache_date_fields,
             timeframe_data=timeframe_data,
         )
-        model_sym = ModelSymbol("tf_model@2", sym)
+        model_sym = ModelSymbol(tf_model_name, sym)
         assert model_sym in models
-        assert models[model_sym].name == "tf_model@2"
+        assert models[model_sym].name == tf_model_name
+
+    def test_train_models_pooled_timeframe(self, scope, cache_date_fields):
+        sma_ind = indicator(
+            "sma2",
+            lambda bar_data, period: bar_data.close,
+            period=2,
+        )
+        symbols = ["SPY", "AAPL"]
+        dates = np.array(
+            pd.date_range("2020-01-06", periods=20, freq="B"),
+            dtype="datetime64[D]",
+        )
+        n = len(dates)
+        close = np.arange(n, dtype=np.float64) + 1
+        frames = []
+        for sym in symbols:
+            frames.append(
+                pd.DataFrame(
+                    {
+                        DataCol.SYMBOL.value: [sym] * n,
+                        DataCol.DATE.value: dates,
+                        DataCol.OPEN.value: close,
+                        DataCol.HIGH.value: close + 1,
+                        DataCol.LOW.value: close - 1,
+                        DataCol.CLOSE.value: close,
+                        DataCol.VOLUME.value: np.ones(n),
+                    }
+                )
+            )
+        df = pd.concat(frames, ignore_index=True)
+        timeframe_data = TimeframeData()
+        for sym in symbols:
+            sym_df = df[df[DataCol.SYMBOL.value] == sym].reset_index(drop=True)
+            timeframe_data.compressed[(sym, "weekly")] = compress_symbol_df(
+                sym_df, "weekly", frozenset(), 86400.0
+            )
+        ind_syms = []
+        for sym in symbols:
+            ind_syms.append(
+                IndicatorSymbol(
+                    indicator_timeframe_name(sma_ind.name, "weekly"), sym
+                )
+            )
+        ind_data = IndicatorsMixin().compute_indicators(
+            df=df,
+            indicator_syms=ind_syms,
+            cache_date_fields=cache_date_fields,
+            disable_parallel_indicators=True,
+            timeframe_data=timeframe_data,
+        )
+        train_fn = Mock(return_value=FakeModel("pooled", np.array([1.0])))
+        model(
+            "pooled_model",
+            train_fn,
+            [sma_ind],
+            pooled=True,
+        )
+        tf_model_name = model_timeframe_name("pooled_model", "weekly")
+        pooled_syms = frozenset(symbols)
+        pooled_model_syms = [
+            ModelSymbol(tf_model_name, sym) for sym in sorted(pooled_syms)
+        ]
+        pooled_model_groups = {(tf_model_name, 1): pooled_syms}
+        weekly_dates = timeframe_data.compressed[
+            (symbols[0], "weekly")
+        ].bars.dates
+        split = max(len(weekly_dates) // 2, 1)
+        train_dates = weekly_dates[:split]
+        test_dates = weekly_dates[split:]
+        train_data = df[df[DataCol.DATE.value].isin(train_dates)]
+        test_data = df[df[DataCol.DATE.value].isin(test_dates)]
+        mixin = ModelsMixin()
+        models = mixin.train_models(
+            model_syms=pooled_model_syms,
+            train_data=train_data,
+            test_data=test_data,
+            indicator_data=ind_data,
+            cache_date_fields=cache_date_fields,
+            timeframe_data=timeframe_data,
+            pooled_model_groups=pooled_model_groups,
+        )
+        train_fn.assert_called_once()
+        pooled_train, _pooled_test = train_fn.call_args[0]
+        assert DataCol.SYMBOL.value in pooled_train.columns
+        assert set(pooled_train[DataCol.SYMBOL.value].unique()) == pooled_syms
+        assert len(pooled_train) > 0
+        assert len(models) == len(pooled_model_syms)
+        instances = {
+            models[model_sym].instance for model_sym in pooled_model_syms
+        }
+        assert len(instances) == 1
 
 
 class TestTimeSeriesModelOptions:

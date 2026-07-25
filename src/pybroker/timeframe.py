@@ -11,8 +11,10 @@ import pandas as pd
 import re
 from dataclasses import dataclass, field
 from numpy.typing import NDArray
-from pybroker.common import DataCol, IndicatorSymbol, to_seconds
+from pybroker.common import BarData, DataCol, IndicatorSymbol, to_seconds
 from typing import Iterable, Literal, Mapping, Optional, Union, cast
+
+_BASE_TIMEFRAME_TOLERANCE_SECONDS = 1.0
 
 CalendarInterval = Literal["daily", "weekly", "monthly", "quarterly", "yearly"]
 
@@ -372,52 +374,107 @@ def _bar_seconds_label(seconds: float) -> str:
     return f"{secs}-second bars" if secs != 1 else "1-second bars"
 
 
-def _median_bar_seconds_from_dates(
+def base_timeframe_to_seconds(base_timeframe: str) -> float:
+    """Converts a base timeframe string to seconds."""
+    if not base_timeframe or not base_timeframe.strip():
+        raise ValueError("base_timeframe cannot be empty.")
+    seconds = to_seconds(base_timeframe)
+    if seconds <= 0:
+        raise ValueError(f"Invalid base_timeframe {base_timeframe!r}.")
+    return float(seconds)
+
+
+def resolve_base_bar_seconds(
+    base_timeframe: Optional[str],
+    backtest_timeframe: str,
+) -> float:
+    """Resolves explicit base bar spacing from declared sources."""
+    from_enable = (
+        base_timeframe_to_seconds(base_timeframe) if base_timeframe else None
+    )
+    from_backtest = (
+        base_timeframe_to_seconds(backtest_timeframe)
+        if backtest_timeframe
+        else None
+    )
+    if from_enable is not None and from_backtest is not None:
+        if from_enable != from_backtest:
+            raise ValueError(
+                f"base_timeframe {base_timeframe!r} does not match backtest "
+                f"timeframe {backtest_timeframe!r}."
+            )
+        return from_enable
+    if from_enable is not None:
+        return from_enable
+    if from_backtest is not None:
+        return from_backtest
+    raise ValueError(
+        "Multi-timeframe strategies require base_timeframe in "
+        "enable_timeframes() or timeframe in backtest()/walkforward()."
+    )
+
+
+def _min_bar_seconds_from_dates(
     dates: NDArray[np.datetime64],
 ) -> Optional[float]:
     if len(dates) < 2:
         return None
-    deltas_ns = np.diff(dates.astype("datetime64[ns]").astype(np.int64))
-    return float(np.median(deltas_ns / 1_000_000_000))
-
-
-def _infer_bar_seconds_from_dates(
-    dates: NDArray[np.datetime64],
-) -> Optional[float]:
-    """Infers base bar spacing from bar date arrays."""
-    if len(dates) == 0:
-        return None
     unique_dates = np.unique(dates.astype("datetime64[ns]"))
-    return _median_bar_seconds_from_dates(unique_dates)
+    if len(unique_dates) < 2:
+        return None
+    deltas_ns = np.diff(unique_dates.astype("datetime64[ns]").astype(np.int64))
+    positive = deltas_ns[deltas_ns > 0]
+    if len(positive) == 0:
+        return None
+    return float(positive.min() / 1_000_000_000)
 
 
-def _infer_bar_seconds_from_df(df: pd.DataFrame) -> Optional[float]:
-    """Infers base bar spacing from bar dates in ``df``."""
+def validate_base_timeframe_data(
+    df: pd.DataFrame, base_bar_seconds: float
+) -> None:
+    """Raises if bar timestamps are inconsistent with ``base_bar_seconds``."""
     if df.empty:
-        return None
-    dates = df[DataCol.DATE.value].to_numpy(dtype="datetime64[ns]")
-    return _infer_bar_seconds_from_dates(dates)
+        return
+    sym_col = DataCol.SYMBOL.value
+    date_col = DataCol.DATE.value
+    if sym_col in df.columns:
+        symbol_groups = [
+            (str(sym), group)
+            for sym, group in df.groupby(sym_col, sort=False, observed=True)
+        ]
+    else:
+        symbol_groups = [("data", df)]
+    for label, group in symbol_groups:
+        dates = group[date_col].to_numpy(dtype="datetime64[ns]")
+        observed = _min_bar_seconds_from_dates(dates)
+        if observed is None:
+            raise ValueError(
+                f"Need at least 2 bars to validate base timeframe for "
+                f"{label!r}."
+            )
+        if (
+            abs(observed - base_bar_seconds)
+            > _BASE_TIMEFRAME_TOLERANCE_SECONDS
+        ):
+            raise ValueError(
+                f"Bar spacing for {label!r} is inconsistent with base "
+                f"timeframe ({int(base_bar_seconds)}s expected, "
+                f"{int(observed)}s observed minimum spacing)."
+            )
 
 
-def _infer_bar_seconds_from_str(timeframe_str: str) -> Optional[float]:
-    """Infers base bar spacing from a backtest timeframe string."""
-    if not timeframe_str:
-        return None
-    seconds = to_seconds(timeframe_str)
-    if seconds == 0:
-        return None
-    return float(seconds)
-
-
-def infer_base_bar_seconds(df: pd.DataFrame, timeframe_str: str) -> float:
-    """Infers base feed bar spacing in seconds from data or timeframe string."""
-    from_df = _infer_bar_seconds_from_df(df)
-    if from_df is not None:
-        return from_df
-    from_str = _infer_bar_seconds_from_str(timeframe_str)
-    if from_str is not None:
-        return from_str
-    return float(_CALENDAR_INTERVAL_SECONDS["daily"])
+def compressed_bars_to_bar_data(bars: CompressedBars) -> BarData:
+    """Converts compressed OHLCV arrays to :class:`~pybroker.common.BarData`."""
+    return BarData(
+        date=bars.dates,
+        open=bars.open,
+        high=bars.high,
+        low=bars.low,
+        close=bars.close,
+        volume=bars.volume,
+        vwap=None,
+        **bars.custom,
+    )
 
 
 def validate_timeframe_interval(
@@ -558,14 +615,101 @@ def compress(
     return bars, completed.astype(np.int64)
 
 
+def compress_bars(
+    data: Union[BarData, pd.DataFrame],
+    timeframe: TimeframeInterval,
+    *,
+    base_timeframe: str,
+) -> BarData:
+    """Compresses base OHLCV bars to a coarser ``timeframe``.
+
+    Args:
+        data: Single-symbol :class:`~pybroker.common.BarData` or OHLCV
+            :class:`pandas.DataFrame`.
+        timeframe: Target compression interval.
+        base_timeframe: Declared base bar spacing (e.g. ``"1m"``, ``"1d"``).
+
+    Returns:
+        Compressed :class:`~pybroker.common.BarData`.
+    """
+    base_bar_seconds = base_timeframe_to_seconds(base_timeframe)
+    interval = normalize_timeframe_interval(timeframe)
+    validate_timeframe_interval(interval, base_bar_seconds)
+    if isinstance(data, BarData):
+        volume = data.volume
+        if volume is None:
+            volume = np.zeros(len(data.date), dtype=np.float64)
+        frame_data: dict[str, NDArray] = {
+            DataCol.DATE.value: data.date,
+            DataCol.OPEN.value: data.open,
+            DataCol.HIGH.value: data.high,
+            DataCol.LOW.value: data.low,
+            DataCol.CLOSE.value: data.close,
+            DataCol.VOLUME.value: volume,
+            **data._custom_col_data,
+        }
+        sym_df = pd.DataFrame(frame_data)
+    else:
+        sym_df = data.copy()
+    if sym_df.empty:
+        return compressed_bars_to_bar_data(
+            compress(
+                np.array([], dtype="datetime64[ns]"),
+                np.array([], dtype=np.float64),
+                np.array([], dtype=np.float64),
+                np.array([], dtype=np.float64),
+                np.array([], dtype=np.float64),
+                np.array([], dtype=np.float64),
+                interval,
+            )[0]
+        )
+    validate_base_timeframe_data(sym_df, base_bar_seconds)
+    custom_cols = [
+        col
+        for col in sym_df.columns
+        if col
+        not in (
+            DataCol.DATE.value,
+            DataCol.OPEN.value,
+            DataCol.HIGH.value,
+            DataCol.LOW.value,
+            DataCol.CLOSE.value,
+            DataCol.VOLUME.value,
+            DataCol.SYMBOL.value,
+        )
+    ]
+    custom_col_data = {
+        col: sym_df[col].to_numpy(copy=True)
+        for col in custom_cols
+        if col in sym_df.columns
+    }
+    vol = (
+        sym_df[DataCol.VOLUME.value].to_numpy(copy=True)
+        if DataCol.VOLUME.value in sym_df.columns
+        else np.zeros(len(sym_df), dtype=np.float64)
+    )
+    bars, _ = compress(
+        dates=sym_df[DataCol.DATE.value].to_numpy(dtype="datetime64[ns]"),
+        open_=sym_df[DataCol.OPEN.value].to_numpy(copy=True),
+        high=sym_df[DataCol.HIGH.value].to_numpy(copy=True),
+        low=sym_df[DataCol.LOW.value].to_numpy(copy=True),
+        close=sym_df[DataCol.CLOSE.value].to_numpy(copy=True),
+        volume=vol,
+        interval=interval,
+        custom_cols=custom_col_data,
+    )
+    return compressed_bars_to_bar_data(bars)
+
+
 def compress_symbol_df(
     sym_df: pd.DataFrame,
     interval: TimeframeInterval,
     custom_cols: Iterable[str],
+    base_bar_seconds: float,
 ) -> CompressedSymbolData:
     """Compresses a single-symbol DataFrame."""
-    base_bar_seconds = infer_base_bar_seconds(sym_df, "")
     validate_timeframe_interval(interval, base_bar_seconds)
+    validate_base_timeframe_data(sym_df, base_bar_seconds)
     custom_col_data = {
         col: sym_df[col].to_numpy(copy=True)
         for col in custom_cols

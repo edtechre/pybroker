@@ -16,6 +16,7 @@ from pybroker.common import PriceType, StopType, to_datetime
 from pybroker.config import StrategyConfig
 from pybroker.context import (
     ExecContext,
+    TimeframeContext,
     set_exec_ctx_data,
 )
 from pybroker.portfolio import Order, Portfolio, Position, Trade
@@ -322,15 +323,13 @@ def test_indicator(ctx, end_index):
 
 
 def test_timeframe_when_not_declared_then_error(ctx):
-    with pytest.raises(ValueError, match=re.escape("set_timeframes()")):
+    with pytest.raises(ValueError, match=re.escape("enable_timeframes()")):
         ctx.timeframe("weekly")
 
 
 def test_timeframe_context_read_only(
     timeframe_scope, trained_models, sym_end_index
 ):
-    from pybroker.context import TimeframeContext
-
     timeframe_ctx = TimeframeContext(
         "SPY", "weekly", timeframe_scope, sym_end_index, trained_models
     )
