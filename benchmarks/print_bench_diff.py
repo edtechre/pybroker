@@ -16,7 +16,8 @@ RESULTS_DIR = REPO_ROOT / ".asv" / "results"
 MIGRATION_BENCH_RE = re.compile(
     r"^bench_backtest\.("
     r"Walkforward|WalkforwardLarge|WalkforwardScaled|PortfolioHeldStops|"
-    r"WalkforwardMultiWindow|BacktestBarLoop|"
+    r"WalkforwardMultiWindow|BacktestBarLoop|WalkforwardPerBar|"
+    r"StoreSliceKernels|"
     r"WalkforwardTimeframes|WalkforwardModels|Determinism"
     r")\."
 )

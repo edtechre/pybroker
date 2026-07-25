@@ -79,6 +79,7 @@ _PRICE_LOW: Final = PriceType.LOW
 _PRICE_CLOSE: Final = PriceType.CLOSE
 _PRICE_MIDDLE: Final = PriceType.MIDDLE
 _PRICE_AVERAGE: Final = PriceType.AVERAGE
+_BAR_OHLC_COLS: Final = (_COL_DATE, _COL_CLOSE, _COL_LOW, _COL_HIGH)
 
 
 class StaticScope:
@@ -126,6 +127,8 @@ class StaticScope:
         )
         self.custom_data_cols = set()
         self._cols_frozen: bool = False
+        self._all_data_cols: Optional[frozenset[str]] = None
+        self._bar_data_cols: Optional[tuple[str, ...]] = None
         self._params: dict[str, Any] = {}
 
     def set_indicator(self, indicator):
@@ -192,6 +195,8 @@ class StaticScope:
     @property
     def all_data_cols(self) -> frozenset[str]:
         """All registered data column names."""
+        if self._all_data_cols is not None:
+            return self._all_data_cols
         return self.default_data_cols | self.custom_data_cols
 
     def _verify_unfrozen_cols(self):
@@ -201,12 +206,25 @@ class StaticScope:
     def freeze_data_cols(self):
         """Prevents additional data columns from being registered."""
         self._cols_frozen = True
+        self._all_data_cols = self.default_data_cols | self.custom_data_cols
+        self._bar_data_cols = (
+            _COL_DATE,
+            _COL_OPEN,
+            _COL_HIGH,
+            _COL_LOW,
+            _COL_CLOSE,
+            _COL_VOLUME,
+            _COL_VWAP,
+            *sorted(self.custom_data_cols),
+        )
 
     def unfreeze_data_cols(self):
         """Allows additional data columns to be registered if
         :func:`pybroker.scope.StaticScope.freeze_data_cols` was called.
         """
         self._cols_frozen = False
+        self._all_data_cols = None
+        self._bar_data_cols = None
 
     def param(
         self, name: str, value: Optional[Any] = _EMPTY_PARAM
@@ -348,6 +366,29 @@ def symbol_array_store_from_frame(
     return symbol_array_store_from_indexed_df(indexed)
 
 
+def _dates_in_target_mask(
+    dates: NDArray[np.datetime64],
+    target: NDArray[np.datetime64],
+) -> NDArray[np.bool_]:
+    """Returns a boolean mask of ``dates`` present in ``target``."""
+    if len(dates) == 0 or len(target) == 0:
+        return np.zeros(len(dates), dtype=bool)
+    if len(target) > 1 and np.all(target[:-1] <= target[1:]):
+        if len(dates) > 1 and np.all(dates[:-1] <= dates[1:]):
+            _, idx_in_dates, _ = np.intersect1d(
+                dates,
+                target,
+                assume_unique=True,
+                return_indices=True,
+            )
+            if len(idx_in_dates) == 0:
+                return np.zeros(len(dates), dtype=bool)
+            mask = np.zeros(len(dates), dtype=bool)
+            mask[idx_in_dates] = True
+            return mask
+    return np.isin(dates, target)
+
+
 def slice_symbol_array_store_by_dates(
     store: SymbolArrayStore,
     selected_dates: Union[Sequence[np.datetime64], NDArray[np.datetime64]],
@@ -365,7 +406,9 @@ def slice_symbol_array_store_by_dates(
         dates = sym_data.get(date_col)
         if dates is None or len(dates) == 0:
             continue
-        mask = np.isin(dates, target)
+        mask = _dates_in_target_mask(
+            np.asarray(dates, dtype="datetime64[ns]"), target
+        )
         if not mask.any():
             continue
         sym_arrays[sym] = {col: arr[mask] for col, arr in sym_data.items()}
@@ -490,8 +533,12 @@ class ColumnScope:
             :class:`numpy.ndarray` of column data for every bar until
             ``end_index`` (when specified).
         """
-        result = self.fetch_dict(symbol, (name,), end_index)
-        return result.get(name, None)
+        if symbol not in self._symbols:
+            raise ValueError(f"Symbol not found: {symbol}.")
+        array = self._store.sym_arrays[symbol].get(name)
+        if array is None:
+            return None
+        return array if end_index is None else array[:end_index]
 
     def bar_data_from_data_columns(
         self, symbol: str, end_index: int
@@ -506,12 +553,25 @@ class ColumnScope:
                 column values are not truncated.
         """
         static_scope = StaticScope.instance()
-        default_col_data = self.fetch_dict(
-            symbol, static_scope.default_data_cols, end_index
-        )
-        custom_col_data = self.fetch_dict(
-            symbol, static_scope.custom_data_cols, end_index
-        )
+        bar_data_cols = static_scope._bar_data_cols
+        if bar_data_cols is None:
+            bar_data_cols = tuple(static_scope.all_data_cols)
+        if symbol not in self._symbols:
+            raise ValueError(f"Symbol not found: {symbol}.")
+        sym_data = self._store.sym_arrays[symbol]
+        default_col_data: dict[str, Optional[NDArray]] = {}
+        custom_col_data: dict[str, NDArray] = {}
+        for col in bar_data_cols:
+            array = sym_data.get(col)
+            if array is None:
+                if col in static_scope.default_data_cols:
+                    default_col_data[col] = None
+                continue
+            sliced = array if end_index is None else array[:end_index]
+            if col in static_scope.default_data_cols:
+                default_col_data[col] = sliced
+            else:
+                custom_col_data[col] = sliced
         return BarData(
             **default_col_data,  # type: ignore[arg-type]
             **custom_col_data,  # type: ignore[arg-type]
@@ -785,8 +845,11 @@ class TimeframeScope:
         target_len = self.completed_index(symbol, interval, end_index) + 1
         if target_len <= 0:
             return np.array([], dtype=pred.dtype)
-        while len(pred) < target_len:
-            bar_end_index = len(pred) + 1
+        if len(pred) >= target_len:
+            return pred[:target_len]
+        pred_values = pred.tolist()
+        while len(pred_values) < target_len:
+            bar_end_index = len(pred_values) + 1
             model_input = self._prepare_full_input(
                 symbol, interval, base_model_name
             )
@@ -796,8 +859,9 @@ class TimeframeScope:
             else:
                 sliced = model_input.slice(idx + 1)
             scalar = self._run_predict_scalar(trained_model, sliced)
-            pred = np.append(pred, scalar)
-            self._sym_preds[model_sym] = pred
+            pred_values.append(scalar)
+        pred = np.asarray(pred_values, dtype=np.float64)
+        self._sym_preds[model_sym] = pred
         return pred[:target_len]
 
     @staticmethod
@@ -1027,20 +1091,30 @@ class ModelInputScope:
                 if end_index is None
                 else model_input.slice(end_index)
             )
-        input_: dict[str, NDArray[Any]] = {}
-        for col in self._scope.all_data_cols:
-            data = self._col_scope.fetch(symbol, col)
-            if data is not None:
-                input_[col] = data
+        if symbol not in self._col_scope._symbols:
+            raise ValueError(f"Symbol not found: {symbol}.")
         if not self._scope.has_model_source(name):
             raise ValueError(f"Model {name!r} not found.")
-        for ind_name in self._scope.get_indicator_names(name):
-            input_[ind_name] = self._ind_scope.fetch(symbol, ind_name)
+        model_source = self._scope.get_model_source(name)
         if model_sym not in self._models:
             raise ValueError(f"Model {name!r} not found for {symbol}.")
         trained_model = self._models[model_sym]
-        model_source = self._scope.get_model_source(name)
         date_col = DataCol.DATE.value
+        ind_names = self._scope.get_indicator_names(name)
+        if (
+            trained_model.input_cols is not None
+            and not model_source._input_data_fn
+        ):
+            data_cols = frozenset(trained_model.input_cols) | {date_col}
+        else:
+            data_cols = self._scope.all_data_cols
+        input_: dict[str, NDArray[Any]] = {}
+        for col in data_cols:
+            data = self._col_scope.fetch(symbol, col)
+            if data is not None:
+                input_[col] = data
+        for ind_name in ind_names:
+            input_[ind_name] = self._ind_scope.fetch(symbol, ind_name)
         row_dates = input_.get(date_col)
         if row_dates is None:
             row_dates = self._col_scope.fetch(symbol, date_col)
@@ -1154,14 +1228,18 @@ class PredictionScope:
             target_len = len(input_full.dates)
         else:
             target_len = end_index
-        while len(pred) < target_len:
-            bar_end_index = len(pred) + 1
+        if len(pred) >= target_len:
+            return pred if end_index is None else pred[:end_index]
+        pred_values = pred.tolist()
+        while len(pred_values) < target_len:
+            bar_end_index = len(pred_values) + 1
             model_input = self._input_scope._fetch_model_input(
                 symbol, name, bar_end_index
             )
             scalar = self._run_predict_scalar(trained_model, model_input)
-            pred = np.append(pred, scalar)
-            self._sym_preds[model_sym] = pred
+            pred_values.append(scalar)
+        pred = np.asarray(pred_values, dtype=np.float64)
+        self._sym_preds[model_sym] = pred
         return pred if end_index is None else pred[:end_index]
 
     @staticmethod
@@ -1306,7 +1384,8 @@ class PriceScope:
         end_index = self._sym_end_index[symbol]
         if end_index <= 0:
             return None, None, None
-        date_arr = self._col_scope.fetch(symbol, _COL_DATE)
+        cols = self._col_scope.fetch_dict(symbol, _BAR_OHLC_COLS)
+        date_arr = cols[_COL_DATE]
         if date_arr is None:
             return None, None, None
         if end_index > len(date_arr):
@@ -1315,13 +1394,13 @@ class PriceScope:
         if date_arr[idx] != date:
             return None, None, None
         close = low = high = None
-        close_arr = self._col_scope.fetch(symbol, _COL_CLOSE)
+        close_arr = cols[_COL_CLOSE]
         if close_arr is not None:
             close = float(close_arr[idx])
-        low_arr = self._col_scope.fetch(symbol, _COL_LOW)
+        low_arr = cols[_COL_LOW]
         if low_arr is not None:
             low = float(low_arr[idx])
-        high_arr = self._col_scope.fetch(symbol, _COL_HIGH)
+        high_arr = cols[_COL_HIGH]
         if high_arr is not None:
             high = float(high_arr[idx])
         return close, low, high

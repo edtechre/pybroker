@@ -338,6 +338,75 @@ class WalkforwardMultiWindow:
         )
 
 
+class WalkforwardPerBar:
+    """Walkforward with per-bar model predictions."""
+
+    timeout = 600
+
+    def setup(self) -> None:
+        np.random.seed(SEED)
+        self.df = _load_dataset()
+        self._build_strategy().walkforward(
+            windows=WINDOWS,
+            lookahead=LOOKAHEAD,
+            calc_bootstrap=False,
+            disable_parallel_indicators=True,
+        )
+
+    def time_walkforward_per_bar(self) -> None:
+        self._build_strategy().walkforward(
+            windows=WINDOWS,
+            lookahead=LOOKAHEAD,
+            calc_bootstrap=False,
+            disable_parallel_indicators=True,
+        )
+
+    def _build_strategy(self) -> Strategy:
+        from pybroker.model import model
+
+        pybroker.clear_params()
+        pybroker.disable_logging()
+        pybroker.disable_progress_bar()
+
+        class _ConstantModel:
+            def predict(self, _x):
+                return np.ones(len(_x))
+
+        hhv20 = pybroker.indicator(
+            "hhv20", lambda bar_data: highv(bar_data.close, 20)
+        )
+
+        def train_fn(_symbol, _train_df, _test_df):
+            return _ConstantModel()
+
+        def predict_fn(_instance, df):
+            return np.ones(len(df))
+
+        per_bar_model = model(
+            "bench_per_bar",
+            train_fn,
+            indicators=(hhv20,),
+            predict_fn=predict_fn,
+            per_bar=True,
+        )
+
+        def exec_fn(ctx: ExecContext) -> None:
+            preds = ctx.preds("bench_per_bar")
+            if len(preds) and preds[-1] > 0:
+                ctx.buy_shares = 1
+
+        start = self.df["date"].min().strftime("%Y-%m-%d")
+        end = self.df["date"].max().strftime("%Y-%m-%d")
+        strategy = Strategy(self.df, start, end, StrategyConfig())
+        strategy.add_execution(
+            exec_fn,
+            symbols=sorted(self.df["symbol"].unique().tolist()),
+            models=per_bar_model,
+            indicators=[hhv20],
+        )
+        return strategy
+
+
 class BacktestBarLoop:
     """Isolates backtest_executions bar-loop overhead (date map, kwargs)."""
 
@@ -764,6 +833,44 @@ class StoreBuildKernels:
         self, n_symbols: int, n_days: int
     ) -> None:
         self._build(self._df)
+
+
+class StoreSliceKernels:
+    """Repeated date-window slicing of a master SymbolArrayStore."""
+
+    timeout = 120
+    params = ([10], [252 * 5])
+    param_names = ("n_symbols", "n_days")
+
+    def setup(self, n_symbols: int, n_days: int) -> None:
+        from pybroker.common import get_unique_sorted_dates_array
+        from pybroker.scope import (
+            slice_symbol_array_store_by_dates,
+            symbol_array_store_from_frame,
+        )
+
+        self._slice = slice_symbol_array_store_by_dates
+        self._df = _synthetic_ohlcv(
+            n_symbols=n_symbols, n_days=n_days, seed=SEED
+        )
+        self._master = symbol_array_store_from_frame(self._df)
+        all_dates = get_unique_sorted_dates_array(
+            self._df["date"].to_numpy(dtype="datetime64[ns]")
+        )
+        window_size = 252
+        self._windows = tuple(
+            all_dates[i * window_size : (i + 1) * window_size]
+            for i in range(10)
+            if (i + 1) * window_size <= len(all_dates)
+        )
+        for window in self._windows:
+            self._slice(self._master, window)
+
+    def time_slice_symbol_array_store_by_dates(
+        self, n_symbols: int, n_days: int
+    ) -> None:
+        for window in self._windows:
+            self._slice(self._master, window)
 
 
 class ModelPrepKernels:

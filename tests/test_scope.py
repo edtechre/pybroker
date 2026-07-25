@@ -17,6 +17,7 @@ from pybroker.common import PriceType
 from pybroker.indicator import IndicatorSymbol
 from pybroker.model import model
 from pybroker.scope import (
+    ModelInputScope,
     PriceScope,
     column_scope_from_frame,
     enable_logging,
@@ -151,6 +152,22 @@ class TestStaticScope:
         assert set(scope.get_indicator_names(model_source.name)) == set(
             ind_names
         )
+
+    def test_freeze_data_cols_caches_all_data_cols(self, scope):
+        scope.custom_data_cols = set()
+        register_columns("adj_close")
+        scope.freeze_data_cols()
+        cached = scope.all_data_cols
+        scope.custom_data_cols.add("ignored")
+        assert scope.all_data_cols == cached
+        assert scope._bar_data_cols is not None
+        assert "adj_close" in scope._bar_data_cols
+        scope.unfreeze_data_cols()
+        scope.custom_data_cols.add("extra")
+        assert "extra" in scope.all_data_cols
+        assert scope._all_data_cols is None
+        scope.custom_data_cols = set()
+        unregister_columns("adj_close")
 
 
 class TestColumnScope:
@@ -329,6 +346,28 @@ class TestModelInputScope:
         with pytest.raises(ValueError, match=re.escape(expected_msg)):
             input_scope.fetch(sym, name)
 
+    def test_fetch_model_input_only_fetches_input_cols(
+        self, scope, col_scope, ind_scope, trained_models, symbol
+    ):
+        scope.custom_data_cols = set()
+        register_columns("unused_custom")
+        scope.freeze_data_cols()
+        fetch_calls: list[str] = []
+        original_fetch = col_scope.fetch
+
+        def tracking_fetch(sym, col, end_index=None):
+            fetch_calls.append(col)
+            return original_fetch(sym, col, end_index)
+
+        col_scope.fetch = tracking_fetch  # type: ignore[method-assign]
+        input_scope = ModelInputScope(col_scope, ind_scope, trained_models)
+        input_scope.fetch_model_input(symbol, MODEL_NAME)
+        fetched_cols = set(fetch_calls)
+        assert "unused_custom" not in fetched_cols
+        assert {"date", "hhv", "llv", "sumv"}.issubset(fetched_cols)
+        scope.unfreeze_data_cols()
+        unregister_columns("unused_custom")
+
 
 class TestPredictionScope:
     def test_fetch(
@@ -455,6 +494,31 @@ class TestPriceScope:
         col_scope = ColumnScope(df.set_index(["symbol", "date"]))
         price_scope = PriceScope(col_scope, {"SPY": 2}, round_fill_price)
         assert price_scope.fetch("SPY", price) == expected_price
+
+    def test_fetch_bar_ohlc(self):
+        df = pd.DataFrame(
+            {
+                "date": [
+                    np.datetime64("2020-02-03"),
+                    np.datetime64("2020-02-04"),
+                    np.datetime64("2020-02-05"),
+                ],
+                "symbol": ["SPY"] * 3,
+                "open": [100, 200, 300],
+                "high": [500, 400, 500],
+                "low": [200, 100, 200],
+                "close": [250, 300, 400],
+            }
+        )
+        from pybroker.scope import ColumnScope
+
+        col_scope = ColumnScope(df.set_index(["symbol", "date"]))
+        price_scope = PriceScope(col_scope, {"SPY": 2}, True)
+        date = np.datetime64("2020-02-04")
+        close, low, high = price_scope.fetch_bar_ohlc("SPY", date)
+        assert close == 300.0
+        assert low == 100.0
+        assert high == 400.0
 
 
 class TestPendingOrderScope:
@@ -586,3 +650,13 @@ def test_slice_symbol_array_store_by_dates_when_empty_selection(
         store, np.array([], dtype="datetime64[ns]")
     )
     assert not sliced.symbols
+
+
+def test_slice_symbol_array_store_by_dates_non_contiguous(data_source_df):
+    store = symbol_array_store_from_frame(data_source_df)
+    sym = "SPY"
+    all_dates = store.sym_arrays[sym]["date"]
+    selected = np.sort(all_dates[[0, 2, 5, 9]])
+    sliced = slice_symbol_array_store_by_dates(store, selected)
+    np.testing.assert_array_equal(sliced.sym_arrays[sym]["date"], selected)
+    assert len(sliced.sym_arrays[sym]["close"]) == len(selected)
