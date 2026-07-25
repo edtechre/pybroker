@@ -481,6 +481,23 @@ def test_foreign_with_empty_col(
     verify_bar_data(ctx.foreign(foreign))
 
 
+def test_foreign_col_after_bar_data(ctx, foreign, data_source_df, end_index):
+    ctx.foreign(foreign)
+    df = data_source_df[data_source_df["symbol"] == foreign]
+    close = ctx.foreign(foreign, "close")
+    assert (close == df["close"].values[:end_index]).all()
+
+
+def test_scalar_prices(ctx, data_source_df, symbol, end_index):
+    df = data_source_df[data_source_df["symbol"] == symbol]
+    assert ctx.open_price == df["open"].values[end_index - 1]
+    assert ctx.high_price == df["high"].values[end_index - 1]
+    assert ctx.low_price == df["low"].values[end_index - 1]
+    assert ctx.close_price == df["close"].values[end_index - 1]
+    assert ctx.close_price == ctx.close[-1]
+    assert ctx.volume_value == df["volume"].values[end_index - 1]
+
+
 def test_long_positions(ctx_with_pos, symbol):
     positions = tuple(ctx_with_pos.long_positions(symbol))
     assert len(positions) == 1
@@ -1048,12 +1065,15 @@ def test_set_exec_ctx_data(ctx, sym_end_index):
     ctx.stop_loss = 10
     ctx.stop_loss_pct = 20
     ctx.stop_loss_limit = 99
+    ctx.stop_loss_exit_price = PriceType.CLOSE
     ctx.stop_profit = 20
     ctx.stop_profit_pct = 30
     ctx.stop_profit_limit = 99.99
+    ctx.stop_profit_exit_price = PriceType.LOW
     ctx.stop_trailing = 100
     ctx.stop_trailing_pct = 15
     ctx.stop_trailing_limit = 80.8
+    ctx.stop_trailing_exit_price = PriceType.HIGH
     set_exec_ctx_data(ctx, date)
     assert ctx.dt == to_datetime(date)
     assert ctx.bars == sym_end_index[ctx.symbol]
@@ -1073,12 +1093,15 @@ def test_set_exec_ctx_data(ctx, sym_end_index):
     assert ctx.stop_loss is None
     assert ctx.stop_loss_pct is None
     assert ctx.stop_loss_limit is None
+    assert ctx.stop_loss_exit_price is None
     assert ctx.stop_profit is None
     assert ctx.stop_profit_pct is None
     assert ctx.stop_profit_limit is None
+    assert ctx.stop_profit_exit_price is None
     assert ctx.stop_trailing is None
     assert ctx.stop_trailing_pct is None
     assert ctx.stop_trailing_limit is None
+    assert ctx.stop_trailing_exit_price is None
     assert ctx.stop_fn is None
     assert ctx.stop_fn_limit is None
 

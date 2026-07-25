@@ -311,13 +311,10 @@ class TimeframeContext:
     @property
     def bars(self) -> int:
         end_index = self._sym_end_index[self._symbol]
-        data = self._timeframe_scope.fetch_bar(
-            self._symbol,
-            self._interval,
-            DataCol.CLOSE.value,
-            end_index,
+        idx = self._timeframe_scope.completed_index(
+            self._symbol, self._interval, end_index
         )
-        return len(data)
+        return 0 if idx < 0 else idx + 1
 
     @property
     def dates(self) -> NDArray[np.datetime64]:
@@ -758,6 +755,10 @@ class ExecContext:
         if self.symbol is None:
             raise ValueError("symbol is not set.")
 
+    def _bar_value(self, col: str) -> Optional[float]:
+        end_index = self._sym_end_index[self.symbol]
+        return self._col_scope.fetch_value(self.symbol, col, end_index)
+
     @property
     def bars(self) -> int:
         """Number of bars of data that have completed."""
@@ -785,9 +786,8 @@ class ExecContext:
     @property
     def open(self) -> NDArray[np.float64]:
         """Current bar's open price."""
-        self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol,  # type: ignore[arg-type]
+            self.symbol,
             DataCol.OPEN.value,
             self._sym_end_index[self.symbol],
         )
@@ -795,9 +795,8 @@ class ExecContext:
     @property
     def high(self) -> NDArray[np.float64]:
         """Current bar's high price."""
-        self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol,  # type: ignore[arg-type]
+            self.symbol,
             DataCol.HIGH.value,
             self._sym_end_index[self.symbol],
         )
@@ -805,9 +804,8 @@ class ExecContext:
     @property
     def low(self) -> NDArray[np.float64]:
         """Current bar's low price."""
-        self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol,  # type: ignore[arg-type]
+            self.symbol,
             DataCol.LOW.value,
             self._sym_end_index[self.symbol],
         )
@@ -815,9 +813,8 @@ class ExecContext:
     @property
     def close(self) -> NDArray[np.float64]:
         """Current bar's close price."""
-        self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol,  # type: ignore[arg-type]
+            self.symbol,
             DataCol.CLOSE.value,
             self._sym_end_index[self.symbol],
         )
@@ -825,9 +822,8 @@ class ExecContext:
     @property
     def volume(self) -> Optional[NDArray[np.float64]]:
         """Current bar's volume."""
-        self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol,  # type: ignore[arg-type]
+            self.symbol,
             DataCol.VOLUME.value,
             self._sym_end_index[self.symbol],
         )
@@ -835,12 +831,53 @@ class ExecContext:
     @property
     def vwap(self) -> Optional[NDArray[np.float64]]:
         """Current bar's volume-weighted average price (VWAP)."""
-        self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol,  # type: ignore[arg-type]
+            self.symbol,
             DataCol.VWAP.value,
             self._sym_end_index[self.symbol],
         )
+
+    @property
+    def open_price(self) -> float:
+        """Current bar's open price as a scalar."""
+        value = self._bar_value(DataCol.OPEN.value)
+        if value is None:
+            raise ValueError("open price not found.")
+        return value
+
+    @property
+    def high_price(self) -> float:
+        """Current bar's high price as a scalar."""
+        value = self._bar_value(DataCol.HIGH.value)
+        if value is None:
+            raise ValueError("high price not found.")
+        return value
+
+    @property
+    def low_price(self) -> float:
+        """Current bar's low price as a scalar."""
+        value = self._bar_value(DataCol.LOW.value)
+        if value is None:
+            raise ValueError("low price not found.")
+        return value
+
+    @property
+    def close_price(self) -> float:
+        """Current bar's close price as a scalar."""
+        value = self._bar_value(DataCol.CLOSE.value)
+        if value is None:
+            raise ValueError("close price not found.")
+        return value
+
+    @property
+    def volume_value(self) -> Optional[float]:
+        """Current bar's volume as a scalar."""
+        return self._bar_value(DataCol.VOLUME.value)
+
+    @property
+    def vwap_value(self) -> Optional[float]:
+        """Current bar's VWAP as a scalar."""
+        return self._bar_value(DataCol.VWAP.value)
 
     @property
     def cover_fill_price(
@@ -941,19 +978,21 @@ class ExecContext:
             Otherwise, an :class:`numpy.ndarray` containing values of the
             column ``col``.
         """
-        if symbol in self._foreign:
-            return self._foreign[symbol]
-        if symbol not in self._sym_end_index:
-            raise ValueError(f"Symbol {symbol!r} not found.")
-        end_index = self._sym_end_index[symbol]
         if col is None:
+            if symbol in self._foreign:
+                return self._foreign[symbol]
+            if symbol not in self._sym_end_index:
+                raise ValueError(f"Symbol {symbol!r} not found.")
+            end_index = self._sym_end_index[symbol]
             bar_data = self._col_scope.bar_data_from_data_columns(
                 symbol, end_index
             )
             self._foreign[symbol] = bar_data
             return bar_data
-        else:
-            return self._col_scope.fetch(symbol, col, end_index)
+        if symbol not in self._sym_end_index:
+            raise ValueError(f"Symbol {symbol!r} not found.")
+        end_index = self._sym_end_index[symbol]
+        return self._col_scope.fetch(symbol, col, end_index)
 
     def timeframe(self, interval: TimeframeInterval) -> TimeframeContext:
         r"""Returns a read-only view of compressed bar data for ``interval``.
@@ -1151,7 +1190,7 @@ class ExecContext:
             :attr:`pybroker.config.StrategyConfig.enable_fractional_shares` is
             ``True``, then a Decimal is returned.
         """
-        price = self.close[-1] if price is None else price
+        price = self.close_price if price is None else price
         shares = (
             (to_decimal(cash) if cash is not None else self._portfolio.equity)
             * to_decimal(target_size)
@@ -1492,6 +1531,36 @@ class ExecContext:
         else:
             return None, frozenset(stops)
 
+    def _is_noop_bar(self) -> bool:
+        if self.buy_shares is not None or self.sell_shares is not None:
+            return False
+        return (
+            self.hold_bars is None
+            and self.buy_fill_price is None
+            and self.sell_fill_price is None
+            and self.buy_limit_price is None
+            and self.sell_limit_price is None
+            and self.buy_timeout_bars is None
+            and self.sell_timeout_bars is None
+            and self.score is None
+            and self.long_score is None
+            and self.short_score is None
+            and self.stop_loss is None
+            and self.stop_loss_pct is None
+            and self.stop_loss_limit is None
+            and self.stop_loss_exit_price is None
+            and self.stop_profit is None
+            and self.stop_profit_pct is None
+            and self.stop_profit_limit is None
+            and self.stop_profit_exit_price is None
+            and self.stop_trailing is None
+            and self.stop_trailing_pct is None
+            and self.stop_trailing_limit is None
+            and self.stop_trailing_exit_price is None
+            and self.stop_fn is None
+            and self.stop_fn_limit is None
+        )
+
     def to_result(self) -> Optional[ExecResult]:
         """Creates an :class:`.ExecResult` from the data set on
         :class:`.ExecContext`.
@@ -1500,6 +1569,8 @@ class ExecContext:
             raise ValueError("curr_date is not set.")
         if self.symbol is None:
             raise ValueError("symbol is not set.")
+        if self._is_noop_bar():
+            return None
         if self.buy_shares is None:
             if self.buy_limit_price is not None:
                 raise ValueError(
@@ -1633,7 +1704,6 @@ def set_exec_ctx_data(ctx: ExecContext, date: np.datetime64):
     ctx._dt = None
     ctx._foreign.clear()
     ctx._timeframe.clear()
-    ctx._timeframe_scope.clear_cache()
     ctx._cover = False
     ctx._exiting_pos = False
     ctx.buy_fill_price = None
@@ -1651,11 +1721,14 @@ def set_exec_ctx_data(ctx: ExecContext, date: np.datetime64):
     ctx.stop_loss = None
     ctx.stop_loss_pct = None
     ctx.stop_loss_limit = None
+    ctx.stop_loss_exit_price = None
     ctx.stop_profit = None
     ctx.stop_profit_pct = None
     ctx.stop_profit_limit = None
+    ctx.stop_profit_exit_price = None
     ctx.stop_trailing = None
     ctx.stop_trailing_pct = None
     ctx.stop_trailing_limit = None
+    ctx.stop_trailing_exit_price = None
     ctx.stop_fn = None
     ctx.stop_fn_limit = None

@@ -573,6 +573,21 @@ class ColumnScope:
             return None
         return array if end_index is None else array[:end_index]
 
+    def fetch_value(
+        self, symbol: str, name: str, end_index: int
+    ) -> Optional[float]:
+        """Returns the scalar value at ``end_index - 1`` without slicing."""
+        if symbol not in self._symbols:
+            raise ValueError(f"Symbol not found: {symbol}.")
+        array = self._store.sym_arrays[symbol].get(name)
+        if array is None:
+            return None
+        if end_index <= 0:
+            raise ValueError(f"{name!r} value not found.")
+        if end_index > len(array):
+            end_index = len(array)
+        return float(array[end_index - 1])
+
     def bar_data_from_data_columns(
         self, symbol: str, end_index: int
     ) -> BarData:

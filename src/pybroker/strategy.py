@@ -549,6 +549,7 @@ class BacktestMixin:
         for i, date in enumerate(test_dates):
             active_ctxs.clear()
             price_scope.reset_bar()
+            timeframe_scope.clear_cache()
             if calendar_aligned:
                 active_iter: Iterable[tuple[str, ExecContext]] = (
                     exec_ctxs.items()
