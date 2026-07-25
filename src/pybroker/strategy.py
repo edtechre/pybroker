@@ -66,7 +66,7 @@ from pybroker.scope import (
 from pybroker.timeframe import (
     TimeframeData,
     TimeframeInterval,
-    compress_symbol_df,
+    compress_symbol_from_frame,
     indicator_timeframe_name,
     model_timeframe_name,
     normalize_timeframe_interval,
@@ -1376,13 +1376,14 @@ class Strategy(
         custom_cols = self._scope.custom_data_cols
         sym_col = DataCol.SYMBOL.value
         symbol_set = set(symbols)
-        for sym, group in df.groupby(sym_col, sort=False, observed=True):
+        all_symbols = df[sym_col].to_numpy(copy=False)
+        for sym in np.unique(all_symbols):
             if sym not in symbol_set:
                 continue
-            sym_df = group.reset_index(drop=True)
             for interval in self._timeframes:
-                data = compress_symbol_df(
-                    sym_df,
+                data = compress_symbol_from_frame(
+                    df,
+                    sym,
                     interval,
                     custom_cols,
                     self._base_bar_seconds,
