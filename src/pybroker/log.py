@@ -15,6 +15,8 @@ from decimal import Decimal
 from progressbar import ProgressBar
 from typing import Iterable, Optional, Sequence, Sized
 
+_LOGGER = logging.getLogger("pybroker")
+
 
 class Logger:
     """Class for logging information about triggered events.
@@ -104,9 +106,9 @@ class Logger:
         self._info(
             "Loaded:\n"
             f"namespace={self._scope.data_source_cache_ns}\n"
-            f"{start_date} to {end_date}\n",
-            f"timeframe: {timeframe}\n",
-            f"{sorted(symbols)}",
+            f"{start_date} to {end_date}\n"
+            f"timeframe: {timeframe}\n"
+            f"{sorted(symbols)}"
         )
 
     def info_invalidate_data_source_cache(self):
@@ -273,7 +275,7 @@ class Logger:
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
-        if self._disabled:
+        if not self._debug_enabled():
             return
         order = self._format_order(
             date=date,
@@ -294,7 +296,7 @@ class Logger:
         cash: Decimal,
         clamped_shares: Decimal,
     ):
-        if self._disabled:
+        if not self._debug_enabled():
             return
         order = self._format_order(
             date=date,
@@ -316,7 +318,7 @@ class Logger:
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
-        if self._disabled:
+        if not self._debug_enabled():
             return
         order = self._format_order(
             date=date,
@@ -335,7 +337,7 @@ class Logger:
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
-        if self._disabled:
+        if not self._debug_enabled():
             return
         order = self._format_order(
             date=date,
@@ -354,7 +356,7 @@ class Logger:
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
-        if self._disabled:
+        if not self._debug_enabled():
             return
         order = self._format_order(
             date=date,
@@ -373,7 +375,7 @@ class Logger:
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
-        if self._disabled:
+        if not self._debug_enabled():
             return
         order = self._format_order(
             date=date,
@@ -392,7 +394,7 @@ class Logger:
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
-        if self._disabled:
+        if not self._debug_enabled():
             return
         order = self._format_order(
             date=date,
@@ -408,6 +410,8 @@ class Logger:
         date: np.datetime64,
         pending_order,
     ):
+        if not self._debug_enabled():
+            return
         self._debug(
             f"Timed out pending {pending_order.type} order:\n"
             f"date={to_datetime(date)}\n"
@@ -418,9 +422,13 @@ class Logger:
         )
 
     def debug_schedule_order(self, date: np.datetime64, exec_result):
+        if not self._debug_enabled():
+            return
         self._debug(f"Scheduling order: {date}\n{exec_result}")
 
     def debug_unscheduled_order(self, exec_result):
+        if not self._debug_enabled():
+            return
         self._debug(f"Unscheduled order:\n{exec_result}")
 
     def warn_bootstrap_sample_size(self, n: int, sample_size: int):
@@ -465,20 +473,29 @@ class Logger:
             return
         print(msg, *args, flush=True)
 
+    def _debug_enabled(self) -> bool:
+        return not self._disabled and _LOGGER.isEnabledFor(logging.DEBUG)
+
+    def _info_enabled(self) -> bool:
+        return not self._disabled and _LOGGER.isEnabledFor(logging.INFO)
+
+    def _warn_enabled(self) -> bool:
+        return not self._disabled and _LOGGER.isEnabledFor(logging.WARNING)
+
     def _info(self, msg: str, *args):
-        if self._disabled:
+        if not self._info_enabled():
             return
-        logging.info(msg, *args)
+        _LOGGER.info(msg, *args)
 
     def _debug(self, msg: str, *args):
-        if self._disabled:
+        if not self._debug_enabled():
             return
-        logging.debug(msg, *args)
+        _LOGGER.debug(msg, *args)
 
     def _warn(self, msg: str, *args):
-        if self._disabled:
+        if not self._warn_enabled():
             return
-        logging.warning(msg, *args)
+        _LOGGER.warning(msg, *args)
 
     def _format_order(
         self,
