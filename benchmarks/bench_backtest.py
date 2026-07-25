@@ -646,6 +646,7 @@ class EvalKernels:
     def setup(self) -> None:
         from pybroker.eval import (
             bca_boot_conf,
+            drawdown_conf,
             max_drawdown,
             profit_factor,
             sharpe_ratio,
@@ -655,6 +656,7 @@ class EvalKernels:
         self._changes = rng.normal(0.0, 1.0, 5_000)
         self._returns = rng.normal(0.0005, 0.01, 5_000)
         self._bca_boot_conf = bca_boot_conf
+        self._drawdown_conf = drawdown_conf
         self._max_drawdown = max_drawdown
         self._sharpe_ratio = sharpe_ratio
         self._profit_factor = profit_factor
@@ -663,6 +665,7 @@ class EvalKernels:
         self._sharpe_ratio(self._returns)
         self._profit_factor(self._changes)
         self._bca_boot_conf(self._changes, 200, self._sharpe_ratio)
+        self._drawdown_conf(self._changes, self._returns, 200)
 
     def time_max_drawdown(self) -> None:
         self._max_drawdown(self._changes)
@@ -675,6 +678,44 @@ class EvalKernels:
 
     def time_bca_boot_conf(self) -> None:
         self._bca_boot_conf(self._changes, 200, self._sharpe_ratio)
+
+    def time_drawdown_conf(self) -> None:
+        self._drawdown_conf(self._changes, self._returns, 200)
+
+
+class EvalBootstrap:
+    """End-to-end evaluate() path with calc_bootstrap=True."""
+
+    timeout = 120
+
+    def setup(self) -> None:
+        import pandas as pd
+        from pybroker.eval import EvaluateMixin
+
+        testdata = REPO_ROOT / "tests" / "testdata"
+        self._portfolio_df = pd.read_pickle(testdata / "portfolio_df.pkl")
+        self._trades_df = pd.read_pickle(testdata / "trades_df.pkl")
+        self._mixin = EvaluateMixin()
+        np.random.seed(SEED)
+        self._mixin.evaluate(
+            self._portfolio_df,
+            self._trades_df,
+            calc_bootstrap=True,
+            bootstrap_samples=200,
+            bars_per_year=252,
+            seed=SEED,
+        )
+
+    def time_evaluate_bootstrap(self) -> None:
+        np.random.seed(SEED)
+        self._mixin.evaluate(
+            self._portfolio_df,
+            self._trades_df,
+            calc_bootstrap=True,
+            bootstrap_samples=200,
+            bars_per_year=252,
+            seed=SEED,
+        )
 
 
 class CacheHit:
