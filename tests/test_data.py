@@ -652,7 +652,11 @@ class TestAKShare:
         )
 
     @pytest.mark.usefixtures("setup_ds_cache")
-    def test_query_when_em_unavailable_then_uses_tx_fallback(self):
+    def test_query_when_em_unavailable_then_uses_tx_fallback_legacy_schema(
+        self,
+    ):
+        # akshare < 1.18.74: stock_zh_a_hist_tx reports volume under
+        # "amount" and has no dedicated "volume" column.
         symbols = ["000001.SZ"]
         ak = AKShare()
         expected_df = pd.DataFrame(
@@ -683,6 +687,7 @@ class TestAKShare:
             adjust="",
         )
         assert df.shape[0] == expected_df.shape[0]
+        assert list(df.columns).count("volume") == 1
         assert set(df.columns) == {
             "date",
             "open",
@@ -692,6 +697,53 @@ class TestAKShare:
             "volume",
             "symbol",
         }
+        assert df["volume"].iloc[0] == 5.0
+
+    @pytest.mark.usefixtures("setup_ds_cache")
+    def test_query_when_em_unavailable_then_uses_tx_fallback_current_schema(
+        self,
+    ):
+        # akshare >= 1.18.74: stock_zh_a_hist_tx added a real "volume"
+        # column and repurposed "amount"/"turnover" as distinct RMB
+        # figures, no longer standing in for volume. Regression guard for
+        # the rename map producing two "volume" columns.
+        symbols = ["000001.SZ"]
+        ak = AKShare()
+        expected_df = pd.DataFrame(
+            {
+                "date": [END_DATE.date()],
+                "open": [1.0],
+                "close": [2.0],
+                "high": [3.0],
+                "low": [4.0],
+                "volume": [6.0],
+                "turnover": [7.0],
+                "amount": [80000.0],
+            }
+        )
+        with (
+            mock.patch.object(
+                akshare,
+                "stock_zh_a_hist",
+                side_effect=ConnectionError("failed"),
+            ),
+            mock.patch.object(
+                akshare, "stock_zh_a_hist_tx", return_value=expected_df
+            ),
+        ):
+            df = ak.query(symbols, START_DATE, END_DATE, "1d")
+        assert df.shape[0] == expected_df.shape[0]
+        assert list(df.columns).count("volume") == 1
+        assert set(df.columns) == {
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "symbol",
+        }
+        assert df["volume"].iloc[0] == 6.0
 
     @pytest.mark.usefixtures("setup_ds_cache")
     def test_query_when_unsupported_timeframe_then_empty(self):
