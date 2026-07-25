@@ -34,24 +34,33 @@ def _median_ms(
     return statistics.median(times)
 
 
-def _run_timeseries_micro() -> dict[str, float]:
-    from benchmarks.bench_backtest import TimeseriesKernels
+def _run_lag_prep_bottlenecks() -> dict[str, float]:
+    from benchmarks.bench_backtest import LagPrepBottlenecks
 
-    out: dict[str, float] = {}
-    for length, lags in [(1_000, 1), (100_000, 5)]:
-        b = TimeseriesKernels()
-        b.setup(length, lags)
-        key = f"TimeseriesKernels.length={length}.lags={lags}"
-        out[f"{key}.time_shift_array"] = _median_ms(
-            lambda: b.time_shift_array(length, lags)
+    b = LagPrepBottlenecks()
+    b.setup()
+    key = "LagPrepBottlenecks"
+    return {
+        f"{key}.time_merge_lag_cache_from_store": _median_ms(
+            b.time_merge_lag_cache_from_store
+        ),
+        f"{key}.time_build_lag_feature_matrix_pooled": _median_ms(
+            b.time_build_lag_feature_matrix_pooled
+        ),
+        f"{key}.time_apply_lags_pooled": _median_ms(b.time_apply_lags_pooled),
+    }
+
+
+def _run_model_train_prep_lags() -> dict[str, float]:
+    from benchmarks.bench_backtest import ModelTrainPrepLags
+
+    b = ModelTrainPrepLags()
+    b.setup()
+    return {
+        "ModelTrainPrepLags.time_train_models_pooled_lags": _median_ms(
+            b.time_train_models_pooled_lags
         )
-        out[f"{key}.time_build_lag_feature_matrix"] = _median_ms(
-            lambda: b.time_build_lag_feature_matrix(length, lags)
-        )
-        out[f"{key}.time_build_lag_feature_matrix_pooled"] = _median_ms(
-            lambda: b.time_build_lag_feature_matrix_pooled(length, lags)
-        )
-    return out
+    }
 
 
 def _run_store_micro() -> dict[str, float]:
@@ -138,7 +147,8 @@ def _run_macro() -> dict[str, float]:
 
 def run_all() -> dict[str, Any]:
     micro: dict[str, float] = {}
-    micro.update(_run_timeseries_micro())
+    micro.update(_run_lag_prep_bottlenecks())
+    micro.update(_run_model_train_prep_lags())
     micro.update(_run_store_micro())
     micro.update(_run_model_prep_micro())
     macro = _run_macro()

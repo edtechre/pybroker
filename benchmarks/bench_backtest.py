@@ -791,105 +791,124 @@ class CacheHit:
 
 
 # ---------------------------------------------------------------------------
-# Group F — Numba candidate micro benches (profiling only, not migration gates)
+# Group F — Lag prep bottleneck benches
 # ---------------------------------------------------------------------------
 
+_LAG_PREP_COLUMNS = ("open", "high", "low", "close")
+_LAG_PREP_LAGS = 5
+_LAG_PREP_N_SYMBOLS = 10
+_LAG_PREP_N_DAYS = 1260
 
-class TimeseriesKernels:
-    """Lag prep kernels in timeseries.py."""
+
+class LagPrepBottlenecks:
+    """Production lag-prep bottlenecks in timeseries.py."""
 
     timeout = 120
-    params = ([1_000, 100_000], [1, 5])
-    param_names = ("length", "lags")
 
-    def setup(self, length: int, lags: int) -> None:
+    def setup(self) -> None:
+        from pybroker.scope import symbol_array_store_from_frame
         from pybroker.timeseries import (
-            build_lag_feature_matrix,
+            apply_lags_to_model_input_pooled,
             build_lag_feature_matrix_pooled,
-            compute_lag_series_cache,
-            shift_array,
+            merge_lag_series_cache_from_store,
         )
 
-        rng = np.random.default_rng(SEED)
-        self._shift_array = shift_array
-        self._build_lag_feature_matrix = build_lag_feature_matrix
-        self._build_lag_feature_matrix_pooled = build_lag_feature_matrix_pooled
-        self._lag = lags
-        self._values = rng.standard_normal(length)
+        self._lags = _LAG_PREP_LAGS
+        self._columns = _LAG_PREP_COLUMNS
+        self._symbols = tuple(
+            f"SYM{idx:03d}" for idx in range(_LAG_PREP_N_SYMBOLS)
+        )
         df = _synthetic_ohlcv(
-            n_symbols=4, n_days=max(length // 4, 50), seed=SEED
+            n_symbols=_LAG_PREP_N_SYMBOLS,
+            n_days=_LAG_PREP_N_DAYS,
+            seed=SEED,
         )
-        self._cache = compute_lag_series_cache(
-            df, ("SYM000", "SYM001"), ("close",), lags
-        )
-        sym = "SYM000"
-        sym_df = df[df["symbol"] == sym].drop(columns="symbol")
-        self._history_dates = sym_df["date"].to_numpy(dtype="datetime64[ns]")
-        self._row_dates = self._history_dates[
-            -min(len(self._history_dates), 200) :
-        ]
-        row_count = len(self._row_dates)
-        self._base_arrays = {
-            "close": sym_df["close"].to_numpy(dtype=np.float64)[-row_count:],
+        self._history_store = symbol_array_store_from_frame(df)
+        self._merge_lag_cache = merge_lag_series_cache_from_store
+        self._build_pooled_matrix = build_lag_feature_matrix_pooled
+        self._apply_lags_pooled = apply_lags_to_model_input_pooled
+        sym_col = df["symbol"].to_numpy()
+        dates = df["date"].to_numpy(dtype="datetime64[ns]")
+        base_arrays = {
+            col: df[col].to_numpy(dtype=np.float64) for col in self._columns
         }
-        self._sym_col = df["symbol"].to_numpy()
-        self._all_dates = df["date"].to_numpy(dtype="datetime64[ns]")
-        self._pooled_close = df["close"].to_numpy(dtype=np.float64)
-        self._history_by_sym = {
-            s: df.loc[df["symbol"] == s, "date"].to_numpy(
+        base_arrays["symbol"] = sym_col
+        self._pooled_arrays = base_arrays
+        self._pooled_dates = dates
+        self._history_dates = {
+            sym: df.loc[df["symbol"] == sym, "date"].to_numpy(
                 dtype="datetime64[ns]"
             )
-            for s in df["symbol"].unique()[:2]
+            for sym in self._symbols
         }
-        # Warmup (includes Numba compile when enabled).
-        self._shift_array(self._values, lags)
-        self._build_lag_feature_matrix(
-            sym,
-            ("close",),
-            lags,
-            self._base_arrays,
-            self._row_dates,
+        self._lag_cache = {}
+        self._history_dates_out: dict[str, np.ndarray] = {}
+        self._merge_lag_cache(
+            self._lag_cache,
+            self._history_store,
+            self._symbols,
+            self._columns,
+            self._lags,
+            self._history_dates_out,
+        )
+        self._run_apply_lags_pooled()
+
+    def _run_apply_lags_pooled(self) -> None:
+        from pybroker.timeseries import LagSeriesCache, model_input_from_arrays
+
+        self._lag_cache = LagSeriesCache()
+        self._history_dates_out = {}
+        self._merge_lag_cache(
+            self._lag_cache,
+            self._history_store,
+            self._symbols,
+            self._columns,
+            self._lags,
+            self._history_dates_out,
+        )
+        model_input = model_input_from_arrays(
+            self._columns + ("symbol",),
+            self._pooled_arrays,
+            self._pooled_dates,
+        )
+        self._apply_lags_pooled(
+            model_input,
+            self._columns,
+            self._lags,
+            self._lag_cache,
+            self._history_dates_out,
+            self._symbols,
+        )
+        model_input.drop_lag_warmup()
+
+    def time_merge_lag_cache_from_store(self) -> None:
+        from pybroker.timeseries import LagSeriesCache
+
+        cache = LagSeriesCache()
+        history_dates: dict[str, np.ndarray] = {}
+        self._merge_lag_cache(
+            cache,
+            self._history_store,
+            self._symbols,
+            self._columns,
+            self._lags,
+            history_dates,
+        )
+
+    def time_build_lag_feature_matrix_pooled(self) -> None:
+        self._build_pooled_matrix(
+            self._pooled_arrays["symbol"],
+            self._columns,
+            self._lags,
+            self._pooled_arrays,
+            self._pooled_dates,
             self._history_dates,
-            self._cache,
-        )
-        self._build_lag_feature_matrix_pooled(
-            self._sym_col,
-            ("close",),
-            lags,
-            {"close": self._pooled_close},
-            self._all_dates,
-            self._history_by_sym,
-            self._cache,
-            ("SYM000", "SYM001"),
+            self._lag_cache,
+            self._symbols,
         )
 
-    def time_shift_array(self, length: int, lags: int) -> None:
-        self._shift_array(self._values, lags)
-
-    def time_build_lag_feature_matrix(self, length: int, lags: int) -> None:
-        self._build_lag_feature_matrix(
-            "SYM000",
-            ("close",),
-            lags,
-            self._base_arrays,
-            self._row_dates,
-            self._history_dates,
-            self._cache,
-        )
-
-    def time_build_lag_feature_matrix_pooled(
-        self, length: int, lags: int
-    ) -> None:
-        self._build_lag_feature_matrix_pooled(
-            self._sym_col,
-            ("close",),
-            lags,
-            {"close": self._pooled_close},
-            self._all_dates,
-            self._history_by_sym,
-            self._cache,
-            ("SYM000", "SYM001"),
-        )
+    def time_apply_lags_pooled(self) -> None:
+        self._run_apply_lags_pooled()
 
 
 class StoreBuildKernels:
@@ -1260,6 +1279,73 @@ class ModelTrainPrep:
 
     def time_train_models_pooled(self) -> None:
         self._run_pooled()
+
+
+class ModelTrainPrepLags:
+    """End-to-end pooled train_models prep with lag features."""
+
+    timeout = 180
+
+    def setup(self) -> None:
+        from pybroker.cache import CacheDateFields
+        from pybroker.common import DataCol, ModelSymbol, to_datetime
+        from pybroker.model import ModelsMixin
+
+        pybroker.clear_params()
+        pybroker.disable_logging()
+        pybroker.disable_progress_bar()
+        self._mixin = ModelsMixin()
+        self._df = _load_dataset()
+        split = len(self._df) // 2
+        self._train_data = self._df.iloc[:split]
+        self._test_data = self._df.iloc[split:]
+        date_col = DataCol.DATE.value
+        train_dates = sorted(self._train_data[date_col].unique())
+        self._cache_date_fields = CacheDateFields(
+            start_date=to_datetime(train_dates[0]),
+            end_date=to_datetime(train_dates[-1]),
+            tf_seconds=86400,
+            between_time=None,
+            days=None,
+        )
+        self._symbols = sorted(self._df["symbol"].unique().tolist())
+        self._pooled_model_syms = [
+            ModelSymbol("bench_pooled_lags", sym) for sym in self._symbols
+        ]
+        self._pooled_model_groups = {
+            ("bench_pooled_lags", 1): frozenset(self._symbols)
+        }
+        self._ind_data = {}
+        self._run_pooled_lags()
+
+    def _constant_model(self):
+        class _ConstantModel:
+            def predict(self, _x):
+                return np.ones(len(_x))
+
+        return _ConstantModel()
+
+    def _run_pooled_lags(self) -> None:
+        from pybroker.model import model
+
+        pybroker.clear_params()
+        model(
+            "bench_pooled_lags",
+            lambda _train_df, _test_df: self._constant_model(),
+            pooled=True,
+            lags=_LAG_PREP_LAGS,
+        )
+        self._mixin.train_models(
+            self._pooled_model_syms,
+            self._train_data,
+            self._test_data,
+            self._ind_data,
+            self._cache_date_fields,
+            pooled_model_groups=self._pooled_model_groups,
+        )
+
+    def time_train_models_pooled_lags(self) -> None:
+        self._run_pooled_lags()
 
 
 class WalkforwardModelsPerSymbol:

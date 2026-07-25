@@ -122,6 +122,39 @@ def shift_array(values: np.ndarray, lag: int) -> np.ndarray:
     return shifted
 
 
+def _as_float64_contiguous(values: np.ndarray) -> np.ndarray:
+    """Returns a C-contiguous float64 array, copying only when needed."""
+    if values.dtype == np.float64 and values.flags.c_contiguous:
+        return values
+    return np.ascontiguousarray(values, dtype=np.float64)
+
+
+def _build_stacked_lags(values: np.ndarray, lags: int) -> np.ndarray:
+    """Returns lag-expanded history with shape ``(lags + 1, len(values))``."""
+    n = len(values)
+    stacked = np.empty((lags + 1, n), dtype=np.float64)
+    stacked[0] = values
+    for lag in range(1, lags + 1):
+        row = stacked[lag]
+        row[:lag] = np.nan
+        row[lag:] = values[:-lag]
+    return stacked
+
+
+def _store_stacked_lags_in_cache(
+    cache: LagSeriesCache,
+    symbol: str,
+    col: str,
+    lags: int,
+    stacked: np.ndarray,
+    interval: Optional[str] = None,
+) -> None:
+    """Stores stacked lag rows in ``cache`` under ``LagSeriesKey`` entries."""
+    cache[LagSeriesKey(symbol, col, 0, interval)] = stacked
+    for lag in range(1, lags + 1):
+        cache[LagSeriesKey(symbol, col, lag, interval)] = stacked[lag]
+
+
 def _bars_column_array(bars, col: str):
     if col == DataCol.OPEN.value:
         return bars.open
@@ -276,9 +309,9 @@ def merge_lag_series_cache_from_arrays(
         values = column_arrays[col]
         if values is None:
             raise ValueError(f"Column {col!r} not found for {symbol!r}.")
-        values = np.asarray(values, dtype=np.float64)
-        for lag in range(1, lags + 1):
-            cache[LagSeriesKey(symbol, col, lag)] = shift_array(values, lag)
+        values = _as_float64_contiguous(values)
+        stacked = _build_stacked_lags(values, lags)
+        _store_stacked_lags_in_cache(cache, symbol, col, lags, stacked)
 
 
 def merge_timeframe_lag_series_cache(
@@ -300,11 +333,11 @@ def merge_timeframe_lag_series_cache(
             col_data = _bars_column_array(bars, col)
             if col_data is None:
                 continue
-            values = np.asarray(col_data, dtype=np.float64)
-            for lag in range(1, lags + 1):
-                cache[LagSeriesKey(sym, col, lag, interval)] = shift_array(
-                    values, lag
-                )
+            values = _as_float64_contiguous(np.asarray(col_data))
+            stacked = _build_stacked_lags(values, lags)
+            _store_stacked_lags_in_cache(
+                cache, sym, col, lags, stacked, interval
+            )
     return cache
 
 
@@ -342,12 +375,12 @@ def build_lag_feature_matrix(
     matrix = np.empty((n_rows, n_features), dtype=np.float64)
     col_idx = 0
     for col in columns:
-        matrix[:, col_idx] = np.asarray(base_arrays[col], dtype=np.float64)
-        col_idx += 1
-        for lag in range(1, lags + 1):
-            lag_arr = lag_cache[LagSeriesKey(symbol, col, lag, interval)]
-            matrix[:, col_idx] = lag_arr[offset : offset + n_rows]
-            col_idx += 1
+        stacked = lag_cache[LagSeriesKey(symbol, col, 0, interval)]
+        matrix[:, col_idx : col_idx + lags + 1] = stacked[
+            :, offset : offset + n_rows
+        ].T
+        matrix[:, col_idx] = _as_float64_contiguous(base_arrays[col])
+        col_idx += lags + 1
     return matrix
 
 
@@ -369,12 +402,18 @@ def build_lag_feature_matrix_pooled(
         return np.empty((0, n_features), dtype=np.float64)
     matrix = np.empty((n_rows, n_features), dtype=np.float64)
     date_col = DataCol.DATE.value
-    for sym in symbols:
-        mask = sym_col == sym
-        if not mask.any():
+    sym_col_arr = np.asarray(sym_col)
+    order = np.argsort(sym_col_arr, kind="stable")
+    sorted_syms = sym_col_arr[order]
+    unique_syms, start_indices = np.unique(sorted_syms, return_index=True)
+    end_indices = np.append(start_indices[1:], len(sorted_syms))
+    symbol_set = set(symbols)
+    for sym, start, end in zip(unique_syms, start_indices, end_indices):
+        if sym not in symbol_set:
             continue
-        sym_dates = row_dates[mask]
-        sym_base = {col: base_arrays[col][mask] for col in columns}
+        idx = order[start:end]
+        sym_dates = row_dates[idx]
+        sym_base = {col: base_arrays[col][idx] for col in columns}
         if date_col in base_arrays:
             sym_base[date_col] = sym_dates
         sym_matrix = build_lag_feature_matrix(
@@ -387,7 +426,7 @@ def build_lag_feature_matrix_pooled(
             lag_cache,
             interval,
         )
-        matrix[mask] = sym_matrix
+        matrix[idx] = sym_matrix
     return matrix
 
 
