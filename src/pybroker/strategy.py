@@ -1871,6 +1871,7 @@ class Strategy(
                     cache_date_fields=cache_date_fields,
                     disable_parallel_indicators=disable_parallel_indicators,
                     timeframe_data=timeframe_data,
+                    symbol_store=master_store,
                 )
             train_only = (
                 self._before_exec_fn is None
@@ -2053,6 +2054,7 @@ class Strategy(
                     disable_parallel_indicators=disable_parallel_indicators,
                     timeframe_data=timeframe_data,
                     executions=window_executions,
+                    symbol_store=master_store,
                 )
                 indicator_data.update(window_indicator_data)
             else:
@@ -2226,6 +2228,7 @@ class Strategy(
         disable_parallel_indicators: bool,
         timeframe_data: Optional[TimeframeData] = None,
         executions: Optional[set[Execution]] = None,
+        symbol_store: Optional[SymbolArrayStore] = None,
     ) -> dict[IndicatorSymbol, pd.Series]:
         exec_set = executions if executions is not None else self._executions
         indicator_syms: set[IndicatorSymbol] = set()
@@ -2268,6 +2271,7 @@ class Strategy(
             cache_date_fields=cache_date_fields,
             disable_parallel_indicators=disable_parallel_indicators,
             timeframe_data=timeframe_data,
+            symbol_store=symbol_store,
         )
 
     def _fetch_data(

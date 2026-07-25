@@ -324,6 +324,7 @@ def symbol_array_store_from_flat_frame(
     df: pd.DataFrame,
     sym_col: str = DataCol.SYMBOL.value,
     date_col: str = DataCol.DATE.value,
+    symbols: Optional[frozenset[str]] = None,
 ) -> SymbolArrayStore:
     """Builds a store from a flat frame via numpy lex-sort and bin slicing."""
     if df.empty:
@@ -340,6 +341,8 @@ def symbol_array_store_from_flat_frame(
     sorted_dates = date_arr[order]
     for bin_idx in range(len(starts)):
         sym_key = str(unique_syms[sorted_sym_ids[starts[bin_idx]]])
+        if symbols is not None and sym_key not in symbols:
+            continue
         start = int(starts[bin_idx])
         end = int(ends[bin_idx]) + 1
         sym_arrays[sym_key] = {
@@ -356,14 +359,44 @@ def symbol_array_store_from_frame(
     df: pd.DataFrame,
     sym_col: str = DataCol.SYMBOL.value,
     date_col: str = DataCol.DATE.value,
+    symbols: Optional[frozenset[str]] = None,
 ) -> SymbolArrayStore:
     """Builds a store from a flat or MultiIndex OHLCV frame."""
     if isinstance(df.index, pd.MultiIndex) and df.index.nlevels >= 2:
-        return symbol_array_store_from_indexed_df(df)
+        store = symbol_array_store_from_indexed_df(df)
+        if symbols is None:
+            return store
+        filtered = {
+            sym: arrays
+            for sym, arrays in store.sym_arrays.items()
+            if sym in symbols
+        }
+        return SymbolArrayStore(frozenset(filtered.keys()), filtered)
     if sym_col in df.columns and date_col in df.columns:
-        return symbol_array_store_from_flat_frame(df, sym_col, date_col)
+        return symbol_array_store_from_flat_frame(
+            df, sym_col, date_col, symbols=symbols
+        )
     indexed = df.set_index([sym_col, date_col]).sort_index()
-    return symbol_array_store_from_indexed_df(indexed)
+    store = symbol_array_store_from_indexed_df(indexed)
+    if symbols is None:
+        return store
+    filtered = {
+        sym: arrays
+        for sym, arrays in store.sym_arrays.items()
+        if sym in symbols
+    }
+    return SymbolArrayStore(frozenset(filtered.keys()), filtered)
+
+
+def sym_data_from_store(
+    store: SymbolArrayStore,
+    data_cols: frozenset[str],
+) -> dict[str, dict[str, Optional[NDArray]]]:
+    """Converts a :class:`SymbolArrayStore` to per-symbol column arrays."""
+    sym_data: dict[str, dict[str, Optional[NDArray]]] = {}
+    for sym, arrays in store.sym_arrays.items():
+        sym_data[sym] = {col: arrays.get(col) for col in data_cols}
+    return sym_data
 
 
 def _dates_in_target_mask(

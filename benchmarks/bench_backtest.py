@@ -539,18 +539,17 @@ class ExitOnLastBarPreprocess:
 
 class IndicatorPreprocess:
     """Bench :py:meth:`pybroker.indicator.IndicatorSet.__call__` on a
-    multi-symbol DataFrame.
+    multi-symbol DataFrame (serial path).
 
-    Guards two per-symbol mask loops in ``indicator.py``:
-    ``IndicatorsMixin.compute_indicators`` slices ``df[df[symbol] ==
-    sym]`` once per uncached ``IndicatorSymbol`` and
-    ``IndicatorSet.__call__`` repeats the same boolean mask while
-    rebuilding the flat output frame. Both are ``O(S * N)`` per call
-    and collapse to a single ``groupby(symbol)`` pass.
+    Guards per-symbol array extraction in
+    ``IndicatorsMixin.compute_indicators`` (via ``SymbolArrayStore`` lexsort)
+    and flat output assembly in ``IndicatorSet.__call__``. Both formerly
+    scanned the full frame once per symbol; they now share a single store
+    build and preallocated column assembly.
 
     Isolation: calling ``IndicatorSet(...)(df)`` directly exercises
-    both loops without any ``Strategy`` shim. Parametrized on
-    ``(n_symbols, n_indicators)`` so the linear-in-S scan cost and
+    both paths without any ``Strategy`` shim. Parametrized on
+    ``(n_symbols, n_indicators)`` so the linear-in-S extraction cost and
     the I-amplified rebuild cost both have a row that pins them.
     """
 
@@ -584,6 +583,46 @@ class IndicatorPreprocess:
         self, n_symbols: int, n_indicators: int
     ) -> None:
         self._ind_set(self.df, disable_parallel_indicators=True)
+
+
+class IndicatorParallel:
+    """Bench parallel indicator scheduling in ``IndicatorSet.__call__``.
+
+    Guards joblib task granularity in ``IndicatorsMixin._run_indicators``
+    when ``disable_parallel_indicators=False``. Tasks are batched by
+    symbol so each worker computes all indicators for one symbol.
+    """
+
+    timeout = 300
+    params = ([50, 200], [5])
+    param_names = ("n_symbols", "n_indicators")
+
+    def setup(self, n_symbols: int, n_indicators: int) -> None:
+        from pybroker.indicator import IndicatorSet
+        from pybroker.vect import highv, lowv, sumv
+
+        np.random.seed(SEED)
+        pybroker.clear_params()
+        pybroker.disable_logging()
+        pybroker.disable_progress_bar()
+        self.df = _synthetic_ohlcv(n_symbols=n_symbols, n_days=252, seed=SEED)
+        kernels = (
+            ("hhv20", lambda b: highv(b.close, 20)),
+            ("llv20", lambda b: lowv(b.close, 20)),
+            ("sum20", lambda b: sumv(b.close, 20)),
+            ("hhv50", lambda b: highv(b.close, 50)),
+            ("llv50", lambda b: lowv(b.close, 50)),
+        )
+        ind_set = IndicatorSet()
+        for name, fn in kernels[:n_indicators]:
+            ind_set.add(pybroker.indicator(name, fn))
+        self._ind_set = ind_set
+        self._ind_set(self.df, disable_parallel_indicators=True)
+
+    def time_indicator_set_call_parallel(
+        self, n_symbols: int, n_indicators: int
+    ) -> None:
+        self._ind_set(self.df, disable_parallel_indicators=False)
 
 
 class IndicatorKernels:

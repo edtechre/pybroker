@@ -16,7 +16,12 @@ from pybroker.cache import CacheDateFields, IndicatorCacheKey
 from pybroker.common import BarData, DataCol, IndicatorSymbol
 from pybroker.parallel import parallel
 from pybroker.eval import iqr, relative_entropy
-from pybroker.scope import StaticScope
+from pybroker.scope import (
+    StaticScope,
+    SymbolArrayStore,
+    sym_data_from_store,
+    symbol_array_store_from_frame,
+)
 from pybroker.timeframe import (
     TimeframeData,
     CompressedBars,
@@ -40,7 +45,6 @@ from typing import (
 
 
 def _to_bar_data(df: pd.DataFrame) -> BarData:
-    df = df.reset_index()
     required_cols = (
         DataCol.DATE,
         DataCol.OPEN,
@@ -48,6 +52,8 @@ def _to_bar_data(df: pd.DataFrame) -> BarData:
         DataCol.LOW,
         DataCol.CLOSE,
     )
+    if not all(col.value in df.columns for col in required_cols):
+        df = df.reset_index()
     for col in required_cols:
         if col.value not in df.columns:
             raise ValueError(
@@ -55,19 +61,19 @@ def _to_bar_data(df: pd.DataFrame) -> BarData:
             )
     return BarData(
         **{
-            col.value: df[col.value].to_numpy(copy=True)
+            col.value: df[col.value].to_numpy(copy=False)
             for col in required_cols
         },
         **{
             col.value: (
-                df[col.value].to_numpy(copy=True)
+                df[col.value].to_numpy(copy=False)
                 if col.value in df.columns
                 else None
             )
             for col in (DataCol.VOLUME, DataCol.VWAP)
         },  # type: ignore[arg-type]
         **{
-            col: df[col].to_numpy(copy=True) if col in df.columns else None
+            col: df[col].to_numpy(copy=False) if col in df.columns else None
             for col in StaticScope.instance().custom_data_cols
         },  # type: ignore[arg-type]
     )
@@ -130,6 +136,73 @@ def _compressed_to_bar_data(bars):
     if not isinstance(bars, CompressedBars):
         raise TypeError(f"Expected CompressedBars, received {type(bars)!r}.")
     return compressed_bars_to_bar_data(bars)
+
+
+def _indicator_args(
+    ind_name: str,
+    sym: str,
+    sym_data: Mapping[str, Mapping[str, Optional[NDArray]]],
+    timeframe_data: Optional[TimeframeData],
+    custom_data_cols: Iterable[str],
+    default_data_cols: frozenset[str],
+) -> dict[str, Any]:
+    _, token = parse_indicator_timeframe_name(ind_name)
+    if token is not None:
+        if timeframe_data is None:
+            raise ValueError(
+                f"Timeframe indicator {ind_name!r} requires compressed "
+                "data. Call Strategy.enable_timeframes() first."
+            )
+        key = (sym, token)
+        if key not in timeframe_data.compressed:
+            raise ValueError(
+                f"Missing compressed data for {sym!r} and timeframe {token!r}."
+            )
+        bars = timeframe_data.compressed[key].bars
+        return {
+            "symbol": sym,
+            "ind_name": ind_name,
+            "date": bars.dates,
+            "open": bars.open,
+            "high": bars.high,
+            "low": bars.low,
+            "close": bars.close,
+            "volume": bars.volume,
+            "vwap": None,
+            "custom_col_data": bars.custom,
+        }
+    return {
+        "symbol": sym,
+        "ind_name": ind_name,
+        "custom_col_data": {
+            col: sym_data[sym][col] for col in custom_data_cols
+        },
+        **{col: sym_data[sym][col] for col in default_data_cols},
+    }
+
+
+def _run_indicators_for_symbol(
+    sym: str,
+    ind_names: tuple[str, ...],
+    sym_data: Mapping[str, Mapping[str, Optional[NDArray]]],
+    timeframe_data: Optional[TimeframeData],
+    fns: Mapping[str, Callable[..., tuple[IndicatorSymbol, pd.Series]]],
+    custom_data_cols: tuple[str, ...],
+    default_data_cols: frozenset[str],
+) -> tuple[tuple[IndicatorSymbol, pd.Series], ...]:
+    return tuple(
+        fns[ind_name](
+            **_indicator_args(
+                ind_name,
+                sym,
+                sym_data,
+                timeframe_data,
+                custom_data_cols,
+                default_data_cols,
+            )
+        )
+        for ind_name in ind_names
+    )
 
 
 def _decorate_indicator_fn(ind_name: str):
@@ -195,6 +268,7 @@ class IndicatorsMixin:
         cache_date_fields: Optional[CacheDateFields],
         disable_parallel_indicators: bool,
         timeframe_data: Optional[TimeframeData] = None,
+        symbol_store: Optional[SymbolArrayStore] = None,
     ) -> dict[IndicatorSymbol, pd.Series]:
         """Computes indicator data for the provided
         :class:`pybroker.common.IndicatorSymbol` pairs.
@@ -211,6 +285,9 @@ class IndicatorsMixin:
                 :class:`pybroker.common.IndicatorSymbol` pairs. If ``False``,
                 indicator data is computed in parallel using multiple
                 processes.
+            timeframe_data: Optional compressed timeframe data.
+            symbol_store: Optional pre-built :class:`SymbolArrayStore` to
+                avoid rebuilding per-symbol arrays from ``df``.
 
         Returns:
             ``dict`` mapping each :class:`pybroker.common.IndicatorSymbol` pair
@@ -230,20 +307,12 @@ class IndicatorsMixin:
             scope.logger.info_loaded_indicator_data(indicator_data.keys())
         scope.logger.indicator_data_start(uncached_ind_syms)
         scope.logger.info_indicator_data_start(uncached_ind_syms)
-        needed_syms = {sym for _, sym in uncached_ind_syms}
-        sym_data: dict[str, dict[str, Optional[NDArray]]] = {}
-        sym_col = DataCol.SYMBOL.value
-        symbols_arr = df[sym_col].to_numpy()
-        for sym in needed_syms:
-            rows = np.flatnonzero(symbols_arr == sym)
-            sym_data[sym] = {
-                col: (
-                    df[col].to_numpy(copy=True)[rows]
-                    if col in df.columns
-                    else None
-                )
-                for col in scope.all_data_cols
-            }
+        needed_syms = frozenset(sym for _, sym in uncached_ind_syms)
+        if symbol_store is None:
+            symbol_store = symbol_array_store_from_frame(
+                df, symbols=needed_syms
+            )
+        sym_data = sym_data_from_store(symbol_store, scope.all_data_cols)
         for i, (ind_sym, series) in enumerate(
             self._run_indicators(
                 sym_data,
@@ -310,63 +379,45 @@ class IndicatorsMixin:
         disable_parallel_indicators: bool,
         timeframe_data: Optional[TimeframeData] = None,
     ) -> Iterable[tuple[IndicatorSymbol, pd.Series]]:
-        fns = {}
+        fns: dict[str, Callable[..., tuple[IndicatorSymbol, pd.Series]]] = {}
         for ind_name, _ in ind_syms:
             if ind_name in fns:
                 continue
             fns[ind_name] = _decorate_indicator_fn(ind_name)
         scope = StaticScope.instance()
+        custom_data_cols = tuple(scope.custom_data_cols)
+        default_data_cols = scope.default_data_cols
+        ind_names_by_sym: dict[str, list[str]] = defaultdict(list)
+        for ind_name, sym in ind_syms:
+            ind_names_by_sym[sym].append(ind_name)
+        symbols_with_work = tuple(ind_names_by_sym.keys())
 
-        def args_fn(ind_name, sym):
-            _, token = parse_indicator_timeframe_name(ind_name)
-            if token is not None:
-                if timeframe_data is None:
-                    raise ValueError(
-                        f"Timeframe indicator {ind_name!r} requires compressed "
-                        "data. Call Strategy.enable_timeframes() first."
-                    )
-                key = (sym, token)
-                if key not in timeframe_data.compressed:
-                    raise ValueError(
-                        f"Missing compressed data for {sym!r} and "
-                        f"timeframe {token!r}."
-                    )
-                bars = timeframe_data.compressed[key].bars
-                return {
-                    "symbol": sym,
-                    "ind_name": ind_name,
-                    "date": bars.dates,
-                    "open": bars.open,
-                    "high": bars.high,
-                    "low": bars.low,
-                    "close": bars.close,
-                    "volume": bars.volume,
-                    "vwap": None,
-                    "custom_col_data": dict(bars.custom),
-                }
-            return {
-                "symbol": sym,
-                "ind_name": ind_name,
-                "custom_col_data": {
-                    col: sym_data[sym][col] for col in scope.custom_data_cols
-                },
-                **{col: sym_data[sym][col] for col in scope.default_data_cols},
-            }
+        def run_symbol(
+            sym: str,
+        ) -> tuple[tuple[IndicatorSymbol, pd.Series], ...]:
+            return _run_indicators_for_symbol(
+                sym,
+                tuple(ind_names_by_sym[sym]),
+                sym_data,
+                timeframe_data,
+                fns,
+                custom_data_cols,
+                default_data_cols,
+            )
 
         if disable_parallel_indicators or len(ind_syms) == 1:
             scope.logger.debug_compute_indicators(is_parallel=False)
             return tuple(
-                fns[ind_name](**args_fn(ind_name, sym))
-                for ind_name, sym in ind_syms
+                result
+                for sym in symbols_with_work
+                for result in run_symbol(sym)
             )
-        else:
-            scope.logger.debug_compute_indicators(is_parallel=True)
-
-            with parallel() as pool:
-                return pool(
-                    delayed(fns[ind_name])(**args_fn(ind_name, sym))
-                    for ind_name, sym in ind_syms
-                )
+        scope.logger.debug_compute_indicators(is_parallel=True)
+        with parallel() as pool:
+            batches = pool(
+                delayed(run_symbol)(sym) for sym in symbols_with_work
+            )
+        return tuple(result for batch in batches for result in batch)
 
 
 class IndicatorSet(IndicatorsMixin):
@@ -424,30 +475,46 @@ class IndicatorSet(IndicatorsMixin):
                 IndicatorSymbol, itertools.product(self._ind_names, syms)
             )
         )
+        symbol_store = symbol_array_store_from_frame(df)
         ind_dict = self.compute_indicators(
             df=df,
             indicator_syms=ind_syms,
             cache_date_fields=None,
             disable_parallel_indicators=disable_parallel_indicators,
+            symbol_store=symbol_store,
         )
         sym_dict: dict[str, dict[str, pd.Series]] = defaultdict(dict)
         for ind_sym, series in ind_dict.items():
             sym_dict[ind_sym.symbol][ind_sym.ind_name] = series
         sym_col = DataCol.SYMBOL.value
         date_col = DataCol.DATE.value
-        symbols_arr = df[sym_col].to_numpy()
-        dates_arr = df[date_col].to_numpy()
-        date_by_sym = {sym: dates_arr[symbols_arr == sym] for sym in sym_dict}
-        data: dict[str, list] = defaultdict(list)
-        for sym, ind_series in sym_dict.items():
-            dates = date_by_sym[sym]
-            data[DataCol.SYMBOL.value].extend(
-                itertools.repeat(sym, len(dates))
-            )
-            data[DataCol.DATE.value].extend(dates)
-            for ind_name, series in ind_series.items():
-                data[ind_name].extend(series.values)
-        return pd.DataFrame.from_dict(data)
+        n_rows = len(df)
+        sym_out = np.empty(n_rows, dtype=object)
+        date_out = np.empty(n_rows, dtype="datetime64[ns]")
+        ind_out = {
+            ind_name: np.full(n_rows, np.nan, dtype=np.float64)
+            for ind_name in self._ind_names
+        }
+        offset = 0
+        for sym in sorted(sym_dict.keys()):
+            sym_arrays = symbol_store.sym_arrays[sym]
+            dates = sym_arrays[date_col]
+            n = len(dates)
+            sym_out[offset : offset + n] = sym
+            date_out[offset : offset + n] = dates
+            for ind_name, series in sym_dict[sym].items():
+                ind_out[ind_name][offset : offset + n] = series.to_numpy()
+            offset += n
+        return pd.DataFrame(
+            {
+                sym_col: sym_out,
+                date_col: date_out,
+                **{
+                    ind_name: ind_out[ind_name]
+                    for ind_name in sorted(self._ind_names)
+                },
+            }
+        )
 
 
 def highest(name: str, field: str, period: int) -> Indicator:
