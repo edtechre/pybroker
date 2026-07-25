@@ -103,23 +103,26 @@ class AKShare(DataSource):
             )
         if result.empty:
             return result
-        result.rename(
-            columns={
-                "日期": DataCol.DATE.value,
-                "开盘": DataCol.OPEN.value,
-                "收盘": DataCol.CLOSE.value,
-                "最高": DataCol.HIGH.value,
-                "最低": DataCol.LOW.value,
-                "成交量": DataCol.VOLUME.value,
-                "date": DataCol.DATE.value,
-                "open": DataCol.OPEN.value,
-                "close": DataCol.CLOSE.value,
-                "high": DataCol.HIGH.value,
-                "low": DataCol.LOW.value,
-                "amount": DataCol.VOLUME.value,
-            },
-            inplace=True,
-        )
+        rename_map = {
+            "日期": DataCol.DATE.value,
+            "开盘": DataCol.OPEN.value,
+            "收盘": DataCol.CLOSE.value,
+            "最高": DataCol.HIGH.value,
+            "最低": DataCol.LOW.value,
+            "成交量": DataCol.VOLUME.value,
+            "date": DataCol.DATE.value,
+            "open": DataCol.OPEN.value,
+            "close": DataCol.CLOSE.value,
+            "high": DataCol.HIGH.value,
+            "low": DataCol.LOW.value,
+        }
+        if DataCol.VOLUME.value not in result.columns:
+            # stock_zh_a_hist_tx pre-1.18.74 reported volume under "amount".
+            # Since then it returns its own "volume" column and "amount" is
+            # a distinct RMB turnover figure, so only remap the legacy alias
+            # when a real volume column isn't already present.
+            rename_map["amount"] = DataCol.VOLUME.value
+        result.rename(columns=rename_map, inplace=True)
         result["date"] = pd.to_datetime(result["date"])
         result = result[
             [
