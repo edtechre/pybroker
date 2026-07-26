@@ -10,6 +10,7 @@ mypy>=0.982
 nbsphinx>=0.8.11
 numba>=0.60.0
 numpy>=2.0.2
+optuna>=3.0
 pandas>=2.2.0
 progressbar2>=4.1.1
 pytest>=7.2.0

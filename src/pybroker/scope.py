@@ -131,6 +131,7 @@ class StaticScope:
         self._all_data_cols: Optional[frozenset[str]] = None
         self._bar_data_cols: Optional[tuple[str, ...]] = None
         self._params: dict[str, Any] = {}
+        self._hyperparams: dict[str, Any] = {}
 
     def set_indicator(self, indicator):
         """Stores :class:`pybroker.indicator.Indicator` in static scope."""
@@ -239,6 +240,24 @@ class StaticScope:
     def clear_params(self):
         """Clears all global parameters."""
         self._params.clear()
+
+    def set_hyperparam(self, hyperparam: Any) -> None:
+        """Stores a :class:`pybroker.hyperparam.Hyperparam` in static scope."""
+        self._hyperparams[hyperparam.name] = hyperparam
+
+    def has_hyperparam(self, name: str) -> bool:
+        """Whether a hyperparam is stored in static scope."""
+        return name in self._hyperparams
+
+    def get_hyperparam(self, name: str) -> Any:
+        """Retrieves a hyperparam from static scope."""
+        if not self.has_hyperparam(name):
+            raise ValueError(f"Hyperparam {name!r} does not exist.")
+        return self._hyperparams[name]
+
+    def iter_hyperparams(self) -> Iterable[Any]:
+        """Iterates registered hyperparams."""
+        return self._hyperparams.values()
 
     @classmethod
     def instance(cls) -> "StaticScope":

@@ -1,0 +1,330 @@
+"""Tests for optimize module."""
+
+from unittest.mock import MagicMock, patch
+
+import numpy as np
+import pytest
+
+import pybroker
+from pybroker.config import StrategyConfig
+from pybroker.hyperparam import hyperparam
+from pybroker.indicator import indicator
+from pybroker.model import ModelLoader, model
+from pybroker.optimize import collect_search_space
+from pybroker.scope import StaticScope
+from pybroker.strategy import Strategy
+from pybroker.vect import highv
+from .fixtures import *  # noqa: F401,F403
+
+START_DATE = "2020-01-02"
+END_DATE = "2021-12-31"
+
+
+@pytest.fixture(autouse=True)
+def clear_hyperparams():
+    scope = StaticScope.instance()
+    scope._hyperparams.clear()
+    yield
+    scope._hyperparams.clear()
+
+
+def _make_strategy(data_source_df):
+    return Strategy(
+        data_source_df,
+        START_DATE,
+        END_DATE,
+        StrategyConfig(initial_cash=100_000),
+    )
+
+
+def test_collect_search_space_excludes_fixed(data_source_df):
+    lookback = hyperparam("lookback", default=10, low=5, high=10, step=5)
+    thresh = hyperparam("thresh", default=1.0, low=1.0, high=1.0, step=1.0)
+    hhv = indicator(
+        "hhv_lb",
+        lambda data, period: highv(data.high, period),
+        period=lookback,
+    )
+    strategy = _make_strategy(data_source_df)
+
+    def exec_fn(ctx):
+        _ = ctx.hyperparam("thresh")
+
+    strategy.add_execution(
+        exec_fn, "AAPL", indicators=[hhv], hyperparams=[thresh]
+    )
+    from pybroker.optimize import collect_hyperparams, collect_search_space
+
+    all_specs = collect_hyperparams(strategy)
+    space = collect_search_space(strategy)
+    assert set(all_specs) == {"lookback", "thresh"}
+    assert space.hyperparams == frozenset({"lookback"})
+
+
+def test_collect_search_space_from_indicator(data_source_df):
+    lookback = hyperparam("lookback", default=10, low=5, high=15, step=5)
+    hhv = indicator(
+        "hhv_lb",
+        lambda data, period: highv(data.high, period),
+        period=lookback,
+    )
+    strategy = _make_strategy(data_source_df)
+
+    def exec_fn(ctx):
+        _ = ctx.indicator(hhv.name)
+
+    strategy.add_execution(exec_fn, "AAPL", indicators=[hhv])
+    space = collect_search_space(strategy)
+    assert space.hyperparams == frozenset({"lookback"})
+    assert space.grid_size() == 3
+
+
+def test_ctx_hyperparam_gate(data_source_df):
+    thresh = hyperparam("thresh", default=1.0, low=1.0, high=1.0, step=1.0)
+    lookback = hyperparam("lookback", default=10, low=5, high=10, step=5)
+    hhv = indicator(
+        "hhv_lb",
+        lambda data, period: highv(data.high, period),
+        period=lookback,
+    )
+    strategy = _make_strategy(data_source_df)
+    seen = {}
+
+    def exec_fn(ctx):
+        seen["thresh"] = ctx.hyperparam("thresh")
+        with pytest.raises(ValueError, match="not attached"):
+            ctx.hyperparam("lookback")
+
+    strategy.add_execution(
+        exec_fn, "AAPL", indicators=[hhv], hyperparams=[thresh]
+    )
+    strategy.backtest(params={"lookback": 10})
+    assert seen["thresh"] == 1.0
+
+
+def test_optimize_grid_smoke(data_source_df):
+    lookback = hyperparam("lookback", default=10, low=5, high=10, step=5)
+    hhv = indicator(
+        "hhv_opt",
+        lambda data, period: highv(data.high, period),
+        period=lookback,
+    )
+    strategy = _make_strategy(data_source_df)
+
+    def exec_fn(ctx):
+        vals = ctx.indicator(hhv.name)
+        if len(vals) > 0 and vals[-1] > 0:
+            if not ctx.long_pos():
+                ctx.buy_shares = 10
+
+    strategy.add_execution(exec_fn, "AAPL", indicators=[hhv])
+    opt = strategy.optimize(
+        lambda r: r.metrics.sharpe if r.metrics.sharpe is not None else 0.0,
+        sampler="grid",
+        train_size=0.5,
+        disable_parallel_indicators=True,
+    )
+    assert opt.best_params["lookback"] in (5, 10)
+    assert opt.result.bootstrap is not None
+
+
+def test_optimize_indicator_integration(data_source_df):
+    lookback = hyperparam("lookback", default=10, low=5, high=10, step=5)
+    periods_seen: set[int] = set()
+
+    def tracking_hhv(data, period):
+        periods_seen.add(period)
+        return highv(data.high, period)
+
+    hhv = indicator("hhv_int", tracking_hhv, period=lookback)
+    strategy = _make_strategy(data_source_df)
+
+    def exec_fn(ctx):
+        vals = ctx.indicator(hhv.name)
+        if len(vals) > 0 and vals[-1] > 0:
+            if not ctx.long_pos():
+                ctx.buy_shares = 10
+
+    strategy.add_execution(exec_fn, "AAPL", indicators=[hhv])
+    opt = strategy.optimize(
+        lambda r: r.metrics.total_pnl,
+        sampler="grid",
+        train_size=0.5,
+        disable_parallel_indicators=True,
+    )
+    trial_lookbacks = {t.params["lookback"] for t in opt.study.trials}
+
+    assert len(opt.study.trials) == 2
+    assert trial_lookbacks == {5, 10}
+    assert periods_seen == {5, 10}
+    assert opt.best_params["lookback"] in (5, 10)
+    best_trial = max(opt.study.trials, key=lambda t: t.value)
+    assert opt.best_params["lookback"] == best_trial.params["lookback"]
+    assert opt.study.best_value == best_trial.value
+    assert np.isfinite(opt.result.metrics.total_pnl)
+
+
+def test_optimize_logs_trial_count(capsys, data_source_df):
+    lookback = hyperparam("lookback", default=10, low=5, high=10, step=5)
+    hhv = indicator(
+        "hhv_log",
+        lambda data, period: highv(data.high, period),
+        period=lookback,
+    )
+    strategy = _make_strategy(data_source_df)
+    strategy.add_execution(None, "AAPL", indicators=[hhv])
+    strategy.optimize(
+        lambda r: r.metrics.total_pnl,
+        sampler="grid",
+        train_size=0.5,
+        disable_parallel_indicators=True,
+    )
+    assert "Optimizing: 2 trials (grid)" in capsys.readouterr().out
+
+
+def test_grid_explosion_guard(data_source_df):
+    hp = hyperparam("p", default=1, low=0, high=2000, step=1)
+    ind = indicator("i", lambda data, p: data.close * 0 + p, p=hp)
+    strategy = _make_strategy(data_source_df)
+    strategy.add_execution(None, "AAPL", indicators=[ind])
+    study = MagicMock()
+    study.best_params = {"p": 1}
+    study.best_value = 1.0
+    with pytest.warns(UserWarning, match="Grid size"):
+        with patch("optuna.create_study", return_value=study):
+            with patch.object(study, "optimize"):
+                strategy.optimize(
+                    lambda r: r.metrics.total_pnl,
+                    n_trials=None,
+                    train_size=0.5,
+                    disable_parallel_indicators=True,
+                )
+
+
+def test_optimize_rejects_models(data_source_df):
+    m = model(
+        MODEL_NAME,
+        lambda sym, *_: FakeModel(
+            sym,
+            np.full(
+                data_source_df[data_source_df["symbol"] == sym].shape[0], 100
+            ),
+        ),
+        pretrained=False,
+    )
+    strategy = _make_strategy(data_source_df)
+    strategy.add_execution(None, "AAPL", models=[m])
+    with pytest.raises(ValueError, match="trainable model sources"):
+        strategy.optimize(lambda r: r.metrics.total_pnl)
+
+
+def test_optimize_model_loader_integration(data_source_df):
+    lookback = hyperparam("lookback", default=10, low=5, high=10, step=5)
+    hhv = indicator(
+        "hhv_model_loader",
+        lambda data, period: highv(data.high, period),
+        period=lookback,
+    )
+    n = data_source_df[data_source_df["symbol"] == "AAPL"].shape[0]
+    load_calls: list[tuple[str, object, object]] = []
+
+    def load_fn(sym, train_start_date, train_end_date):
+        load_calls.append((sym, train_start_date, train_end_date))
+        return FakeModel(sym, np.full(n, 1.0))
+
+    m = model(
+        "loader_opt",
+        load_fn,
+        indicators=[hhv],
+        pretrained=True,
+    )
+    assert isinstance(
+        StaticScope.instance().get_model_source(m.name), ModelLoader
+    )
+
+    strategy = _make_strategy(data_source_df)
+    model_ids: list[int] = []
+    pred_lens: list[int] = []
+
+    def exec_fn(ctx):
+        model_ids.append(id(ctx.model(m.name)))
+        pred_lens.append(len(ctx.preds(m.name)))
+        _ = ctx.indicator(hhv.name)
+
+    strategy.add_execution(exec_fn, "AAPL", indicators=[hhv], models=[m])
+    opt = strategy.optimize(
+        lambda r: r.metrics.total_pnl,
+        sampler="grid",
+        train_size=0.5,
+        disable_parallel_indicators=True,
+    )
+
+    assert len(opt.study.trials) == 2
+    assert {t.params["lookback"] for t in opt.study.trials} == {5, 10}
+    assert len(load_calls) == 1
+    assert load_calls[0][0] == "AAPL"
+    assert len(set(model_ids)) == 1
+    assert all(length > 0 for length in pred_lens)
+    assert np.isfinite(opt.result.metrics.total_pnl)
+
+
+def test_optimize_rejects_trainable_with_pretrained(data_source_df):
+    n_aapl = data_source_df[data_source_df["symbol"] == "AAPL"].shape[0]
+    n_msft = data_source_df[data_source_df["symbol"] == "MSFT"].shape[0]
+    pretrained = model(
+        "pretrained_model",
+        lambda sym, *_: FakeModel(sym, np.full(n_aapl, 1.0)),
+        pretrained=True,
+    )
+    trainable = model(
+        MODEL_NAME,
+        lambda sym, train, test: FakeModel(sym, np.full(n_msft, 1.0)),
+        pretrained=False,
+    )
+    strategy = _make_strategy(data_source_df)
+    strategy.add_execution(None, "AAPL", models=[pretrained])
+    strategy.add_execution(None, "MSFT", models=[trainable])
+    with pytest.raises(ValueError, match="trainable model sources"):
+        strategy.optimize(lambda r: r.metrics.total_pnl)
+
+
+def test_indicator_resolves_params(data_source_df):
+    lookback = hyperparam("lookback", default=10, low=5, high=10, step=5)
+    hhv = indicator(
+        "hhv_p", lambda data, period: highv(data.high, period), period=lookback
+    )
+    strategy = _make_strategy(data_source_df)
+    lengths = []
+
+    def exec_fn(ctx):
+        lengths.append(len(ctx.indicator(hhv.name)))
+
+    strategy.add_execution(exec_fn, "AAPL", indicators=[hhv])
+    strategy.backtest(params={"lookback": 5}, disable_parallel_indicators=True)
+    assert lengths
+
+
+def test_make_objective_exports():
+    assert callable(pybroker.make_objective)
+
+
+def test_optimize_indicator_memo_max_validation(data_source_df):
+    lookback = hyperparam("lookback", default=10, low=5, high=10, step=5)
+    hhv = indicator(
+        "hhv_lb",
+        lambda data, period: highv(data.high, period),
+        period=lookback,
+    )
+    strategy = _make_strategy(data_source_df)
+
+    def exec_fn(ctx):
+        _ = ctx.indicator(hhv.name)
+
+    strategy.add_execution(exec_fn, "AAPL", indicators=[hhv])
+    with pytest.raises(ValueError, match="indicator_memo_max"):
+        strategy.optimize(
+            lambda r: r.metrics.total_pnl,
+            indicator_memo_max=-1,
+            n_trials=1,
+            disable_parallel_indicators=True,
+        )

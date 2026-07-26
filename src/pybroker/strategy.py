@@ -37,6 +37,7 @@ from pybroker.context import (
 )
 from pybroker.data import AlpacaCrypto, DataSource
 from pybroker.eval import BootstrapResult, EvalMetrics, EvaluateMixin
+from pybroker.hyperparam import Hyperparam, build_run_hyperparams
 from pybroker.indicator import Indicator, IndicatorsMixin
 from pybroker.model import (
     ModelSource,
@@ -90,6 +91,7 @@ from pybroker.slippage import (
     FixedSlippageModel,
     SlippageModel,
 )
+from pybroker.optimize import OptimizeMixin
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime
@@ -116,17 +118,6 @@ from typing_extensions import Concatenate, ParamSpec
 P = ParamSpec("P")
 
 _EMPTY_KWARGS: dict[str, Any] = {}
-
-
-def _ensure_range_index(df: pd.DataFrame) -> pd.DataFrame:
-    if (
-        isinstance(df.index, pd.RangeIndex)
-        and df.index.start == 0
-        and df.index.step == 1
-        and len(df.index) == len(df)
-    ):
-        return df
-    return df.reset_index(drop=True)
 
 
 def _unique_dates_from_rows(
@@ -172,85 +163,6 @@ def _between(
     if len(rows) == len(df):
         return df
     return df.iloc[rows]
-
-
-def _is_symbol_selector(
-    symbols: Union[frozenset[str], SymbolSelector],
-) -> TypeGuard[SymbolSelector]:
-    return callable(symbols) and not isinstance(symbols, (str, bytes))
-
-
-def _static_symbols(
-    symbols: Union[frozenset[str], SymbolSelector],
-) -> frozenset[str]:
-    if _is_symbol_selector(symbols):
-        return frozenset()
-    return cast(frozenset[str], symbols)
-
-
-def _resolve_execution_symbols(
-    execution: "Execution",
-    selection_df: pd.DataFrame,
-) -> frozenset[str]:
-    if _is_symbol_selector(execution.symbols):
-        selected = execution.symbols(selection_df)
-        if not isinstance(selected, list):
-            raise TypeError(
-                "symbol selector must return a list[str], "
-                f"received {type(selected)!r}."
-            )
-        if not selected:
-            raise ValueError("symbol selector returned an empty list.")
-        if len(selected) != len(set(selected)):
-            seen: set[str] = set()
-            dupes = []
-            for sym in selected:
-                if sym in seen:
-                    dupes.append(sym)
-                seen.add(sym)
-            raise ValueError(
-                f"symbol selector returned duplicate symbols: {sorted(set(dupes))}."
-            )
-        loaded = set(selection_df[DataCol.SYMBOL.value].unique())
-        unknown = set(selected) - loaded
-        if unknown:
-            raise ValueError(
-                f"symbol selector returned unknown symbols: {sorted(unknown)}."
-            )
-        return frozenset(selected)
-    return cast(frozenset[str], execution.symbols)
-
-
-def _resolve_executions(
-    executions: set["Execution"],
-    selection_df: pd.DataFrame,
-) -> set["Execution"]:
-    resolved: set[Execution] = set()
-    seen_syms: set[str] = set()
-    for execution in executions:
-        syms = _resolve_execution_symbols(execution, selection_df)
-        overlap = seen_syms & syms
-        if overlap:
-            sym = sorted(overlap)[0]
-            raise ValueError(f"{sym} was already added to an execution.")
-        seen_syms.update(syms)
-        resolved.add(execution._replace(symbols=syms))
-    return resolved
-
-
-def _selection_df(
-    train_data: pd.DataFrame,
-    test_data: pd.DataFrame,
-) -> pd.DataFrame:
-    if not train_data.empty:
-        return train_data
-    if not test_data.empty:
-        return (
-            test_data
-            if train_data.empty
-            else pd.concat([train_data, test_data], ignore_index=True)
-        )
-    return train_data
 
 
 def _sort_by_buy_score(result: ExecResult) -> float:
@@ -414,8 +326,99 @@ class Execution(NamedTuple):
     fn: Optional[Callable[[ExecContext], None]]
     model_names: frozenset[str]
     indicator_names: frozenset[str]
+    hyperparam_names: frozenset[str] = frozenset()
     args: tuple[Any, ...] = tuple()
     kwargs: tuple[tuple[str, Any], ...] = tuple()
+
+
+def _ensure_range_index(df: pd.DataFrame) -> pd.DataFrame:
+    if (
+        isinstance(df.index, pd.RangeIndex)
+        and df.index.start == 0
+        and df.index.step == 1
+        and len(df.index) == len(df)
+    ):
+        return df
+    return df.reset_index(drop=True)
+
+
+def _is_symbol_selector(
+    symbols: Union[frozenset[str], SymbolSelector],
+) -> TypeGuard[SymbolSelector]:
+    return callable(symbols) and not isinstance(symbols, (str, bytes))
+
+
+def _static_symbols(
+    symbols: Union[frozenset[str], SymbolSelector],
+) -> frozenset[str]:
+    if _is_symbol_selector(symbols):
+        return frozenset()
+    return cast(frozenset[str], symbols)
+
+
+def _resolve_execution_symbols(
+    execution: Execution,
+    selection_df: pd.DataFrame,
+) -> frozenset[str]:
+    if _is_symbol_selector(execution.symbols):
+        selected = execution.symbols(selection_df)
+        if not isinstance(selected, list):
+            raise TypeError(
+                "symbol selector must return a list[str], "
+                f"received {type(selected)!r}."
+            )
+        if not selected:
+            raise ValueError("symbol selector returned an empty list.")
+        if len(selected) != len(set(selected)):
+            seen: set[str] = set()
+            dupes = []
+            for sym in selected:
+                if sym in seen:
+                    dupes.append(sym)
+                seen.add(sym)
+            raise ValueError(
+                f"symbol selector returned duplicate symbols: {sorted(set(dupes))}."
+            )
+        loaded = set(selection_df[DataCol.SYMBOL.value].unique())
+        unknown = set(selected) - loaded
+        if unknown:
+            raise ValueError(
+                f"symbol selector returned unknown symbols: {sorted(unknown)}."
+            )
+        return frozenset(selected)
+    return cast(frozenset[str], execution.symbols)
+
+
+def _resolve_executions(
+    executions: set[Execution],
+    selection_df: pd.DataFrame,
+) -> set[Execution]:
+    resolved: set[Execution] = set()
+    seen_syms: set[str] = set()
+    for execution in executions:
+        syms = _resolve_execution_symbols(execution, selection_df)
+        overlap = seen_syms & syms
+        if overlap:
+            sym = sorted(overlap)[0]
+            raise ValueError(f"{sym} was already added to an execution.")
+        seen_syms.update(syms)
+        resolved.add(execution._replace(symbols=syms))
+    return resolved
+
+
+def _selection_df(
+    train_data: pd.DataFrame,
+    test_data: pd.DataFrame,
+) -> pd.DataFrame:
+    if not train_data.empty:
+        return train_data
+    if not test_data.empty:
+        return (
+            test_data
+            if train_data.empty
+            else pd.concat([train_data, test_data], ignore_index=True)
+        )
+    return train_data
 
 
 class BacktestMixin:
@@ -442,6 +445,7 @@ class BacktestMixin:
         declared_timeframes: frozenset[TimeframeInterval] = frozenset(),
         history_col_scope: Optional[ColumnScope] = None,
         test_col_scope: Optional[ColumnScope] = None,
+        run_hyperparams: Optional[dict[str, Any]] = None,
     ) -> dict[str, pd.DataFrame]:
         r"""Backtests a ``set`` of :class:`.Execution`\ s that implement
         trading logic.
@@ -525,6 +529,8 @@ class BacktestMixin:
                     models=models,
                     sym_end_index=sym_end_index,
                     session=sessions[sym],
+                    run_hyperparams=run_hyperparams,
+                    allowed_hyperparam_names=exec.hyperparam_names,
                 )
                 exec_args[sym] = exec.args
                 exec_kwargs[sym] = dict(exec.kwargs)
@@ -1330,6 +1336,7 @@ class Strategy(
     IndicatorsMixin,
     ModelsMixin,
     WalkforwardMixin,
+    OptimizeMixin,
 ):
     """Class representing a trading strategy to backtest.
 
@@ -1542,6 +1549,7 @@ class Strategy(
         symbols: Union[str, Iterable[str], SymbolSelector],
         models: Optional[Union[ModelSource, Iterable[ModelSource]]] = None,
         indicators: Optional[Union[Indicator, Iterable[Indicator]]] = None,
+        hyperparams: Optional[Iterable[Hyperparam]] = None,
         *args: P.args,
         **kwargs: P.kwargs,
     ):
@@ -1623,6 +1631,21 @@ class Strategy(
             ind_names = frozenset(ind_name_set)
         else:
             ind_names = frozenset()
+        hyperparam_name_set: set[str] = set()
+        if hyperparams is not None:
+            for hp in hyperparams:
+                if not isinstance(hp, Hyperparam):
+                    raise TypeError(f"Invalid hyperparam type: {type(hp)!r}.")
+                if not self._scope.has_hyperparam(hp.name):
+                    raise ValueError(
+                        f"Hyperparam {hp.name!r} was not registered."
+                    )
+                if hp is not self._scope.get_hyperparam(hp.name):
+                    raise ValueError(
+                        f"Hyperparam {hp.name!r} does not match registered "
+                        "Hyperparam."
+                    )
+                hyperparam_name_set.add(hp.name)
         self._execution_id += 1
         self._executions.add(
             Execution(
@@ -1631,6 +1654,7 @@ class Strategy(
                 fn=fn,
                 model_names=model_names,
                 indicator_names=ind_names,
+                hyperparam_names=frozenset(hyperparam_name_set),
                 args=args,
                 kwargs=tuple(sorted(kwargs.items())),
             )
@@ -1681,6 +1705,7 @@ class Strategy(
         portfolio: Optional[Portfolio] = None,
         adjust: Optional[Any] = None,
         seed: Optional[int] = 42,
+        params: Optional[dict[str, Any]] = None,
     ) -> TestResult:
         """Backtests the trading strategy by running executions that were added
         with :meth:`.add_execution`.
@@ -1759,6 +1784,7 @@ class Strategy(
             portfolio=portfolio,
             adjust=adjust,
             seed=seed,
+            params=params,
         )
 
     def walkforward(
@@ -1779,6 +1805,7 @@ class Strategy(
         portfolio: Optional[Portfolio] = None,
         adjust: Optional[Any] = None,
         seed: Optional[int] = 42,
+        params: Optional[dict[str, Any]] = None,
     ) -> TestResult:
         """Backtests the trading strategy using `Walkforward Analysis
         <https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis>`_.
@@ -1876,6 +1903,8 @@ class Strategy(
             if start_dt is not None and end_dt is not None:
                 verify_date_range(start_dt, end_dt)
             self._logger.walkforward_start(start_dt, end_dt)
+            hyperparams = self._collect_hyperparams()
+            run_hyperparams = build_run_hyperparams(hyperparams, params)
             df = self._fetch_data(timeframe, adjust)
             day_ids = self._to_day_ids(days)
             df = self._filter_dates(
@@ -1924,6 +1953,7 @@ class Strategy(
                     disable_parallel_indicators=disable_parallel_indicators,
                     timeframe_data=timeframe_data,
                     symbol_store=master_store,
+                    hyperparams=run_hyperparams or None,
                 )
             train_only = (
                 self._before_exec_fn is None
@@ -1967,6 +1997,7 @@ class Strategy(
                 has_selector=has_selector,
                 disable_parallel_indicators=disable_parallel_indicators,
                 global_cache_date_fields=cache_date_fields,
+                run_hyperparams=run_hyperparams,
             )
             if train_only:
                 self._logger.walkforward_completed()
@@ -2059,6 +2090,7 @@ class Strategy(
         has_selector: bool = False,
         disable_parallel_indicators: bool = False,
         global_cache_date_fields: Optional[CacheDateFields] = None,
+        run_hyperparams: Optional[dict[str, Any]] = None,
     ) -> dict[str, pd.DataFrame]:
         sessions: dict[str, dict] = defaultdict(dict)
         exit_dates: dict[str, np.datetime64] = {}
@@ -2107,6 +2139,7 @@ class Strategy(
                     timeframe_data=timeframe_data,
                     executions=window_executions,
                     symbol_store=master_store,
+                    hyperparams=run_hyperparams,
                 )
                 indicator_data.update(window_indicator_data)
             else:
@@ -2238,6 +2271,7 @@ class Strategy(
                 warmup=warmup,
                 history_col_scope=history_col_scope,
                 test_col_scope=test_col_scope,
+                run_hyperparams=run_hyperparams,
             )
             for sym, signals_df in split_signals.items():
                 signal_frames[sym].append(signals_df)
@@ -2290,6 +2324,7 @@ class Strategy(
         timeframe_data: Optional[TimeframeData] = None,
         executions: Optional[set[Execution]] = None,
         symbol_store: Optional[SymbolArrayStore] = None,
+        hyperparams: Optional[dict[str, Any]] = None,
     ) -> dict[IndicatorSymbol, pd.Series]:
         exec_set = executions if executions is not None else self._executions
         indicator_syms: set[IndicatorSymbol] = set()
@@ -2333,6 +2368,7 @@ class Strategy(
             disable_parallel_indicators=disable_parallel_indicators,
             timeframe_data=timeframe_data,
             symbol_store=symbol_store,
+            hyperparams=hyperparams,
         )
 
     def _fetch_data(

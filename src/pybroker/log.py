@@ -250,6 +250,32 @@ class Logger:
         )
         self._walkforward_start_time = None
 
+    def optimize_start(
+        self,
+        n_trials: int,
+        sampler: str,
+        *,
+        grid_size: Optional[int] = None,
+        windows: int = 1,
+    ):
+        total = n_trials * windows
+        if windows > 1:
+            if grid_size is not None and n_trials < grid_size:
+                msg = (
+                    f"Optimizing: {windows} windows, {n_trials} of "
+                    f"{grid_size} trials per window ({total} total, {sampler})"
+                )
+            else:
+                msg = (
+                    f"Optimizing: {windows} windows, {n_trials} trials "
+                    f"per window ({total} total, {sampler})"
+                )
+        elif grid_size is not None and n_trials < grid_size:
+            msg = f"Optimizing: {n_trials} of {grid_size} trials ({sampler})"
+        else:
+            msg = f"Optimizing: {n_trials} trials ({sampler})"
+        self._out(msg)
+
     def calc_bootstrap_metrics_start(self, samples, bars):
         self._out(
             f"Calculating bootstrap metrics: bars={bars}, samples={samples}..."

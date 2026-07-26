@@ -366,8 +366,10 @@ class TestSymbolSelector:
         aaa_uncached_counts: list[int] = []
         real_get = strategy._get_cached_indicators
 
-        def track_cache(indicator_syms, cache_date_fields):
-            data, uncached = real_get(indicator_syms, cache_date_fields)
+        def track_cache(indicator_syms, cache_date_fields, hyperparams=None):
+            data, uncached = real_get(
+                indicator_syms, cache_date_fields, hyperparams
+            )
             aaa_uncached_counts.append(
                 sum(1 for p in uncached if p.symbol == "AAA")
             )

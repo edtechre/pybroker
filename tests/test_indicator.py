@@ -13,6 +13,11 @@ import re
 from pybroker.cache import CacheDateFields
 from .fixtures import *  # noqa: F401
 from pybroker.common import BarData, DataCol, IndicatorSymbol, to_datetime
+from pybroker.config import StrategyConfig
+from pybroker.hyperparam import hyperparam
+from pybroker.scope import StaticScope
+from pybroker.strategy import Strategy
+from pybroker.vect import highv
 from pybroker.indicator import (
     _to_bar_data,
     Indicator,
@@ -476,3 +481,116 @@ def test_indicators(fn, args):
     series = indicator(bar_data)
     assert len(series) == n
     assert np.array_equal(series.index.to_numpy(), dates)
+
+
+@pytest.fixture(autouse=True)
+def clear_hyperparams_for_memo():
+    scope = StaticScope.instance()
+    scope._hyperparams.clear()
+    yield
+    scope._hyperparams.clear()
+
+
+def _hyperparam_hhv_indicator():
+    lookback = hyperparam("lookback", default=10, low=5, high=20, step=5)
+    hhv = indicator(
+        "hhv_memo",
+        lambda data, period: highv(data.high, period),
+        period=lookback,
+    )
+    return hhv
+
+
+def test_indicator_memo_disabled(data_source_df):
+    hhv = _hyperparam_hhv_indicator()
+    strategy = Strategy(
+        data_source_df,
+        "2020-01-02",
+        "2021-12-31",
+        StrategyConfig(),
+    )
+    strategy._indicator_memo_max = 0
+    ind_sym = IndicatorSymbol(hhv.name, "AAPL")
+    strategy.compute_indicators(
+        df=data_source_df,
+        indicator_syms=[ind_sym],
+        cache_date_fields=None,
+        disable_parallel_indicators=True,
+        hyperparams={"lookback": 10},
+    )
+    assert len(strategy._indicator_memo_store()) == 0
+
+
+def test_indicator_memo_eviction(data_source_df):
+    hhv = _hyperparam_hhv_indicator()
+    strategy = Strategy(
+        data_source_df,
+        "2020-01-02",
+        "2021-12-31",
+        StrategyConfig(),
+    )
+    strategy._indicator_memo_max = 2
+    ind_sym = IndicatorSymbol(hhv.name, "AAPL")
+    for lookback in (5, 10, 15):
+        strategy.compute_indicators(
+            df=data_source_df,
+            indicator_syms=[ind_sym],
+            cache_date_fields=None,
+            disable_parallel_indicators=True,
+            hyperparams={"lookback": lookback},
+        )
+    memo = strategy._indicator_memo_store()
+    assert len(memo) == 2
+    cached = {key[2] for key in memo}
+    assert (("lookback", 5),) not in cached
+    assert (("lookback", 10),) in cached
+    assert (("lookback", 15),) in cached
+
+
+def test_indicator_hyperparam_defaults_via_backtest(data_source_df):
+    lookback = hyperparam("lookback", default=10, low=5, high=20, step=5)
+    hhv = indicator(
+        "hhv_default",
+        lambda data, period: highv(data.high, period),
+        period=lookback,
+    )
+    strategy = Strategy(
+        data_source_df,
+        "2020-01-02",
+        "2021-12-31",
+        StrategyConfig(),
+    )
+    last_values: list[float] = []
+
+    def exec_fn(ctx):
+        vals = ctx.indicator(hhv.name)
+        if len(vals) > 0:
+            last_values.append(float(vals[-1]))
+
+    strategy.add_execution(exec_fn, "AAPL", indicators=[hhv])
+    strategy.backtest(disable_parallel_indicators=True)
+    default_last = last_values[-1]
+
+    last_values.clear()
+    strategy.backtest(
+        params={"lookback": 10}, disable_parallel_indicators=True
+    )
+    explicit_default_last = last_values[-1]
+
+    last_values.clear()
+    strategy.backtest(params={"lookback": 5}, disable_parallel_indicators=True)
+    alternate_last = last_values[-1]
+
+    sym_df = data_source_df[data_source_df[DataCol.SYMBOL.value] == "AAPL"]
+    series_default = hhv(sym_df)
+    series_alternate = hhv(sym_df, hyperparams={"lookback": 5})
+    expected = float(series_default.iloc[-1])
+
+    assert default_last == explicit_default_last
+    assert default_last == expected
+    assert alternate_last == float(series_alternate.iloc[-1])
+    assert not np.allclose(
+        series_default.to_numpy(),
+        series_alternate.to_numpy(),
+        equal_nan=True,
+    )

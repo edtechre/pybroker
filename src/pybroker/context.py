@@ -507,6 +507,8 @@ class ExecContext:
         models: Mapping[ModelSymbol, TrainedModel],
         sym_end_index: Mapping[str, int],
         session: MutableMapping,
+        run_hyperparams: Optional[Mapping[str, Any]] = None,
+        allowed_hyperparam_names: frozenset[str] = frozenset(),
     ):
         self.config = config
         self._portfolio = portfolio
@@ -519,6 +521,8 @@ class ExecContext:
         self._models = models
         self._sym_end_index = sym_end_index
         self._pending_order_scope = pending_order_scope
+        self._run_hyperparams: Mapping[str, Any] = run_hyperparams or {}
+        self._allowed_hyperparam_names = allowed_hyperparam_names
         self._scope = StaticScope.instance()
         self._curr_date: Optional[np.datetime64] = None
         self._dt: Optional[datetime] = None
@@ -1060,6 +1064,22 @@ class ExecContext:
         if model_sym not in self._models:
             raise ValueError(f"Model {name!r} not found for {symbol}.")
         return self._models[model_sym].instance
+
+    def hyperparam(self, name: str) -> Any:
+        r"""Returns a hyperparameter value for this execution.
+
+        The name must have been attached via ``hyperparams=[...]`` on
+        :meth:`pybroker.strategy.Strategy.add_execution`.
+        """
+        if name not in self._allowed_hyperparam_names:
+            raise ValueError(
+                f"Hyperparam {name!r} is not attached to this execution."
+            )
+        if name not in self._run_hyperparams:
+            raise KeyError(
+                f"Hyperparam {name!r} is not in the run hyperparams dict."
+            )
+        return self._run_hyperparams[name]
 
     def indicator(
         self, name: str, symbol: Optional[str] = None

@@ -47,6 +47,10 @@ from pybroker.eval import (
     EvalMetrics as EvalMetrics,
     BootstrapResult as BootstrapResult,
 )
+from pybroker.hyperparam import (
+    Hyperparam as Hyperparam,
+    hyperparam as hyperparam,
+)
 from pybroker.indicator import (
     Indicator as Indicator,
     IndicatorSet as IndicatorSet,
@@ -54,6 +58,11 @@ from pybroker.indicator import (
     indicator as indicator,
     lowest as lowest,
     returns as returns,
+)
+from pybroker.optimize import (
+    OptimizeResult as OptimizeResult,
+    WindowOptimizeResult as WindowOptimizeResult,
+    make_objective as make_objective,
 )
 from pybroker.model import (
     ModelLoader as ModelLoader,

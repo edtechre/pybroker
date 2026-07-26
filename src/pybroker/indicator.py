@@ -6,7 +6,6 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
-import functools
 import itertools
 import numpy as np
 import operator as op
@@ -14,6 +13,12 @@ import pandas as pd
 import pybroker.vect as vect
 from pybroker.cache import CacheDateFields, IndicatorCacheKey
 from pybroker.common import BarData, DataCol, IndicatorSymbol
+from pybroker.hyperparam import (
+    _find_hyperparam_names,
+    _hyperparam_specs_from_kwargs,
+    _resolve_hyperparams,
+    build_run_hyperparams,
+)
 from pybroker.parallel import parallel
 from pybroker.eval import iqr, relative_entropy
 from pybroker.scope import (
@@ -41,6 +46,17 @@ from typing import (
     Optional,
     Union,
 )
+
+
+DEFAULT_INDICATOR_MEMO_MAX = 256
+"""Default ``indicator_memo_max`` for :meth:`pybroker.optimize.OptimizeMixin.optimize`.
+
+During optimization, hyperparameterized indicators bypass the disk cache.
+``optimize`` memoizes computed ``(indicator, symbol, hyperparams)`` results
+in memory to avoid recomputing identical combinations across trials. When the
+memo is full, the oldest entry is evicted. Pass ``indicator_memo_max=0`` to
+``optimize`` to disable memoization.
+"""
 
 
 def _to_bar_data(df: pd.DataFrame) -> BarData:
@@ -94,8 +110,12 @@ class Indicator:
         kwargs: dict[str, Any],
     ):
         self.name = name
-        self._fn = functools.partial(fn, **kwargs)
+        self._fn = fn
         self._kwargs = kwargs
+
+    @property
+    def hyperparam_names(self) -> frozenset[str]:
+        return _find_hyperparam_names(self._kwargs)
 
     def relative_entropy(self, data: Union[BarData, pd.DataFrame]) -> float:
         """Generates indicator data with ``data`` and computes its relative
@@ -111,11 +131,28 @@ class Indicator:
         """
         return iqr(self(data).values)
 
-    def __call__(self, data: Union[BarData, pd.DataFrame]) -> pd.Series:
+    def __call__(
+        self,
+        data: Union[BarData, pd.DataFrame],
+        hyperparams: Optional[dict[str, Any]] = None,
+    ) -> pd.Series:
         """Computes indicator values."""
         if isinstance(data, pd.DataFrame):
             data = _to_bar_data(data)
-        values = self._fn(data)
+        if self.hyperparam_names:
+            effective = (
+                hyperparams
+                if hyperparams is not None
+                else build_run_hyperparams(
+                    _hyperparam_specs_from_kwargs(self._kwargs)
+                )
+            )
+            resolved = _resolve_hyperparams(self._kwargs, effective)
+            values = self._fn(data, **resolved)
+        elif self._kwargs:
+            values = self._fn(data, **self._kwargs)
+        else:
+            values = self._fn(data)
         if isinstance(values, pd.Series):
             values = values.to_numpy()
         if len(values.shape) != 1:
@@ -204,7 +241,9 @@ def _run_indicators_for_symbol(
     )
 
 
-def _decorate_indicator_fn(ind_name: str):
+def _decorate_indicator_fn(
+    ind_name: str, hyperparams: Optional[dict[str, Any]] = None
+):
     base_name, _ = parse_indicator_timeframe_name(ind_name)
     fn = StaticScope.instance().get_indicator(base_name).__call__
 
@@ -230,7 +269,7 @@ def _decorate_indicator_fn(ind_name: str):
             vwap=vwap,
             **custom_col_data,
         )
-        series = fn(bar_data)
+        series = fn(bar_data, hyperparams=hyperparams)
         return IndicatorSymbol(ind_name, symbol), series
 
     return decorated_indicator_fn
@@ -260,6 +299,70 @@ def indicator(
 class IndicatorsMixin:
     """Mixin implementing indicator related functionality."""
 
+    def _indicator_memo_store(
+        self,
+    ) -> dict[tuple[str, str, tuple[tuple[str, Any], ...]], pd.Series]:
+        store = getattr(self, "_indicator_memo", None)
+        if store is None:
+            store = {}
+            self._indicator_memo = store
+        return store
+
+    def _memo_key(
+        self,
+        ind_name: str,
+        symbol: str,
+        hyperparams: Optional[dict[str, Any]],
+    ) -> Optional[tuple[str, str, tuple[tuple[str, Any], ...]]]:
+        base_name, _ = parse_indicator_timeframe_name(ind_name)
+        ind = StaticScope.instance().get_indicator(base_name)
+        if not ind.hyperparam_names:
+            return None
+        if hyperparams is None:
+            subset = build_run_hyperparams(
+                _hyperparam_specs_from_kwargs(ind._kwargs)
+            )
+        else:
+            subset = {n: hyperparams[n] for n in ind.hyperparam_names}
+        return (
+            ind_name,
+            symbol,
+            tuple(sorted(subset.items())),
+        )
+
+    def _get_memoized_indicator(
+        self,
+        ind_sym: IndicatorSymbol,
+        hyperparams: Optional[dict[str, Any]],
+    ) -> Optional[pd.Series]:
+        if getattr(self, "_indicator_memo_max", 0) == 0:
+            return None
+        key = self._memo_key(ind_sym.ind_name, ind_sym.symbol, hyperparams)
+        if key is None:
+            return None
+        return self._indicator_memo_store().get(key)
+
+    def _set_memoized_indicator(
+        self,
+        ind_sym: IndicatorSymbol,
+        series: pd.Series,
+        hyperparams: Optional[dict[str, Any]],
+    ) -> None:
+        memo_max = getattr(self, "_indicator_memo_max", 0)
+        if memo_max == 0:
+            return
+        key = self._memo_key(ind_sym.ind_name, ind_sym.symbol, hyperparams)
+        if key is None:
+            return
+        memo = self._indicator_memo_store()
+        if len(memo) >= memo_max:
+            oldest = next(iter(memo))
+            del memo[oldest]
+            StaticScope.instance().logger.debug_compute_indicators(
+                is_parallel=False
+            )
+        memo[key] = series
+
     def compute_indicators(
         self,
         df: pd.DataFrame,
@@ -268,6 +371,7 @@ class IndicatorsMixin:
         disable_parallel_indicators: bool,
         timeframe_data: Optional[TimeframeData] = None,
         symbol_store: Optional[SymbolArrayStore] = None,
+        hyperparams: Optional[dict[str, Any]] = None,
     ) -> dict[IndicatorSymbol, pd.Series]:
         """Computes indicator data for the provided
         :class:`pybroker.common.IndicatorSymbol` pairs.
@@ -287,6 +391,10 @@ class IndicatorsMixin:
             timeframe_data: Optional compressed timeframe data.
             symbol_store: Optional pre-built :class:`SymbolArrayStore` to
                 avoid rebuilding per-symbol arrays from ``df``.
+            hyperparams: Optional hyperparameter overrides for indicators
+                that declare hyperparameters. During
+                :meth:`pybroker.optimize.OptimizeMixin.optimize`, results are
+                memoized in memory up to ``indicator_memo_max``.
 
         Returns:
             ``dict`` mapping each :class:`pybroker.common.IndicatorSymbol` pair
@@ -296,8 +404,18 @@ class IndicatorsMixin:
             return {}
         scope = StaticScope.instance()
         indicator_data, uncached_ind_syms = self._get_cached_indicators(
-            indicator_syms, cache_date_fields
+            indicator_syms, cache_date_fields, hyperparams
         )
+        memo_hits: list[IndicatorSymbol] = []
+        still_uncached: list[IndicatorSymbol] = []
+        for ind_sym in uncached_ind_syms:
+            memo_series = self._get_memoized_indicator(ind_sym, hyperparams)
+            if memo_series is not None:
+                indicator_data[ind_sym] = memo_series
+                memo_hits.append(ind_sym)
+            else:
+                still_uncached.append(ind_sym)
+        uncached_ind_syms = still_uncached
         if not uncached_ind_syms:
             scope.logger.loaded_indicator_data()
             scope.logger.info_loaded_indicator_data(indicator_syms)
@@ -318,10 +436,14 @@ class IndicatorsMixin:
                 uncached_ind_syms,
                 disable_parallel_indicators,
                 timeframe_data,
+                hyperparams,
             )
         ):
             indicator_data[ind_sym] = series
-            self._set_cached_indicator(series, ind_sym, cache_date_fields)
+            self._set_memoized_indicator(ind_sym, series, hyperparams)
+            self._set_cached_indicator(
+                series, ind_sym, cache_date_fields, hyperparams
+            )
             scope.logger.indicator_data_loading(i + 1)
         return indicator_data
 
@@ -329,16 +451,21 @@ class IndicatorsMixin:
         self,
         indicator_syms: Iterable[IndicatorSymbol],
         cache_date_fields: Optional[CacheDateFields],
+        hyperparams: Optional[dict[str, Any]] = None,
     ) -> tuple[dict[IndicatorSymbol, pd.Series], list[IndicatorSymbol]]:
         indicator_syms = sorted(indicator_syms)
         indicator_data: dict[IndicatorSymbol, pd.Series] = {}
         if cache_date_fields is None:
-            return indicator_data, indicator_syms
+            return indicator_data, list(indicator_syms)
         scope = StaticScope.instance()
         if scope.indicator_cache is None:
-            return indicator_data, indicator_syms
+            return indicator_data, list(indicator_syms)
         uncached_ind_syms = []
         for ind_sym in indicator_syms:
+            base_name, _ = parse_indicator_timeframe_name(ind_sym.ind_name)
+            if scope.get_indicator(base_name).hyperparam_names:
+                uncached_ind_syms.append(ind_sym)
+                continue
             cache_key = IndicatorCacheKey.from_date_fields(
                 symbol=ind_sym.symbol,
                 ind_name=ind_sym.ind_name,
@@ -357,11 +484,15 @@ class IndicatorsMixin:
         series: pd.Series,
         ind_sym: IndicatorSymbol,
         cache_date_fields: Optional[CacheDateFields],
+        hyperparams: Optional[dict[str, Any]] = None,
     ):
         if cache_date_fields is None:
             return
         scope = StaticScope.instance()
         if scope.indicator_cache is None:
+            return
+        base_name, _ = parse_indicator_timeframe_name(ind_sym.ind_name)
+        if scope.get_indicator(base_name).hyperparam_names:
             return
         cache_key = IndicatorCacheKey.from_date_fields(
             symbol=ind_sym.symbol,
@@ -377,12 +508,13 @@ class IndicatorsMixin:
         ind_syms: Collection[IndicatorSymbol],
         disable_parallel_indicators: bool,
         timeframe_data: Optional[TimeframeData] = None,
+        hyperparams: Optional[dict[str, Any]] = None,
     ) -> Iterable[tuple[IndicatorSymbol, pd.Series]]:
         fns: dict[str, Callable[..., tuple[IndicatorSymbol, pd.Series]]] = {}
         for ind_name, _ in ind_syms:
             if ind_name in fns:
                 continue
-            fns[ind_name] = _decorate_indicator_fn(ind_name)
+            fns[ind_name] = _decorate_indicator_fn(ind_name, hyperparams)
         scope = StaticScope.instance()
         custom_data_cols = tuple(scope.custom_data_cols)
         default_data_cols = scope.default_data_cols
