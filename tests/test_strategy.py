@@ -6,6 +6,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import json
 import numpy as np
 import os
 import pandas as pd
@@ -40,6 +41,7 @@ from pybroker.strategy import (
     Strategy,
     TestResult,
     WalkforwardMixin,
+    _DEFAULT_JSON_INCLUDE,
     _is_rankable,
     _rank_by_score,
     _rank_by_short_score,
@@ -3195,6 +3197,25 @@ class TestStrategy:
         assert not result.portfolio.empty
         assert not result.bootstrap.conf_intervals.empty
         assert not result.bootstrap.drawdown_conf.empty
+        payload = result.to_json()
+        assert set(payload.keys()) == {
+            "start_date",
+            "end_date",
+            "metrics",
+            "trades",
+            "orders",
+            "bootstrap",
+        }
+        json.dumps(payload, allow_nan=False)
+        assert "portfolio" not in payload
+        include_all = _DEFAULT_JSON_INCLUDE | frozenset({"portfolio"})
+        payload_with_portfolio = result.to_json(include=include_all)
+        assert "portfolio" in payload_with_portfolio
+        assert len(payload_with_portfolio["portfolio"]) <= 100
+        truncated = result.to_json(max_rows=1)
+        assert len(truncated["trades"]) <= 1
+        assert len(truncated["orders"]) <= 1
+        result.to_json_str()
 
     @pytest.mark.parametrize("tz", ["UTC", None])
     @pytest.mark.parametrize(

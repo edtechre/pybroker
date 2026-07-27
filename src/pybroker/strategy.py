@@ -7,6 +7,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 """
 
 import dataclasses
+import json
 import math
 import warnings
 import numpy as np
@@ -21,6 +22,8 @@ from pybroker.common import (
     OrderType,
     PriceType,
     SymbolSelector,
+    _dataframe_records,
+    _json_safe,
     get_unique_sorted_dates,
     get_unique_sorted_dates_array,
     quantize,
@@ -1382,6 +1385,22 @@ class WalkforwardMixin:
                 yield WalkforwardWindow(train_rows, test_rows)
 
 
+_DEFAULT_JSON_INCLUDE = frozenset({"metrics", "trades", "orders", "bootstrap"})
+
+
+def _filter_df_symbols(
+    df: pd.DataFrame, symbols: Optional[frozenset[str]]
+) -> pd.DataFrame:
+    if symbols is None or df.empty:
+        return df
+    if "symbol" in df.columns:
+        return df[df["symbol"].isin(symbols)]
+    if isinstance(df.index, pd.MultiIndex) and "symbol" in df.index.names:
+        mask = df.index.get_level_values("symbol").isin(symbols)
+        return df[mask]
+    return df
+
+
 @dataclass(frozen=True)
 class TestResult:
     r"""Contains the results of backtesting a :class:`.Strategy`.
@@ -1416,6 +1435,86 @@ class TestResult:
     bootstrap: Optional[BootstrapResult]
     signals: Optional[dict[str, pd.DataFrame]]
     stops: Optional[pd.DataFrame]
+
+    def to_json(
+        self,
+        *,
+        include: frozenset[str] = _DEFAULT_JSON_INCLUDE,
+        max_rows: Optional[int] = 100,
+        symbols: Optional[frozenset[str]] = None,
+    ) -> dict[str, Any]:
+        """Returns JSON-serializable backtest results.
+
+        By default includes ``start_date``, ``end_date``, ``metrics``,
+        ``trades``, ``orders``, and ``bootstrap`` (when present). Large
+        time series such as ``portfolio``, ``positions``, ``signals``, and
+        ``stops`` are opt-in via ``include``.
+
+        Args:
+            include: Names of optional result sections to include.
+            max_rows: Maximum rows per tabular section. ``None`` for no limit.
+            symbols: When set, filter symbol-specific sections to these tickers.
+        """
+        payload: dict[str, Any] = {
+            "start_date": _json_safe(self.start_date),
+            "end_date": _json_safe(self.end_date),
+        }
+        if "metrics" in include:
+            payload["metrics"] = self.metrics.to_json()
+        if "metrics_df" in include:
+            payload["metrics_df"] = _dataframe_records(
+                self.metrics_df, max_rows=max_rows
+            )
+        if "trades" in include:
+            payload["trades"] = _dataframe_records(
+                _filter_df_symbols(self.trades, symbols),
+                max_rows=max_rows,
+            )
+        if "orders" in include:
+            payload["orders"] = _dataframe_records(
+                _filter_df_symbols(self.orders, symbols),
+                max_rows=max_rows,
+            )
+        if "portfolio" in include:
+            payload["portfolio"] = _dataframe_records(
+                self.portfolio, max_rows=max_rows
+            )
+        if "positions" in include:
+            payload["positions"] = _dataframe_records(
+                _filter_df_symbols(self.positions, symbols),
+                max_rows=max_rows,
+            )
+        if "bootstrap" in include and self.bootstrap is not None:
+            payload["bootstrap"] = self.bootstrap.to_json()
+        if "signals" in include and self.signals is not None:
+            payload["signals"] = {
+                sym: _dataframe_records(df, max_rows=max_rows)
+                for sym, df in self.signals.items()
+                if symbols is None or sym in symbols
+            }
+        if "stops" in include and self.stops is not None:
+            stops = self.stops
+            if symbols is not None and "symbol" in stops.columns:
+                stops = stops[stops["symbol"].isin(symbols)]
+            payload["stops"] = _dataframe_records(stops, max_rows=max_rows)
+        return payload
+
+    def to_json_str(
+        self,
+        *,
+        include: frozenset[str] = _DEFAULT_JSON_INCLUDE,
+        max_rows: Optional[int] = 100,
+        symbols: Optional[frozenset[str]] = None,
+    ) -> str:
+        """Returns strict JSON text from :meth:`to_json`."""
+        return json.dumps(
+            self.to_json(
+                include=include,
+                max_rows=max_rows,
+                symbols=symbols,
+            ),
+            allow_nan=False,
+        )
 
 
 class Strategy(

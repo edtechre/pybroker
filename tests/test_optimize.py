@@ -1,5 +1,6 @@
 """Tests for optimize module."""
 
+import json
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -127,6 +128,44 @@ def test_optimize_grid_smoke(data_source_df):
     )
     assert opt.best_params["lookback"] in (5, 10)
     assert opt.result.bootstrap is not None
+
+
+def test_optimize_result_to_json(data_source_df):
+    lookback = hyperparam("lookback", default=10, low=5, high=10, step=5)
+    hhv = indicator(
+        "hhv_json",
+        lambda data, period: highv(data.high, period),
+        period=lookback,
+    )
+    strategy = _make_strategy(data_source_df)
+
+    def exec_fn(ctx):
+        vals = ctx.indicator(hhv.name)
+        if len(vals) > 0 and vals[-1] > 0:
+            if not ctx.long_pos():
+                ctx.buy_shares = 10
+
+    strategy.add_execution(exec_fn, "AAPL", indicators=[hhv])
+    opt = strategy.optimize(
+        lambda r: r.metrics.sharpe if r.metrics.sharpe is not None else 0.0,
+        sampler="grid",
+        train_size=0.5,
+        disable_parallel_indicators=True,
+    )
+    payload = opt.to_json()
+    assert isinstance(payload["study"], dict)
+    assert "n_trials" in payload["study"]
+    assert "best_params" in payload["study"]
+    assert set(payload["result"].keys()) == {
+        "start_date",
+        "end_date",
+        "metrics",
+        "trades",
+        "orders",
+        "bootstrap",
+    }
+    json.dumps(payload, allow_nan=False)
+    opt.to_json_str()
 
 
 def test_optimize_indicator_integration(data_source_df):

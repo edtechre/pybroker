@@ -426,3 +426,62 @@ def get_unique_sorted_dates(col: pd.Series) -> Sequence[np.datetime64]:
     Guarantees compatability between Pandas 1 and 2.
     """
     return list(get_unique_sorted_dates_array(col))
+
+
+def _json_safe(value: Any) -> Any:
+    """Recursively converts a value to JSON-serializable Python types."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    if isinstance(value, float):
+        if np.isnan(value) or np.isinf(value):
+            return None
+        return value
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, pd.Timestamp):
+        return value.isoformat()
+    if isinstance(value, np.datetime64):
+        if pd.isna(value):
+            return None
+        return pd.Timestamp(value).isoformat()
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, np.floating):
+        if np.isnan(value) or np.isinf(value):
+            return None
+        return float(value)
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    if hasattr(value, "_asdict"):
+        return _json_safe(value._asdict())
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    return value
+
+
+def _dataframe_records(
+    df: pd.DataFrame,
+    *,
+    max_rows: Optional[int] = None,
+    reset_index: bool = True,
+) -> list[dict[str, Any]]:
+    """Converts a :class:`pandas.DataFrame` to JSON-safe record dicts."""
+    if df.empty:
+        return []
+    out = df.reset_index() if reset_index else df
+    if max_rows is not None:
+        out = out.head(max_rows)
+    return [_json_safe(record) for record in out.to_dict(orient="records")]

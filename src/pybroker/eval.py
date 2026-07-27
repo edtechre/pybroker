@@ -8,14 +8,16 @@ This code is licensed under Apache 2.0 with Commons Clause license
 
 import numpy as np
 import pandas as pd
+from pybroker.common import _dataframe_records, _json_safe
 from pybroker.scope import StaticScope
 from pybroker.vect import highv, inverse_normal_cdf, normal_cdf
 from collections import deque
+import dataclasses
 from dataclasses import dataclass, field
 from datetime import datetime
 from numba import njit
 from numpy.typing import NDArray
-from typing import Callable, NamedTuple, Optional
+from typing import Any, Callable, NamedTuple, Optional
 
 
 class BootConfIntervals(NamedTuple):
@@ -1095,6 +1097,16 @@ class BootstrapResult(NamedTuple):
     sharpe: BootConfIntervals
     drawdown: DrawdownMetrics
 
+    def to_json(self) -> dict[str, Any]:
+        """Returns JSON-serializable bootstrap evaluation metrics."""
+        return {
+            "conf_intervals": _dataframe_records(self.conf_intervals),
+            "drawdown_conf": _dataframe_records(self.drawdown_conf),
+            "profit_factor": _json_safe(self.profit_factor._asdict()),
+            "sharpe": _json_safe(self.sharpe._asdict()),
+            "drawdown": _json_safe(self.drawdown._asdict()),
+        }
+
 
 @dataclass(frozen=True)
 class EvalMetrics:
@@ -1203,6 +1215,10 @@ class EvalMetrics:
     std_error: float = field(default=0)
     annual_std_error: Optional[float] = field(default=None)
     annual_volatility_pct: Optional[float] = field(default=None)
+
+    def to_json(self) -> dict[str, Any]:
+        """Returns JSON-serializable evaluation metrics."""
+        return _json_safe(dataclasses.asdict(self))
 
 
 class ConfInterval(NamedTuple):

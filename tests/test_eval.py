@@ -14,6 +14,10 @@ import pytest
 import re
 from datetime import datetime
 from pybroker.eval import (
+    BootstrapResult,
+    BootConfIntervals,
+    DrawdownConfs,
+    DrawdownMetrics,
     EvalMetrics,
     EvaluateMixin,
     annual_total_return_percent,
@@ -713,3 +717,38 @@ class TestEvaluateMixin:
             assert result.bootstrap.drawdown is not None
         else:
             assert result.bootstrap is None
+
+
+def test_eval_metrics_to_json():
+    metrics = EvalMetrics(
+        trade_count=5,
+        sharpe=1.5,
+        max_drawdown_date=datetime(2023, 1, 15),
+        calmar=None,
+    )
+    payload = metrics.to_json()
+    assert payload["trade_count"] == 5
+    assert payload["sharpe"] == 1.5
+    assert payload["max_drawdown_date"] == "2023-01-15T00:00:00"
+    assert payload["calmar"] is None
+
+
+def test_bootstrap_result_to_json():
+    conf_intervals = pd.DataFrame(
+        [{"name": "sharpe", "conf": "95%", "lower": 0.1, "upper": 2.0}]
+    )
+    drawdown_conf = pd.DataFrame(
+        [{"name": "max_drawdown", "conf": "95%", "upper": 0.05}]
+    )
+    empty_dd = DrawdownConfs(0.0, 0.0, 0.0, 0.0)
+    bootstrap = BootstrapResult(
+        conf_intervals=conf_intervals,
+        drawdown_conf=drawdown_conf,
+        profit_factor=BootConfIntervals(0.1, 1.0, 0.2, 0.9, 0.3, 0.8),
+        sharpe=BootConfIntervals(0.0, 2.0, 0.1, 1.9, 0.2, 1.8),
+        drawdown=DrawdownMetrics(empty_dd, empty_dd),
+    )
+    payload = bootstrap.to_json()
+    assert len(payload["conf_intervals"]) == 1
+    assert payload["profit_factor"]["low_2p5"] == 0.1
+    assert payload["drawdown"]["confs"]["q_001"] == 0.0

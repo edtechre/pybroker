@@ -18,6 +18,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import json
 import math
 import warnings
 from collections import defaultdict
@@ -309,6 +310,7 @@ from pybroker.common import (
     IndicatorSymbol,
     ModelSymbol,
     SymbolSelector,
+    _json_safe,
     get_unique_sorted_dates,
     to_datetime,
     to_seconds,
@@ -660,6 +662,21 @@ def _log_search_space(search_space: SearchSpace) -> None:
         warnings.warn(f"Searched hyperparams: {searched}", stacklevel=3)
 
 
+def _study_summary(study: optuna.Study) -> dict[str, Any]:
+    summary: dict[str, Any] = {"n_trials": len(study.trials)}
+    if study.best_trial is not None:
+        summary["best_value"] = study.best_value
+        summary["best_params"] = study.best_params
+    else:
+        summary["best_value"] = None
+        summary["best_params"] = {}
+    if study.user_attrs:
+        summary["user_attrs"] = dict(study.user_attrs)
+    if study.system_attrs:
+        summary["system_attrs"] = dict(study.system_attrs)
+    return _json_safe(summary)
+
+
 @dataclass(frozen=True)
 class WindowOptimizeResult:
     """Per-window walk-forward optimization result."""
@@ -669,6 +686,49 @@ class WindowOptimizeResult:
     test_result: TestResult
     train_score: float
     train_pnl: float
+
+    def to_json(
+        self,
+        *,
+        include: Optional[frozenset[str]] = None,
+        max_rows: Optional[int] = 100,
+        symbols: Optional[frozenset[str]] = None,
+    ) -> dict[str, Any]:
+        """Returns JSON-serializable walk-forward optimization window results."""
+        from pybroker.strategy import _DEFAULT_JSON_INCLUDE
+
+        if include is None:
+            include = _DEFAULT_JSON_INCLUDE
+        return _json_safe(
+            {
+                "params": self.params,
+                "train_score": self.train_score,
+                "train_pnl": self.train_pnl,
+                "study": _study_summary(self.study),
+                "test_result": self.test_result.to_json(
+                    include=include,
+                    max_rows=max_rows,
+                    symbols=symbols,
+                ),
+            }
+        )
+
+    def to_json_str(
+        self,
+        *,
+        include: Optional[frozenset[str]] = None,
+        max_rows: Optional[int] = 100,
+        symbols: Optional[frozenset[str]] = None,
+    ) -> str:
+        """Returns strict JSON text from :meth:`to_json`."""
+        return json.dumps(
+            self.to_json(
+                include=include,
+                max_rows=max_rows,
+                symbols=symbols,
+            ),
+            allow_nan=False,
+        )
 
 
 @dataclass(frozen=True)
@@ -681,6 +741,57 @@ class OptimizeResult:
     study: optuna.Study
     windows: Optional[tuple[WindowOptimizeResult, ...]] = None
     walkforward_efficiency: Optional[float] = None
+
+    def to_json(
+        self,
+        *,
+        include: Optional[frozenset[str]] = None,
+        max_rows: Optional[int] = 100,
+        symbols: Optional[frozenset[str]] = None,
+    ) -> dict[str, Any]:
+        """Returns JSON-serializable optimization results."""
+        from pybroker.strategy import _DEFAULT_JSON_INCLUDE
+
+        if include is None:
+            include = _DEFAULT_JSON_INCLUDE
+        payload: dict[str, Any] = {
+            "best_params": self.best_params,
+            "best_score": self.best_score,
+            "walkforward_efficiency": self.walkforward_efficiency,
+            "study": _study_summary(self.study),
+            "result": self.result.to_json(
+                include=include,
+                max_rows=max_rows,
+                symbols=symbols,
+            ),
+        }
+        if self.windows is not None:
+            payload["windows"] = [
+                window.to_json(
+                    include=include,
+                    max_rows=max_rows,
+                    symbols=symbols,
+                )
+                for window in self.windows
+            ]
+        return _json_safe(payload)
+
+    def to_json_str(
+        self,
+        *,
+        include: Optional[frozenset[str]] = None,
+        max_rows: Optional[int] = 100,
+        symbols: Optional[frozenset[str]] = None,
+    ) -> str:
+        """Returns strict JSON text from :meth:`to_json`."""
+        return json.dumps(
+            self.to_json(
+                include=include,
+                max_rows=max_rows,
+                symbols=symbols,
+            ),
+            allow_nan=False,
+        )
 
 
 @dataclass(frozen=True)
