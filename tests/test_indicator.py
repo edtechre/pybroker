@@ -14,7 +14,7 @@ from pybroker.cache import CacheDateFields
 from .fixtures import *  # noqa: F401
 from pybroker.common import BarData, DataCol, IndicatorSymbol, to_datetime
 from pybroker.config import StrategyConfig
-from pybroker.hyperparam import hyperparam
+from pybroker.optimize import hyperparam
 from pybroker.scope import StaticScope
 from pybroker.strategy import Strategy
 from pybroker.vect import highv

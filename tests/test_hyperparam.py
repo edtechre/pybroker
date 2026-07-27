@@ -3,7 +3,7 @@
 import optuna
 import pytest
 
-from pybroker.hyperparam import (
+from pybroker.optimize import (
     Hyperparam,
     _hyperparam_specs_from_kwargs,
     _resolve_hyperparams,

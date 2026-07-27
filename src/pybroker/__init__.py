@@ -48,9 +48,12 @@ from pybroker.eval import (
     EvalMetrics as EvalMetrics,
     BootstrapResult as BootstrapResult,
 )
-from pybroker.hyperparam import (
+from pybroker.optimize import (
     Hyperparam as Hyperparam,
+    OptimizeResult as OptimizeResult,
+    WindowOptimizeResult as WindowOptimizeResult,
     hyperparam as hyperparam,
+    make_objective as make_objective,
 )
 from pybroker.indicator import (
     Indicator as Indicator,
@@ -59,11 +62,6 @@ from pybroker.indicator import (
     indicator as indicator,
     lowest as lowest,
     returns as returns,
-)
-from pybroker.optimize import (
-    OptimizeResult as OptimizeResult,
-    WindowOptimizeResult as WindowOptimizeResult,
-    make_objective as make_objective,
 )
 from pybroker.model import (
     ModelLoader as ModelLoader,

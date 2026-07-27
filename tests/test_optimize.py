@@ -7,10 +7,13 @@ import pytest
 
 import pybroker
 from pybroker.config import StrategyConfig
-from pybroker.hyperparam import hyperparam
+from pybroker.optimize import (
+    collect_hyperparams,
+    collect_search_space,
+    hyperparam,
+)
 from pybroker.indicator import indicator
 from pybroker.model import ModelLoader, model
-from pybroker.optimize import collect_search_space
 from pybroker.scope import StaticScope
 from pybroker.strategy import Strategy
 from pybroker.vect import highv
@@ -53,8 +56,6 @@ def test_collect_search_space_excludes_fixed(data_source_df):
     strategy.add_execution(
         exec_fn, "AAPL", indicators=[hhv], hyperparams=[thresh]
     )
-    from pybroker.optimize import collect_hyperparams, collect_search_space
-
     all_specs = collect_hyperparams(strategy)
     space = collect_search_space(strategy)
     assert set(all_specs) == {"lookback", "thresh"}

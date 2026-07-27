@@ -39,7 +39,7 @@ from pybroker.context import (
 )
 from pybroker.data import AlpacaCrypto, DataSource
 from pybroker.eval import BootstrapResult, EvalMetrics, EvaluateMixin
-from pybroker.hyperparam import Hyperparam, build_run_hyperparams
+from pybroker.optimize import Hyperparam, OptimizeMixin, build_run_hyperparams
 from pybroker.indicator import Indicator, IndicatorsMixin
 from pybroker.model import (
     ModelSource,
@@ -93,7 +93,6 @@ from pybroker.slippage import (
     FixedSlippageModel,
     SlippageModel,
 )
-from pybroker.optimize import OptimizeMixin
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime
@@ -1599,7 +1598,7 @@ class Strategy(
 
         Args:
             max_long: Maximum long positions, a searchable
-                :class:`pybroker.hyperparam.Hyperparam`, or ``None`` for
+                :class:`pybroker.optimize.Hyperparam`, or ``None`` for
                 unlimited.
         """
         if isinstance(max_long, int) and max_long <= 0:
@@ -1611,7 +1610,7 @@ class Strategy(
 
         Args:
             max_short: Maximum short positions, a searchable
-                :class:`pybroker.hyperparam.Hyperparam`, or ``None`` for
+                :class:`pybroker.optimize.Hyperparam`, or ``None`` for
                 unlimited.
         """
         if isinstance(max_short, int) and max_short <= 0:
@@ -1631,7 +1630,7 @@ class Strategy(
 
         Args:
             worst_rank_held: Worst score rank at which a held position is
-                kept, a searchable :class:`pybroker.hyperparam.Hyperparam`, or
+                kept, a searchable :class:`pybroker.optimize.Hyperparam`, or
                 ``None`` to disable rotation.
             sizer: Optional :class:`Callable` that takes a
                 :class:`pybroker.context.RotationContext` to override

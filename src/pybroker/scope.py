@@ -242,7 +242,7 @@ class StaticScope:
         self._params.clear()
 
     def set_hyperparam(self, hyperparam: Any) -> None:
-        """Stores a :class:`pybroker.hyperparam.Hyperparam` in static scope."""
+        """Stores a :class:`pybroker.optimize.Hyperparam` in static scope."""
         self._hyperparams[hyperparam.name] = hyperparam
 
     def has_hyperparam(self, name: str) -> bool:

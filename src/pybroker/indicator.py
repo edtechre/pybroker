@@ -13,7 +13,7 @@ import pandas as pd
 import pybroker.vect as vect
 from pybroker.cache import CacheDateFields, IndicatorCacheKey
 from pybroker.common import BarData, DataCol, IndicatorSymbol
-from pybroker.hyperparam import (
+from pybroker.optimize import (
     _find_hyperparam_names,
     _hyperparam_specs_from_kwargs,
     _resolve_hyperparams,

@@ -1,4 +1,14 @@
-"""Hyperparameter optimization with Optuna."""
+"""Hyperparameter declaration and optimization with Optuna.
+
+Hyperparams declare tunable values for indicators and executions. Each
+hyperparam is registered globally by name via :func:`hyperparam` and
+resolved to a concrete int or float at backtest or optimization time.
+
+Pass hyperparams as keyword arguments to
+:func:`pybroker.indicator.indicator`, or list them on
+:meth:`pybroker.strategy.Strategy.add_execution` to read them inside an
+execution with ``ctx.hyperparam(name)``.
+"""
 
 from __future__ import annotations
 
@@ -8,8 +18,8 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import math
 import warnings
-import functools
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
@@ -21,7 +31,9 @@ from typing import (
     Mapping,
     Optional,
     Protocol,
+    TypeGuard,
     Union,
+    cast,
 )
 
 import numpy as np
@@ -30,29 +42,282 @@ import pandas as pd
 from joblib import delayed
 from optuna.samplers import BaseSampler, GridSampler, RandomSampler, TPESampler
 
+from pybroker.scope import StaticScope
+
+
+@dataclass(frozen=True)
+class Hyperparam:
+    """Declares a named hyperparameter with bounds and step size.
+
+    Created with :func:`hyperparam` and registered globally by ``name``.
+
+    Attributes:
+        name: Unique identifier used in indicator kwargs, execution
+            hyperparam lists, and optimization results.
+        default: Value for backtests and the baseline during optimization.
+            Should lie within ``[low, high]``.
+        low: Minimum candidate value searched during optimize (inclusive).
+        high: Maximum candidate value searched during optimize (inclusive).
+            Candidate values are ``low``, ``low + step``, ... up to the
+            largest value not exceeding ``high``.
+        step: Spacing between candidate values. Must be positive. Integer
+            hyperparams use integer steps; float hyperparams use float
+            steps with values rounded to match Optuna stepped suggestions.
+
+    Examples:
+        Indicator period from 5 to 50 in steps of 5::
+
+            period = hyperparam("period", default=14, low=5, high=50, step=5)
+    """
+
+    name: str
+    default: Union[int, float]
+    low: Union[int, float]
+    high: Union[int, float]
+    step: Union[int, float]
+
+    def __post_init__(self) -> None:
+        for field_name, value in (
+            ("default", self.default),
+            ("low", self.low),
+            ("high", self.high),
+            ("step", self.step),
+        ):
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise TypeError(
+                    f"Hyperparam {self.name!r}: {field_name} must be int or "
+                    f"float, got {type(value).__name__}."
+                )
+        value_types = {
+            type(self.default),
+            type(self.low),
+            type(self.high),
+            type(self.step),
+        }
+        if value_types != {int} and value_types != {float}:
+            raise TypeError(
+                f"Hyperparam {self.name!r}: default, low, high, and step must "
+                "all be int or all be float."
+            )
+        if self.step <= 0:
+            raise ValueError(
+                f"Hyperparam {self.name!r}: step must be positive."
+            )
+        if self.low > self.high:
+            raise ValueError(
+                f"Hyperparam {self.name!r}: low cannot exceed high."
+            )
+
+    def _is_float(self) -> bool:
+        return isinstance(self.default, float)
+
+    def _ndigits(self) -> int:
+        step = float(self.step)
+        if step >= 1:
+            return max(0, -int(math.floor(math.log10(step))))
+        return max(0, -int(math.floor(math.log10(step))))
+
+    def _within_high(self, val: Union[int, float]) -> bool:
+        if self._is_float():
+            ndigits = self._ndigits()
+            return round(float(val), ndigits) <= round(
+                float(self.high), ndigits
+            )
+        return int(val) <= int(self.high)
+
+    def _lattice_count(self) -> int:
+        if self.low == self.high:
+            raise TypeError(
+                f"Hyperparam {self.name!r} is fixed; lattice is undefined."
+            )
+        if self._is_float():
+            count = 0
+            ndigits = self._ndigits()
+            i = 0
+            while True:
+                val = round(float(self.low) + i * float(self.step), ndigits)
+                if not self._within_high(val):
+                    break
+                count += 1
+                i += 1
+            return count
+        low = int(self.low)
+        high = int(self.high)
+        step = int(self.step)
+        return (high - low) // step + 1
+
+    def _lattice_values(self) -> Iterator[Union[int, float]]:
+        if self.low == self.high:
+            raise TypeError(
+                f"Hyperparam {self.name!r} is fixed; lattice is undefined."
+            )
+        if self._lattice_count() == 0:
+            raise ValueError(
+                f"Hyperparam {self.name!r}: empty lattice for "
+                f"low={self.low}, high={self.high}, step={self.step}."
+            )
+        if self._is_float():
+            ndigits = self._ndigits()
+            i = 0
+            while True:
+                val = round(float(self.low) + i * float(self.step), ndigits)
+                if not self._within_high(val):
+                    break
+                yield val
+                i += 1
+        else:
+            low = int(self.low)
+            high = int(self.high)
+            step = int(self.step)
+            val = low
+            while val <= high:
+                yield val
+                val += step
+
+    def __iter__(self) -> Iterator[Union[int, float]]:
+        return self._lattice_values()
+
+    def __len__(self) -> int:
+        return self._lattice_count()
+
+
+def hyperparam(
+    name: str,
+    *,
+    default: Union[int, float],
+    low: Union[int, float],
+    high: Union[int, float],
+    step: Union[int, float],
+) -> Hyperparam:
+    """Creates and registers a :class:`Hyperparam`.
+
+    Args:
+        name: Unique identifier for the hyperparam. Referenced in indicator
+            kwargs, ``add_execution(..., hyperparams=[...])``, and
+            ``ctx.hyperparam(name)``.
+        default: Value used for backtests.
+        low: Minimum candidate value searched during optimize (inclusive).
+        high: Maximum candidate value searched during optimize (inclusive).
+        step: Spacing between candidate values. Must be positive.
+
+    Returns:
+        The registered :class:`Hyperparam` instance.
+    """
+    hp = Hyperparam(name=name, default=default, low=low, high=high, step=step)
+    StaticScope.instance().set_hyperparam(hp)
+    return hp
+
+
+def _is_hyperparam(value: Any) -> bool:
+    return isinstance(value, Hyperparam)
+
+
+def _find_hyperparam_names(mapping: Mapping[str, Any]) -> frozenset[str]:
+    return frozenset(
+        value.name for value in mapping.values() if _is_hyperparam(value)
+    )
+
+
+def _resolve_hyperparams(
+    mapping: Mapping[str, Any], params: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Replaces :class:`Hyperparam` values in ``mapping`` with run values.
+
+    Args:
+        mapping: Keyword arguments that may contain :class:`Hyperparam`
+            instances (for example, indicator ``_kwargs``).
+        params: Dict of ``name -> value`` for the current run.
+
+    Returns:
+        A new dict with hyperparams replaced by their resolved values.
+    """
+    resolved: dict[str, Any] = {}
+    for key, value in mapping.items():
+        if _is_hyperparam(value):
+            if value.name not in params:
+                raise KeyError(
+                    f"Hyperparam {value.name!r} is not in the run hyperparams "
+                    "dict."
+                )
+            resolved[key] = params[value.name]
+        else:
+            resolved[key] = value
+    return resolved
+
+
+def _hyperparam_specs_from_kwargs(
+    mapping: Mapping[str, Any],
+) -> dict[str, Hyperparam]:
+    return {
+        value.name: value
+        for value in mapping.values()
+        if _is_hyperparam(value)
+    }
+
+
+@dataclass(frozen=True)
+class SearchSpace:
+    """Searchable hyperparameters collected from a strategy.
+
+    Only includes hyperparams with ``low < high`` that are passed to Optuna
+    during :meth:`pybroker.strategy.Strategy.optimize`.
+
+    Attributes:
+        hyperparams: Names of hyperparams searched during optimize.
+        specs: Mapping of hyperparam name to :class:`Hyperparam` spec.
+    """
+
+    hyperparams: frozenset[str]
+    specs: Mapping[str, Hyperparam]
+
+    def grid_size(self) -> int:
+        """Total number of grid combinations."""
+        size = 1
+        for name in self.hyperparams:
+            size *= len(self.specs[name])
+        return size
+
+
+def build_run_hyperparams(
+    specs: Mapping[str, Hyperparam],
+    overrides: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    """Builds the hyperparam dict for a single backtest or trial run.
+
+    Args:
+        specs: All hyperparams reachable from the strategy.
+        overrides: Trial or user-supplied values to merge over defaults.
+
+    Returns:
+        Dict of ``name -> value`` for every hyperparam in ``specs``.
+    """
+    result: dict[str, Any] = {name: specs[name].default for name in specs}
+    if overrides:
+        for name, value in overrides.items():
+            if name not in specs:
+                raise ValueError(
+                    f"Unknown hyperparam override {name!r}. "
+                    f"Declared: {sorted(specs)}."
+                )
+            result[name] = value
+    return result
+
+
 from pybroker.cache import CacheDateFields
 from pybroker.common import (
     DataCol,
     IndicatorSymbol,
     ModelSymbol,
+    SymbolSelector,
     get_unique_sorted_dates,
     to_datetime,
     to_seconds,
     verify_date_range,
 )
-from pybroker.model import ModelTrainer
-from pybroker.hyperparam import (
-    Hyperparam,
-    SearchSpace,
-    _find_hyperparam_names,
-    build_run_hyperparams,
-)
-from pybroker.indicator import DEFAULT_INDICATOR_MEMO_MAX
 from pybroker.parallel import parallel
 from pybroker.portfolio import Portfolio
 from pybroker.scope import (
     ColumnScope,
-    StaticScope,
     merge_symbol_array_stores,
     slice_symbol_array_store_by_dates,
     symbol_array_store_from_frame,
@@ -103,13 +368,101 @@ _MODEL_OPTIMIZE_ERROR = (
 )
 
 _GRID_EXPLOSION_THRESHOLD = 1000
+_DEFAULT_INDICATOR_MEMO_MAX = 256
 
 
-@functools.lru_cache(maxsize=1)
-def _strategy_module():
-    import pybroker.strategy as strategy
+def _is_trainable_model_source(source: object) -> bool:
+    return hasattr(source, "_train_fn")
 
-    return strategy
+
+def _ensure_range_index(df: pd.DataFrame) -> pd.DataFrame:
+    if (
+        isinstance(df.index, pd.RangeIndex)
+        and df.index.start == 0
+        and df.index.step == 1
+        and len(df.index) == len(df)
+    ):
+        return df
+    return df.reset_index(drop=True)
+
+
+def _is_symbol_selector(
+    symbols: Union[frozenset[str], SymbolSelector],
+) -> TypeGuard[SymbolSelector]:
+    return callable(symbols) and not isinstance(symbols, (str, bytes))
+
+
+def _static_symbols(
+    symbols: Union[frozenset[str], SymbolSelector],
+) -> frozenset[str]:
+    if _is_symbol_selector(symbols):
+        return frozenset()
+    return cast(frozenset[str], symbols)
+
+
+def _resolve_execution_symbols(
+    execution: Execution,
+    selection_df: pd.DataFrame,
+) -> frozenset[str]:
+    if _is_symbol_selector(execution.symbols):
+        selected = execution.symbols(selection_df)
+        if not isinstance(selected, list):
+            raise TypeError(
+                "symbol selector must return a list[str], "
+                f"received {type(selected)!r}."
+            )
+        if not selected:
+            raise ValueError("symbol selector returned an empty list.")
+        if len(selected) != len(set(selected)):
+            seen: set[str] = set()
+            dupes = []
+            for sym in selected:
+                if sym in seen:
+                    dupes.append(sym)
+                seen.add(sym)
+            raise ValueError(
+                f"symbol selector returned duplicate symbols: {sorted(set(dupes))}."
+            )
+        loaded = set(selection_df[DataCol.SYMBOL.value].unique())
+        unknown = set(selected) - loaded
+        if unknown:
+            raise ValueError(
+                f"symbol selector returned unknown symbols: {sorted(unknown)}."
+            )
+        return frozenset(selected)
+    return cast(frozenset[str], execution.symbols)
+
+
+def _resolve_executions(
+    executions: set[Execution],
+    selection_df: pd.DataFrame,
+) -> set[Execution]:
+    resolved: set[Execution] = set()
+    seen_syms: set[str] = set()
+    for execution in executions:
+        syms = _resolve_execution_symbols(execution, selection_df)
+        overlap = seen_syms & syms
+        if overlap:
+            sym = sorted(overlap)[0]
+            raise ValueError(f"{sym} was already added to an execution.")
+        seen_syms.update(syms)
+        resolved.add(execution._replace(symbols=syms))
+    return resolved
+
+
+def _selection_df(
+    train_data: pd.DataFrame,
+    test_data: pd.DataFrame,
+) -> pd.DataFrame:
+    if not train_data.empty:
+        return train_data
+    if not test_data.empty:
+        return (
+            test_data
+            if train_data.empty
+            else pd.concat([train_data, test_data], ignore_index=True)
+        )
+    return train_data
 
 
 def collect_hyperparams(strategy: _ExecutionsHost) -> dict[str, Hyperparam]:
@@ -186,7 +539,7 @@ def _validate_optimize_models(strategy: _ExecutionsHost) -> None:
         for model_name in execution.model_names:
             base_name, _ = parse_model_timeframe_name(model_name)
             source = scope.get_model_source(base_name)
-            if isinstance(source, ModelTrainer):
+            if _is_trainable_model_source(source):
                 trainable.append(model_name)
     if trainable:
         raise ValueError(
@@ -495,9 +848,7 @@ class OptimizeMixin:
         model_syms: set[ModelSymbol] = set()
         for sym in train_symbols:
             for execution in window_executions:
-                if sym not in _strategy_module()._static_symbols(
-                    execution.symbols
-                ):
+                if sym not in _static_symbols(execution.symbols):
                     continue
                 for model_name in execution.model_names:
                     base_name, token = parse_model_timeframe_name(model_name)
@@ -515,9 +866,7 @@ class OptimizeMixin:
         for execution in window_executions:
             exec_syms = frozenset(
                 sym
-                for sym in _strategy_module()._static_symbols(
-                    execution.symbols
-                )
+                for sym in _static_symbols(execution.symbols)
                 if sym in train_symbols
             )
             if not exec_syms:
@@ -527,7 +876,7 @@ class OptimizeMixin:
                 if token is not None:
                     continue
                 source = StaticScope.instance().get_model_source(base_name)
-                if isinstance(source, ModelTrainer) and source.pooled:
+                if _is_trainable_model_source(source) and source.pooled:
                     pooled_model_groups[(model_name, execution.id)] = exec_syms
                     for tf in self._timeframes:
                         pooled_model_groups[
@@ -670,7 +1019,7 @@ class OptimizeMixin:
                     invariant_names.add(ind_name)
         ind_syms: set[IndicatorSymbol] = set()
         for execution in executions:
-            for sym in _strategy_module()._static_symbols(execution.symbols):
+            for sym in _static_symbols(execution.symbols):
                 for ind_name in execution.indicator_names:
                     if ind_name not in invariant_names:
                         continue
@@ -708,7 +1057,7 @@ class OptimizeMixin:
         warmup: Optional[int] = None,
         disable_parallel_indicators: bool = False,
         adjust: Optional[Any] = None,
-        indicator_memo_max: int = DEFAULT_INDICATOR_MEMO_MAX,
+        indicator_memo_max: int = _DEFAULT_INDICATOR_MEMO_MAX,
     ) -> OptimizeResult:
         """Optimizes hyperparameters on the train window, then evaluates on test.
 
@@ -768,9 +1117,7 @@ class OptimizeMixin:
                 else {
                     sym
                     for execution in self._executions
-                    for sym in _strategy_module()._static_symbols(
-                        execution.symbols
-                    )
+                    for sym in _static_symbols(execution.symbols)
                 },
             )
             tf_seconds = (
@@ -786,7 +1133,7 @@ class OptimizeMixin:
                 days=day_ids,
             )
             master_store = symbol_array_store_from_frame(
-                _strategy_module()._ensure_range_index(df)
+                _ensure_range_index(df)
             )
 
             wf_windows = windows if windows is not None else 1
@@ -841,13 +1188,9 @@ class OptimizeMixin:
                 df.iloc[train_rows] if len(train_rows) else df.iloc[:0]
             )
             test_data = df.iloc[test_rows] if len(test_rows) else df.iloc[:0]
-            selection_data = _strategy_module()._selection_df(
-                train_data, test_data
-            )
+            selection_data = _selection_df(train_data, test_data)
             window_executions = (
-                _strategy_module()._resolve_executions(
-                    self._executions, selection_data
-                )
+                _resolve_executions(self._executions, selection_data)
                 if has_selector
                 else self._executions
             )
@@ -1078,13 +1421,9 @@ class OptimizeMixin:
                 df.iloc[train_rows] if len(train_rows) else df.iloc[:0]
             )
             test_data = df.iloc[test_rows] if len(test_rows) else df.iloc[:0]
-            selection_data = _strategy_module()._selection_df(
-                train_data, test_data
-            )
+            selection_data = _selection_df(train_data, test_data)
             window_executions = (
-                _strategy_module()._resolve_executions(
-                    self._executions, selection_data
-                )
+                _resolve_executions(self._executions, selection_data)
                 if has_selector
                 else self._executions
             )
@@ -1207,13 +1546,9 @@ class OptimizeMixin:
                 df.iloc[train_rows] if len(train_rows) else df.iloc[:0]
             )
             test_data = df.iloc[test_rows] if len(test_rows) else df.iloc[:0]
-            selection_data = _strategy_module()._selection_df(
-                train_data, test_data
-            )
+            selection_data = _selection_df(train_data, test_data)
             window_executions = (
-                _strategy_module()._resolve_executions(
-                    self._executions, selection_data
-                )
+                _resolve_executions(self._executions, selection_data)
                 if has_selector
                 else self._executions
             )
@@ -1269,9 +1604,7 @@ class OptimizeMixin:
             selected_syms = {
                 sym
                 for execution in window_executions
-                for sym in _strategy_module()._static_symbols(
-                    execution.symbols
-                )
+                for sym in _static_symbols(execution.symbols)
             }
             self._liquidate_dropped_symbols(
                 portfolio, selected_syms, test_data
@@ -1342,7 +1675,7 @@ def _static_symbols_from_executions(
     else:
         loaded = set()
     for execution in executions:
-        for sym in _strategy_module()._static_symbols(execution.symbols):
+        for sym in _static_symbols(execution.symbols):
             if not loaded or sym in loaded:
                 syms.add(sym)
     return syms
