@@ -3443,7 +3443,7 @@ class TestStrategy:
     def test_backtest_when_leverage(self, data_source_df):
         def buy_exec_fn(ctx):
             if ctx.long_pos() is None:
-                ctx.buy_shares = ctx.calc_target_shares(2.0)
+                ctx.set_target_shares(1.0, dir="long")
 
         config = StrategyConfig(initial_cash=100_000, leverage=2.0)
         strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
@@ -3465,9 +3465,7 @@ class TestStrategy:
     def test_backtest_when_leverage_short(self, data_source_df):
         def short_exec_fn(ctx):
             if ctx.short_pos() is None:
-                ctx.sell_shares = ctx.calc_target_shares(
-                    2.0, cash=float(ctx.buying_power)
-                )
+                ctx.set_target_shares(1.0, dir="short")
 
         config = StrategyConfig(initial_cash=100_000, leverage=2.0)
         strategy = Strategy(data_source_df, START_DATE, END_DATE, config)

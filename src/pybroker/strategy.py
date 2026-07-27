@@ -217,10 +217,6 @@ def _short_rotation_score(ctx: ExecContext) -> Optional[float]:
     return None
 
 
-def _set_short_target_shares(ctx: ExecContext, target: float):
-    ctx.set_short_target_shares(target)
-
-
 StrategySetting = Union[int, Hyperparam, None]
 
 
@@ -273,11 +269,21 @@ def _validate_worst_rank_held(
         )
 
 
+def _rotation_target_size(settings: BacktestSettings) -> float:
+    slots = 0
+    if settings.max_long_positions is not None:
+        slots += settings.max_long_positions
+    if settings.max_short_positions is not None:
+        slots += settings.max_short_positions
+    return 1 / slots
+
+
 def _apply_worst_rank_held_long(
     active_ctxs: Mapping[str, ExecContext],
     portfolio: Portfolio,
     max_long_positions: int,
     worst_rank_held: int,
+    target_size: float,
 ) -> dict[str, int]:
     rankable_scores: dict[str, float] = {}
     for sym, ctx in active_ctxs.items():
@@ -285,7 +291,6 @@ def _apply_worst_rank_held_long(
         if score is not None:
             rankable_scores[sym] = score
     ranks = _rank_by_score(rankable_scores)
-    target_size = 1 / max_long_positions
     for sym in portfolio.long_positions:
         if sym not in active_ctxs:
             continue
@@ -300,7 +305,7 @@ def _apply_worst_rank_held_long(
             continue
         if ctx.buy_shares is not None or _long_rotation_score(ctx) is None:
             continue
-        ctx.set_target_shares(target_size)
+        ctx.set_target_shares(target_size, dir="long")
     return ranks
 
 
@@ -309,6 +314,7 @@ def _apply_worst_rank_held_short(
     portfolio: Portfolio,
     max_short_positions: int,
     worst_rank_held: int,
+    target_size: float,
 ) -> dict[str, int]:
     rankable_scores: dict[str, float] = {}
     for sym, ctx in active_ctxs.items():
@@ -316,7 +322,6 @@ def _apply_worst_rank_held_short(
         if score is not None:
             rankable_scores[sym] = score
     ranks = _rank_by_short_score(rankable_scores)
-    target_size = 1 / max_short_positions
     for sym in portfolio.short_positions:
         if sym not in active_ctxs:
             continue
@@ -331,7 +336,7 @@ def _apply_worst_rank_held_short(
             continue
         if ctx.sell_shares is not None or _short_rotation_score(ctx) is None:
             continue
-        _set_short_target_shares(ctx, target_size)
+        ctx.set_target_shares(target_size, dir="short")
     return ranks
 
 
@@ -343,6 +348,7 @@ def _apply_worst_rank_held(
     worst_rank_held = settings.worst_rank_held
     if worst_rank_held is None:
         return {}, {}
+    target_size = _rotation_target_size(settings)
     long_ranks: dict[str, int] = {}
     short_ranks: dict[str, int] = {}
     if settings.max_long_positions is not None:
@@ -351,6 +357,7 @@ def _apply_worst_rank_held(
             portfolio,
             settings.max_long_positions,
             worst_rank_held,
+            target_size,
         )
     if settings.max_short_positions is not None:
         short_ranks = _apply_worst_rank_held_short(
@@ -358,6 +365,7 @@ def _apply_worst_rank_held(
             portfolio,
             settings.max_short_positions,
             worst_rank_held,
+            target_size,
         )
     return long_ranks, short_ranks
 

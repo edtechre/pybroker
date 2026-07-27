@@ -618,6 +618,9 @@ class ExecContext:
     def buying_power(self) -> Decimal:
         """Available buying power for long and short orders given
         :attr:`pybroker.config.StrategyConfig.leverage`.
+
+        Used automatically by :meth:`.calc_target_shares` when leverage is
+        greater than ``1``. Can also be inspected directly during execution.
         """
         return self._portfolio._available_buying_power()
 
@@ -1206,17 +1209,17 @@ class ExecContext:
         and share ``price``.
 
         Args:
-            target_size: Proportion of cash used to calculate the number of
-                shares, where the max ``target_size`` is ``1``. For example, a
-                ``target_size`` of ``0.1`` would represent 10% of cash.
+            target_size: Proportion of deployable capital used to calculate the
+                number of shares, where the max ``target_size`` is ``1``. For
+                example, a ``target_size`` of ``0.1`` would represent 10% of
+                deployable capital.
             price: Share price used to calculate the number of shares. If
                 ``None``, the share price of the ``ExecContext``\ 's
                 :attr:`.symbol` is used.
-            cash: Cash used to calculate the number of number of shares. If
-                ``None``, then the :class:`pybroker.portfolio.Portfolio` equity
-                is used to calculate the number of shares. For leveraged short
-                sizing, use :meth:`.set_short_target_shares` or pass
-                :attr:`.buying_power` explicitly.
+            cash: Capital used to calculate the number of shares. If ``None``,
+                portfolio equity is used when
+                :attr:`pybroker.config.StrategyConfig.leverage` is ``1``, or
+                :attr:`.buying_power` when leverage is greater than ``1``.
 
         Returns:
             Number of shares given ``target_size`` and share ``price``. If
@@ -1224,51 +1227,53 @@ class ExecContext:
             ``True``, then a Decimal is returned.
         """
         price = self.close_price if price is None else price
-        shares = (
-            (to_decimal(cash) if cash is not None else self._portfolio.equity)
-            * to_decimal(target_size)
-            / to_decimal(price)
-        )
+        if cash is not None:
+            base = to_decimal(cash)
+        elif self.config.leverage > 1:
+            base = self.buying_power
+        else:
+            base = self._portfolio.equity
+        shares = base * to_decimal(target_size) / to_decimal(price)
         if self.config.enable_fractional_shares:
             return shares.max(0)
         return max(int(shares), 0)
 
-    def set_target_shares(self, target: float):
-        r"""Sets buy or sell orders to reach a target allocation.
+    def set_target_shares(
+        self,
+        target: float,
+        *,
+        dir: Literal["long", "short"],
+    ):
+        r"""Sets orders to reach a target allocation for long or short exposure.
 
         Calculates the number of shares needed to reach ``target`` using
-        :meth:`.calc_target_shares` and sets either :attr:`.buy_shares` or
-        :attr:`.sell_shares`.
+        :meth:`.calc_target_shares`.
 
         Args:
-            target: Target allocation size as a proportion of portfolio
-                equity, where the max ``target`` is ``1``.
+            target: Target allocation as a fraction of deployable capital.
+                Uses portfolio equity when
+                :attr:`pybroker.config.StrategyConfig.leverage` is ``1``, or
+                :attr:`.buying_power` when leverage is greater than ``1``.
+                The max ``target`` is ``1``.
+            dir: Exposure direction to rebalance. ``"long"`` sets
+                :attr:`.buy_shares` or :attr:`.sell_shares`. ``"short"`` sets
+                :attr:`.sell_shares` to increase short exposure or
+                :attr:`.cover_shares` to decrease it.
         """
         if target < 0:
             raise ValueError("target cannot be negative.")
+        if dir not in ("long", "short"):
+            raise ValueError('dir must be "long" or "short".')
         target_shares = self.calc_target_shares(target)
-        pos = self.long_pos()
-        if pos is None:
-            self.buy_shares = target_shares
-        elif pos.shares < target_shares:
-            self.buy_shares = target_shares - pos.shares
-        elif pos.shares > target_shares:
-            self.sell_shares = pos.shares - target_shares
-
-    def set_short_target_shares(self, target: float):
-        r"""Sets sell or cover orders to reach a target short allocation.
-
-        Calculates the number of shares needed to reach ``target`` using
-        :meth:`.calc_target_shares` and sets either :attr:`.sell_shares` or
-        :attr:`.cover_shares`.
-
-        Args:
-            target: Target allocation size as a proportion of portfolio
-                equity or buying power, where the max ``target`` is ``1``.
-        """
-        if target < 0:
-            raise ValueError("target cannot be negative.")
-        target_shares = self.calc_target_shares(target)
+        if dir == "long":
+            pos = self.long_pos()
+            if pos is None:
+                self.buy_shares = target_shares
+            elif pos.shares < target_shares:
+                self.buy_shares = target_shares - pos.shares
+            elif pos.shares > target_shares:
+                self.sell_shares = pos.shares - target_shares
+            return
         pos = self.short_pos()
         if pos is None:
             self.sell_shares = target_shares

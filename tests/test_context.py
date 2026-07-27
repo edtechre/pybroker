@@ -564,9 +564,102 @@ def test_calc_target_shares_when_negative_then_zero(ctx):
     assert ctx.calc_target_shares(1, 20, -2_000) == 0
 
 
+def test_calc_target_shares_when_leverage_2(
+    col_scope,
+    ind_scope,
+    timeframe_scope,
+    declared_timeframes,
+    input_scope,
+    pred_scope,
+    pending_order_scope,
+    trained_models,
+    sym_end_index,
+    session,
+    symbol,
+    date,
+):
+    portfolio = Portfolio(100_000, leverage=2.0)
+    leveraged_ctx = ExecContext(
+        symbol=symbol,
+        config=StrategyConfig(leverage=2.0),
+        portfolio=portfolio,
+        col_scope=col_scope,
+        ind_scope=ind_scope,
+        timeframe_scope=timeframe_scope,
+        declared_timeframes=declared_timeframes,
+        input_scope=input_scope,
+        pred_scope=pred_scope,
+        pending_order_scope=pending_order_scope,
+        models=trained_models,
+        sym_end_index=sym_end_index,
+        session=session,
+    )
+    set_exec_ctx_data(leveraged_ctx, date)
+    cash_ctx = ExecContext(
+        symbol=symbol,
+        config=StrategyConfig(),
+        portfolio=Portfolio(100_000),
+        col_scope=col_scope,
+        ind_scope=ind_scope,
+        timeframe_scope=timeframe_scope,
+        declared_timeframes=declared_timeframes,
+        input_scope=input_scope,
+        pred_scope=pred_scope,
+        pending_order_scope=pending_order_scope,
+        models=trained_models,
+        sym_end_index=sym_end_index,
+        session=session,
+    )
+    set_exec_ctx_data(cash_ctx, date)
+    price = 33.50
+    leveraged_shares = leveraged_ctx.calc_target_shares(1.0, price)
+    cash_shares = cash_ctx.calc_target_shares(1.0, price)
+    assert leveraged_shares == 2 * cash_shares
+
+
+def test_calc_target_shares_when_leverage_1_unchanged(ctx):
+    assert ctx.calc_target_shares(0.5, 33.50) == 50_000 // 33.5
+
+
+def test_set_target_shares_when_short_leverage_2(
+    col_scope,
+    ind_scope,
+    timeframe_scope,
+    declared_timeframes,
+    input_scope,
+    pred_scope,
+    pending_order_scope,
+    trained_models,
+    sym_end_index,
+    session,
+    symbol,
+    date,
+):
+    portfolio = Portfolio(100_000, leverage=2.0)
+    ctx = ExecContext(
+        symbol=symbol,
+        config=StrategyConfig(leverage=2.0),
+        portfolio=portfolio,
+        col_scope=col_scope,
+        ind_scope=ind_scope,
+        timeframe_scope=timeframe_scope,
+        declared_timeframes=declared_timeframes,
+        input_scope=input_scope,
+        pred_scope=pred_scope,
+        pending_order_scope=pending_order_scope,
+        models=trained_models,
+        sym_end_index=sym_end_index,
+        session=session,
+    )
+    set_exec_ctx_data(ctx, date)
+    ctx.set_target_shares(1.0, dir="short")
+    assert ctx.sell_shares == ctx.calc_target_shares(1.0)
+    assert ctx.cover_shares is None
+
+
 def test_set_target_shares_when_no_position(ctx):
     target = 0.5
-    ctx.set_target_shares(target)
+    ctx.set_target_shares(target, dir="long")
     assert ctx.buy_shares == ctx.calc_target_shares(target)
     assert ctx.sell_shares is None
 
@@ -577,7 +670,7 @@ def test_set_target_shares_when_underweight(ctx, symbol, portfolio):
     portfolio.long_positions = {
         symbol: Position(symbol, target_shares - 100, "long")
     }
-    ctx.set_target_shares(target)
+    ctx.set_target_shares(target, dir="long")
     assert ctx.buy_shares == 100
     assert ctx.sell_shares is None
 
@@ -588,7 +681,7 @@ def test_set_target_shares_when_overweight(ctx, symbol, portfolio):
     portfolio.long_positions = {
         symbol: Position(symbol, target_shares + 100, "long")
     }
-    ctx.set_target_shares(target)
+    ctx.set_target_shares(target, dir="long")
     assert ctx.sell_shares == 100
     assert ctx.buy_shares is None
 
@@ -599,7 +692,7 @@ def test_set_target_shares_when_at_target(ctx, symbol, portfolio):
     portfolio.long_positions = {
         symbol: Position(symbol, target_shares, "long")
     }
-    ctx.set_target_shares(target)
+    ctx.set_target_shares(target, dir="long")
     assert ctx.buy_shares is None
     assert ctx.sell_shares is None
 
@@ -608,41 +701,48 @@ def test_set_target_shares_when_negative_then_error(ctx):
     with pytest.raises(
         ValueError, match=re.escape("target cannot be negative.")
     ):
-        ctx.set_target_shares(-0.1)
+        ctx.set_target_shares(-0.1, dir="long")
 
 
 def test_set_target_shares_when_zero(ctx, symbol, portfolio):
     portfolio.long_positions = {symbol: Position(symbol, 500, "long")}
-    ctx.set_target_shares(0)
+    ctx.set_target_shares(0, dir="long")
     assert ctx.sell_shares == 500
     assert ctx.buy_shares is None
 
 
-def test_set_short_target_shares_when_no_position(ctx):
+def test_set_target_shares_when_invalid_dir_then_error(ctx):
+    with pytest.raises(
+        ValueError, match=re.escape('dir must be "long" or "short".')
+    ):
+        ctx.set_target_shares(0.5, dir="invalid")  # type: ignore[arg-type]
+
+
+def test_set_target_shares_when_short_no_position(ctx):
     target = 0.5
-    ctx.set_short_target_shares(target)
+    ctx.set_target_shares(target, dir="short")
     assert ctx.sell_shares == ctx.calc_target_shares(target)
     assert ctx.cover_shares is None
 
 
-def test_set_short_target_shares_when_underweight(ctx, symbol, portfolio):
+def test_set_target_shares_when_short_underweight(ctx, symbol, portfolio):
     target = 0.2
     target_shares = ctx.calc_target_shares(target)
     portfolio.short_positions = {
         symbol: Position(symbol, target_shares - 100, "short")
     }
-    ctx.set_short_target_shares(target)
+    ctx.set_target_shares(target, dir="short")
     assert ctx.sell_shares == 100
     assert ctx.cover_shares is None
 
 
-def test_set_short_target_shares_when_overweight(ctx, symbol, portfolio):
+def test_set_target_shares_when_short_overweight(ctx, symbol, portfolio):
     target = 0.2
     target_shares = ctx.calc_target_shares(target)
     portfolio.short_positions = {
         symbol: Position(symbol, target_shares + 100, "short")
     }
-    ctx.set_short_target_shares(target)
+    ctx.set_target_shares(target, dir="short")
     assert ctx.cover_shares == 100
     assert ctx.sell_shares is None
 
