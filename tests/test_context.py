@@ -659,7 +659,7 @@ def test_to_result_when_buy(ctx, symbol, date):
     ctx.buy_shares = 20
     ctx.buy_limit_price = 99.99
     ctx.hold_bars = 2
-    ctx.score = 7
+    ctx.long_score = 7
     result = ctx.to_result()
     assert result.symbol == symbol
     assert result.date == date
@@ -667,7 +667,7 @@ def test_to_result_when_buy(ctx, symbol, date):
     assert result.buy_shares == 20
     assert result.buy_limit_price == Decimal("99.99")
     assert result.hold_bars == 2
-    assert result.score == 7
+    assert result.long_score == 7
     assert len(result.long_stops) == 1
     assert result.short_stops is None
     stop = next(iter(result.long_stops))
@@ -687,7 +687,7 @@ def test_to_result_when_sell(ctx, symbol, date):
     ctx.sell_shares = 20
     ctx.sell_limit_price = 110.11
     ctx.hold_bars = 2
-    ctx.score = 7
+    ctx.short_score = 7
     result = ctx.to_result()
     assert result.symbol == symbol
     assert result.date == date
@@ -695,7 +695,7 @@ def test_to_result_when_sell(ctx, symbol, date):
     assert result.sell_shares == 20
     assert result.sell_limit_price == Decimal("110.11")
     assert result.hold_bars == 2
-    assert result.score == 7
+    assert result.short_score == 7
     assert len(result.short_stops) == 1
     assert result.long_stops is None
     stop = next(iter(result.short_stops))
@@ -762,6 +762,17 @@ def test_to_result_when_score_and_side_score_then_error(
         ),
     ):
         ctx.to_result()
+
+
+def test_score_deprecated(ctx):
+    with pytest.warns(
+        DeprecationWarning, match="ExecContext.score is deprecated"
+    ):
+        ctx.score = 7
+    assert ctx.score == 7
+    ctx.buy_shares = 100
+    result = ctx.to_result()
+    assert result.score == 7
 
 
 def test_to_result_when_worst_rank_held_and_score_then_error(ctx):
@@ -1059,7 +1070,6 @@ def test_set_exec_ctx_data(ctx, sym_end_index):
     ctx.sell_shares = 200
     ctx.sell_limit_price = 80
     ctx.hold_bars = 5
-    ctx.score = 45.5
     ctx.long_score = 10.0
     ctx.short_score = 5.0
     ctx.stop_loss = 10

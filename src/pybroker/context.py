@@ -7,6 +7,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import warnings
 import numpy as np
 import pandas as pd
 from pybroker.common import (
@@ -51,6 +52,11 @@ from typing import (
     MutableMapping,
     Optional,
     Union,
+)
+
+
+_SCORE_DEPRECATION = (
+    "ExecContext.score is deprecated; use long_score or short_score instead."
 )
 
 
@@ -169,14 +175,9 @@ class ExecResult:
         buy_fill_price: Fill price to use for a buy (long) order of ``symbol``.
         sell_fill_price: Fill price to use for a sell (short) order of
             ``symbol``.
-        score: Score used to rank ``symbol`` when ranking long and short
-            signals. Orders are placed for symbols with the highest scores,
-            where the number of positions held at any time in the
-            :class:`pybroker.portfolio.Portfolio` is specified by
-            :attr:`pybroker.config.StrategyConfig.max_long_positions` and
-            :attr:`pybroker.config.StrategyConfig.max_short_positions`
-            respectively. Buy and sell signals are ranked separately by
-            ``score``. Mutually exclusive with ``long_score`` and
+        score: Deprecated. Use ``long_score`` or ``short_score`` instead.
+            When set, ranks buy and sell signals separately (higher wins each
+            queue). Mutually exclusive with ``long_score`` and
             ``short_score``.
         long_score: Score used to rank ``symbol`` when ranking buy and cover
             signals. Orders are placed for symbols with the highest
@@ -427,14 +428,9 @@ class ExecContext:
             of retry bars.
         hold_bars: Number of bars to hold a long or short position for, after
             which the position is automatically liquidated.
-        score: Score used to rank ``symbol`` when ranking buy and sell signals.
-            Orders are placed for symbols with the highest scores, where the
-            number of positions held at any time in the
-            :class:`pybroker.portfolio.Portfolio` is specified by
-            :attr:`pybroker.config.StrategyConfig.max_long_positions` and
-            :attr:`pybroker.config.StrategyConfig.max_short_positions`
-            respectively. Long and short signals are ranked separately by
-            ``score``. Mutually exclusive with ``long_score`` and
+        score: Deprecated. Use ``long_score`` or ``short_score`` instead.
+            When set, ranks buy and sell signals separately (higher wins each
+            queue). Mutually exclusive with ``long_score`` and
             ``short_score``.
         long_score: Score used to rank ``symbol`` when ranking buy and cover
             signals. Orders are placed for symbols with the highest
@@ -557,7 +553,7 @@ class ExecContext:
         self.sell_limit_price: Optional[Union[int, float, Decimal]] = None
         self.sell_timeout_bars: Optional[int] = None
         self.hold_bars: Optional[int] = None
-        self.score: Optional[float] = None
+        self._score: Optional[float] = None
         self.long_score: Optional[float] = None
         self.short_score: Optional[float] = None
         self.session = session
@@ -579,6 +575,17 @@ class ExecContext:
 
         self._cover: bool = False
         self._exiting_pos: bool = False
+
+    @property
+    def score(self) -> Optional[float]:
+        """Deprecated ranking field; prefer :attr:`long_score` / :attr:`short_score`."""
+        return self._score
+
+    @score.setter
+    def score(self, value: Optional[float]) -> None:
+        if value is not None:
+            warnings.warn(_SCORE_DEPRECATION, DeprecationWarning, stacklevel=2)
+        self._score = value
 
     @property
     def total_equity(self) -> Decimal:
@@ -1562,7 +1569,7 @@ class ExecContext:
             and self.sell_limit_price is None
             and self.buy_timeout_bars is None
             and self.sell_timeout_bars is None
-            and self.score is None
+            and self._score is None
             and self.long_score is None
             and self.short_score is None
             and self.stop_loss is None
@@ -1639,13 +1646,13 @@ class ExecContext:
                 "For each symbol, only one of buy_shares or sell_shares can be"
                 " set per bar."
             )
-        if self.score is not None and (
+        if self._score is not None and (
             self.long_score is not None or self.short_score is not None
         ):
             raise ValueError(
                 "score cannot be set when long_score or short_score is set."
             )
-        if self.config.worst_rank_held is not None and self.score is not None:
+        if self.config.worst_rank_held is not None and self._score is not None:
             raise ValueError(
                 "score cannot be used with worst_rank_held; use long_score or "
                 "short_score instead."
@@ -1688,7 +1695,7 @@ class ExecContext:
             date=self._curr_date,
             buy_fill_price=buy_fill_price,
             sell_fill_price=sell_fill_price,
-            score=self.score,
+            score=self._score,
             long_score=self.long_score,
             short_score=self.short_score,
             hold_bars=self.hold_bars,
@@ -1735,7 +1742,7 @@ def set_exec_ctx_data(ctx: ExecContext, date: np.datetime64):
     ctx.sell_limit_price = None
     ctx.sell_timeout_bars = None
     ctx.hold_bars = None
-    ctx.score = None
+    ctx._score = None
     ctx.long_score = None
     ctx.short_score = None
     ctx.stop_loss = None

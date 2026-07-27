@@ -829,9 +829,9 @@ class TestBacktestMixin:
             ctx.buy_fill_price = PriceType.CLOSE
             ctx.buy_shares = 200
             if ctx.symbol == "SPY":
-                ctx.score = 1
+                ctx.long_score = 1
             else:
-                ctx.score = 0
+                ctx.long_score = 0
 
         exec = Execution(
             id=1,
@@ -1440,9 +1440,9 @@ class TestBacktestMixin:
             ctx.sell_fill_price = PriceType.CLOSE
             ctx.sell_shares = 200
             if ctx.symbol == "AAPL":
-                ctx.score = 1
+                ctx.long_score = 1
             else:
-                ctx.score = 0
+                ctx.long_score = 0
 
         exec = Execution(
             id=1,
@@ -1649,9 +1649,9 @@ class TestBacktestMixin:
     ):
         def cover_exec_fn(ctx):
             if ctx.symbol == "AAPL":
-                ctx.score = 2
+                ctx.long_score = 2
             else:
-                ctx.score = 1
+                ctx.long_score = 1
             ctx.cover_shares = 100
             ctx.hold_bars = 1
 
