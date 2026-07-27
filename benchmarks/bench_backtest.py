@@ -867,13 +867,13 @@ _LAG_PREP_N_DAYS = 1260
 
 
 class LagPrepBottlenecks:
-    """Production lag-prep bottlenecks in timeseries.py."""
+    """Production lag-prep bottlenecks in model.py."""
 
     timeout = 120
 
     def setup(self) -> None:
         from pybroker.scope import symbol_array_store_from_frame
-        from pybroker.timeseries import (
+        from pybroker.model import (
             apply_lags_to_model_input_pooled,
             build_lag_feature_matrix_pooled,
             merge_lag_series_cache_from_store,
@@ -920,7 +920,7 @@ class LagPrepBottlenecks:
         self._run_apply_lags_pooled()
 
     def _run_apply_lags_pooled(self) -> None:
-        from pybroker.timeseries import LagSeriesCache, model_input_from_arrays
+        from pybroker.model import LagSeriesCache, model_input_from_arrays
 
         self._lag_cache = LagSeriesCache()
         self._history_dates_out = {}
@@ -948,7 +948,7 @@ class LagPrepBottlenecks:
         model_input.drop_lag_warmup()
 
     def time_merge_lag_cache_from_store(self) -> None:
-        from pybroker.timeseries import LagSeriesCache
+        from pybroker.model import LagSeriesCache
 
         cache = LagSeriesCache()
         history_dates: dict[str, np.ndarray] = {}

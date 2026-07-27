@@ -2,6 +2,8 @@
 :class:`pybroker.strategy.Strategy`.
 """
 
+from __future__ import annotations
+
 """Copyright (C) 2023 Edward West. All rights reserved.
 
 This code is licensed under Apache 2.0 with Commons Clause license
@@ -20,15 +22,6 @@ from pybroker.common import (
     TrainedModel,
     to_decimal,
 )
-from pybroker.timeseries import (
-    LagSeriesCache,
-    ModelInput,
-    apply_lags_to_model_input,
-    apply_prepare_input_data,
-    merge_lag_series_cache_from_arrays,
-    merge_timeframe_lag_series_cache,
-    model_input_to_dataframe,
-)
 from pybroker.log import Logger
 from pybroker.timeframe import (
     TimeframeData,
@@ -44,6 +37,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from decimal import Decimal
 from diskcache import Cache
+from importlib import import_module
 from numpy.typing import NDArray
 from typing import (
     TYPE_CHECKING,
@@ -60,7 +54,44 @@ from typing import (
 )
 
 if TYPE_CHECKING:
+    from pybroker.model import LagSeriesCache, ModelInput
     from pybroker.portfolio import Stop
+
+
+@dataclass(frozen=True)
+class _ModelImports:
+    """Lazy model helpers to avoid cache -> scope -> model import cycles."""
+
+    model_input_cls: type[ModelInput]
+    apply_lags_to_model_input: Callable[..., ModelInput]
+    apply_prepare_input_data: Callable[..., ModelInput]
+    merge_lag_series_cache_from_arrays: Callable[..., None]
+    merge_timeframe_lag_series_cache: Callable[..., LagSeriesCache]
+    model_input_to_dataframe: Callable[..., pd.DataFrame]
+
+
+_model_imports: _ModelImports | None = None
+
+
+def _model() -> _ModelImports:
+    global _model_imports
+    if _model_imports is None:
+        model_mod = import_module("pybroker.model")
+
+        _model_imports = _ModelImports(
+            model_input_cls=model_mod.ModelInput,
+            apply_lags_to_model_input=model_mod.apply_lags_to_model_input,
+            apply_prepare_input_data=model_mod.apply_prepare_input_data,
+            merge_lag_series_cache_from_arrays=(
+                model_mod.merge_lag_series_cache_from_arrays
+            ),
+            merge_timeframe_lag_series_cache=(
+                model_mod.merge_timeframe_lag_series_cache
+            ),
+            model_input_to_dataframe=model_mod.model_input_to_dataframe,
+        )
+    return _model_imports
+
 
 _EMPTY_PARAM: Final = object()
 
@@ -942,6 +973,7 @@ class TimeframeScope:
         lag_cols: tuple[str, ...],
         lags: int,
     ) -> None:
+        model = _model()
         interval = normalize_timeframe_interval(interval)
         interval_str = format_timeframe_interval(interval)
 
@@ -951,7 +983,7 @@ class TimeframeScope:
                 return None
             return self._timeframe_data.compressed[key].bars
 
-        merge_timeframe_lag_series_cache(
+        model.merge_timeframe_lag_series_cache(
             self._lag_series_cache,
             (symbol,),
             lag_cols,
@@ -1040,14 +1072,15 @@ class TimeframeScope:
         base_model_name: str,
         end_index: int,
     ) -> pd.DataFrame:
+        model = _model()
         interval = normalize_timeframe_interval(interval)
         model_input = self._prepare_full_input(
             symbol, interval, base_model_name
         )
         idx = self.completed_index(symbol, interval, end_index)
         if idx < 0:
-            return model_input_to_dataframe(model_input.slice(0))
-        return model_input_to_dataframe(model_input.slice(idx + 1))
+            return model.model_input_to_dataframe(model_input.slice(0))
+        return model.model_input_to_dataframe(model_input.slice(idx + 1))
 
     def fetch_preds(
         self,
@@ -1147,6 +1180,7 @@ class TimeframeScope:
         interval: TimeframeInterval,
         base_model_name: str,
     ) -> ModelInput:
+        model = _model()
         interval = normalize_timeframe_interval(interval)
         model_sym = ModelSymbol(
             model_timeframe_name(base_model_name, interval), symbol
@@ -1180,7 +1214,7 @@ class TimeframeScope:
                 )
             lag_cols = self._lag_cols(trained_model.input_cols)
             self._ensure_lag_cache(symbol, interval, lag_cols, source.lags)
-            apply_lags_to_model_input(
+            model.apply_lags_to_model_input(
                 model_input,
                 lag_cols,
                 source.lags,
@@ -1194,7 +1228,7 @@ class TimeframeScope:
                 format_timeframe_interval(interval),
             )
         if not trained_model.input_cols or source._input_data_fn:
-            model_input = apply_prepare_input_data(
+            model_input = model.apply_prepare_input_data(
                 model_input, source.prepare_input_data
             )
         self._sym_inputs[model_sym] = model_input
@@ -1206,6 +1240,7 @@ class TimeframeScope:
         interval: TimeframeInterval,
         source,
     ) -> ModelInput:
+        model = _model()
         interval = normalize_timeframe_interval(interval)
         key = (symbol, interval)
         if key not in self._timeframe_data.compressed:
@@ -1229,7 +1264,7 @@ class TimeframeScope:
                 symbol, indicator_timeframe_name(ind_name, interval)
             )
         columns = tuple(arrays.keys())
-        return ModelInput(columns, arrays, bars.dates)
+        return model.model_input_cls(columns, arrays, bars.dates)
 
     def clear_cache(self):
         self._bar_cache.clear()
@@ -1276,6 +1311,7 @@ class ModelInputScope:
         lag_cols: tuple[str, ...],
         lags: int,
     ) -> None:
+        model = _model()
         if symbol in self._history_dates:
             return
         if self._history_col_scope is None:
@@ -1294,7 +1330,7 @@ class ModelInputScope:
                     f"History column {col!r} not found for {symbol!r}."
                 )
             column_arrays[col] = col_data
-        merge_lag_series_cache_from_arrays(
+        model.merge_lag_series_cache_from_arrays(
             self._lag_series_cache,
             symbol,
             lag_cols,
@@ -1320,8 +1356,9 @@ class ModelInputScope:
             :class:`pandas.DataFrame` of model input data for every bar until
             ``end_index`` (when specified).
         """
+        model = _model()
         model_input = self._fetch_model_input(symbol, name, end_index)
-        return model_input_to_dataframe(model_input)
+        return model.model_input_to_dataframe(model_input)
 
     def fetch_model_input(
         self, symbol: str, name: str, end_index: Optional[int] = None
@@ -1337,7 +1374,7 @@ class ModelInputScope:
                 truncated.
 
         Returns:
-            :class:`pybroker.timeseries.ModelInput` for every bar until
+            :class:`pybroker.model.ModelInput` for every bar until
             ``end_index`` (when specified).
         """
         return self._fetch_model_input(symbol, name, end_index)
@@ -1345,6 +1382,7 @@ class ModelInputScope:
     def _fetch_model_input(
         self, symbol: str, name: str, end_index: Optional[int] = None
     ) -> ModelInput:
+        model = _model()
         model_sym = ModelSymbol(name, symbol)
         if model_sym in self._sym_inputs:
             model_input = self._sym_inputs[model_sym]
@@ -1382,7 +1420,7 @@ class ModelInputScope:
             row_dates = self._col_scope.fetch(symbol, date_col)
         assert row_dates is not None
         columns = tuple(input_.keys())
-        model_input = ModelInput(columns, input_, row_dates)
+        model_input = model.model_input_cls(columns, input_, row_dates)
         if trained_model.input_cols is not None:
             for input_col in trained_model.input_cols:
                 if input_col not in model_input:
@@ -1399,7 +1437,7 @@ class ModelInputScope:
                 )
             lag_cols = self._lag_cols(trained_model.input_cols)
             self._ensure_lag_cache(symbol, lag_cols, model_source.lags)
-            apply_lags_to_model_input(
+            model.apply_lags_to_model_input(
                 model_input,
                 lag_cols,
                 model_source.lags,
@@ -1408,7 +1446,7 @@ class ModelInputScope:
                 self._history_dates[symbol],
             )
         if not trained_model.input_cols or model_source._input_data_fn:
-            model_input = apply_prepare_input_data(
+            model_input = model.apply_prepare_input_data(
                 model_input, model_source.prepare_input_data
             )
         self._sym_inputs[model_sym] = model_input
@@ -1508,8 +1546,9 @@ class PredictionScope:
     def _predict_input_df(
         input_: Union[ModelInput, pd.DataFrame],
     ) -> pd.DataFrame:
-        if isinstance(input_, ModelInput):
-            return model_input_to_dataframe(input_)
+        model = _model()
+        if isinstance(input_, model.model_input_cls):
+            return model.model_input_to_dataframe(input_)
         return input_
 
     @staticmethod

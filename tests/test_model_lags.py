@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from pybroker.common import DataCol, ModelSymbol, TrainedModel
-from pybroker.timeseries import (
+from pybroker.model import (
     LagSeriesKey,
     apply_lags_to_model_input,
     build_lag_feature_matrix,

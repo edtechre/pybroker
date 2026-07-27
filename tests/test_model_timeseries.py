@@ -6,7 +6,7 @@ import pytest
 from pybroker import Strategy, model
 from pybroker.common import DataCol
 from pybroker.config import StrategyConfig
-from pybroker.timeseries import (
+from pybroker.model import (
     feature_matrix_from_model_input,
     model_input_lags,
 )
