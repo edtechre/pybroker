@@ -67,7 +67,7 @@ from pybroker.timeframe import (
 if TYPE_CHECKING:
     from pybroker.common import TrainedModel
     from pybroker.config import StrategyConfig
-    from pybroker.context import ExecContext
+    from pybroker.context import ExecContext, RotationContext
     from pybroker.slippage import SlippageModel
     from pybroker.strategy import Execution, TestResult, WalkforwardWindow
     from pybroker.timeframe import TimeframeData, TimeframeInterval
@@ -114,6 +114,17 @@ def collect_hyperparams(strategy: _ExecutionsHost) -> dict[str, Hyperparam]:
     scope = StaticScope.instance()
     names: set[str] = set()
     specs: dict[str, Hyperparam] = {}
+
+    for value in (
+        strategy._max_long_positions,
+        strategy._max_short_positions,
+        strategy._worst_rank_held,
+    ):
+        if isinstance(value, Hyperparam):
+            if not scope.has_hyperparam(value.name):
+                raise ValueError(f"Hyperparam {value.name!r} was not registered.")
+            names.add(value.name)
+            specs[value.name] = scope.get_hyperparam(value.name)
 
     for execution in strategy._executions:
         for ind_name in execution.indicator_names:
@@ -368,6 +379,10 @@ class OptimizeMixin:
         _executions: set[Execution]
         _before_exec_fn: Optional[Callable[[Mapping[str, ExecContext]], None]]
         _after_exec_fn: Optional[Callable[[Mapping[str, ExecContext]], None]]
+        _max_long_positions: Any
+        _max_short_positions: Any
+        _worst_rank_held: Any
+        _rotation_sizer: Optional[Callable[[RotationContext], None]]
         _slippage_model: Optional[SlippageModel]
         _timeframes: frozenset[TimeframeInterval]
         _start_date: datetime
@@ -384,6 +399,12 @@ class OptimizeMixin:
         def _fetch_indicators(
             self, *args: Any, **kwargs: Any
         ) -> dict[IndicatorSymbol, pd.Series]: ...
+
+        def _resolve_backtest_settings(
+            self, run_hyperparams: Optional[dict[str, Any]] = None
+        ) -> Any: ...
+
+        def _effective_config(self, settings: Any) -> StrategyConfig: ...
 
         def backtest_executions(
             self, *args: Any, **kwargs: Any
@@ -551,20 +572,22 @@ class OptimizeMixin:
             hyperparams=run_hyperparams,
         )
         indicator_data = {**invariant_indicator_data, **trial_indicators}
+        backtest_settings = self._resolve_backtest_settings(run_hyperparams)
+        effective_config = self._effective_config(backtest_settings)
         portfolio = Portfolio(
-            self._config.initial_cash,
-            self._config.fee_mode,
-            self._config.fee_amount,
+            effective_config.initial_cash,
+            effective_config.fee_mode,
+            effective_config.fee_amount,
             self._fractional_shares_enabled(),
-            self._config.position_mode,
-            self._config.max_long_positions,
-            self._config.max_short_positions,
-            self._config.return_stops,
-            self._config.leverage,
-            self._config.interest_rate,
-            self._config.bars_per_year,
-            record_portfolio_bars=self._config.record_portfolio_bars,
-            record_position_bars=self._config.record_position_bars,
+            effective_config.position_mode,
+            backtest_settings.max_long_positions,
+            backtest_settings.max_short_positions,
+            effective_config.return_stops,
+            effective_config.leverage,
+            effective_config.interest_rate,
+            effective_config.bars_per_year,
+            record_portfolio_bars=effective_config.record_portfolio_bars,
+            record_position_bars=effective_config.record_position_bars,
         )
         date_col = DataCol.DATE.value
         train_store = None
@@ -582,7 +605,7 @@ class OptimizeMixin:
         ):
             sessions[sym] = {}
         self.backtest_executions(
-            config=self._config,
+            config=effective_config,
             executions=window_executions,
             before_exec_fn=self._before_exec_fn,
             after_exec_fn=self._after_exec_fn,
@@ -594,9 +617,11 @@ class OptimizeMixin:
             test_data=train_data,
             portfolio=portfolio,
             exit_dates={},
+            backtest_settings=backtest_settings,
+            rotation_sizer=self._rotation_sizer,
             slippage_model=self._slippage_model,
             enable_fractional_shares=self._fractional_shares_enabled(),
-            round_fill_price=self._config.round_fill_price,
+            round_fill_price=effective_config.round_fill_price,
             warmup=warmup,
             history_col_scope=ColumnScope(train_store)
             if train_store
@@ -933,21 +958,23 @@ class OptimizeMixin:
             hyperparams=run_hyperparams,
         )
         indicator_data = {**invariant_indicator_data, **trial_indicators}
+        backtest_settings = self._resolve_backtest_settings(run_hyperparams)
+        effective_config = self._effective_config(backtest_settings)
         if portfolio is None:
             portfolio = Portfolio(
-                self._config.initial_cash,
-                self._config.fee_mode,
-                self._config.fee_amount,
+                effective_config.initial_cash,
+                effective_config.fee_mode,
+                effective_config.fee_amount,
                 self._fractional_shares_enabled(),
-                self._config.position_mode,
-                self._config.max_long_positions,
-                self._config.max_short_positions,
-                self._config.return_stops,
-                self._config.leverage,
-                self._config.interest_rate,
-                self._config.bars_per_year,
-                record_portfolio_bars=self._config.record_portfolio_bars,
-                record_position_bars=self._config.record_position_bars,
+                effective_config.position_mode,
+                backtest_settings.max_long_positions,
+                backtest_settings.max_short_positions,
+                effective_config.return_stops,
+                effective_config.leverage,
+                effective_config.interest_rate,
+                effective_config.bars_per_year,
+                record_portfolio_bars=effective_config.record_portfolio_bars,
+                record_position_bars=effective_config.record_position_bars,
             )
         date_col = DataCol.DATE.value
         master_dates_arr = df[date_col].to_numpy(
@@ -961,7 +988,7 @@ class OptimizeMixin:
             )
         sessions: dict[str, dict] = defaultdict(dict)
         self.backtest_executions(
-            config=self._config,
+            config=effective_config,
             executions=window_executions,
             before_exec_fn=self._before_exec_fn,
             after_exec_fn=self._after_exec_fn,
@@ -975,9 +1002,11 @@ class OptimizeMixin:
             test_data=test_data,
             portfolio=portfolio,
             exit_dates={},
+            backtest_settings=backtest_settings,
+            rotation_sizer=self._rotation_sizer,
             slippage_model=self._slippage_model,
             enable_fractional_shares=self._fractional_shares_enabled(),
-            round_fill_price=self._config.round_fill_price,
+            round_fill_price=effective_config.round_fill_price,
             warmup=warmup,
             test_col_scope=ColumnScope(test_store) if test_store else None,
             run_hyperparams=run_hyperparams,
@@ -1147,14 +1176,15 @@ class OptimizeMixin:
                 for train_rows, test_rows in splits
             )
 
+        default_settings = self._resolve_backtest_settings(None)
         portfolio = Portfolio(
             self._config.initial_cash,
             self._config.fee_mode,
             self._config.fee_amount,
             self._fractional_shares_enabled(),
             self._config.position_mode,
-            self._config.max_long_positions,
-            self._config.max_short_positions,
+            default_settings.max_long_positions,
+            default_settings.max_short_positions,
             self._config.return_stops,
             self._config.leverage,
             self._config.interest_rate,
@@ -1242,8 +1272,10 @@ class OptimizeMixin:
                 portfolio, selected_syms, test_data
             )
             sessions: dict[str, dict] = defaultdict(dict)
+            window_settings = self._resolve_backtest_settings(wr.params)
+            window_config = self._effective_config(window_settings)
             self.backtest_executions(
-                config=self._config,
+                config=window_config,
                 executions=window_executions,
                 before_exec_fn=self._before_exec_fn,
                 after_exec_fn=self._after_exec_fn,
@@ -1257,9 +1289,11 @@ class OptimizeMixin:
                 test_data=test_data,
                 portfolio=portfolio,
                 exit_dates={},
+                backtest_settings=window_settings,
+                rotation_sizer=self._rotation_sizer,
                 slippage_model=self._slippage_model,
                 enable_fractional_shares=self._fractional_shares_enabled(),
-                round_fill_price=self._config.round_fill_price,
+                round_fill_price=window_config.round_fill_price,
                 warmup=warmup,
                 history_col_scope=ColumnScope(history_store)
                 if history_store

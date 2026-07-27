@@ -18,7 +18,7 @@ from datetime import datetime
 from decimal import Decimal
 from pybroker.common import DataCol, PriceType, to_datetime
 from pybroker.config import StrategyConfig
-from pybroker.context import ExecContext
+from pybroker.context import ExecContext, RotationContext
 from pybroker.indicator import indicator
 from pybroker.model import model
 from pybroker.data import DataSource
@@ -35,6 +35,7 @@ from pybroker.scope import PendingOrder
 from pybroker.slippage import FixedSlippageModel, SlippageModel
 from pybroker.strategy import (
     BacktestMixin,
+    BacktestSettings,
     Execution,
     Strategy,
     TestResult,
@@ -944,9 +945,9 @@ class TestBacktestMixin:
         portfolio = Portfolio(100_000, max_long_positions=2)
         mixin = BacktestMixin()
         mixin.backtest_executions(
-            config=StrategyConfig(
-                max_long_positions=2,
-                worst_rank_held=5,
+            config=StrategyConfig(max_long_positions=2),
+            backtest_settings=BacktestSettings(
+                max_long_positions=2, worst_rank_held=5
             ),
             executions={exec},
             before_exec_fn=None,
@@ -996,9 +997,9 @@ class TestBacktestMixin:
         portfolio = Portfolio(100_000, max_long_positions=2)
         mixin = BacktestMixin()
         mixin.backtest_executions(
-            config=StrategyConfig(
-                max_long_positions=2,
-                worst_rank_held=5,
+            config=StrategyConfig(max_long_positions=2),
+            backtest_settings=BacktestSettings(
+                max_long_positions=2, worst_rank_held=5
             ),
             executions={exec},
             before_exec_fn=None,
@@ -1039,9 +1040,9 @@ class TestBacktestMixin:
         portfolio = Portfolio(100_000, max_long_positions=2)
         mixin = BacktestMixin()
         mixin.backtest_executions(
-            config=StrategyConfig(
-                max_long_positions=2,
-                worst_rank_held=5,
+            config=StrategyConfig(max_long_positions=2),
+            backtest_settings=BacktestSettings(
+                max_long_positions=2, worst_rank_held=5
             ),
             executions={exec},
             before_exec_fn=None,
@@ -1108,9 +1109,9 @@ class TestBacktestMixin:
         portfolio = Portfolio(100_000, max_short_positions=2)
         mixin = BacktestMixin()
         mixin.backtest_executions(
-            config=StrategyConfig(
-                max_short_positions=2,
-                worst_rank_held=5,
+            config=StrategyConfig(max_short_positions=2),
+            backtest_settings=BacktestSettings(
+                max_short_positions=2, worst_rank_held=5
             ),
             executions={exec},
             before_exec_fn=None,
@@ -1156,9 +1157,9 @@ class TestBacktestMixin:
         portfolio = Portfolio(100_000, max_short_positions=2)
         mixin = BacktestMixin()
         mixin.backtest_executions(
-            config=StrategyConfig(
-                max_short_positions=2,
-                worst_rank_held=5,
+            config=StrategyConfig(max_short_positions=2),
+            backtest_settings=BacktestSettings(
+                max_short_positions=2, worst_rank_held=5
             ),
             executions={exec},
             before_exec_fn=None,
@@ -1203,9 +1204,9 @@ class TestBacktestMixin:
         portfolio = Portfolio(100_000, max_short_positions=2)
         mixin = BacktestMixin()
         mixin.backtest_executions(
-            config=StrategyConfig(
-                max_short_positions=2,
-                worst_rank_held=5,
+            config=StrategyConfig(max_short_positions=2),
+            backtest_settings=BacktestSettings(
+                max_short_positions=2, worst_rank_held=5
             ),
             executions={exec},
             before_exec_fn=None,
@@ -1314,8 +1315,12 @@ class TestBacktestMixin:
             config=StrategyConfig(
                 max_long_positions=2,
                 max_short_positions=2,
-                worst_rank_held=5,
                 leverage=2.0,
+            ),
+            backtest_settings=BacktestSettings(
+                max_long_positions=2,
+                max_short_positions=2,
+                worst_rank_held=5,
             ),
             executions={exec},
             before_exec_fn=None,
@@ -1361,14 +1366,14 @@ class TestBacktestMixin:
         with pytest.raises(
             ValueError,
             match=(
-                "score cannot be used with worst_rank_held; use long_score or "
+                "score cannot be used with rotation enabled; use long_score or "
                 "short_score instead."
             ),
         ):
             mixin.backtest_executions(
-                config=StrategyConfig(
-                    max_long_positions=2,
-                    worst_rank_held=5,
+                config=StrategyConfig(max_long_positions=2),
+                backtest_settings=BacktestSettings(
+                    max_long_positions=2, worst_rank_held=5
                 ),
                 executions={exec},
                 before_exec_fn=None,
@@ -1412,9 +1417,9 @@ class TestBacktestMixin:
         portfolio = Portfolio(100_000, max_long_positions=2)
         mixin = BacktestMixin()
         mixin.backtest_executions(
-            config=StrategyConfig(
-                max_long_positions=2,
-                worst_rank_held=5,
+            config=StrategyConfig(max_long_positions=2),
+            backtest_settings=BacktestSettings(
+                max_long_positions=2, worst_rank_held=5
             ),
             executions={exec},
             before_exec_fn=None,
@@ -1434,6 +1439,257 @@ class TestBacktestMixin:
         assert len(s1_sells) == 1
         assert s1_sells[0].shares == 100
         assert user_sells == ["S1"]
+
+    def test_backtest_executions_when_after_rotation_custom_size(self):
+        symbols = ["S1", "S2", "S3"]
+        weights = {"S1": 0.7, "S2": 0.3}
+
+        def exec_fn(ctx):
+            ctx.long_score = {"S1": 30, "S2": 20, "S3": 10}[ctx.symbol]
+
+        def after_rotation_fn(rotation: RotationContext):
+            for sym, ctx in rotation.ctxs.items():
+                if (
+                    ctx.buy_shares
+                    and not ctx.long_pos()
+                    and ctx.sell_shares is None
+                    and sym in weights
+                ):
+                    ctx.buy_shares = ctx.calc_target_shares(weights[sym])
+                    ctx.buy_fill_price = PriceType.CLOSE
+
+        test_df = _rotational_test_df(symbols, num_bars=2)
+        exec = Execution(
+            id=1,
+            symbols=frozenset(symbols),
+            fn=exec_fn,
+            model_names=frozenset(),
+            indicator_names=frozenset(),
+        )
+        portfolio = Portfolio(100_000, max_long_positions=2)
+        mixin = BacktestMixin()
+        mixin.backtest_executions(
+            config=StrategyConfig(max_long_positions=2),
+            backtest_settings=BacktestSettings(
+                max_long_positions=2, worst_rank_held=5
+            ),
+            executions={exec},
+            before_exec_fn=None,
+            after_exec_fn=None,
+            rotation_sizer=after_rotation_fn,
+            sessions=defaultdict(dict),
+            models={},
+            indicator_data={},
+            test_data=test_df,
+            portfolio=portfolio,
+            exit_dates={},
+        )
+        buy_orders = [
+            order for order in portfolio.orders if order.type == "buy"
+        ]
+        shares_by_sym = {order.symbol: order.shares for order in buy_orders}
+        assert shares_by_sym == {"S1": 700, "S2": 300}
+
+    def test_backtest_executions_when_after_rotation_default_equal_weight(
+        self,
+    ):
+        symbols = ["S1", "S2", "S3"]
+
+        def exec_fn(ctx):
+            ctx.long_score = {"S1": 30, "S2": 20, "S3": 10}[ctx.symbol]
+
+        def fill_prices_only(rotation: RotationContext):
+            for ctx in rotation.ctxs.values():
+                if ctx.buy_shares:
+                    ctx.buy_fill_price = PriceType.CLOSE
+
+        test_df = _rotational_test_df(symbols, num_bars=2)
+        exec = Execution(
+            id=1,
+            symbols=frozenset(symbols),
+            fn=exec_fn,
+            model_names=frozenset(),
+            indicator_names=frozenset(),
+        )
+        portfolio = Portfolio(100_000, max_long_positions=2)
+        mixin = BacktestMixin()
+        mixin.backtest_executions(
+            config=StrategyConfig(max_long_positions=2),
+            backtest_settings=BacktestSettings(
+                max_long_positions=2, worst_rank_held=5
+            ),
+            executions={exec},
+            before_exec_fn=None,
+            after_exec_fn=None,
+            rotation_sizer=fill_prices_only,
+            sessions=defaultdict(dict),
+            models={},
+            indicator_data={},
+            test_data=test_df,
+            portfolio=portfolio,
+            exit_dates={},
+        )
+        buy_orders = [
+            order for order in portfolio.orders if order.type == "buy"
+        ]
+        shares_by_sym = {order.symbol: order.shares for order in buy_orders}
+        assert shares_by_sym == {"S1": 500, "S2": 500}
+
+    def test_backtest_executions_when_after_rotation_does_not_override_sells(
+        self,
+    ):
+        symbols = ["S1", "S2", "S3", "S4", "S5", "S6"]
+        scores_by_bar = [
+            {
+                "S1": 60,
+                "S2": 50,
+                "S3": 40,
+                "S4": 30,
+                "S5": 20,
+                "S6": 10,
+            },
+            {
+                "S1": 55,
+                "S2": 45,
+                "S3": 35,
+                "S4": 25,
+                "S5": 15,
+                "S6": 5,
+            },
+            {
+                "S1": 1,
+                "S2": 2,
+                "S3": 3,
+                "S4": 4,
+                "S5": 5,
+                "S6": 60,
+            },
+        ]
+
+        def exec_fn(ctx):
+            idx = min(ctx.bars - 1, len(scores_by_bar) - 1)
+            ctx.long_score = scores_by_bar[idx][ctx.symbol]
+            if ctx.buy_shares is not None:
+                ctx.buy_fill_price = PriceType.CLOSE
+            if ctx.sell_shares is not None:
+                ctx.sell_fill_price = PriceType.CLOSE
+
+        def after_rotation_fn(rotation: RotationContext):
+            for ctx in rotation.ctxs.values():
+                if ctx.sell_shares is not None:
+                    continue
+                if ctx.buy_shares and not ctx.long_pos():
+                    ctx.buy_shares = ctx.calc_target_shares(0.25)
+                    ctx.buy_fill_price = PriceType.CLOSE
+                if ctx.sell_shares is not None:
+                    ctx.sell_fill_price = PriceType.CLOSE
+
+        test_df = _rotational_test_df(symbols, num_bars=4)
+        exec = Execution(
+            id=1,
+            symbols=frozenset(symbols),
+            fn=exec_fn,
+            model_names=frozenset(),
+            indicator_names=frozenset(),
+        )
+        portfolio = Portfolio(100_000, max_long_positions=2)
+        mixin = BacktestMixin()
+        mixin.backtest_executions(
+            config=StrategyConfig(max_long_positions=2),
+            backtest_settings=BacktestSettings(
+                max_long_positions=2, worst_rank_held=5
+            ),
+            executions={exec},
+            before_exec_fn=None,
+            after_exec_fn=None,
+            rotation_sizer=after_rotation_fn,
+            sessions=defaultdict(dict),
+            models={},
+            indicator_data={},
+            test_data=test_df,
+            portfolio=portfolio,
+            exit_dates={},
+        )
+        sell_orders = [
+            order for order in portfolio.orders if order.type == "sell"
+        ]
+        assert len(sell_orders) == 1
+        assert sell_orders[0].symbol == "S1"
+        assert "S2" in portfolio.long_positions
+        assert "S1" not in portfolio.long_positions
+
+    def test_backtest_executions_when_rotation_sizer_without_rotation_then_error(
+        self,
+    ):
+        symbols = ["S1", "S2", "S3"]
+
+        def exec_fn(ctx):
+            ctx.long_score = {"S1": 30, "S2": 20, "S3": 10}[ctx.symbol]
+
+        def rotation_sizer(rotation: RotationContext):
+            pass
+
+        test_df = _rotational_test_df(symbols, num_bars=2)
+        exec = Execution(
+            id=1,
+            symbols=frozenset(symbols),
+            fn=exec_fn,
+            model_names=frozenset(),
+            indicator_names=frozenset(),
+        )
+        portfolio = Portfolio(100_000, max_long_positions=2)
+        mixin = BacktestMixin()
+        with pytest.raises(
+            ValueError,
+            match="Rotation sizer is set but rotation is not enabled",
+        ):
+            mixin.backtest_executions(
+                config=StrategyConfig(max_long_positions=2),
+                backtest_settings=BacktestSettings(max_long_positions=2),
+                executions={exec},
+                before_exec_fn=None,
+                after_exec_fn=None,
+                rotation_sizer=rotation_sizer,
+                sessions=defaultdict(dict),
+                models={},
+                indicator_data={},
+                test_data=test_df,
+                portfolio=portfolio,
+                exit_dates={},
+            )
+
+    def test_backtest_when_after_rotation(self):
+        symbols = ["S1", "S2", "S3"]
+        weights = {"S1": 0.7, "S2": 0.3}
+
+        def exec_fn(ctx):
+            ctx.long_score = {"S1": 30, "S2": 20, "S3": 10}[ctx.symbol]
+
+        def after_rotation_fn(rotation: RotationContext):
+            for sym, ctx in rotation.ctxs.items():
+                if (
+                    ctx.buy_shares
+                    and not ctx.long_pos()
+                    and ctx.sell_shares is None
+                    and sym in weights
+                ):
+                    ctx.buy_shares = ctx.calc_target_shares(weights[sym])
+                    ctx.buy_fill_price = PriceType.CLOSE
+
+        test_df = _rotational_test_df(symbols, num_bars=2)
+        strategy = Strategy(
+            test_df,
+            "2020-01-01",
+            "2020-01-02",
+            StrategyConfig(),
+        )
+        strategy.set_max_long_positions(2)
+        strategy.enable_rotation(5, sizer=after_rotation_fn)
+        strategy.add_execution(exec_fn, symbols)
+        result = strategy.backtest(calc_bootstrap=False)
+        buy_orders = result.orders[result.orders["type"] == "buy"]
+        shares_by_sym = dict(zip(buy_orders["symbol"], buy_orders["shares"]))
+        assert shares_by_sym == {"S1": 700, "S2": 300}
 
     def test_backtest_executions_when_sell_score(self, data_source_df):
         def sell_exec_fn(ctx):
@@ -3125,31 +3381,37 @@ class TestStrategy:
             Strategy(data_source_df, START_DATE, END_DATE, config)
 
     @pytest.mark.parametrize(
-        "config_kwargs, expected_msg",
+        "setup_fn, expected_msg",
         [
             (
-                {"worst_rank_held": 5},
+                lambda s: s.enable_rotation(5),
                 "worst_rank_held requires max_long_positions or "
                 "max_short_positions to be set.",
             ),
             (
-                {"max_long_positions": 2, "worst_rank_held": 1},
+                lambda s: (
+                    s.set_max_long_positions(2),
+                    s.enable_rotation(1),
+                ),
                 "worst_rank_held must be greater than or equal to "
                 "max_long_positions.",
             ),
             (
-                {"max_short_positions": 2, "worst_rank_held": 1},
+                lambda s: (
+                    s.set_max_short_positions(2),
+                    s.enable_rotation(1),
+                ),
                 "worst_rank_held must be greater than or equal to "
                 "max_short_positions.",
             ),
         ],
     )
-    def test_when_invalid_worst_rank_held_config_then_error(
-        self, data_source_df, config_kwargs, expected_msg
+    def test_when_invalid_enable_rotation_then_error(
+        self, data_source_df, setup_fn, expected_msg
     ):
-        config = StrategyConfig(**config_kwargs)
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
         with pytest.raises(ValueError, match=re.escape(expected_msg)):
-            Strategy(data_source_df, START_DATE, END_DATE, config)
+            setup_fn(strategy)
 
     @pytest.mark.parametrize(
         "leverage, expected_msg",

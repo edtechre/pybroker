@@ -8,6 +8,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 
 import dataclasses
 import math
+import warnings
 import numpy as np
 import pandas as pd
 from pybroker.cache import CacheDateFields
@@ -33,6 +34,7 @@ from pybroker.config import StrategyConfig
 from pybroker.context import (
     ExecContext,
     ExecResult,
+    RotationContext,
     set_exec_ctx_data,
 )
 from pybroker.data import AlpacaCrypto, DataSource
@@ -219,12 +221,67 @@ def _set_short_target_shares(ctx: ExecContext, target: float):
     ctx.set_short_target_shares(target)
 
 
+StrategySetting = Union[int, Hyperparam, None]
+
+
+@dataclass(frozen=True)
+class BacktestSettings:
+    max_long_positions: Optional[int] = None
+    max_short_positions: Optional[int] = None
+    worst_rank_held: Optional[int] = None
+
+
+def _resolve_strategy_setting(
+    value: StrategySetting,
+    run_hyperparams: Optional[dict[str, Any]],
+) -> Optional[int]:
+    if value is None:
+        return None
+    if isinstance(value, Hyperparam):
+        if run_hyperparams is None:
+            raise ValueError(
+                f"Hyperparam {value.name!r} requires run_hyperparams."
+            )
+        if value.name not in run_hyperparams:
+            raise ValueError(f"Hyperparam {value.name!r} was not resolved.")
+        return int(run_hyperparams[value.name])
+    return int(value)
+
+
+def _validate_worst_rank_held(
+    worst_rank_held: int,
+    max_long_positions: Optional[int],
+    max_short_positions: Optional[int],
+) -> None:
+    if max_long_positions is None and max_short_positions is None:
+        raise ValueError(
+            "worst_rank_held requires max_long_positions or "
+            "max_short_positions to be set."
+        )
+    if (
+        max_long_positions is not None
+        and worst_rank_held < max_long_positions
+    ):
+        raise ValueError(
+            "worst_rank_held must be greater than or equal to "
+            "max_long_positions."
+        )
+    if (
+        max_short_positions is not None
+        and worst_rank_held < max_short_positions
+    ):
+        raise ValueError(
+            "worst_rank_held must be greater than or equal to "
+            "max_short_positions."
+        )
+
+
 def _apply_worst_rank_held_long(
     active_ctxs: Mapping[str, ExecContext],
     portfolio: Portfolio,
     max_long_positions: int,
     worst_rank_held: int,
-):
+) -> dict[str, int]:
     rankable_scores: dict[str, float] = {}
     for sym, ctx in active_ctxs.items():
         score = _long_rotation_score(ctx)
@@ -247,6 +304,7 @@ def _apply_worst_rank_held_long(
         if ctx.buy_shares is not None or _long_rotation_score(ctx) is None:
             continue
         ctx.set_target_shares(target_size)
+    return ranks
 
 
 def _apply_worst_rank_held_short(
@@ -254,7 +312,7 @@ def _apply_worst_rank_held_short(
     portfolio: Portfolio,
     max_short_positions: int,
     worst_rank_held: int,
-):
+) -> dict[str, int]:
     rankable_scores: dict[str, float] = {}
     for sym, ctx in active_ctxs.items():
         score = _short_rotation_score(ctx)
@@ -277,32 +335,34 @@ def _apply_worst_rank_held_short(
         if ctx.sell_shares is not None or _short_rotation_score(ctx) is None:
             continue
         _set_short_target_shares(ctx, target_size)
+    return ranks
 
 
 def _apply_worst_rank_held(
     active_ctxs: Mapping[str, ExecContext],
     portfolio: Portfolio,
-    config: StrategyConfig,
-):
-    worst_rank_held = config.worst_rank_held
+    settings: BacktestSettings,
+) -> tuple[dict[str, int], dict[str, int]]:
+    worst_rank_held = settings.worst_rank_held
     if worst_rank_held is None:
-        return
-    max_long_positions = config.max_long_positions
-    max_short_positions = config.max_short_positions
-    if max_long_positions is not None:
-        _apply_worst_rank_held_long(
+        return {}, {}
+    long_ranks: dict[str, int] = {}
+    short_ranks: dict[str, int] = {}
+    if settings.max_long_positions is not None:
+        long_ranks = _apply_worst_rank_held_long(
             active_ctxs,
             portfolio,
-            max_long_positions,
+            settings.max_long_positions,
             worst_rank_held,
         )
-    if max_short_positions is not None:
-        _apply_worst_rank_held_short(
+    if settings.max_short_positions is not None:
+        short_ranks = _apply_worst_rank_held_short(
             active_ctxs,
             portfolio,
-            max_short_positions,
+            settings.max_short_positions,
             worst_rank_held,
         )
+    return long_ranks, short_ranks
 
 
 class Execution(NamedTuple):
@@ -436,6 +496,8 @@ class BacktestMixin:
         test_data: pd.DataFrame,
         portfolio: Portfolio,
         exit_dates: Mapping[str, np.datetime64],
+        backtest_settings: BacktestSettings = BacktestSettings(),
+        rotation_sizer: Optional[Callable[[RotationContext], None]] = None,
         train_only: bool = False,
         slippage_model: Optional[SlippageModel] = None,
         enable_fractional_shares: bool = False,
@@ -478,6 +540,14 @@ class BacktestMixin:
             indicator data, and model predictions for each symbol when
             :attr:`pybroker.config.StrategyConfig.return_signals` is ``True``.
         """
+        if (
+            rotation_sizer is not None
+            and backtest_settings.worst_rank_held is None
+        ):
+            raise ValueError(
+                "Rotation sizer is set but rotation is not enabled; call "
+                "enable_rotation(worst_rank_held=...) first."
+            )
         test_dates = get_unique_sorted_dates(test_data[DataCol.DATE.value])
         test_syms = sorted(test_data[DataCol.SYMBOL.value].unique())
         if test_col_scope is not None:
@@ -511,6 +581,7 @@ class BacktestMixin:
         exec_fns: dict[str, Callable[[ExecContext], None]] = {}
         exec_args: dict[str, tuple[Any, ...]] = {}
         exec_kwargs: dict[str, dict[str, Any]] = {}
+        rotation_enabled = backtest_settings.worst_rank_held is not None
         for sym in test_syms:
             for exec in executions:
                 if sym not in _static_symbols(exec.symbols):
@@ -531,6 +602,7 @@ class BacktestMixin:
                     session=sessions[sym],
                     run_hyperparams=run_hyperparams,
                     allowed_hyperparam_names=exec.hyperparam_names,
+                    rotation_enabled=rotation_enabled,
                 )
                 exec_args[sym] = exec.args
                 exec_kwargs[sym] = dict(exec.kwargs)
@@ -659,8 +731,20 @@ class BacktestMixin:
                     )
             if after_exec_fn is not None and active_ctxs:
                 after_exec_fn(active_ctxs)
-            if config.worst_rank_held is not None:
-                _apply_worst_rank_held(active_ctxs, portfolio, config)
+            if backtest_settings.worst_rank_held is not None:
+                long_ranks, short_ranks = _apply_worst_rank_held(
+                    active_ctxs, portfolio, backtest_settings
+                )
+                if rotation_sizer is not None and active_ctxs:
+                    rotation_sizer(
+                        RotationContext(
+                            ctxs=active_ctxs,
+                            portfolio=portfolio,
+                            long_ranks=long_ranks,
+                            short_ranks=short_ranks,
+                            config=config,
+                        )
+                    )
             for ctx in active_ctxs.values():
                 if (
                     slippage_model
@@ -688,7 +772,7 @@ class BacktestMixin:
                     col_scope=col_scope,
                     pending_order_scope=pending_order_scope,
                 )
-            if config.worst_rank_held is not None:
+            if backtest_settings.worst_rank_held is not None:
                 while sell_results:
                     self._schedule_order(
                         result=sell_results.popleft(),
@@ -1376,6 +1460,12 @@ class Strategy(
         self._after_exec_fn: Optional[
             Callable[[Mapping[str, ExecContext]], None]
         ] = None
+        self._max_long_positions: StrategySetting = None
+        self._max_short_positions: StrategySetting = None
+        self._worst_rank_held: StrategySetting = None
+        self._rotation_sizer: Optional[
+            Callable[[RotationContext], None]
+        ] = None
         self._slippage_model: Optional[SlippageModel] = None
         self._timeframes: frozenset[TimeframeInterval] = frozenset()
         self._base_timeframe: Optional[str] = None
@@ -1396,6 +1486,20 @@ class Strategy(
             and config.max_short_positions <= 0
         ):
             raise ValueError("max_short_positions must be greater than 0.")
+        if config.max_long_positions is not None:
+            warnings.warn(
+                "StrategyConfig.max_long_positions is deprecated; use "
+                "Strategy.set_max_long_positions().",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if config.max_short_positions is not None:
+            warnings.warn(
+                "StrategyConfig.max_short_positions is deprecated; use "
+                "Strategy.set_max_short_positions().",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         if config.buy_delay <= 0:
             raise ValueError("buy_delay must be greater than 0.")
         if config.sell_delay <= 0:
@@ -1408,31 +1512,138 @@ class Strategy(
             raise ValueError(
                 "interest_rate must be greater than or equal to 0."
             )
-        if config.worst_rank_held is not None:
-            if (
-                config.max_long_positions is None
-                and config.max_short_positions is None
-            ):
-                raise ValueError(
-                    "worst_rank_held requires max_long_positions or "
-                    "max_short_positions to be set."
+
+    def _concrete_position_limits(
+        self,
+    ) -> tuple[Optional[int], Optional[int]]:
+        max_long = (
+            self._max_long_positions
+            if isinstance(self._max_long_positions, int)
+            else None
+        )
+        max_short = (
+            self._max_short_positions
+            if isinstance(self._max_short_positions, int)
+            else None
+        )
+        if max_long is None:
+            max_long = self._config.max_long_positions
+        if max_short is None:
+            max_short = self._config.max_short_positions
+        return max_long, max_short
+
+    def _resolve_backtest_settings(
+        self, run_hyperparams: Optional[dict[str, Any]] = None
+    ) -> BacktestSettings:
+        max_long = _resolve_strategy_setting(
+            self._max_long_positions, run_hyperparams
+        )
+        max_short = _resolve_strategy_setting(
+            self._max_short_positions, run_hyperparams
+        )
+        worst = _resolve_strategy_setting(
+            self._worst_rank_held, run_hyperparams
+        )
+
+        if self._config.max_long_positions is not None:
+            if max_long is not None:
+                warnings.warn(
+                    "Strategy.set_max_long_positions takes precedence over "
+                    "StrategyConfig.max_long_positions.",
+                    stacklevel=2,
                 )
-            if (
-                config.max_long_positions is not None
-                and config.worst_rank_held < config.max_long_positions
-            ):
-                raise ValueError(
-                    "worst_rank_held must be greater than or equal to "
-                    "max_long_positions."
+            else:
+                max_long = self._config.max_long_positions
+        if self._config.max_short_positions is not None:
+            if max_short is not None:
+                warnings.warn(
+                    "Strategy.set_max_short_positions takes precedence over "
+                    "StrategyConfig.max_short_positions.",
+                    stacklevel=2,
                 )
-            if (
-                config.max_short_positions is not None
-                and config.worst_rank_held < config.max_short_positions
-            ):
-                raise ValueError(
-                    "worst_rank_held must be greater than or equal to "
-                    "max_short_positions."
-                )
+            else:
+                max_short = self._config.max_short_positions
+
+        if max_long is not None and max_long <= 0:
+            raise ValueError("max_long_positions must be greater than 0.")
+        if max_short is not None and max_short <= 0:
+            raise ValueError("max_short_positions must be greater than 0.")
+        if self._rotation_sizer is not None and worst is None:
+            raise ValueError(
+                "Rotation sizer is set but rotation is not enabled; call "
+                "enable_rotation(worst_rank_held=...) first."
+            )
+        if worst is not None:
+            _validate_worst_rank_held(worst, max_long, max_short)
+
+        return BacktestSettings(
+            max_long_positions=max_long,
+            max_short_positions=max_short,
+            worst_rank_held=worst,
+        )
+
+    def _effective_config(
+        self, settings: BacktestSettings
+    ) -> StrategyConfig:
+        return dataclasses.replace(
+            self._config,
+            max_long_positions=settings.max_long_positions,
+            max_short_positions=settings.max_short_positions,
+        )
+
+    def set_max_long_positions(self, max_long: StrategySetting) -> None:
+        r"""Sets the maximum number of long positions held at any time.
+
+        Args:
+            max_long: Maximum long positions, a searchable
+                :class:`pybroker.hyperparam.Hyperparam`, or ``None`` for
+                unlimited.
+        """
+        if isinstance(max_long, int) and max_long <= 0:
+            raise ValueError("max_long_positions must be greater than 0.")
+        self._max_long_positions = max_long
+
+    def set_max_short_positions(self, max_short: StrategySetting) -> None:
+        r"""Sets the maximum number of short positions held at any time.
+
+        Args:
+            max_short: Maximum short positions, a searchable
+                :class:`pybroker.hyperparam.Hyperparam`, or ``None`` for
+                unlimited.
+        """
+        if isinstance(max_short, int) and max_short <= 0:
+            raise ValueError("max_short_positions must be greater than 0.")
+        self._max_short_positions = max_short
+
+    def enable_rotation(
+        self,
+        worst_rank_held: StrategySetting,
+        sizer: Optional[Callable[[RotationContext], None]] = None,
+    ) -> None:
+        r"""Enables rotational hold-band logic and optional custom sizing.
+
+        When enabled, the engine liquidates held positions ranked worse than
+        ``worst_rank_held`` and generates entry signals for new positions.
+        Without a ``sizer``, equal-weight sizing is applied.
+
+        Args:
+            worst_rank_held: Worst score rank at which a held position is
+                kept, a searchable :class:`pybroker.hyperparam.Hyperparam`, or
+                ``None`` to disable rotation.
+            sizer: Optional :class:`Callable` that takes a
+                :class:`pybroker.context.RotationContext` to override
+                equal-weight entry sizing after rotation decisions are made.
+                Do not override sell or cover signals set by rotation.
+        """
+        if worst_rank_held is None:
+            self._worst_rank_held = None
+            self._rotation_sizer = None
+            return
+        self._worst_rank_held = worst_rank_held
+        self._rotation_sizer = sizer
+        if isinstance(worst_rank_held, int):
+            max_long, max_short = self._concrete_position_limits()
+            _validate_worst_rank_held(worst_rank_held, max_long, max_short)
 
     def _verify_data_source(
         self, data_source: Union[DataSource, pd.DataFrame]
@@ -1905,6 +2116,10 @@ class Strategy(
             self._logger.walkforward_start(start_dt, end_dt)
             hyperparams = self._collect_hyperparams()
             run_hyperparams = build_run_hyperparams(hyperparams, params)
+            backtest_settings = self._resolve_backtest_settings(
+                run_hyperparams
+            )
+            effective_config = self._effective_config(backtest_settings)
             df = self._fetch_data(timeframe, adjust)
             day_ids = self._to_day_ids(days)
             df = self._filter_dates(
@@ -1958,23 +2173,25 @@ class Strategy(
             train_only = (
                 self._before_exec_fn is None
                 and self._after_exec_fn is None
+                and self._rotation_sizer is None
+                and backtest_settings.worst_rank_held is None
                 and all(map(lambda e: e.fn is None, self._executions))
             )
             if portfolio is None:
                 portfolio = Portfolio(
-                    self._config.initial_cash,
-                    self._config.fee_mode,
-                    self._config.fee_amount,
+                    effective_config.initial_cash,
+                    effective_config.fee_mode,
+                    effective_config.fee_amount,
                     self._fractional_shares_enabled(),
-                    self._config.position_mode,
-                    self._config.max_long_positions,
-                    self._config.max_short_positions,
-                    self._config.return_stops,
-                    self._config.leverage,
-                    self._config.interest_rate,
-                    self._config.bars_per_year,
-                    record_portfolio_bars=self._config.record_portfolio_bars,
-                    record_position_bars=self._config.record_position_bars,
+                    effective_config.position_mode,
+                    backtest_settings.max_long_positions,
+                    backtest_settings.max_short_positions,
+                    effective_config.return_stops,
+                    effective_config.leverage,
+                    effective_config.interest_rate,
+                    effective_config.bars_per_year,
+                    record_portfolio_bars=effective_config.record_portfolio_bars,
+                    record_position_bars=effective_config.record_position_bars,
                 )
             signals = self._run_walkforward(
                 portfolio=portfolio,
@@ -1998,6 +2215,9 @@ class Strategy(
                 disable_parallel_indicators=disable_parallel_indicators,
                 global_cache_date_fields=cache_date_fields,
                 run_hyperparams=run_hyperparams,
+                backtest_settings=backtest_settings,
+                effective_config=effective_config,
+                rotation_sizer=self._rotation_sizer,
             )
             if train_only:
                 self._logger.walkforward_completed()
@@ -2091,7 +2311,18 @@ class Strategy(
         disable_parallel_indicators: bool = False,
         global_cache_date_fields: Optional[CacheDateFields] = None,
         run_hyperparams: Optional[dict[str, Any]] = None,
+        backtest_settings: Optional[BacktestSettings] = None,
+        effective_config: Optional[StrategyConfig] = None,
+        rotation_sizer: Optional[Callable[[RotationContext], None]] = None,
     ) -> dict[str, pd.DataFrame]:
+        if backtest_settings is None:
+            backtest_settings = self._resolve_backtest_settings(
+                run_hyperparams
+            )
+        if effective_config is None:
+            effective_config = self._effective_config(backtest_settings)
+        if rotation_sizer is None:
+            rotation_sizer = self._rotation_sizer
         sessions: dict[str, dict] = defaultdict(dict)
         exit_dates: dict[str, np.datetime64] = {}
         sym_col = DataCol.SYMBOL.value
@@ -2250,7 +2481,7 @@ class Strategy(
             history_col_scope = ColumnScope(history_store)
             test_col_scope = ColumnScope(test_store)
             split_signals = self.backtest_executions(
-                config=self._config,
+                config=effective_config,
                 executions=window_executions,
                 before_exec_fn=self._before_exec_fn,
                 after_exec_fn=self._after_exec_fn,
@@ -2264,10 +2495,12 @@ class Strategy(
                 test_data=test_data,
                 portfolio=portfolio,
                 exit_dates=exit_dates,
+                backtest_settings=backtest_settings,
+                rotation_sizer=rotation_sizer,
                 train_only=train_only,
                 slippage_model=self._slippage_model,
                 enable_fractional_shares=self._fractional_shares_enabled(),
-                round_fill_price=self._config.round_fill_price,
+                round_fill_price=effective_config.round_fill_price,
                 warmup=warmup,
                 history_col_scope=history_col_scope,
                 test_col_scope=test_col_scope,

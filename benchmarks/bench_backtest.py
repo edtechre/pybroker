@@ -19,7 +19,7 @@ import pandas as pd
 
 import pybroker
 from pybroker import ExecContext, Strategy, StrategyConfig
-from pybroker.strategy import BacktestMixin, Execution
+from pybroker.strategy import BacktestMixin, BacktestSettings, Execution
 from pybroker.vect import highv, lowv
 from collections import defaultdict
 
@@ -451,6 +451,8 @@ class BacktestBarLoop:
             executions={execution},
             before_exec_fn=None,
             after_exec_fn=None,
+            backtest_settings=BacktestSettings(),
+            rotation_sizer=None,
             sessions=defaultdict(dict),
             models={},
             indicator_data={},

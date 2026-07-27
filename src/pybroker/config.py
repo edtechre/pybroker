@@ -39,21 +39,15 @@ class StrategyConfig:
             - ``DEFAULT``: Long and short positions.
             - ``LONG_ONLY``: Long-only positions.
             - ``SHORT_ONLY``: Short-only positions.
-        max_long_positions: Maximum number of long positions that can be held
-            at any time in :class:`pybroker.portfolio.Portfolio`. Unlimited
-            when ``None``. Defaults to ``None``.
-        max_short_positions: Maximum number of short positions that can be
-            held at any time in :class:`pybroker.portfolio.Portfolio`.
-            Unlimited when ``None``. Defaults to ``None``.
-        worst_rank_held: Worst score rank at which a held position is kept.
-            When set, the engine liquidates held positions ranked worse than
-            this value and auto-generates equal-weight entry signals.
-            Long rotation ranks :attr:`pybroker.context.ExecContext.long_score`
-            and requires :attr:`.max_long_positions`. Short rotation ranks
-            :attr:`pybroker.context.ExecContext.short_score` and requires
-            :attr:`.max_short_positions`. Must be greater than or equal to the
-            corresponding position limit when that side is enabled. When
-            ``None``, the engine does not apply rotational hold-band logic.
+        max_long_positions: Deprecated. Use
+            :meth:`pybroker.strategy.Strategy.set_max_long_positions`.
+            Maximum number of long positions that can be held at any time in
+            :class:`pybroker.portfolio.Portfolio`. Unlimited when ``None``.
+            Defaults to ``None``.
+        max_short_positions: Deprecated. Use
+            :meth:`pybroker.strategy.Strategy.set_max_short_positions`.
+            Maximum number of short positions that can be held at any time in
+            :class:`pybroker.portfolio.Portfolio`. Unlimited when ``None``.
             Defaults to ``None``.
         buy_delay: Number of bars before placing an order for a buy signal. The
             default value of ``1`` places a buy order on the next bar. Must be
@@ -113,7 +107,6 @@ class StrategyConfig:
     position_mode: PositionMode = field(default=PositionMode.DEFAULT)
     max_long_positions: Optional[int] = field(default=None)
     max_short_positions: Optional[int] = field(default=None)
-    worst_rank_held: Optional[int] = field(default=None)
     buy_delay: int = field(default=1)
     sell_delay: int = field(default=1)
     bootstrap_samples: int = field(default=10_000)

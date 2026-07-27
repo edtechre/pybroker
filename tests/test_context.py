@@ -775,14 +775,14 @@ def test_score_deprecated(ctx):
     assert result.score == 7
 
 
-def test_to_result_when_worst_rank_held_and_score_then_error(ctx):
-    ctx.config = StrategyConfig(max_long_positions=2, worst_rank_held=5)
+def test_to_result_when_rotation_enabled_and_score_then_error(ctx):
+    ctx.rotation_enabled = True
     ctx.score = 5
     ctx.buy_shares = 100
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "score cannot be used with worst_rank_held; use long_score or "
+            "score cannot be used with rotation enabled; use long_score or "
             "short_score instead."
         ),
     ):

@@ -183,17 +183,19 @@ class ExecResult:
             signals. Orders are placed for symbols with the highest
             ``long_score`` values, where the number of long positions held at
             any time in the :class:`pybroker.portfolio.Portfolio` is specified
-            by :attr:`pybroker.config.StrategyConfig.max_long_positions`.
-            When :attr:`pybroker.config.StrategyConfig.worst_rank_held` is set,
-            ``long_score`` is used for long rotational hold-band logic.
+            by :meth:`pybroker.strategy.Strategy.set_max_long_positions`.
+            When rotation is enabled with
+            :meth:`pybroker.strategy.Strategy.enable_rotation`, ``long_score``
+            is used for long rotational hold-band logic.
             Mutually exclusive with ``score``.
         short_score: Score used to rank ``symbol`` when ranking sell signals.
             Orders are placed for symbols with the lowest ``short_score``
             values, where the number of short positions held at any time in
             the :class:`pybroker.portfolio.Portfolio` is specified by
-            :attr:`pybroker.config.StrategyConfig.max_short_positions`.
-            When :attr:`pybroker.config.StrategyConfig.worst_rank_held` is set,
-            ``short_score`` is used for short rotational hold-band logic.
+            :meth:`pybroker.strategy.Strategy.set_max_short_positions`.
+            When rotation is enabled with
+            :meth:`pybroker.strategy.Strategy.enable_rotation`, ``short_score``
+            is used for short rotational hold-band logic.
             Mutually exclusive with ``score``.
         hold_bars: Number of bars to hold a long or short position for, after
             which the position is automatically liquidated.
@@ -436,17 +438,19 @@ class ExecContext:
             signals. Orders are placed for symbols with the highest
             ``long_score`` values, where the number of long positions held at
             any time in the :class:`pybroker.portfolio.Portfolio` is specified
-            by :attr:`pybroker.config.StrategyConfig.max_long_positions`.
-            When :attr:`pybroker.config.StrategyConfig.worst_rank_held` is set,
-            ``long_score`` is used for long rotational hold-band logic.
+            by :meth:`pybroker.strategy.Strategy.set_max_long_positions`.
+            When rotation is enabled with
+            :meth:`pybroker.strategy.Strategy.enable_rotation`, ``long_score``
+            is used for long rotational hold-band logic.
             Mutually exclusive with ``score``.
         short_score: Score used to rank ``symbol`` when ranking sell signals.
             Orders are placed for symbols with the lowest ``short_score``
             values, where the number of short positions held at any time in
             the :class:`pybroker.portfolio.Portfolio` is specified by
-            :attr:`pybroker.config.StrategyConfig.max_short_positions`.
-            When :attr:`pybroker.config.StrategyConfig.worst_rank_held` is set,
-            ``short_score`` is used for short rotational hold-band logic.
+            :meth:`pybroker.strategy.Strategy.set_max_short_positions`.
+            When rotation is enabled with
+            :meth:`pybroker.strategy.Strategy.enable_rotation`, ``short_score``
+            is used for short rotational hold-band logic.
             Mutually exclusive with ``score``.
         session: ``dict`` used to store custom data that persists for each
             bar during the :class:`pybroker.strategy.Strategy`\ 's execution.
@@ -505,8 +509,10 @@ class ExecContext:
         session: MutableMapping,
         run_hyperparams: Optional[Mapping[str, Any]] = None,
         allowed_hyperparam_names: frozenset[str] = frozenset(),
+        rotation_enabled: bool = False,
     ):
         self.config = config
+        self.rotation_enabled = rotation_enabled
         self._portfolio = portfolio
         self._col_scope = col_scope
         self._ind_scope = ind_scope
@@ -1652,9 +1658,9 @@ class ExecContext:
             raise ValueError(
                 "score cannot be set when long_score or short_score is set."
             )
-        if self.config.worst_rank_held is not None and self._score is not None:
+        if self.rotation_enabled and self._score is not None:
             raise ValueError(
-                "score cannot be used with worst_rank_held; use long_score or "
+                "score cannot be used with rotation enabled; use long_score or "
                 "short_score instead."
             )
         if not self.buy_shares and not self.sell_shares:
@@ -1718,6 +1724,29 @@ class ExecContext:
                 self.symbol, attr, self._sym_end_index[self.symbol]
             )
         raise AttributeError(f"Attribute {attr!r} not found.")
+
+
+@dataclass(frozen=True)
+class RotationContext:
+    r"""Context passed to a rotation sizer set with
+    :meth:`pybroker.strategy.Strategy.enable_rotation`.
+
+    Attributes:
+        ctxs: :class:`Mapping` of all ticker symbols to :class:`.ExecContext`\ s.
+        portfolio: :class:`pybroker.portfolio.Portfolio`.
+        long_ranks: Rankings computed from rankable :attr:`.ExecContext.long_score`
+            values, where ``1`` is the highest score.
+        short_ranks: Rankings computed from rankable
+            :attr:`.ExecContext.short_score` values, where ``1`` is the lowest
+            score.
+        config: :class:`pybroker.config.StrategyConfig`.
+    """
+
+    ctxs: Mapping[str, ExecContext]
+    portfolio: Portfolio
+    long_ranks: Mapping[str, int]
+    short_ranks: Mapping[str, int]
+    config: StrategyConfig
 
 
 def set_exec_ctx_data(ctx: ExecContext, date: np.datetime64):
