@@ -258,10 +258,7 @@ def _validate_worst_rank_held(
             "worst_rank_held requires max_long_positions or "
             "max_short_positions to be set."
         )
-    if (
-        max_long_positions is not None
-        and worst_rank_held < max_long_positions
-    ):
+    if max_long_positions is not None and worst_rank_held < max_long_positions:
         raise ValueError(
             "worst_rank_held must be greater than or equal to "
             "max_long_positions."
@@ -1463,9 +1460,9 @@ class Strategy(
         self._max_long_positions: StrategySetting = None
         self._max_short_positions: StrategySetting = None
         self._worst_rank_held: StrategySetting = None
-        self._rotation_sizer: Optional[
-            Callable[[RotationContext], None]
-        ] = None
+        self._rotation_sizer: Optional[Callable[[RotationContext], None]] = (
+            None
+        )
         self._slippage_model: Optional[SlippageModel] = None
         self._timeframes: frozenset[TimeframeInterval] = frozenset()
         self._base_timeframe: Optional[str] = None
@@ -1582,9 +1579,7 @@ class Strategy(
             worst_rank_held=worst,
         )
 
-    def _effective_config(
-        self, settings: BacktestSettings
-    ) -> StrategyConfig:
+    def _effective_config(self, settings: BacktestSettings) -> StrategyConfig:
         return dataclasses.replace(
             self._config,
             max_long_positions=settings.max_long_positions,

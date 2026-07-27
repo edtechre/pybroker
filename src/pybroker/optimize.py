@@ -74,6 +74,9 @@ if TYPE_CHECKING:
 
     class _ExecutionsHost(Protocol):
         _executions: set[Execution]
+        _max_long_positions: Union[int, Hyperparam, None]
+        _max_short_positions: Union[int, Hyperparam, None]
+        _worst_rank_held: Union[int, Hyperparam, None]
 
     class _OptimizeTrialHost(Protocol):
         def _run_optimize_trial(
@@ -122,7 +125,9 @@ def collect_hyperparams(strategy: _ExecutionsHost) -> dict[str, Hyperparam]:
     ):
         if isinstance(value, Hyperparam):
             if not scope.has_hyperparam(value.name):
-                raise ValueError(f"Hyperparam {value.name!r} was not registered.")
+                raise ValueError(
+                    f"Hyperparam {value.name!r} was not registered."
+                )
             names.add(value.name)
             specs[value.name] = scope.get_hyperparam(value.name)
 

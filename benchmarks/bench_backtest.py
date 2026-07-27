@@ -1247,7 +1247,6 @@ class WalkforwardModelsCached(WalkforwardModels):
     timeout = 600
 
     def setup(self) -> None:
-        import shutil
         import tempfile
 
         from pybroker.cache import disable_caches
