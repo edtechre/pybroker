@@ -22,8 +22,11 @@ Submodules
    pybroker.indicator
    pybroker.log
    pybroker.model
+   pybroker.optimize
+   pybroker.parallel
    pybroker.portfolio
    pybroker.scope
    pybroker.slippage
    pybroker.strategy
+   pybroker.timeframe
    pybroker.vect
