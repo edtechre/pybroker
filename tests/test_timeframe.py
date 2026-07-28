@@ -807,7 +807,7 @@ class TestTimeframeIndicatorCompute:
                 out[i] = np.mean(close[i - period + 1 : i + 1])
             return out
 
-        StaticScope.__instance = None
+        StaticScope.set_instance(None)
         sma_ind = indicator("sma20", sma, period=5)
         sym = "SPY"
         dates = np.array(

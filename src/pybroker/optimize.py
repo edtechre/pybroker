@@ -802,6 +802,18 @@ class ObjectiveBundle:
     search_space: SearchSpace
 
 
+def _run_scoped_task(scope: StaticScope, fn: Callable[..., Any], *args) -> Any:
+    """Installs ``scope`` as this process' scope, then runs ``fn``.
+
+    :class:`pybroker.scope.StaticScope` is a per-process singleton, so a worker
+    process starts with an empty one and would not see the caller's registered
+    indicators, model sources, params or custom columns. Running sequentially,
+    ``scope`` is already the installed instance and this is a no-op.
+    """
+    StaticScope.set_instance(scope)
+    return fn(*args)
+
+
 def make_objective(
     strategy: _OptimizeTrialHost,
     score_fn: Callable[[TestResult], float],
@@ -1625,9 +1637,12 @@ class OptimizeMixin:
                 train_pnl=is_result.metrics.total_pnl,
             )
 
+        scope = StaticScope.instance()
         with parallel() as pool:
             window_results = pool(
-                delayed(run_window_study)(train_rows, test_rows)
+                delayed(_run_scoped_task)(
+                    scope, run_window_study, train_rows, test_rows
+                )
                 for train_rows, test_rows in splits
             )
 

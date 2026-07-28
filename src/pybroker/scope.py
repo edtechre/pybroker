@@ -114,6 +114,13 @@ _PRICE_AVERAGE: Final = PriceType.AVERAGE
 _BAR_OHLC_COLS: Final = (_COL_DATE, _COL_CLOSE, _COL_LOW, _COL_HIGH)
 
 
+_UNPICKLED_CACHES: Final = (
+    "data_source_cache",
+    "indicator_cache",
+    "model_cache",
+)
+
+
 class StaticScope:
     """A static registry of data and object references.
 
@@ -290,12 +297,36 @@ class StaticScope:
         """Iterates registered hyperparams."""
         return self._hyperparams.values()
 
+    def __getstate__(self) -> dict[str, Any]:
+        """Returns picklable state, for shipping this scope to a worker
+        process.
+
+        Caches are per-process resources tied to a diskcache directory, and
+        carrying them would ship their in-memory L1 layer too, so the
+        :class:`diskcache.Cache` references are dropped. The namespaces are
+        kept, so a worker can reopen them if needed.
+        """
+        return {**self.__dict__, **{k: None for k in _UNPICKLED_CACHES}}
+
     @classmethod
     def instance(cls) -> "StaticScope":
         """Returns singleton instance."""
         if cls.__instance is None:
             cls.__instance = StaticScope()
         return cls.__instance
+
+    @classmethod
+    def set_instance(cls, scope: Optional["StaticScope"]) -> None:
+        """Replaces the singleton instance, or clears it when ``scope`` is
+        ``None``.
+
+        Used to install a scope that was pickled from another process, so that
+        worker tasks see the caller's registered indicators, model sources and
+        params instead of an empty scope. Replacing wholesale (rather than
+        merging) also keeps stale registrations from surviving in a worker that
+        is reused across runs.
+        """
+        cls.__instance = scope
 
 
 def disable_logging():
@@ -339,61 +370,112 @@ def clear_params():
 
 
 @dataclass(frozen=True)
+class _StoreBacking:
+    """Contiguous buffers spanning every symbol, plus per-symbol row ranges.
+
+    Per-symbol arrays are views into these buffers. Keeping the buffers whole
+    is what makes a store cheap to send to a worker process: joblib memmaps
+    numpy arrays above its ``max_nbytes`` threshold (1MB by default), so a few
+    large buffers are written once and mapped by every worker, whereas the
+    per-symbol arrays are individually far below the threshold and would each
+    be copied.
+
+    Attributes:
+        stack: ``(n_float_cols, n_rows)`` array of the numeric columns.
+        stack_cols: Column names, positionally matching ``stack`` rows.
+        other: Non-numeric columns (dates included), each spanning all rows.
+        offsets: Maps symbol to its ``(start, stop)`` row range.
+    """
+
+    stack: NDArray
+    stack_cols: tuple[str, ...]
+    other: Mapping[str, NDArray]
+    offsets: Mapping[str, tuple[int, int]]
+
+    def __post_init__(self):
+        # Freeze the buffers before any view is taken: a view inherits
+        # writeability at creation time, so freezing afterwards would leave
+        # already-created views writable and let one symbol corrupt another.
+        self.stack.flags.writeable = False
+        for arr in self.other.values():
+            arr.flags.writeable = False
+
+    def views(self) -> dict[str, dict[str, NDArray]]:
+        """Returns per-symbol column views into the backing buffers."""
+        sym_arrays: dict[str, dict[str, NDArray]] = {}
+        for sym, (start, stop) in self.offsets.items():
+            arrays: dict[str, NDArray] = {
+                col: self.stack[c, start:stop]
+                for c, col in enumerate(self.stack_cols)
+            }
+            for col, arr in self.other.items():
+                arrays[col] = arr[start:stop]
+            sym_arrays[sym] = arrays
+        return sym_arrays
+
+
+@dataclass(frozen=True)
 class SymbolArrayStore:
     """Internal numpy-backed OHLCV/custom columns keyed by symbol."""
 
     symbols: frozenset[str]
     sym_arrays: Mapping[str, Mapping[str, NDArray]]
+    backing: Optional[_StoreBacking] = None
 
+    def __post_init__(self):
+        # Input data is read-only. Marking it so turns an accidental in-place
+        # write into a loud ValueError, and lets per-symbol arrays be views
+        # into a shared buffer rather than copies: a view of a read-only array
+        # is itself read-only, so one symbol cannot corrupt its neighbours.
+        # Backed stores are already frozen by _StoreBacking.__post_init__.
+        if self.backing is not None:
+            return
+        for arrays in self.sym_arrays.values():
+            for arr in arrays.values():
+                if arr is not None and arr.flags.owndata:
+                    arr.flags.writeable = False
 
-@njit(cache=True)
-def _extract_f64_bins_njit(
-    col_stack: NDArray[np.float64],
-    starts: NDArray[np.int64],
-    ends: NDArray[np.int64],
-) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
-    n_bins = len(starts)
-    n_cols = col_stack.shape[0]
-    max_width = 0
-    for b in range(n_bins):
-        width = ends[b] - starts[b] + 1
-        if width > max_width:
-            max_width = width
-    out = np.empty((n_bins, n_cols, max_width), dtype=np.float64)
-    lengths = np.empty(n_bins, dtype=np.int64)
-    for b in range(n_bins):
-        start = starts[b]
-        end = ends[b] + 1
-        width = end - start
-        lengths[b] = width
-        for c in range(n_cols):
-            for j in range(width):
-                out[b, c, j] = col_stack[c, start + j]
-    return out, lengths
+    def unique_dates(self) -> NDArray[np.datetime64]:
+        """Returns sorted unique dates across every symbol."""
+        date_col = DataCol.DATE.value
+        if self.backing is not None and date_col in self.backing.other:
+            return np.unique(self.backing.other[date_col])
+        if not self.sym_arrays:
+            return np.array([], dtype="datetime64[ns]")
+        return np.unique(
+            np.concatenate(
+                [
+                    arrays[date_col]
+                    for arrays in self.sym_arrays.values()
+                    if arrays.get(date_col) is not None
+                ]
+            )
+        )
 
+    def __getstate__(self) -> dict[str, Any]:
+        # numpy pickles a view as an independent copy, so when this store is
+        # backed by contiguous buffers, send those plus the row ranges and
+        # rebuild the views on the other side.
+        if self.backing is None:
+            return {
+                "symbols": self.symbols,
+                "sym_arrays": self.sym_arrays,
+                "backing": None,
+            }
+        return {
+            "symbols": self.symbols,
+            "sym_arrays": None,
+            "backing": self.backing,
+        }
 
-@njit(cache=True)
-def _extract_dt64_bins_njit(
-    dates: NDArray[np.datetime64],
-    starts: NDArray[np.int64],
-    ends: NDArray[np.int64],
-) -> tuple[NDArray[np.datetime64], NDArray[np.int64]]:
-    n_bins = len(starts)
-    max_width = 0
-    for b in range(n_bins):
-        width = ends[b] - starts[b] + 1
-        if width > max_width:
-            max_width = width
-    out = np.empty((n_bins, max_width), dtype=dates.dtype)
-    lengths = np.empty(n_bins, dtype=np.int64)
-    for b in range(n_bins):
-        start = starts[b]
-        end = ends[b] + 1
-        width = end - start
-        lengths[b] = width
-        for j in range(width):
-            out[b, j] = dates[start + j]
-    return out, lengths
+    def __setstate__(self, state: Mapping[str, Any]) -> None:
+        backing = state["backing"]
+        sym_arrays = state["sym_arrays"]
+        if sym_arrays is None:
+            sym_arrays = backing.views()
+        object.__setattr__(self, "symbols", state["symbols"])
+        object.__setattr__(self, "sym_arrays", sym_arrays)
+        object.__setattr__(self, "backing", backing)
 
 
 @njit(cache=True)
@@ -536,10 +618,8 @@ def symbol_array_store_from_flat_frame(
     order = np.lexsort((date_arr, sym_ids.astype(np.int64)))
     sorted_sym_ids = sym_ids[order].astype(np.int64)
     starts, ends = _find_bin_starts_ends(sorted_sym_ids)
-    sym_arrays: dict[str, dict[str, NDArray]] = {}
     data_cols = [col for col in df.columns if col != sym_col]
     float_cols: list[str] = []
-    other_cols: list[str] = []
     other_arrays: dict[str, NDArray] = {}
     for col in data_cols:
         if col == date_col:
@@ -548,7 +628,6 @@ def symbol_array_store_from_flat_frame(
         if np.issubdtype(col_arr.dtype, np.number):
             float_cols.append(col)
         else:
-            other_cols.append(col)
             other_arrays[col] = col_arr
     n_rows = len(order)
     sorted_dates = np.ascontiguousarray(
@@ -559,27 +638,52 @@ def symbol_array_store_from_flat_frame(
         col_stack[c] = np.ascontiguousarray(
             df[col].to_numpy(copy=True)[order], dtype=np.float64
         )
-    f64_bins, lengths = _extract_f64_bins_njit(col_stack, starts, ends)
-    dt_bins, _ = _extract_dt64_bins_njit(sorted_dates, starts, ends)
-    n_bins = len(starts)
-    for bin_idx in range(n_bins):
-        sym_key = str(unique_syms[sorted_sym_ids[starts[bin_idx]]])
-        if symbols is not None and sym_key not in symbols:
-            continue
-        width = int(lengths[bin_idx])
-        start = int(starts[bin_idx])
-        end = int(ends[bin_idx]) + 1
-        sym_arrays[sym_key] = {
-            col: f64_bins[bin_idx, c, :width].copy()
-            for c, col in enumerate(float_cols)
+    # Rows are lex-sorted by (symbol, date), so each symbol owns a contiguous
+    # range. Keep the whole-frame buffers and describe symbols as ranges into
+    # them, rather than copying each symbol out: the buffers stay large enough
+    # for joblib to memmap when this store is sent to a worker.
+    selected = [
+        (
+            str(unique_syms[sorted_sym_ids[starts[i]]]),
+            int(starts[i]),
+            int(ends[i]) + 1,
+        )
+        for i in range(len(starts))
+    ]
+    if symbols is not None:
+        selected = [item for item in selected if item[0] in symbols]
+    if not selected:
+        return SymbolArrayStore(frozenset(), {})
+    other: dict[str, NDArray] = {date_col: sorted_dates, **other_arrays}
+    stack: NDArray = col_stack
+    offsets: dict[str, tuple[int, int]] = {}
+    if len(selected) == len(starts):
+        offsets = {sym: (start, end) for sym, start, end in selected}
+    else:
+        # Compact to just the requested symbols so the buffers do not carry
+        # rows nobody asked for.
+        keep = np.concatenate(
+            [np.arange(start, end) for _, start, end in selected]
+        )
+        stack = np.ascontiguousarray(col_stack[:, keep])
+        other = {
+            col: np.ascontiguousarray(arr[keep]) for col, arr in other.items()
         }
-        for col in other_cols:
-            sym_arrays[sym_key][col] = np.asarray(
-                other_arrays[col][start:end], copy=True
-            )
-        if date_col not in sym_arrays[sym_key]:
-            sym_arrays[sym_key][date_col] = dt_bins[bin_idx, :width].copy()
-    return SymbolArrayStore(frozenset(sym_arrays.keys()), sym_arrays)
+        pos = 0
+        for sym, start, end in selected:
+            width = end - start
+            offsets[sym] = (pos, pos + width)
+            pos += width
+    backing = _StoreBacking(
+        stack=stack,
+        stack_cols=tuple(float_cols),
+        other=other,
+        offsets=offsets,
+    )
+    sym_arrays = backing.views()
+    return SymbolArrayStore(
+        frozenset(sym_arrays.keys()), sym_arrays, backing=backing
+    )
 
 
 def symbol_array_store_from_frame(
@@ -754,6 +858,15 @@ class ColumnScope:
     @property
     def store(self) -> SymbolArrayStore:
         return self._store
+
+    @property
+    def symbols(self) -> frozenset[str]:
+        """Symbols held by the underlying store."""
+        return self._symbols
+
+    def unique_dates(self) -> NDArray[np.datetime64]:
+        """Returns sorted unique dates across every symbol in the store."""
+        return self._store.unique_dates()
 
     def fetch_dict(
         self,

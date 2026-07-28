@@ -555,11 +555,16 @@ class BacktestMixin:
                 "Rotation sizer is set but rotation is not enabled; call "
                 "enable_rotation(worst_rank_held=...) first."
             )
-        test_dates = get_unique_sorted_dates(test_data[DataCol.DATE.value])
-        test_syms = sorted(test_data[DataCol.SYMBOL.value].unique())
+        test_dates: Sequence[np.datetime64]
         if test_col_scope is not None:
+            # Derive from the store so callers need not materialize (or ship
+            # to a worker) a DataFrame purely for its dates and symbols.
             col_scope = test_col_scope
+            test_dates = list(test_col_scope.unique_dates())
+            test_syms = sorted(test_col_scope.symbols)
         else:
+            test_dates = get_unique_sorted_dates(test_data[DataCol.DATE.value])
+            test_syms = sorted(test_data[DataCol.SYMBOL.value].unique())
             col_scope = column_scope_from_frame(_ensure_range_index(test_data))
         ind_scope = IndicatorScope(indicator_data, test_dates)
         input_scope = ModelInputScope(

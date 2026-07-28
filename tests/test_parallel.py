@@ -30,7 +30,7 @@ def reset_parallel_config():
 
 def test_get_parallel_config_defaults():
     config = get_parallel_config()
-    assert config.n_jobs is None
+    assert config.n_jobs == 1
     assert config.backend == "loky"
     assert config.parallel is None
 

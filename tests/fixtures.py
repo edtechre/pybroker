@@ -105,7 +105,7 @@ def dates(data_source_df):
 def scope():
     scope = StaticScope.instance()
     yield scope
-    StaticScope.__instance = None
+    StaticScope.set_instance(None)
 
 
 @pytest.fixture()
@@ -303,7 +303,7 @@ def pending_order_scope(pending_orders):
 
 
 @pytest.fixture()
-def setup_enabled_model_cache(tmp_path):
+def setup_enabled_model_cache(scope, tmp_path):
     enable_model_cache("test", tmp_path)
     yield
     clear_model_cache()
@@ -311,7 +311,7 @@ def setup_enabled_model_cache(tmp_path):
 
 
 @pytest.fixture(params=[True, False])
-def setup_model_cache(tmp_path, request):
+def setup_model_cache(scope, tmp_path, request):
     if request.param:
         enable_model_cache("test", tmp_path)
     else:
@@ -323,7 +323,7 @@ def setup_model_cache(tmp_path, request):
 
 
 @pytest.fixture()
-def setup_enabled_ds_cache(tmp_path):
+def setup_enabled_ds_cache(scope, tmp_path):
     enable_data_source_cache("test", tmp_path)
     yield
     clear_data_source_cache()
@@ -331,7 +331,7 @@ def setup_enabled_ds_cache(tmp_path):
 
 
 @pytest.fixture(params=[True, False])
-def setup_ds_cache(tmp_path, request):
+def setup_ds_cache(scope, tmp_path, request):
     if request.param:
         enable_data_source_cache("test", tmp_path)
     else:
@@ -343,7 +343,7 @@ def setup_ds_cache(tmp_path, request):
 
 
 @pytest.fixture()
-def setup_enabled_ind_cache(tmp_path):
+def setup_enabled_ind_cache(scope, tmp_path):
     enable_indicator_cache("test", tmp_path)
     yield
     clear_indicator_cache()
@@ -351,7 +351,7 @@ def setup_enabled_ind_cache(tmp_path):
 
 
 @pytest.fixture(params=[True, False])
-def setup_ind_cache(tmp_path, request):
+def setup_ind_cache(scope, tmp_path, request):
     if request.param:
         enable_indicator_cache("test", tmp_path)
     else:

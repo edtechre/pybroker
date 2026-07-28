@@ -177,24 +177,24 @@ def _compressed_to_bar_data(bars):
 def _indicator_args(
     ind_name: str,
     sym: str,
-    sym_data: Mapping[str, Mapping[str, Optional[NDArray]]],
-    timeframe_data: Optional[TimeframeData],
+    sym_cols: Mapping[str, Optional[NDArray]],
+    sym_timeframes: Optional[TimeframeData],
     custom_data_cols: Iterable[str],
     default_data_cols: frozenset[str],
 ) -> dict[str, Any]:
     _, token = parse_indicator_timeframe_name(ind_name)
     if token is not None:
-        if timeframe_data is None:
+        if sym_timeframes is None:
             raise ValueError(
                 f"Timeframe indicator {ind_name!r} requires compressed "
                 "data. Call Strategy.enable_timeframes() first."
             )
         key = (sym, token)
-        if key not in timeframe_data.compressed:
+        if key not in sym_timeframes.compressed:
             raise ValueError(
                 f"Missing compressed data for {sym!r} and timeframe {token!r}."
             )
-        bars = timeframe_data.compressed[key].bars
+        bars = sym_timeframes.compressed[key].bars
         return {
             "symbol": sym,
             "ind_name": ind_name,
@@ -210,18 +210,33 @@ def _indicator_args(
     return {
         "symbol": sym,
         "ind_name": ind_name,
-        "custom_col_data": {
-            col: sym_data[sym][col] for col in custom_data_cols
-        },
-        **{col: sym_data[sym][col] for col in default_data_cols},
+        "custom_col_data": {col: sym_cols[col] for col in custom_data_cols},
+        **{col: sym_cols[col] for col in default_data_cols},
+    }
+
+
+def _timeframe_data_by_symbol(
+    timeframe_data: Optional[TimeframeData],
+) -> dict[str, TimeframeData]:
+    """Groups ``timeframe_data`` by symbol so workers only receive their own
+    compressed data. ``CompressedSymbolData`` values are shared by reference.
+    """
+    if timeframe_data is None:
+        return {}
+    grouped: dict[str, dict] = defaultdict(dict)
+    for key, data in timeframe_data.compressed.items():
+        grouped[key[0]][key] = data
+    return {
+        sym: TimeframeData(compressed=compressed)
+        for sym, compressed in grouped.items()
     }
 
 
 def _run_indicators_for_symbol(
     sym: str,
     ind_names: tuple[str, ...],
-    sym_data: Mapping[str, Mapping[str, Optional[NDArray]]],
-    timeframe_data: Optional[TimeframeData],
+    sym_cols: Mapping[str, Optional[NDArray]],
+    sym_timeframes: Optional[TimeframeData],
     fns: Mapping[str, Callable[..., tuple[IndicatorSymbol, pd.Series]]],
     custom_data_cols: tuple[str, ...],
     default_data_cols: frozenset[str],
@@ -231,8 +246,8 @@ def _run_indicators_for_symbol(
             **_indicator_args(
                 ind_name,
                 sym,
-                sym_data,
-                timeframe_data,
+                sym_cols,
+                sym_timeframes,
                 custom_data_cols,
                 default_data_cols,
             )
@@ -522,31 +537,32 @@ class IndicatorsMixin:
         for ind_name, sym in ind_syms:
             ind_names_by_sym[sym].append(ind_name)
         symbols_with_work = tuple(ind_names_by_sym.keys())
+        tf_by_sym = _timeframe_data_by_symbol(timeframe_data)
 
-        def run_symbol(
-            sym: str,
-        ) -> tuple[tuple[IndicatorSymbol, pd.Series], ...]:
-            return _run_indicators_for_symbol(
+        def args_for(sym: str) -> tuple:
+            ind_names = tuple(ind_names_by_sym[sym])
+            return (
                 sym,
-                tuple(ind_names_by_sym[sym]),
-                sym_data,
-                timeframe_data,
-                fns,
+                ind_names,
+                sym_data[sym],
+                tf_by_sym.get(sym),
+                {ind_name: fns[ind_name] for ind_name in ind_names},
                 custom_data_cols,
                 default_data_cols,
             )
 
-        if disable_parallel_indicators or len(ind_syms) == 1:
+        if disable_parallel_indicators or len(symbols_with_work) == 1:
             scope.logger.debug_compute_indicators(is_parallel=False)
             return tuple(
                 result
                 for sym in symbols_with_work
-                for result in run_symbol(sym)
+                for result in _run_indicators_for_symbol(*args_for(sym))
             )
         scope.logger.debug_compute_indicators(is_parallel=True)
         with parallel() as pool:
             batches = pool(
-                delayed(run_symbol)(sym) for sym in symbols_with_work
+                delayed(_run_indicators_for_symbol)(*args_for(sym))
+                for sym in symbols_with_work
             )
         return tuple(result for batch in batches for result in batch)
 

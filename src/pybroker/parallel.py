@@ -12,12 +12,33 @@ from joblib import Parallel
 from typing import Iterator, Optional
 
 import joblib
-from joblib.parallel import BACKENDS, EXTERNAL_BACKENDS
+from joblib.parallel import BACKENDS, EXTERNAL_BACKENDS, get_active_backend
 
 
 @dataclass(frozen=True)
 class ParallelConfig:
-    n_jobs: Optional[int] = None
+    """Configuration for parallel execution used by PyBroker.
+
+    PyBroker can compute indicators, train models, and run optimizations in
+    parallel using `joblib <https://joblib.readthedocs.io/>`_. Parallel
+    execution is **opt-in**: by default everything runs sequentially in the
+    calling process. Enable it with ``set_parallel(n_jobs=-1)`` and read the
+    current configuration with :func:`get_parallel_config`.
+
+    Attributes:
+        n_jobs: Number of worker jobs. ``1`` (the default) runs sequentially;
+            ``-1`` uses all available cores.
+        backend: joblib backend name. ``'loky'`` (the default) runs work in
+            separate processes. Other options include ``'multiprocessing'``
+            and any backend registered with joblib (e.g. ``'ray'`` after
+            ``ray.util.joblib.register_ray()``).
+        parallel: Optional pre-constructed :class:`joblib.Parallel` instance
+            that overrides ``n_jobs`` and ``backend`` entirely. When set,
+            PyBroker uses it directly and the caller owns its lifecycle.
+            Defaults to ``None``.
+    """
+
+    n_jobs: Optional[int] = 1
     backend: Optional[str] = "loky"
     parallel: Optional[Parallel] = None
 
@@ -30,11 +51,15 @@ def set_parallel(
     backend: Optional[str] = None,
     parallel: Optional[Parallel] = None,
 ) -> None:
-    """Configures parallel execution used by PyBroker
+    """Configures parallel execution used by PyBroker.
+
+    PyBroker runs sequentially unless configured otherwise; call
+    ``set_parallel(n_jobs=-1)`` to use all available cores.
 
     Args:
-        n_jobs: Number of workers. ``-1`` uses all cores. Defaults to ``-1``
-            when unset.
+        n_jobs: Number of workers. ``1`` runs sequentially (the default);
+            ``-1`` uses all cores. Leave as ``None`` to keep the currently
+            configured value.
         backend: joblib backend name: ``'loky'`` (default), ``'threading'``,
             ``'multiprocessing'``, or any backend registered via
             :func:`joblib.register_parallel_backend` (e.g. ``'ray'`` after
@@ -77,8 +102,25 @@ def get_parallel_config() -> ParallelConfig:
 
 @contextmanager
 def parallel() -> Iterator[Parallel]:
+    if _is_nested():
+        # Already running inside a worker. Naming a backend explicitly
+        # bypasses joblib's nesting protection, so guard it here: without
+        # this, each of the outer workers would spawn its own full-width
+        # pool.
+        yield joblib.Parallel(n_jobs=1)
+        return
     if _config.parallel is not None:
         yield _config.parallel
         return
     with joblib.parallel_backend(_config.backend, n_jobs=_config.n_jobs):
         yield joblib.Parallel(n_jobs=_config.n_jobs)
+
+
+def _is_nested() -> bool:
+    """Whether the caller is running inside a joblib worker.
+
+    joblib swaps the active backend for a nested one inside workers, which
+    bumps ``nesting_level`` above zero.
+    """
+    backend, _ = get_active_backend()
+    return bool(getattr(backend, "nesting_level", 0))
