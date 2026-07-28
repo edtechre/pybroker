@@ -68,7 +68,9 @@ class StrategyConfig:
             :attr:`pybroker.common.PriceType.MIDDLE`.
         bars_per_year: Number of observations per year that will be used to
             annualize evaluation metrics. For example, a value of ``252`` would
-            be used to annualize the Sharpe Ratio for daily returns.
+            be used to annualize the Sharpe Ratio for daily returns. Also sets
+            the accrual period for :attr:`.interest_rate`, and is therefore
+            required when ``interest_rate`` is set.
         return_signals: When ``True``, then bar data, indicator data, and model
             predictions are returned with
             :class:`pybroker.strategy.TestResult`. Defaults to ``False``.
@@ -80,9 +82,11 @@ class StrategyConfig:
         leverage: Account leverage multiplier for buying power on long and
             short positions. Default ``1.0`` uses cash-only buying.
             ``2.0`` allows positions up to 2x equity. Must be ``>= 1.0``.
-        interest_rate: Annual interest rate applied to net cash balance
-            (``cash - margin_loan``). Charges interest when net cash is
-            negative and credits interest when net cash is positive.
+        interest_rate: Annual interest rate, in percent, applied to net cash
+            balance (``cash - margin_loan``). Charges interest when net cash
+            is negative and credits interest when net cash is positive.
+            Accrues once per bar at ``interest_rate / bars_per_year``, so
+            :attr:`.bars_per_year` is required when this is set.
             Defaults to ``0`` (disabled).
         record_portfolio_bars: When ``True``, append full
             :class:`pybroker.portfolio.PortfolioBar` snapshots to

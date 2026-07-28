@@ -1229,9 +1229,11 @@ class ExecContext:
                 ``None``, the share price of the ``ExecContext``\ 's
                 :attr:`.symbol` is used.
             cash: Capital used to calculate the number of shares. If ``None``,
-                portfolio equity is used when
-                :attr:`pybroker.config.StrategyConfig.leverage` is ``1``, or
-                :attr:`.buying_power` when leverage is greater than ``1``.
+                deployable capital is used, defined as portfolio equity
+                multiplied by
+                :attr:`pybroker.config.StrategyConfig.leverage`. The resulting
+                order is still capped by :attr:`.buying_power` when it is
+                placed.
 
         Returns:
             Number of shares given ``target_size`` and share ``price``. If
@@ -1241,10 +1243,8 @@ class ExecContext:
         price = self.close_price if price is None else price
         if cash is not None:
             base = to_decimal(cash)
-        elif self.config.leverage > 1:
-            base = self.buying_power
         else:
-            base = self._portfolio.equity
+            base = self._portfolio.equity * to_decimal(self.config.leverage)
         shares = base * to_decimal(target_size) / to_decimal(price)
         if self.config.enable_fractional_shares:
             return shares.max(0)
@@ -1262,10 +1262,9 @@ class ExecContext:
         :meth:`.calc_target_shares`.
 
         Args:
-            target: Target allocation as a fraction of deployable capital.
-                Uses portfolio equity when
-                :attr:`pybroker.config.StrategyConfig.leverage` is ``1``, or
-                :attr:`.buying_power` when leverage is greater than ``1``.
+            target: Target allocation as a fraction of deployable capital,
+                defined as portfolio equity multiplied by
+                :attr:`pybroker.config.StrategyConfig.leverage`.
                 The max ``target`` is ``1``.
             dir: Exposure direction to rebalance. ``"long"`` sets
                 :attr:`.buy_shares` or :attr:`.sell_shares`. ``"short"`` sets

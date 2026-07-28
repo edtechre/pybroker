@@ -1619,6 +1619,12 @@ class Strategy(
             raise ValueError(
                 "interest_rate must be greater than or equal to 0."
             )
+        if config.interest_rate > 0 and config.bars_per_year is None:
+            raise ValueError(
+                "bars_per_year is required when interest_rate is set, since "
+                "it sets the interest accrual period. For example, use 252 "
+                "for daily bars or 98280 for 1-minute US equity bars."
+            )
 
     def _concrete_position_limits(
         self,

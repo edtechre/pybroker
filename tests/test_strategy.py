@@ -3461,6 +3461,77 @@ class TestStrategy:
         ):
             Strategy(data_source_df, START_DATE, END_DATE, config)
 
+    def test_when_interest_rate_without_bars_per_year_then_error(
+        self, data_source_df
+    ):
+        config = StrategyConfig(interest_rate=7.0)
+        with pytest.raises(
+            ValueError,
+            match=re.escape("bars_per_year is required when interest_rate"),
+        ):
+            Strategy(data_source_df, START_DATE, END_DATE, config)
+
+    @staticmethod
+    def _flat_price_df(symbols, periods=20, price=100.0):
+        dates = pd.date_range(START_DATE, periods=periods, freq="D")
+        return pd.DataFrame(
+            [
+                {
+                    "symbol": sym,
+                    "date": date,
+                    "open": price,
+                    "high": price,
+                    "low": price,
+                    "close": price,
+                    "volume": 1_000_000,
+                }
+                for sym in symbols
+                for date in dates
+            ]
+        )
+
+    @pytest.mark.parametrize("dir", ["long", "short"])
+    def test_backtest_when_set_target_shares_then_idempotent(self, dir):
+        """Re-stating the same target on a flat price must not churn orders."""
+
+        def exec_fn(ctx):
+            ctx.set_target_shares(0.5, dir=dir)
+
+        df = self._flat_price_df(["SPY"])
+        config = StrategyConfig(initial_cash=100_000, leverage=2.0)
+        strategy = Strategy(df, df["date"].min(), df["date"].max(), config)
+        strategy.add_execution(exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        assert len(result.orders) == 1
+        # 50% of 200k of deployable capital at $100 a share.
+        assert result.orders.iloc[0]["shares"] == 1000
+
+    def test_backtest_when_rotation_and_leverage_then_slots_equal(self):
+        """Every rotation slot gets the same notional regardless of entry.
+
+        The last two symbols only become candidates part way through, so a
+        sizing base that is net of already-held exposure would starve them.
+        """
+        symbols = ["S1", "S2", "S3", "S4"]
+        df = self._flat_price_df(symbols)
+
+        def exec_fn(ctx):
+            if ctx.symbol in ("S1", "S2") or ctx.bars >= 5:
+                ctx.long_score = 1
+
+        config = StrategyConfig(initial_cash=100_000, leverage=2.0)
+        strategy = Strategy(df, df["date"].min(), df["date"].max(), config)
+        strategy.set_max_long_positions(len(symbols))
+        strategy.enable_rotation(len(symbols))
+        for sym in symbols:
+            strategy.add_execution(exec_fn, sym)
+        result = strategy.backtest(calc_bootstrap=False)
+        buys = result.orders[result.orders["type"] == "buy"]
+        assert len(buys) == len(symbols)
+        assert buys["shares"].nunique() == 1
+        # 4 equal slots of 200k deployable capital at $100 a share.
+        assert buys["shares"].iloc[0] == 500
+
     def test_backtest_when_leverage(self, data_source_df):
         def buy_exec_fn(ctx):
             if ctx.long_pos() is None:

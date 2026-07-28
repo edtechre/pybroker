@@ -6,12 +6,19 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import itertools
 import numpy as np
 import pandas as pd
 import pytest
 from collections import deque
 from decimal import Decimal
-from pybroker.common import FeeMode, PositionMode, PriceType, StopType
+from pybroker.common import (
+    FeeMode,
+    PositionMode,
+    PriceType,
+    StopType,
+    to_decimal,
+)
 from pybroker.portfolio import Portfolio, Stop
 from pybroker.scope import ColumnScope, PriceScope
 
@@ -4008,3 +4015,235 @@ def test_short_when_leverage_1_requires_full_cash():
     assert order is not None
     assert order.shares == Decimal(1000)
     assert portfolio.cash == 0
+
+
+def _mark(portfolio, date, prices):
+    """Runs ``capture_bar`` with ``prices`` mapping symbol to close."""
+    df = pd.DataFrame(
+        [
+            [sym, date, to_decimal(px), to_decimal(px), to_decimal(px)]
+            for sym, px in prices.items()
+        ],
+        columns=["symbol", "date", "close", "low", "high"],
+    ).set_index(["symbol", "date"])
+    portfolio.capture_bar(date, ColumnScope(df), {sym: 1 for sym in prices})
+
+
+def _expected_margin_loan(portfolio):
+    leverage = to_decimal(portfolio._leverage)
+    notional = sum(
+        (
+            pos.entry_notional
+            for pos in itertools.chain(
+                portfolio.long_positions.values(),
+                portfolio.short_positions.values(),
+            )
+        ),
+        Decimal(),
+    )
+    if portfolio._leverage <= 1:
+        return portfolio._accrued_interest
+    return notional - notional / leverage + portfolio._accrued_interest
+
+
+@pytest.mark.parametrize("leverage", [1.0, 1.5, 2.0, 4.0])
+@pytest.mark.parametrize("fractional", [True, False])
+def test_margin_loan_invariants_when_random_sequences(leverage, fractional):
+    """margin_loan stays non-negative and matches its defining identity."""
+    rng = np.random.default_rng(42)
+    dates = [DATE_1, DATE_2, DATE_3, DATE_4]
+    for _ in range(300):
+        portfolio = Portfolio(
+            CASH, leverage=leverage, enable_fractional_shares=fractional
+        )
+        for i in range(12):
+            date = dates[i % len(dates)]
+            symbol = SYMBOL_1 if rng.random() < 0.5 else SYMBOL_2
+            price = to_decimal(round(float(rng.uniform(20, 200)), 2))
+            shares = to_decimal(round(float(rng.uniform(1, 900)), 2))
+            if rng.random() < 0.5:
+                portfolio.buy(date, symbol, shares, price)
+            else:
+                portfolio.sell(date, symbol, shares, price)
+            assert portfolio.margin_loan >= 0
+            assert portfolio.margin_loan == _expected_margin_loan(portfolio)
+
+
+@pytest.mark.parametrize("leverage", [1.0, 2.0, 4.0])
+def test_flat_portfolio_is_independent_of_exit_order(leverage):
+    """Closing a long and a short in either order lands in the same state."""
+    fill_price = Decimal(100)
+    shares = Decimal(200)
+    states = []
+    for long_first in (True, False):
+        portfolio = Portfolio(CASH, leverage=leverage)
+        portfolio.buy(DATE_1, SYMBOL_1, shares, fill_price)
+        portfolio.sell(DATE_1, SYMBOL_2, shares, fill_price)
+        if long_first:
+            portfolio.sell(DATE_2, SYMBOL_1, shares, fill_price)
+            portfolio.buy(DATE_3, SYMBOL_2, shares, fill_price)
+        else:
+            portfolio.buy(DATE_2, SYMBOL_2, shares, fill_price)
+            portfolio.sell(DATE_3, SYMBOL_1, shares, fill_price)
+        assert not portfolio.long_positions
+        assert not portfolio.short_positions
+        states.append((portfolio.cash, portfolio.margin_loan))
+        # Flat and zero PnL, so the account is back to its starting cash.
+        assert portfolio.cash == CASH
+        assert portfolio.margin_loan == 0
+    assert states[0] == states[1]
+
+
+def test_buying_power_when_flat_is_equity_times_leverage():
+    portfolio = Portfolio(CASH, leverage=2.0)
+    assert portfolio._available_buying_power() == CASH * 2
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(500), Decimal(100))
+    _mark(portfolio, DATE_1, {SYMBOL_1: 100})
+    portfolio.sell(DATE_2, SYMBOL_1, Decimal(500), Decimal(100))
+    _mark(portfolio, DATE_2, {SYMBOL_1: 100})
+    assert portfolio.market_value == CASH
+    assert portfolio._available_buying_power() == CASH * 2
+
+
+def test_buying_power_when_partial_exit_redeploys():
+    """A partial exit deleverages, so the freed capacity must be reusable."""
+    portfolio = Portfolio(CASH, leverage=2.0)
+    fill_price = Decimal(100)
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(2000), fill_price)
+    _mark(portfolio, DATE_1, {SYMBOL_1: 100})
+    assert portfolio._available_buying_power() == 0
+    portfolio.sell(DATE_2, SYMBOL_1, Decimal(500), fill_price)
+    _mark(portfolio, DATE_2, {SYMBOL_1: 100})
+    # 150k of exposure on 100k of equity is 1.5x, so 50k is still available.
+    assert portfolio._available_buying_power() == Decimal(50_000)
+    order = portfolio.buy(DATE_3, SYMBOL_2, Decimal(500), fill_price)
+    assert order is not None
+    assert order.shares == Decimal(500)
+
+
+@pytest.mark.parametrize(
+    "close, type", [(120, "short"), (190, "short"), (80, "long")]
+)
+def test_buying_power_when_adverse_mark_respects_leverage(close, type):
+    """An unrealized loss must consume buying power for shorts and longs.
+
+    An adverse mark can push an *already open* book past the cap on its own;
+    nothing can be done about that without a margin call, which is not
+    modeled. What must hold is that no *new* exposure breaches the cap.
+    """
+    leverage = Decimal(2)
+    portfolio = Portfolio(CASH, leverage=float(leverage))
+    fill_price = Decimal(100)
+    shares = Decimal(1000)
+    if type == "short":
+        portfolio.sell(DATE_1, SYMBOL_1, shares, fill_price)
+    else:
+        portfolio.buy(DATE_1, SYMBOL_1, shares, fill_price)
+    _mark(portfolio, DATE_1, {SYMBOL_1: close})
+    market_value = portfolio.market_value
+    assert market_value > 0
+    gross_before = shares * to_decimal(close)
+    order = portfolio.buy(DATE_2, SYMBOL_2, Decimal(5000), fill_price)
+    gross_after = gross_before + (
+        order.shares * fill_price if order is not None else Decimal()
+    )
+    if gross_before <= leverage * market_value:
+        assert gross_after <= leverage * market_value
+    else:
+        # Already beyond the cap, so nothing more may be added.
+        assert order is None
+
+
+def test_capture_bar_when_no_data_holds_long_at_cost():
+    """A long with no bar on this date must not drop out of equity."""
+    portfolio = Portfolio(CASH, leverage=2.0, record_portfolio_bars=True)
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(1000), Decimal(100))
+    df = pd.DataFrame(
+        [[SYMBOL_1, DATE_2, Decimal(100), Decimal(100), Decimal(100)]],
+        columns=["symbol", "date", "close", "low", "high"],
+    ).set_index(["symbol", "date"])
+    # sym_end_index points at DATE_2, so there is no bar for DATE_1.
+    portfolio.capture_bar(DATE_1, ColumnScope(df), {SYMBOL_1: 1})
+    assert portfolio.equity == CASH
+    assert portfolio.market_value == CASH
+    assert portfolio._long_market_value() == Decimal(100_000)
+
+
+@pytest.mark.parametrize(
+    "fee_mode, fee_amount",
+    [
+        (FeeMode.PER_SHARE, 1.0),
+        (FeeMode.ORDER_PERCENT, 1.0),
+        (FeeMode.PER_ORDER, 500.0),
+    ],
+)
+def test_buy_when_fees_do_not_breach_leverage(fee_mode, fee_amount):
+    leverage = Decimal(2)
+    portfolio = Portfolio(
+        CASH,
+        leverage=float(leverage),
+        fee_mode=fee_mode,
+        fee_amount=fee_amount,
+    )
+    fill_price = Decimal(100)
+    order = portfolio.buy(DATE_1, SYMBOL_1, Decimal(5000), fill_price)
+    assert order is not None
+    _mark(portfolio, DATE_1, {SYMBOL_1: 100})
+    gross = order.shares * fill_price
+    assert gross / portfolio.market_value <= leverage
+
+
+def test_apply_interest_when_no_bars_per_year_then_noop():
+    portfolio = Portfolio(CASH, interest_rate=7.0)
+    portfolio._apply_interest()
+    assert portfolio.cash == CASH
+    assert portfolio.margin_loan == 0
+
+
+def test_apply_interest_matches_across_timeframes():
+    """The same elapsed year must cost the same regardless of bar size."""
+    daily = Portfolio(CASH, leverage=2.0, interest_rate=7.0, bars_per_year=252)
+    daily.buy(DATE_1, SYMBOL_1, Decimal(2000), Decimal(100))
+    for _ in range(252):
+        daily._apply_interest()
+    intraday = Portfolio(
+        CASH, leverage=2.0, interest_rate=7.0, bars_per_year=252 * 390
+    )
+    intraday.buy(DATE_1, SYMBOL_1, Decimal(2000), Decimal(100))
+    for _ in range(252 * 390):
+        intraday._apply_interest()
+    assert float(daily.margin_loan) == pytest.approx(
+        float(intraday.margin_loan), rel=1e-3
+    )
+
+
+def test_apply_interest_sweeps_accrued_interest_from_cash():
+    portfolio = Portfolio(
+        CASH, leverage=2.0, interest_rate=7.0, bars_per_year=252
+    )
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(2000), Decimal(100))
+    portfolio._apply_interest()
+    accrued = portfolio._accrued_interest
+    assert accrued > 0
+    portfolio.sell(DATE_2, SYMBOL_1, Decimal(2000), Decimal(100))
+    assert portfolio.cash == CASH
+    assert portfolio.margin_loan == accrued
+    net_cash = portfolio._net_cash_balance()
+    portfolio._sweep_accrued_interest()
+    # Repaying out of cash leaves the net balance unchanged.
+    assert portfolio._accrued_interest == 0
+    assert portfolio.margin_loan == 0
+    assert portfolio.cash == CASH - accrued
+    assert portfolio._net_cash_balance() == net_cash
+
+
+def test_cover_when_fractional_shares_leaves_no_dust():
+    portfolio = Portfolio(CASH, enable_fractional_shares=True)
+    portfolio.sell(DATE_1, SYMBOL_1, Decimal("722.76"), Decimal("132.33"))
+    portfolio.sell(DATE_2, SYMBOL_1, Decimal("116.49"), Decimal("105.43"))
+    pos = portfolio.short_positions[SYMBOL_1]
+    assert pos.shares == sum(entry.shares for entry in pos.entries)
+    portfolio.buy(DATE_3, SYMBOL_1, pos.shares, Decimal(100))
+    assert not portfolio.short_positions
+    assert not portfolio.long_positions
+    assert SYMBOL_1 not in portfolio.symbols

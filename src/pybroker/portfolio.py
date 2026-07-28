@@ -25,7 +25,7 @@ from pybroker.common import (
 from pybroker.scope import ColumnScope, PriceScope, StaticScope
 from collections import deque
 from dataclasses import dataclass, field
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 from typing import (
     TYPE_CHECKING,
     Callable,
@@ -52,6 +52,12 @@ _BarStopFillPrice = Union[
 ]
 
 _DECIMAL_100: Final = Decimal(100)
+
+# Scale that clamped fractional share counts are rounded down to. Without this,
+# _clamp_shares returns a full-precision quotient and ``pos.shares += shares``
+# rounds at the default Decimal context, leaving pos.shares out of step with
+# sum(entry.shares) and stranding dust positions on a full exit.
+_SHARES_EPSILON: Final = Decimal("1E-9")
 
 # Cached column name strings. DataCol.X.value goes through the enum descriptor
 # which shows up in profiling when hit per-bar-per-symbol; binding once at
@@ -484,7 +490,7 @@ class Portfolio:
         self.orders: deque[Order] = deque()
         self.trades: deque[Trade] = deque()
         self.margin: Decimal = Decimal()
-        self.margin_loan: Decimal = Decimal()
+        self._accrued_interest: Decimal = Decimal()
         self.pnl: Decimal = Decimal()
         self.long_positions: dict[str, Position] = {}
         self.short_positions: dict[str, Position] = {}
@@ -502,6 +508,27 @@ class Portfolio:
         self._entry_id: int = 0
         self._trade_id: int = 0
         self._stop_records: list[StopRecord] = []
+
+    @property
+    def margin_loan(self) -> Decimal:
+        """Borrowed funds used for leveraged long and short positions.
+
+        Derived from the entry notional of all open positions, so it is always
+        consistent with the open book and can never go negative.
+        """
+        if self._leverage <= 1:
+            return self._accrued_interest
+        leverage = to_decimal(self._leverage)
+        notional = sum(
+            (
+                pos.entry_notional
+                for pos in itertools.chain(
+                    self.long_positions.values(), self.short_positions.values()
+                )
+            ),
+            Decimal(),
+        )
+        return notional - notional / leverage + self._accrued_interest
 
     @property
     def win_rate(self) -> Decimal:
@@ -731,25 +758,27 @@ class Portfolio:
         self._cached_short_mv = total
         return total
 
-    def _short_entry_notional(self, pos: Position) -> Decimal:
-        return pos.entry_notional
-
     def _post_collateral(self, notional: Decimal):
+        """Debits the collateral required to open ``notional`` of exposure.
+
+        The borrowed remainder is not tracked here: :attr:`.margin_loan` is
+        derived from the open positions' entry notional.
+        """
         if self._leverage > 1:
-            leverage = to_decimal(self._leverage)
-            collateral = notional / leverage
-            self.cash -= collateral
-            self.margin_loan += notional - collateral
+            self.cash -= notional / to_decimal(self._leverage)
         else:
             self.cash -= notional
         self._invalidate_mv_cache()
 
-    def _release_short_collateral(self, entry_notional: Decimal, pnl: Decimal):
+    def _release_collateral(self, entry_notional: Decimal, pnl: Decimal):
+        """Credits back the collateral posted for ``entry_notional``, plus
+        realized ``pnl``.
+
+        Must be called *before* the position's ``entry_notional`` is
+        decremented, since :attr:`.margin_loan` is derived from it.
+        """
         if self._leverage > 1:
-            leverage = to_decimal(self._leverage)
-            collateral = entry_notional / leverage
-            self.margin_loan -= entry_notional - collateral
-            self.cash += collateral + pnl
+            self.cash += entry_notional / to_decimal(self._leverage) + pnl
         else:
             self.cash += entry_notional + pnl
 
@@ -760,35 +789,66 @@ class Portfolio:
         if self._leverage <= 1:
             return max(self.cash, Decimal())
         leverage = to_decimal(self._leverage)
-        from_cash = self.cash * leverage
         committed = self._long_market_value() + self._short_market_value()
-        from_exposure = self.equity * leverage - committed
-        return max(min(from_cash, from_exposure), Decimal())
+        return max(self.market_value * leverage - committed, Decimal())
+
+    def _sweep_accrued_interest(self):
+        """Repays accrued margin interest out of any available cash.
+
+        Leaves the net cash balance unchanged; this only keeps ``cash`` and
+        :attr:`.margin_loan` from both carrying a balance that nets out.
+        """
+        if self._accrued_interest <= 0 or self.cash <= 0:
+            return
+        payment = min(self.cash, self._accrued_interest)
+        self.cash -= payment
+        self._accrued_interest -= payment
 
     def _apply_interest(self):
-        if self._interest_rate <= 0:
+        if self._interest_rate <= 0 or self._bars_per_year is None:
             return
-        bars_per_year = self._bars_per_year or 252
+        self._sweep_accrued_interest()
         net_cash = self._net_cash_balance()
         if net_cash == 0:
             return
-        daily_rate = (
+        per_bar_rate = (
             to_decimal(self._interest_rate)
             / _DECIMAL_100
-            / Decimal(bars_per_year)
+            / Decimal(self._bars_per_year)
         )
-        interest = abs(net_cash) * daily_rate
+        interest = abs(net_cash) * per_bar_rate
         if net_cash < 0:
-            self.margin_loan += interest
+            self._accrued_interest += interest
         else:
             self.cash += interest
 
-    def _clamp_shares(self, fill_price: Decimal, shares: Decimal) -> Decimal:
+    def _clamp_shares(
+        self,
+        symbol: str,
+        fill_price: Decimal,
+        shares: Decimal,
+        order_type: Literal["buy", "sell"],
+    ) -> Decimal:
         buying_power = self._available_buying_power()
         if self._leverage <= 1 and self.cash < 0:
             return Decimal()
+        if self._leverage > 1:
+            # Fees are paid out of cash, so they reduce equity and therefore
+            # cost ``leverage`` times their amount in buying power. Reserving
+            # that here keeps the filled order inside the configured leverage.
+            # Fees are non-decreasing in shares, so reserving the fee for the
+            # unreduced share count is always affordable, if conservative.
+            fees = self._calculate_fees(
+                symbol, fill_price, buying_power / fill_price, order_type
+            )
+            if fees > 0:
+                buying_power -= fees * to_decimal(self._leverage)
+                if buying_power <= 0:
+                    return Decimal()
         max_shares = (
-            Decimal(buying_power / fill_price)
+            Decimal(buying_power / fill_price).quantize(
+                _SHARES_EPSILON, rounding=ROUND_DOWN
+            )
             if self._enable_fractional_shares
             else Decimal(buying_power // fill_price)
         )
@@ -900,7 +960,7 @@ class Portfolio:
         entry_amount = shares * entry.price
         entry_pnl = entry_amount - order_amount
         self.pnl += entry_pnl
-        self._release_short_collateral(entry_amount, entry_pnl)
+        self._release_collateral(entry_amount, entry_pnl)
         pos.shares -= shares
         entry.shares -= shares
         pos.entry_notional -= entry_amount
@@ -939,7 +999,7 @@ class Portfolio:
     ) -> Decimal:
         if self._position_mode == PositionMode.SHORT_ONLY:
             return Decimal()
-        clamped_shares = self._clamp_shares(fill_price, shares)
+        clamped_shares = self._clamp_shares(symbol, fill_price, shares, "buy")
         if clamped_shares < shares:
             self._logger.debug_buy_shares_exceed_cash(
                 date=date,
@@ -1086,9 +1146,7 @@ class Portfolio:
         entry_amount = shares * entry.price
         entry_pnl = order_amount - entry_amount
         self.pnl += entry_pnl
-        loan_repayment = min(order_amount, self.margin_loan)
-        self.margin_loan -= loan_repayment
-        self.cash += order_amount - loan_repayment
+        self._release_collateral(entry_amount, entry_pnl)
         pos.shares -= shares
         entry.shares -= shares
         pos.entry_notional -= entry_amount
@@ -1150,7 +1208,7 @@ class Portfolio:
             return Decimal()
         if self._position_mode == PositionMode.LONG_ONLY:
             return Decimal()
-        clamped_shares = self._clamp_shares(fill_price, shares)
+        clamped_shares = self._clamp_shares(symbol, fill_price, shares, "sell")
         if clamped_shares < shares:
             self._logger.debug_buy_shares_exceed_cash(
                 date=date,
@@ -1269,8 +1327,14 @@ class Portfolio:
                     pos_equity += pos.equity
                     pos_market_value += pos.market_value
                     pos_pnl += pos.pnl
-                total_equity += float(pos.equity)
-                total_market_value += float(pos.equity)
+                    total_equity += float(pos.equity)
+                    total_market_value += float(pos.equity)
+                else:
+                    # No bar for this symbol on this date, so the position
+                    # cannot be marked. Hold it at cost, matching the short
+                    # branch below and _long_market_value.
+                    total_equity += float(pos.entry_notional)
+                    total_market_value += float(pos.entry_notional)
             if sym in self.short_positions:
                 pos = self.short_positions[sym]
                 entry_notional = pos.entry_notional
