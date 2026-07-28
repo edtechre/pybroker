@@ -169,6 +169,7 @@ class StaticScope:
         self.custom_data_cols = set()
         self._cols_frozen: bool = False
         self._all_data_cols: Optional[frozenset[str]] = None
+        self._ordered_data_cols: Optional[tuple[str, ...]] = None
         self._bar_data_cols: Optional[tuple[str, ...]] = None
         self._params: dict[str, Any] = {}
         self._hyperparams: dict[str, Any] = {}
@@ -236,20 +237,26 @@ class StaticScope:
 
     @property
     def all_data_cols(self) -> frozenset[str]:
-        """All registered data column names."""
+        """All registered data column names. Unordered; use
+        :attr:`ordered_data_cols` when iteration order is significant.
+        """
         if self._all_data_cols is not None:
             return self._all_data_cols
         return self.default_data_cols | self.custom_data_cols
 
-    def _verify_unfrozen_cols(self):
-        if self._cols_frozen:
-            raise ValueError("Cannot modify columns when strategy is running.")
+    @property
+    def ordered_data_cols(self) -> tuple[str, ...]:
+        """All registered data column names in deterministic order. Iterating
+        :attr:`all_data_cols` instead yields a process-dependent order, which
+        makes column-order sensitive output such as model input data
+        irreproducible across runs.
+        """
+        if self._ordered_data_cols is not None:
+            return self._ordered_data_cols
+        return self._build_ordered_data_cols()
 
-    def freeze_data_cols(self):
-        """Prevents additional data columns from being registered."""
-        self._cols_frozen = True
-        self._all_data_cols = self.default_data_cols | self.custom_data_cols
-        self._bar_data_cols = (
+    def _build_ordered_data_cols(self) -> tuple[str, ...]:
+        return (
             _COL_DATE,
             _COL_OPEN,
             _COL_HIGH,
@@ -260,12 +267,24 @@ class StaticScope:
             *sorted(self.custom_data_cols),
         )
 
+    def _verify_unfrozen_cols(self):
+        if self._cols_frozen:
+            raise ValueError("Cannot modify columns when strategy is running.")
+
+    def freeze_data_cols(self):
+        """Prevents additional data columns from being registered."""
+        self._cols_frozen = True
+        self._all_data_cols = self.default_data_cols | self.custom_data_cols
+        self._ordered_data_cols = self._build_ordered_data_cols()
+        self._bar_data_cols = self._ordered_data_cols
+
     def unfreeze_data_cols(self):
         """Allows additional data columns to be registered if
         :func:`pybroker.scope.StaticScope.freeze_data_cols` was called.
         """
         self._cols_frozen = False
         self._all_data_cols = None
+        self._ordered_data_cols = None
         self._bar_data_cols = None
 
     def param(
@@ -723,7 +742,7 @@ def symbol_array_store_from_frame(
 
 def sym_data_from_store(
     store: SymbolArrayStore,
-    data_cols: frozenset[str],
+    data_cols: Iterable[str],
 ) -> dict[str, dict[str, Optional[NDArray]]]:
     """Converts a :class:`SymbolArrayStore` to per-symbol column arrays."""
     sym_data: dict[str, dict[str, Optional[NDArray]]] = {}
@@ -954,7 +973,7 @@ class ColumnScope:
         static_scope = StaticScope.instance()
         bar_data_cols = static_scope._bar_data_cols
         if bar_data_cols is None:
-            bar_data_cols = tuple(static_scope.all_data_cols)
+            bar_data_cols = static_scope.ordered_data_cols
         if symbol not in self._symbols:
             raise ValueError(f"Symbol not found: {symbol}.")
         sym_data = self._store.sym_arrays[symbol]
@@ -1062,6 +1081,30 @@ class IndicatorScope:
         return float(array[end_index - 1])
 
 
+def _resolve_lag_cols(
+    model_source, trained_model: TrainedModel, model_name: str
+) -> Optional[tuple[str, ...]]:
+    """Returns the columns to build lag features from, or ``None``.
+
+    Lag features must be built from the same columns at prediction time as at
+    training time, otherwise the model is handed a feature matrix of a
+    different width than it was fit on. The training-time columns are recorded
+    on :attr:`pybroker.common.TrainedModel.lag_columns`; the fallback to
+    ``input_cols`` only applies to models cached before that field existed.
+    """
+    if model_source.lags is None:
+        return None
+    if trained_model.lag_columns is not None:
+        return trained_model.lag_columns
+    if trained_model.input_cols is None:
+        raise ValueError(
+            f"Model {model_name!r} requires input columns from training "
+            "before applying lags."
+        )
+    date_col = DataCol.DATE.value
+    return tuple(col for col in trained_model.input_cols if col != date_col)
+
+
 class TimeframeScope:
     """Serves compressed bar and indicator data through alignment maps."""
 
@@ -1088,10 +1131,6 @@ class TimeframeScope:
         ] = {}
         self._sym_inputs: dict[ModelSymbol, ModelInput] = {}
         self._sym_preds: dict[ModelSymbol, NDArray] = {}
-
-    def _lag_cols(self, input_cols: tuple[str, ...]) -> tuple[str, ...]:
-        date_col = DataCol.DATE.value
-        return tuple(col for col in input_cols if col != date_col)
 
     def _ensure_lag_cache(
         self,
@@ -1343,8 +1382,7 @@ class TimeframeScope:
         trained_model: TrainedModel,
         input_: Union[ModelInput, pd.DataFrame],
     ) -> float:
-        pred = TimeframeScope._run_predict(trained_model, input_)
-        return float(np.asarray(pred).reshape(-1)[0])
+        return PredictionScope._run_predict_scalar(trained_model, input_)
 
     def _prepare_full_input(
         self,
@@ -1370,21 +1408,19 @@ class TimeframeScope:
                 self._missing_model_error(base_model_name, symbol)
             )
         trained_model = self._models[model_sym]
-        if trained_model.input_cols is not None:
-            for input_col in trained_model.input_cols:
-                if input_col not in model_input:
+        lag_cols = _resolve_lag_cols(
+            source, trained_model, model_sym.model_name
+        )
+        # Lag features are attached before narrowing to input_cols so that they
+        # can be built from columns the model does not take as input.
+        if lag_cols is not None:
+            assert source.lags is not None
+            for lag_col in lag_cols:
+                if lag_col not in model_input:
                     raise ValueError(
-                        f"Missing column {input_col!r} for input data to "
+                        f"Missing lag column {lag_col!r} for input data to "
                         f"model {model_sym.model_name!r}."
                     )
-            model_input = model_input.select_columns(trained_model.input_cols)
-        if source.lags is not None:
-            if trained_model.input_cols is None:
-                raise ValueError(
-                    f"Model {model_sym.model_name!r} requires input columns "
-                    f"from training before applying lags."
-                )
-            lag_cols = self._lag_cols(trained_model.input_cols)
             self._ensure_lag_cache(symbol, interval, lag_cols, source.lags)
             model.apply_lags_to_model_input(
                 model_input,
@@ -1399,6 +1435,14 @@ class TimeframeScope:
                 )[: self.window_len(symbol, interval)],
                 format_timeframe_interval(interval),
             )
+        if trained_model.input_cols is not None:
+            for input_col in trained_model.input_cols:
+                if input_col not in model_input:
+                    raise ValueError(
+                        f"Missing column {input_col!r} for input data to "
+                        f"model {model_sym.model_name!r}."
+                    )
+            model_input = model_input.select_columns(trained_model.input_cols)
         if not trained_model.input_cols or source._input_data_fn:
             model_input = model.apply_prepare_input_data(
                 model_input, source.prepare_input_data
@@ -1433,7 +1477,7 @@ class TimeframeScope:
             DataCol.CLOSE.value: bars.close[:cap],
             DataCol.VOLUME.value: bars.volume[:cap],
         }
-        for col in self._scope.custom_data_cols:
+        for col in sorted(self._scope.custom_data_cols):
             if col in bars.custom:
                 arrays[col] = bars.custom[col][:cap]
         for ind_name in source.indicators:
@@ -1485,11 +1529,8 @@ class ModelInputScope:
         self._history_dates: dict[str, np.ndarray] = {}
         self._test_dates = [] if test_dates is None else test_dates
         self._sym_inputs: dict[ModelSymbol, ModelInput] = {}
+        self._lag_cache_depth: dict[tuple[str, str], int] = {}
         self._scope = StaticScope.instance()
-
-    def _lag_cols(self, input_cols: tuple[str, ...]) -> tuple[str, ...]:
-        date_col = DataCol.DATE.value
-        return tuple(col for col in input_cols if col != date_col)
 
     def _ensure_lag_cache(
         self,
@@ -1497,17 +1538,38 @@ class ModelInputScope:
         lag_cols: tuple[str, ...],
         lags: int,
     ) -> None:
-        model = _model()
-        if symbol in self._history_dates:
+        # Track the depth built per column: a shallower cache entry from
+        # another model would otherwise be reused for a deeper request.
+        missing = tuple(
+            col
+            for col in lag_cols
+            if self._lag_cache_depth.get((symbol, col), -1) < lags
+        )
+        if not missing:
             return
         if self._history_col_scope is None:
             raise ValueError(
                 f"History data required to compute lags for {symbol!r}."
             )
+        dates = self._history_dates.get(symbol)
+        if dates is not None:
+            self._merge_lag_cache(symbol, missing, lags, dates)
+            return
         dates = self._history_col_scope.fetch(symbol, DataCol.DATE.value)
         if dates is None:
             raise ValueError(f"History dates not found for {symbol!r}.")
         self._history_dates[symbol] = dates
+        self._merge_lag_cache(symbol, missing, lags, dates)
+
+    def _merge_lag_cache(
+        self,
+        symbol: str,
+        lag_cols: tuple[str, ...],
+        lags: int,
+        dates: NDArray[Any],
+    ) -> None:
+        model = _model()
+        assert self._history_col_scope is not None
         column_arrays: dict[str, NDArray[Any]] = {}
         for col in lag_cols:
             col_data = self._history_col_scope.fetch(symbol, col)
@@ -1524,6 +1586,10 @@ class ModelInputScope:
             dates,
             column_arrays,
         )
+        for col in lag_cols:
+            self._lag_cache_depth[(symbol, col)] = max(
+                self._lag_cache_depth.get((symbol, col), -1), lags
+            )
 
     def fetch(
         self, symbol: str, name: str, end_index: Optional[int] = None
@@ -1587,13 +1653,28 @@ class ModelInputScope:
         trained_model = self._models[model_sym]
         date_col = DataCol.DATE.value
         ind_names = self._scope.get_indicator_names(name)
+        lag_cols = _resolve_lag_cols(model_source, trained_model, name)
         if (
             trained_model.input_cols is not None
             and not model_source._input_data_fn
         ):
-            data_cols = frozenset(trained_model.input_cols) | {date_col}
+            # Lag columns are needed to build the lag features even when they
+            # are not part of the model's input columns.
+            needed = [date_col, *trained_model.input_cols]
+            if lag_cols is not None:
+                needed.extend(lag_cols)
+            needed_set = frozenset(needed)
+            ordered = self._scope.ordered_data_cols
+            # Registered columns first, in their canonical order, then any
+            # remaining names in declaration order. Both are deterministic:
+            # iterating the registered column set directly is not.
+            data_cols: Iterable[str] = tuple(
+                dict.fromkeys(
+                    [col for col in ordered if col in needed_set] + needed
+                )
+            )
         else:
-            data_cols = self._scope.all_data_cols
+            data_cols = self._scope.ordered_data_cols
         input_: dict[str, NDArray[Any]] = {}
         for col in data_cols:
             data = self._col_scope.fetch(symbol, col)
@@ -1607,21 +1688,16 @@ class ModelInputScope:
         assert row_dates is not None
         columns = tuple(input_.keys())
         model_input = model.model_input_cls(columns, input_, row_dates)
-        if trained_model.input_cols is not None:
-            for input_col in trained_model.input_cols:
-                if input_col not in model_input:
+        # Lag features are attached before narrowing to input_cols so that
+        # they can be built from columns the model does not take as input.
+        if lag_cols is not None:
+            assert model_source.lags is not None
+            for lag_col in lag_cols:
+                if lag_col not in model_input:
                     raise ValueError(
-                        f"Missing column {input_col!r} for input data to "
+                        f"Missing lag column {lag_col!r} for input data to "
                         f"model {model_sym.model_name!r}."
                     )
-            model_input = model_input.select_columns(trained_model.input_cols)
-        if model_source.lags is not None:
-            if trained_model.input_cols is None:
-                raise ValueError(
-                    f"Model {model_sym.model_name!r} requires input columns "
-                    f"from training before applying lags."
-                )
-            lag_cols = self._lag_cols(trained_model.input_cols)
             self._ensure_lag_cache(symbol, lag_cols, model_source.lags)
             model.apply_lags_to_model_input(
                 model_input,
@@ -1631,6 +1707,14 @@ class ModelInputScope:
                 symbol,
                 self._history_dates[symbol],
             )
+        if trained_model.input_cols is not None:
+            for input_col in trained_model.input_cols:
+                if input_col not in model_input:
+                    raise ValueError(
+                        f"Missing column {input_col!r} for input data to "
+                        f"model {model_sym.model_name!r}."
+                    )
+            model_input = model_input.select_columns(trained_model.input_cols)
         if not trained_model.input_cols or model_source._input_data_fn:
             model_input = model.apply_prepare_input_data(
                 model_input, model_source.prepare_input_data
@@ -1767,8 +1851,25 @@ class PredictionScope:
         trained_model: TrainedModel,
         input_: Union[ModelInput, pd.DataFrame],
     ) -> float:
+        n_rows = len(input_)
         pred = PredictionScope._run_predict(trained_model, input_)
-        return float(np.asarray(pred).reshape(-1)[0])
+        flat = np.asarray(pred).reshape(-1)
+        if not flat.size:
+            raise ValueError(
+                f"predict_fn for per_bar model {trained_model.name!r} "
+                "returned no predictions. Expected a scalar prediction for "
+                "the current bar."
+            )
+        if flat.size != 1 and flat.size != n_rows:
+            raise ValueError(
+                f"predict_fn for per_bar model {trained_model.name!r} "
+                f"returned {flat.size} predictions for {n_rows} input rows. "
+                "Expected a scalar prediction for the current bar, e.g. "
+                "return preds[-1]."
+            )
+        # The current bar is the last row of the input, so take the last
+        # prediction when predict_fn returns one value per row.
+        return float(flat[-1])
 
 
 class PriceScope:
@@ -2087,7 +2188,7 @@ def get_signals(
     containing bar data, indicator data, and model predictions for each symbol.
     """
     static_scope = StaticScope.instance()
-    cols = static_scope.all_data_cols
+    cols = static_scope.ordered_data_cols
     inds = static_scope._indicators.keys()
     models = static_scope._model_sources.keys()
     dfs: dict[str, pd.DataFrame] = {}

@@ -192,15 +192,17 @@ def _fill_lag_feature_block_njit(
     col_start: int,
     lags: int,
     stacked: NDArray[np.float64],
-    base_col: NDArray[np.float64],
     offset: int,
     n_rows: int,
 ) -> None:
-    n_lag_cols = lags + 1
+    # Row k of ``stacked`` holds the series lagged by k bars, so lags 1
+    # through ``lags`` fill block columns 0 through ``lags - 1``. Row 0 is the
+    # unlagged series, which is left out: it is already available as the
+    # column itself, and including it would feed the current bar's value into
+    # the model as a lag feature.
     for r in range(n_rows):
-        for c in range(n_lag_cols):
-            matrix[r, col_start + c] = stacked[c, offset + r]
-        matrix[r, col_start] = base_col[r]
+        for c in range(lags):
+            matrix[r, col_start + c] = stacked[c + 1, offset + r]
 
 
 @njit(cache=True)
@@ -226,10 +228,42 @@ def _store_stacked_lags_in_cache(
     stacked: np.ndarray,
     interval: Optional[str] = None,
 ) -> None:
-    """Stores stacked lag rows in ``cache`` under ``LagSeriesKey`` entries."""
-    cache[LagSeriesKey(symbol, col, 0, interval)] = stacked
-    for lag in range(1, lags + 1):
+    """Stores stacked lag rows in ``cache`` under ``LagSeriesKey`` entries.
+
+    Keeps the tallest stacked array seen for a key. A taller array serves every
+    shallower request without copying, so a model with fewer lags must not
+    replace the entry a model with more lags depends on.
+    """
+    key = LagSeriesKey(symbol, col, 0, interval)
+    existing = cache.get(key)
+    if (
+        existing is not None
+        and existing.ndim == 2
+        and existing.shape[0] >= stacked.shape[0]
+    ):
+        stacked = existing
+    else:
+        cache[key] = stacked
+    for lag in range(1, stacked.shape[0]):
         cache[LagSeriesKey(symbol, col, lag, interval)] = stacked[lag]
+
+
+def cached_stacked_lags(
+    cache: LagSeriesCache,
+    symbol: str,
+    col: str,
+    lags: int,
+    interval: Optional[str] = None,
+) -> Optional[np.ndarray]:
+    """Returns a cached stacked array deep enough for ``lags``, else ``None``."""
+    existing = cache.get(LagSeriesKey(symbol, col, 0, interval))
+    if (
+        existing is not None
+        and existing.ndim == 2
+        and existing.shape[0] >= lags + 1
+    ):
+        return existing
+    return None
 
 
 def _bars_column_array(bars, col: str):
@@ -433,36 +467,78 @@ def history_date_offset(
     return offset
 
 
+def _checked_stacked_lags(
+    lag_cache: LagSeriesCache,
+    symbol: str,
+    col: str,
+    lags: int,
+    offset: int,
+    n_rows: int,
+    interval: Optional[str] = None,
+) -> np.ndarray:
+    """Returns the cached stacked lag rows for ``col``, validating bounds.
+
+    The njit fill kernels index ``stacked`` without bounds checking, so an
+    undersized cache entry would silently read out of bounds instead of
+    raising. Validate here, outside the kernel's inner loop.
+    """
+    key = LagSeriesKey(symbol, col, 0, interval)
+    stacked = lag_cache.get(key)
+    interval_msg = f" on interval {interval!r}" if interval else ""
+    if stacked is None:
+        raise ValueError(
+            f"Lag history missing for {symbol!r} column {col!r}{interval_msg}."
+        )
+    n_lag_rows = stacked.shape[0] if stacked.ndim == 2 else 0
+    if n_lag_rows < lags + 1:
+        raise ValueError(
+            f"Lag history for {symbol!r} column {col!r}{interval_msg} holds "
+            f"{n_lag_rows} lag rows but {lags + 1} are required."
+        )
+    if offset < 0 or offset + n_rows > stacked.shape[1]:
+        raise ValueError(
+            f"Lag history for {symbol!r} column {col!r}{interval_msg} covers "
+            f"{stacked.shape[1]} bars but rows through {offset + n_rows} "
+            "were requested."
+        )
+    return stacked
+
+
 def build_lag_feature_matrix(
     symbol: str,
     columns: tuple[str, ...],
     lags: int,
-    base_arrays: ArrayDict,
     row_dates: np.ndarray,
     history_dates: np.ndarray,
     lag_cache: LagSeriesCache,
     interval: Optional[str] = None,
 ) -> np.ndarray:
-    """Builds a lag-expanded feature matrix from numpy arrays."""
+    """Builds a lag-expanded feature matrix from numpy arrays.
+
+    Returns a matrix of shape ``(len(row_dates), len(columns) * lags)``, laid
+    out as one contiguous block per column, each block holding lags 1 through
+    ``lags`` in ascending order.
+    """
     n_rows = len(row_dates)
-    n_features = len(columns) * (lags + 1)
+    n_features = len(columns) * lags
     if n_rows == 0:
         return np.empty((0, n_features), dtype=np.float64)
     offset = history_date_offset(history_dates, row_dates)
     matrix = np.empty((n_rows, n_features), dtype=np.float64)
     col_idx = 0
     for col in columns:
-        stacked = lag_cache[LagSeriesKey(symbol, col, 0, interval)]
+        stacked = _checked_stacked_lags(
+            lag_cache, symbol, col, lags, offset, n_rows, interval
+        )
         _fill_lag_feature_block_njit(
             matrix,
             col_idx,
             lags,
             stacked,
-            _as_float64_contiguous(base_arrays[col]),
             offset,
             n_rows,
         )
-        col_idx += lags + 1
+        col_idx += lags
     return matrix
 
 
@@ -470,7 +546,6 @@ def build_lag_feature_matrix_pooled(
     sym_col: np.ndarray,
     columns: tuple[str, ...],
     lags: int,
-    base_arrays: ArrayDict,
     row_dates: np.ndarray,
     history_dates_by_symbol: dict[str, np.ndarray],
     lag_cache: LagSeriesCache,
@@ -479,11 +554,10 @@ def build_lag_feature_matrix_pooled(
 ) -> np.ndarray:
     """Builds a lag-expanded feature matrix for pooled multi-symbol data."""
     n_rows = len(sym_col)
-    n_features = len(columns) * (lags + 1)
+    n_features = len(columns) * lags
     if n_rows == 0:
         return np.empty((0, n_features), dtype=np.float64)
     matrix = np.empty((n_rows, n_features), dtype=np.float64)
-    date_col = DataCol.DATE.value
     sym_col_arr = np.asarray(sym_col)
     order = np.argsort(sym_col_arr, kind="stable")
     sorted_syms = sym_col_arr[order]
@@ -495,14 +569,10 @@ def build_lag_feature_matrix_pooled(
             continue
         idx = order[start:end]
         sym_dates = row_dates[idx]
-        sym_base = {col: base_arrays[col][idx] for col in columns}
-        if date_col in base_arrays:
-            sym_base[date_col] = sym_dates
         sym_matrix = build_lag_feature_matrix(
             sym,
             columns,
             lags,
-            sym_base,
             sym_dates,
             history_dates_by_symbol[sym],
             lag_cache,
@@ -522,18 +592,16 @@ def apply_lags_to_model_input(
     interval: Optional[str] = None,
 ) -> ModelInput:
     """Attaches lag feature metadata to ``model_input``."""
-    n_features = len(lag_columns) * (lags + 1)
+    n_features = len(lag_columns) * lags
     if model_input.empty():
         model_input.lag_features = np.empty((0, n_features), dtype=np.float64)
         model_input.lags = lags
         model_input.lag_columns = lag_columns
         return model_input
-    base_arrays = {col: model_input.arrays[col] for col in lag_columns}
     matrix = build_lag_feature_matrix(
         symbol,
         lag_columns,
         lags,
-        base_arrays,
         model_input.dates,
         history_dates,
         lag_cache,
@@ -555,7 +623,7 @@ def apply_lags_to_model_input_pooled(
     interval: Optional[str] = None,
 ) -> ModelInput:
     """Attaches lag feature metadata to pooled ``model_input``."""
-    n_features = len(lag_columns) * (lags + 1)
+    n_features = len(lag_columns) * lags
     if model_input.empty():
         model_input.lag_features = np.empty((0, n_features), dtype=np.float64)
         model_input.lags = lags
@@ -566,7 +634,6 @@ def apply_lags_to_model_input_pooled(
         sym_col,
         lag_columns,
         lags,
-        model_input.arrays,
         model_input.dates,
         history_dates_by_symbol,
         lag_cache,
@@ -584,11 +651,60 @@ LAGS_ATTR = "lags"
 LAG_COLUMNS_ATTR = "lag_columns"
 
 
+class LagFeatures:
+    """Holds a lag feature matrix carried in :attr:`pandas.DataFrame.attrs`.
+
+    Lag features are attached to model input rather than added as columns, so
+    that the user's :class:`pandas.DataFrame` is never widened or copied.
+    Storing a bare :class:`numpy.ndarray` in ``attrs`` is unsound, though:
+    pandas compares ``attrs`` dicts when combining frames, which raises on
+    array equality, and deep copies ``attrs`` on nearly every operation. This
+    wrapper compares by identity and refuses to be copied, so the matrix is
+    shared rather than duplicated.
+    """
+
+    __slots__ = ("matrix", "lags", "columns", "n_rows")
+
+    def __init__(
+        self,
+        matrix: np.ndarray,
+        lags: Optional[int],
+        columns: Optional[tuple[str, ...]],
+    ):
+        self.matrix = matrix
+        self.lags = lags
+        self.columns = columns
+        self.n_rows = len(matrix)
+
+    def __eq__(self, other: Any) -> bool:
+        return self is other
+
+    def __hash__(self) -> int:
+        return id(self)
+
+    def __deepcopy__(self, memo) -> "LagFeatures":
+        return self
+
+    def __copy__(self) -> "LagFeatures":
+        return self
+
+    def __repr__(self) -> str:
+        return (
+            f"LagFeatures(n_rows={self.n_rows}, lags={self.lags}, "
+            f"columns={self.columns})"
+        )
+
+
 def model_input_to_dataframe(model_input: ModelInput) -> pd.DataFrame:
     """Materializes a DataFrame with optional lag metadata in ``attrs``."""
     df = model_input.to_dataframe()
     if model_input.lag_features is not None:
-        df.attrs[LAG_FEATURES_ATTR] = model_input.lag_features
+        lag_features = LagFeatures(
+            model_input.lag_features,
+            model_input.lags,
+            model_input.lag_columns,
+        )
+        df.attrs[LAG_FEATURES_ATTR] = lag_features
         df.attrs[LAGS_ATTR] = model_input.lags
         df.attrs[LAG_COLUMNS_ATTR] = model_input.lag_columns
     return df
@@ -602,7 +718,15 @@ def apply_prepare_input_data(
     lag_features = model_input.lag_features
     lags = model_input.lags
     lag_columns = model_input.lag_columns
+    n_rows = len(model_input.dates)
     df = prepare_fn(model_input.to_dataframe())
+    if len(df.columns) and len(df) != n_rows:
+        raise ValueError(
+            f"input_data_fn returned {len(df)} rows for {n_rows} bars. "
+            "Model input must stay aligned one row per bar; return NaN "
+            "warmup rows instead of dropping them, or use lags= which "
+            "drops warmup rows from training data only."
+        )
     result = model_input_from_frame(
         df, columns=tuple(df.columns), dates=model_input.dates
     )
@@ -616,15 +740,36 @@ def apply_prepare_input_data(
 def feature_matrix_from_model_input(
     data: Union[ModelInput, pd.DataFrame],
 ) -> Optional[np.ndarray]:
-    """Returns lag feature matrix for ``data``, if any."""
+    """Returns the lag feature matrix for ``data``, if any.
+
+    The matrix has shape ``(len(data), len(lag_cols) * lags)`` and is laid out
+    as one contiguous block per lag column, each block holding lags ``1``
+    through ``lags`` in ascending order. Use
+    :func:`model_input_lag_columns` for the block order.
+
+    Raises:
+        ValueError: If rows were added to or dropped from ``data`` after the
+            lag features were built, which would misalign them.
+    """
     if isinstance(data, ModelInput):
         return (
             None
             if data.lag_features is None
             else np.asarray(data.lag_features)
         )
-    matrix = data.attrs.get(LAG_FEATURES_ATTR)
-    return None if matrix is None else np.asarray(matrix)
+    lag_features = data.attrs.get(LAG_FEATURES_ATTR)
+    if lag_features is None:
+        return None
+    if isinstance(lag_features, LagFeatures):
+        if lag_features.n_rows != len(data):
+            raise ValueError(
+                f"Lag features cover {lag_features.n_rows} rows but this "
+                f"DataFrame has {len(data)}. Model input must stay aligned "
+                "one row per bar; do not add or drop rows before reading lag "
+                "features."
+            )
+        return np.asarray(lag_features.matrix)
+    return np.asarray(lag_features)
 
 
 def model_input_lags(data: Union[ModelInput, pd.DataFrame]) -> Optional[int]:
@@ -632,6 +777,15 @@ def model_input_lags(data: Union[ModelInput, pd.DataFrame]) -> Optional[int]:
     if isinstance(data, ModelInput):
         return data.lags
     return data.attrs.get(LAGS_ATTR)
+
+
+def model_input_lag_columns(
+    data: Union[ModelInput, pd.DataFrame],
+) -> Optional[tuple[str, ...]]:
+    """Returns the columns lag features were built from, in block order."""
+    if isinstance(data, ModelInput):
+        return data.lag_columns
+    return data.attrs.get(LAG_COLUMNS_ATTR)
 
 
 from pybroker.scope import (
@@ -695,7 +849,7 @@ def _model_input_columns(
     date_col = DataCol.DATE.value
     scope = StaticScope.instance()
     columns: list[str] = [sym_col, date_col] if pooled else [date_col]
-    for col in scope.all_data_cols:
+    for col in scope.ordered_data_cols:
         if col in (sym_col, date_col) or col not in available:
             continue
         columns.append(col)
@@ -939,9 +1093,12 @@ class ModelSource:
             overrides calling the model's default ``predict`` function. If set,
             ``predict_fn`` will be called with the trained model and a
             :class:`pandas.DataFrame` containing all test data.
-        lags: Number of lag steps to include for each input column inferred
-            from training data or returned by ``fn``. Stored as transform
-            metadata on model input (see :class:`ModelInput`).
+        lags: Number of lagged values to include for each column in
+            ``lag_cols``, producing a ``(n_rows, len(lag_cols) * lags)``
+            feature matrix attached to model input rather than added as
+            columns. See :func:`pybroker.model.model`.
+        lag_cols: Columns to compute lagged values for. Defaults to every
+            column of the training data, excluding ``date`` and ``symbol``.
         per_bar: If ``True``, ``predict_fn`` is called once per bar with input
             truncated to rows up to and including the current bar.
         pooled: If ``True``, the model is trained once per execution using
@@ -958,6 +1115,7 @@ class ModelSource:
         pooled: bool,
         kwargs: dict[str, Any],
         lags: Optional[int] = None,
+        lag_cols: tuple[str, ...] = (),
         per_bar: bool = False,
     ):
         self.name = name
@@ -965,6 +1123,7 @@ class ModelSource:
         self._input_data_fn = input_data_fn
         self._predict_fn = predict_fn
         self.lags = lags
+        self.lag_cols = tuple(lag_cols)
         self.per_bar = per_bar
         self.pooled = pooled
         self._kwargs = kwargs
@@ -1025,6 +1184,7 @@ class ModelLoader(ModelSource):
         pooled: bool,
         kwargs: dict[str, Any],
         lags: Optional[int] = None,
+        lag_cols: tuple[str, ...] = (),
         per_bar: bool = False,
     ):
         super().__init__(
@@ -1035,6 +1195,7 @@ class ModelLoader(ModelSource):
             pooled,
             kwargs,
             lags=lags,
+            lag_cols=lag_cols,
             per_bar=per_bar,
         )
         self._load_fn = functools.partial(load_fn, **kwargs)
@@ -1099,6 +1260,7 @@ class ModelTrainer(ModelSource):
         pooled: bool,
         kwargs: dict[str, Any],
         lags: Optional[int] = None,
+        lag_cols: tuple[str, ...] = (),
         per_bar: bool = False,
     ):
         super().__init__(
@@ -1109,6 +1271,7 @@ class ModelTrainer(ModelSource):
             pooled,
             kwargs,
             lags=lags,
+            lag_cols=lag_cols,
             per_bar=per_bar,
         )
         self._train_fn = functools.partial(train_fn, **kwargs)
@@ -1149,11 +1312,49 @@ class ModelTrainer(ModelSource):
         return f"ModelTrainer({self.name!r}, {self._kwargs})"
 
 
+def _parse_lag_cols(
+    lag_cols: Optional[Iterable[Union[str, Indicator]]],
+    lags: Optional[int],
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Normalizes ``lag_cols`` to column names and implied indicator names."""
+    if lag_cols is None:
+        return tuple(), tuple()
+    if lags is None:
+        raise ValueError("lag_cols requires lags to be set, e.g. lags=3.")
+    reserved = (DataCol.DATE.value, DataCol.SYMBOL.value)
+    names: list[str] = []
+    ind_names: list[str] = []
+    for col in lag_cols:
+        if isinstance(col, Indicator):
+            # Declaring an Indicator here also schedules it for computation.
+            ind_names.append(col.name)
+            name = col.name
+        elif isinstance(col, str):
+            name = col
+        else:
+            raise ValueError(
+                "lag_cols must contain column names or Indicators, got "
+                f"{type(col).__name__}."
+            )
+        if not name:
+            raise ValueError("lag_cols cannot contain an empty column name.")
+        if name in reserved:
+            raise ValueError(
+                f"lag_cols cannot contain reserved column {name!r}."
+            )
+        names.append(name)
+    if not names:
+        raise ValueError("lag_cols cannot be empty.")
+    # Declaration order sets the feature block order, so dedupe in place.
+    return tuple(dict.fromkeys(names)), tuple(dict.fromkeys(ind_names))
+
+
 def model(
     name: str,
     fn: Callable[..., Union[Any, tuple[Any, Iterable[str]]]],
     indicators: Optional[Iterable[Indicator]] = None,
     lags: Optional[int] = None,
+    lag_cols: Optional[Iterable[Union[str, Indicator]]] = None,
     per_bar: bool = False,
     input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]] = None,
     predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]] = None,
@@ -1185,16 +1386,41 @@ def model(
         indicators: :class:`Iterable` of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
-        lags: Number of lag steps to include for each input column inferred
-            from training data or returned by ``fn``. Stored as transform
-            metadata on model input (see :class:`ModelInput`).
+        lags: Number of lagged values to include for each column in
+            ``lag_cols``. Produces a feature matrix of shape ``(n_rows,
+            len(lag_cols) * lags)``, laid out as one contiguous block per
+            column holding lags ``1`` through ``lags`` in ascending order,
+            where lag ``1`` is the value from the previous bar. The unlagged
+            value is not included, since it is already available as the column
+            itself. Retrieve the matrix with
+            :func:`pybroker.model.feature_matrix_from_model_input`; it is
+            attached to model input rather than added as columns, so the input
+            :class:`pandas.DataFrame` is never widened or copied. Lagged
+            values are computed from each symbol's full history, so rows at
+            the start of a test window use real values carried over from the
+            preceding train window instead of ``NaN``. Rows whose lags are
+            undefined are dropped from training data only.
+        lag_cols: Column names and/or
+            :class:`pybroker.indicator.Indicator`\ s to compute lagged values
+            for. :class:`pybroker.indicator.Indicator`\ s passed here are added
+            to ``indicators``. Declaration order sets the order of the feature
+            blocks. Defaults to every column of the training data, excluding
+            ``date`` and ``symbol``.
         per_bar: If ``True``, ``predict_fn`` is called once per bar with input
-            truncated to rows up to and including the current bar. Requires
-            ``predict_fn``.
+            truncated to rows up to and including the current bar, and must
+            return a scalar prediction for that bar. Use for models that are
+            refit or updated every bar, such as GARCH or state space models.
+            Note this makes one model call per bar per symbol, which is far
+            slower than a single vectorized ``predict_fn`` call over the whole
+            test window. Requires ``predict_fn`` and is not supported with
+            ``pooled=True``.
         input_data_fn: :class:`Callable[[DataFrame], DataFrame]` for
             preprocessing input data passed to the model when making
             predictions. If set, ``input_data_fn`` will be called with a
-            :class:`pandas.DataFrame` containing all test data.
+            :class:`pandas.DataFrame` containing all test data, including when
+            ``per_bar=True``. It must return one row per bar; adding or
+            dropping rows would misalign predictions with bars and raises a
+            :class:`ValueError`.
         predict_fn: :class:`Callable[[Model, DataFrame], ndarray]` that
             overrides calling the model's default ``predict`` function. If set,
             ``predict_fn`` will be called with the trained model and a
@@ -1220,10 +1446,16 @@ def model(
         raise ValueError("per_bar=True requires predict_fn to be set.")
     validate_source_name(name, "model")
     scope = StaticScope.instance()
-    indicator_names = (
-        tuple(sorted(set(ind.name for ind in indicators)))
-        if indicators is not None
-        else tuple()
+    lag_col_names, lag_col_inds = _parse_lag_cols(lag_cols, lags)
+    indicator_names = tuple(
+        sorted(
+            (
+                set(ind.name for ind in indicators)
+                if indicators is not None
+                else set()
+            )
+            | set(lag_col_inds)
+        )
     )
     if pretrained:
         loader = ModelLoader(
@@ -1235,6 +1467,7 @@ def model(
             pooled=pooled,
             kwargs=kwargs,
             lags=lags,
+            lag_cols=lag_col_names,
             per_bar=per_bar,
         )
         scope.set_model_source(loader)
@@ -1249,6 +1482,7 @@ def model(
             pooled=pooled,
             kwargs=kwargs,
             lags=lags,
+            lag_cols=lag_col_names,
             per_bar=per_bar,
         )
         scope.set_model_source(trainer)
@@ -1262,10 +1496,15 @@ class CachedModel(NamedTuple):
         model: Trained model instance.
         input_cols: Names of the columns to be used as input for the model when
             making predictions.
+        lag_columns: Names of the columns that lag features were built from at
+            training time, in feature block order. ``None`` when the model was
+            not trained with ``lags``, and when loading a model cached before
+            this field existed.
     """
 
     model: Any
     input_cols: Optional[tuple[str]]
+    lag_columns: Optional[tuple[str, ...]] = None
 
 
 class _TrainerTask(NamedTuple):
@@ -1301,8 +1540,26 @@ def _infer_input_cols(
 
 
 def _lag_feature_cols(
-    train_data: ModelInput, pooled: bool, indicators: tuple[str, ...]
+    train_data: ModelInput,
+    pooled: bool,
+    indicators: tuple[str, ...],
+    lag_cols: tuple[str, ...] = (),
 ) -> tuple[str, ...]:
+    """Resolves the columns to build lag features from.
+
+    This is the authoritative resolver: the result is recorded on
+    :attr:`pybroker.common.TrainedModel.lag_columns` and reused when making
+    predictions, so that lag features are built the same way at both ends.
+    """
+    if lag_cols:
+        missing = tuple(col for col in lag_cols if col not in train_data)
+        if missing:
+            available = sorted(train_data.columns)
+            raise ValueError(
+                f"Column {missing[0]!r} in lag_cols not found in model input. "
+                f"Available columns: {available}."
+            )
+        return lag_cols
     date_col = DataCol.DATE.value
     return tuple(
         col
@@ -1589,6 +1846,7 @@ class ModelsMixin:
                         sym_train_data,
                         pooled=False,
                         indicators=source.indicators,
+                        lag_cols=source.lag_cols,
                     )
                     merge_lag_series_cache_from_store(
                         lag_series_cache,
@@ -1651,6 +1909,9 @@ class ModelsMixin:
             if trainer_result[0] == "pooled":
                 _, pooled_result = cast(PooledTrainerReturn, trainer_result)
                 model_name, symbols, model, input_cols = pooled_result
+                # Recorded so prediction builds lag features from the same
+                # columns the model was trained on.
+                lag_columns = task.train_data.lag_columns
                 for sym in symbols:
                     model_sym = ModelSymbol(model_name, sym)
                     scope.logger.info_train_model_start(model_sym)
@@ -1660,15 +1921,21 @@ class ModelsMixin:
                         predict_fn=task.source._predict_fn,
                         input_cols=input_cols,
                         per_bar=task.source.per_bar,
+                        lag_columns=lag_columns,
                     )
                     self._set_cached_model(
-                        model, input_cols, model_sym, cache_date_fields
+                        model,
+                        input_cols,
+                        model_sym,
+                        cache_date_fields,
+                        lag_columns,
                     )
                     scope.logger.info_train_model_completed(model_sym)
             else:
                 _, sym_result = cast(SymTrainerReturn, trainer_result)
                 model_sym, model, input_cols = sym_result
                 model_name, _ = model_sym
+                lag_columns = task.train_data.lag_columns
                 scope.logger.info_train_model_start(model_sym)
                 models[model_sym] = TrainedModel(
                     name=model_name,
@@ -1676,9 +1943,14 @@ class ModelsMixin:
                     predict_fn=task.source._predict_fn,
                     input_cols=input_cols,
                     per_bar=task.source.per_bar,
+                    lag_columns=lag_columns,
                 )
                 self._set_cached_model(
-                    model, input_cols, model_sym, cache_date_fields
+                    model,
+                    input_cols,
+                    model_sym,
+                    cache_date_fields,
+                    lag_columns,
                 )
                 scope.logger.info_train_model_completed(model_sym)
         for source, model_sym in loader_syms:
@@ -1769,6 +2041,7 @@ class ModelsMixin:
                 pooled_train_input,
                 pooled=True,
                 indicators=source.indicators,
+                lag_cols=source.lag_cols,
             )
             merge_lag_series_cache_from_store(
                 lag_series_cache,
@@ -1827,7 +2100,7 @@ class ModelsMixin:
                 compressed,
                 indicator_data,
                 source.indicators,
-                scope.custom_data_cols,
+                sorted(scope.custom_data_cols),
             )
             columns = sym_columns + (sym_col,)
             history_dates[sym] = np.asarray(bar_dates, dtype="datetime64[ns]")
@@ -1877,6 +2150,7 @@ class ModelsMixin:
                 pooled_train_input,
                 pooled=True,
                 indicators=source.indicators,
+                lag_cols=source.lag_cols,
             )
             interval = format_timeframe_interval(token)
 
@@ -1939,7 +2213,7 @@ class ModelsMixin:
             compressed,
             indicator_data,
             source.indicators,
-            scope.custom_data_cols,
+            sorted(scope.custom_data_cols),
         )
         _, train_arrays, train_dates = slice_arrays_by_dates(
             columns,
@@ -1964,6 +2238,7 @@ class ModelsMixin:
                 sym_train_data,
                 pooled=False,
                 indicators=source.indicators,
+                lag_cols=source.lag_cols,
             )
             interval = format_timeframe_interval(token)
 
@@ -2030,9 +2305,12 @@ class ModelsMixin:
         loaded: dict[ModelSymbol, TrainedModel] = {}
         for group_model_sym, cached_data in cached_by_sym.items():
             input_cols = None
+            lag_columns = None
             if isinstance(cached_data, CachedModel):
                 model = cached_data.model
                 input_cols = cached_data.input_cols
+                # Absent on models cached before the field existed.
+                lag_columns = getattr(cached_data, "lag_columns", None)
             else:
                 model = cached_data
             source = scope.get_model_source(group_model_sym.model_name)
@@ -2042,6 +2320,7 @@ class ModelsMixin:
                 predict_fn=source._predict_fn,
                 input_cols=input_cols,
                 per_bar=source.per_bar,
+                lag_columns=lag_columns,
             )
         return True, loaded
 
@@ -2088,9 +2367,12 @@ class ModelsMixin:
             cached_data = scope.model_cache.get(cache_key)
             if cached_data is not None:
                 input_cols = None
+                lag_columns = None
                 if isinstance(cached_data, CachedModel):
                     model = cached_data.model
                     input_cols = cached_data.input_cols
+                    # Absent on models cached before the field existed.
+                    lag_columns = getattr(cached_data, "lag_columns", None)
                 else:
                     model = cached_data
                 source = scope.get_model_source(model_sym.model_name)
@@ -2100,6 +2382,7 @@ class ModelsMixin:
                     predict_fn=source._predict_fn,
                     input_cols=input_cols,
                     per_bar=source.per_bar,
+                    lag_columns=lag_columns,
                 )
             else:
                 uncached_model_syms.append(model_sym)
@@ -2111,6 +2394,7 @@ class ModelsMixin:
         input_cols: Optional[tuple[str]],
         model_sym: ModelSymbol,
         cache_date_fields: CacheDateFields,
+        lag_columns: Optional[tuple[str, ...]] = None,
     ):
         scope = StaticScope.instance()
         if scope.model_cache is None:
@@ -2120,6 +2404,6 @@ class ModelsMixin:
             model_name=model_sym.model_name,
             fields=cache_date_fields,
         )
-        cached_model = CachedModel(model, input_cols)
+        cached_model = CachedModel(model, input_cols, lag_columns)
         scope.logger.debug_set_model_cache(cache_key)
         scope.model_cache.set(cache_key, cached_model)

@@ -80,6 +80,10 @@ class TrainedModel(NamedTuple):
         input_cols: Names of the columns to be used as input for the model when
             making predictions.
         per_bar: If ``True``, predictions are made incrementally once per bar.
+        lag_columns: Names of the columns that lag features were built from at
+            training time, in feature block order. Reused when making
+            predictions so that the lag features match the ones the model was
+            trained on. ``None`` when the model was not trained with ``lags``.
     """
 
     name: str
@@ -87,6 +91,7 @@ class TrainedModel(NamedTuple):
     predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]]
     input_cols: Optional[tuple[str]]
     per_bar: bool = False
+    lag_columns: Optional[tuple[str, ...]] = None
 
 
 class DataCol(Enum):

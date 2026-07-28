@@ -2,12 +2,14 @@
 
 import arch
 import numpy as np
+import pandas as pd
 import pytest
 from pybroker import Strategy, model
 from pybroker.common import DataCol
 from pybroker.config import StrategyConfig
 from pybroker.model import (
     feature_matrix_from_model_input,
+    model_input_lag_columns,
     model_input_lags,
 )
 from pybroker.scope import StaticScope
@@ -90,6 +92,7 @@ class TestStatefulWalkforward:
             train_fn,
             predict_fn=predict_fn,
             lags=2,
+            lag_cols=("close",),
         )
         ds = data_source_df[data_source_df[DataCol.SYMBOL.value] == "SPY"]
         strategy = Strategy(ds, START_DATE, END_DATE)
@@ -98,14 +101,17 @@ class TestStatefulWalkforward:
         assert seen_train_cols
         for cols in seen_train_cols:
             assert "close" in cols
+            # Lag features ride alongside model input rather than widening it.
             assert not any(name.endswith("_lag1") for name in cols)
         for matrix in seen_train_matrix:
             assert matrix is not None
+            assert matrix.shape[1] == 2
         assert seen_input
         cols, matrix, lags = seen_input[0]
         assert cols == {"close"}
         assert matrix is not None
-        assert matrix.shape == (1, 3)
+        # lags=2 over one lag column: lag 1 and lag 2, matching training.
+        assert matrix.shape == (1, 2)
         assert lags == 2
 
     def test_per_bar_fresh_model_each_walkforward_window(self, data_source_df):
@@ -185,7 +191,7 @@ class TestGarchIntegration:
         def predict_fn(model, data):
             matrix = feature_matrix_from_model_input(data)
             assert matrix is not None
-            assert matrix.shape[1] == 4
+            assert matrix.shape[1] == 3
             returns = data["close"].pct_change().dropna() * 100
             res = model.model.fix(model.params.values, returns)
             fcast = res.forecast(horizon=1)
@@ -197,9 +203,179 @@ class TestGarchIntegration:
             train_fn,
             predict_fn=predict_fn,
             lags=3,
+            lag_cols=("close",),
             per_bar=True,
         )
         ds = spy_df.copy()
         strategy = Strategy(ds, START_DATE, END_DATE)
         strategy.add_execution(lambda ctx: None, ["SPY"], models=m)
         strategy.walkforward(windows=2, train_size=0.5)
+
+
+class TestLagColumnContract:
+    """Lag features must be built identically at training and prediction."""
+
+    @staticmethod
+    def _widths(data_source_df, pooled, lag_cols=None):
+        widths = {}
+
+        def capture_train(train_data):
+            widths["train"] = feature_matrix_from_model_input(
+                train_data
+            ).shape[1]
+            widths["train_cols"] = model_input_lag_columns(train_data)
+
+        def train_fn(symbol, train_data, test_data):
+            capture_train(train_data)
+            return object(), ("close",)
+
+        def pooled_train_fn(train_data, test_data):
+            capture_train(train_data)
+            return object(), ("close",)
+
+        def predict_fn(model, data):
+            widths.setdefault(
+                "predict", feature_matrix_from_model_input(data).shape[1]
+            )
+            widths.setdefault("predict_cols", model_input_lag_columns(data))
+            return np.zeros(len(data))
+
+        m = model(
+            "lag_contract",
+            pooled_train_fn if pooled else train_fn,
+            predict_fn=predict_fn,
+            lags=3,
+            lag_cols=lag_cols,
+            pooled=pooled,
+        )
+        syms = ["SPY", "AAPL"] if pooled else ["SPY"]
+        ds = data_source_df[data_source_df[DataCol.SYMBOL.value].isin(syms)]
+        strategy = Strategy(ds, START_DATE, END_DATE)
+        strategy.add_execution(
+            lambda ctx: ctx.preds("lag_contract"), syms, models=m
+        )
+        strategy.walkforward(windows=1, train_size=0.5)
+        return widths
+
+    @pytest.mark.parametrize("pooled", [False, True])
+    def test_train_and_predict_widths_match(self, data_source_df, pooled):
+        # A narrower input_cols return value must not narrow the lag matrix,
+        # or the model is handed a different shape than it was fit on.
+        widths = self._widths(data_source_df, pooled)
+        assert widths["train"] == widths["predict"]
+        assert widths["train_cols"] == widths["predict_cols"]
+        assert widths["train"] == len(widths["train_cols"]) * 3
+
+    @pytest.mark.parametrize("pooled", [False, True])
+    def test_lag_cols_narrows_both_ends(self, data_source_df, pooled):
+        widths = self._widths(data_source_df, pooled, lag_cols=("close",))
+        assert widths["train"] == 3
+        assert widths["predict"] == 3
+        assert widths["train_cols"] == ("close",)
+        assert widths["predict_cols"] == ("close",)
+
+    def test_lag_cols_requires_lags(self):
+        with pytest.raises(ValueError, match="lag_cols requires lags"):
+            model("bad_lag_cols", lambda s, t, u: None, lag_cols=("close",))
+
+    def test_lag_cols_rejects_reserved_column(self):
+        with pytest.raises(ValueError, match="reserved column 'date'"):
+            model(
+                "bad_reserved",
+                lambda s, t, u: None,
+                lags=2,
+                lag_cols=("date",),
+            )
+
+    def test_lag_cols_rejects_unknown_column(self, data_source_df):
+        m = model(
+            "bad_unknown",
+            lambda s, t, u: object(),
+            predict_fn=lambda _m, d: np.zeros(len(d)),
+            lags=2,
+            lag_cols=("not_a_column",),
+        )
+        ds = data_source_df[data_source_df[DataCol.SYMBOL.value] == "SPY"]
+        strategy = Strategy(ds, START_DATE, END_DATE)
+        strategy.add_execution(lambda ctx: None, ["SPY"], models=m)
+        with pytest.raises(ValueError, match="lag_cols not found"):
+            strategy.walkforward(windows=1, train_size=0.5)
+
+
+class TestTimeframePerBar:
+    """Per-bar predictions on a compressed timeframe must not look ahead."""
+
+    @pytest.fixture()
+    def df(self):
+        dates = pd.date_range("2020-01-01", periods=120)
+        close = 100 + np.arange(120, dtype=float)
+        return pd.DataFrame(
+            {
+                "symbol": "SPY",
+                "date": dates,
+                "open": close,
+                "high": close + 1,
+                "low": close - 1,
+                "close": close,
+                "volume": 1e6,
+            }
+        )
+
+    def test_no_lookahead(self, df):
+        # Anchoring each prediction to its own bar's close makes a prediction
+        # built from future rows immediately visible.
+        m = model(
+            "tf_pb",
+            lambda s, t, u: object(),
+            predict_fn=lambda _m, data: float(data["close"].iloc[-1]),
+            per_bar=True,
+        )
+        strategy = Strategy(df, df["date"].iloc[0], df["date"].iloc[-1])
+        strategy.enable_timeframes("weekly", base_timeframe="1d")
+        seen = []
+
+        def exec_fn(ctx):
+            tf = ctx.timeframe("weekly")
+            preds = tf.preds("tf_pb")
+            if len(preds):
+                seen.append((preds.copy(), tf.close.copy()))
+
+        strategy.add_execution(exec_fn, ["SPY"], models=m)
+        strategy.walkforward(windows=1, train_size=0.5)
+        assert seen
+        for preds, closes in seen:
+            np.testing.assert_array_equal(preds, closes)
+
+    def test_predict_called_once_per_compressed_bar(self, df):
+        # Rebuilding the prediction history each base bar would replay
+        # earlier bars and corrupt stateful models.
+        calls = []
+
+        def predict_fn(mdl, data):
+            calls.append(len(data))
+            mdl["count"] += 1
+            return float(mdl["count"])
+
+        m = model(
+            "tf_pb_state",
+            lambda s, t, u: {"count": 0},
+            predict_fn=predict_fn,
+            per_bar=True,
+        )
+        strategy = Strategy(df, df["date"].iloc[0], df["date"].iloc[-1])
+        strategy.enable_timeframes("weekly", base_timeframe="1d")
+        final = []
+
+        def exec_fn(ctx):
+            preds = ctx.timeframe("weekly").preds("tf_pb_state")
+            if len(preds):
+                final.append(preds.copy())
+
+        strategy.add_execution(exec_fn, ["SPY"], models=m)
+        strategy.walkforward(windows=1, train_size=0.5)
+        assert calls
+        assert calls == list(range(1, len(calls) + 1))
+        assert final
+        np.testing.assert_array_equal(
+            final[-1], np.arange(1.0, len(final[-1]) + 1)
+        )

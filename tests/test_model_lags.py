@@ -102,7 +102,12 @@ class TestLagData:
         assert model_input.columns == tuple(sym_df.columns)
         matrix = feature_matrix_from_model_input(model_input)
         assert matrix is not None
-        assert matrix.shape == (len(sym_df), 3)
+        # lags=2 yields lag 1 and lag 2 only; the unlagged value stays in the
+        # frame as the column itself.
+        assert matrix.shape == (len(sym_df), 2)
+        close = sym_df[DataCol.CLOSE.value].to_numpy(dtype=float)
+        np.testing.assert_array_equal(matrix[2:, 0], close[1:-1])
+        np.testing.assert_array_equal(matrix[2:, 1], close[:-2])
         assert model_input_lags(model_input) == 2
 
     def test_drop_lag_warmup(self, sample_df):
@@ -175,7 +180,7 @@ class TestModelInputScopeLags:
         assert seen_cols[0] == ["close"]
         matrix = feature_matrix_from_model_input(model_input)
         assert matrix is not None
-        assert matrix.shape[1] == 3
+        assert matrix.shape[1] == 2
 
     def test_test_bar_zero_has_train_tail_lags(self, lag_setup):
         input_scope, sym, _, _, sym_df = lag_setup
@@ -183,9 +188,10 @@ class TestModelInputScopeLags:
         model_input = input_scope.fetch(sym, "lag_model", end_index=1)
         matrix = feature_matrix_from_model_input(model_input)
         assert matrix is not None
-        assert matrix[0, 0] == model_input["close"].iloc[0]
-        assert matrix[0, 1] == train_tail["close"]
-        assert matrix[0, 2] == sym_df.iloc[len(sym_df) // 2 - 2]["close"]
+        # Test bar 0 carries real lag values from the tail of the train
+        # window rather than NaN warmup.
+        assert matrix[0, 0] == train_tail["close"]
+        assert matrix[0, 1] == sym_df.iloc[len(sym_df) // 2 - 2]["close"]
 
     def test_slice_preserves_lag_features(self, lag_setup):
         input_scope, sym, _, _, _ = lag_setup
@@ -214,7 +220,6 @@ def _build_lag_feature_matrix_reference(
     symbol: str,
     columns: tuple[str, ...],
     lags: int,
-    base_arrays: dict[str, np.ndarray],
     row_dates: np.ndarray,
     history_dates: np.ndarray,
     lag_cache: dict,
@@ -222,7 +227,7 @@ def _build_lag_feature_matrix_reference(
 ) -> np.ndarray:
     """Pure-Python reference for lag feature matrix assembly."""
     n_rows = len(row_dates)
-    n_features = len(columns) * (lags + 1)
+    n_features = len(columns) * lags
     if n_rows == 0:
         return np.empty((0, n_features), dtype=np.float64)
     offset = int(np.searchsorted(history_dates, row_dates[0]))
@@ -235,13 +240,11 @@ def _build_lag_feature_matrix_reference(
     col_idx = 0
     for col in columns:
         stacked = lag_cache[LagSeriesKey(symbol, col, 0, interval)]
-        matrix[:, col_idx : col_idx + lags + 1] = stacked[
-            :, offset : offset + n_rows
+        # Row 0 of ``stacked`` is the unlagged series, which is excluded.
+        matrix[:, col_idx : col_idx + lags] = stacked[
+            1 : lags + 1, offset : offset + n_rows
         ].T
-        matrix[:, col_idx] = np.ascontiguousarray(
-            base_arrays[col], dtype=np.float64
-        )
-        col_idx += lags + 1
+        col_idx += lags
     return matrix
 
 
@@ -311,15 +314,11 @@ class TestLagNumbaKernels:
             multi_col_df[DataCol.SYMBOL.value] == "SPY"
         ].drop(columns=DataCol.SYMBOL.value)
         history_dates, _ = symbol_history_arrays(multi_col_df, "SPY", columns)
-        base_arrays = {
-            col: sym_df[col].to_numpy(dtype=np.float64) for col in columns
-        }
         row_dates = sym_df[DataCol.DATE.value].to_numpy()
         expected = _build_lag_feature_matrix_reference(
             "SPY",
             columns,
             lags,
-            base_arrays,
             row_dates,
             history_dates,
             cache,
@@ -328,7 +327,6 @@ class TestLagNumbaKernels:
             "SPY",
             columns,
             lags,
-            base_arrays,
             row_dates,
             history_dates,
             cache,
@@ -352,14 +350,8 @@ class TestLagNumbaKernels:
         row_dates = multi_col_df[DataCol.DATE.value].to_numpy(
             dtype="datetime64[ns]"
         )
-        base_arrays = {
-            col: multi_col_df[col].to_numpy(dtype=np.float64)
-            for col in columns
-        }
-        base_arrays[DataCol.SYMBOL.value] = sym_col
-        base_arrays[DataCol.DATE.value] = row_dates
         n_rows = len(sym_col)
-        n_features = len(columns) * (lags + 1)
+        n_features = len(columns) * lags
         expected = np.empty((n_rows, n_features), dtype=np.float64)
         order = np.argsort(sym_col, kind="stable")
         sorted_syms = sym_col[order]
@@ -368,12 +360,10 @@ class TestLagNumbaKernels:
         for sym, start, end in zip(unique_syms, start_indices, end_indices):
             idx = order[start:end]
             sym_dates = row_dates[idx]
-            sym_base = {col: base_arrays[col][idx] for col in columns}
             sym_matrix = _build_lag_feature_matrix_reference(
                 sym,
                 columns,
                 lags,
-                sym_base,
                 sym_dates,
                 history_dates_by_symbol[sym],
                 cache,
@@ -383,7 +373,6 @@ class TestLagNumbaKernels:
             sym_col,
             columns,
             lags,
-            base_arrays,
             row_dates,
             history_dates_by_symbol,
             cache,
@@ -392,3 +381,232 @@ class TestLagNumbaKernels:
         np.testing.assert_allclose(
             actual, expected, rtol=0, atol=0, equal_nan=True
         )
+
+
+class TestLagCacheDepth:
+    """Regression tests for lag caches shared across models on one symbol."""
+
+    @pytest.fixture()
+    def scope_setup(self, data_source_df, symbols):
+        def build(specs):
+            scope = StaticScope.instance()
+            scope._model_sources.clear()
+            sym = symbols[0]
+            sym_df = data_source_df[data_source_df["symbol"] == sym]
+            test_df = sym_df.iloc[len(sym_df) // 2 :].set_index(
+                ["symbol", "date"]
+            )
+            dates = sorted(test_df.index.get_level_values(1).unique())
+            trained = {}
+            for name, cols, lags in specs:
+                model(
+                    name,
+                    lambda s, t, u, c=cols: (object(), c),
+                    lags=lags,
+                    lag_cols=cols,
+                )
+                trained[ModelSymbol(name, sym)] = TrainedModel(
+                    name=name,
+                    instance=object(),
+                    predict_fn=None,
+                    input_cols=cols,
+                    lag_columns=cols,
+                )
+            input_scope = ModelInputScope(
+                ColumnScope(test_df),
+                IndicatorScope({}, dates),
+                trained,
+                ColumnScope(sym_df.set_index(["symbol", "date"]).sort_index()),
+                dates,
+            )
+            return input_scope, sym, sym_df
+
+        return build
+
+    @staticmethod
+    def _expected_lags(sym_df, col, lags, n_test_rows):
+        """Returns the lag block expected for the test window."""
+        values = sym_df[col].to_numpy(dtype=float)
+        start = len(values) - n_test_rows
+        expected = np.empty((n_test_rows, lags), dtype=float)
+        for r in range(n_test_rows):
+            for lag in range(1, lags + 1):
+                src = start + r - lag
+                expected[r, lag - 1] = values[src] if src >= 0 else np.nan
+        return expected
+
+    def test_two_models_different_lags_same_symbol(self, scope_setup):
+        # A shallower cache entry must not be reused for a deeper request:
+        # the njit fill kernel would read out of bounds without raising.
+        input_scope, sym, sym_df = scope_setup(
+            [("lag2", ("close",), 2), ("lag6", ("close",), 6)]
+        )
+        shallow = input_scope.fetch(sym, "lag2")
+        deep = input_scope.fetch(sym, "lag6")
+        shallow_matrix = feature_matrix_from_model_input(shallow)
+        deep_matrix = feature_matrix_from_model_input(deep)
+        assert shallow_matrix.shape[1] == 2
+        assert deep_matrix.shape[1] == 6
+        np.testing.assert_array_equal(
+            deep_matrix,
+            self._expected_lags(sym_df, "close", 6, len(deep_matrix)),
+        )
+        np.testing.assert_array_equal(
+            shallow_matrix,
+            self._expected_lags(sym_df, "close", 2, len(shallow_matrix)),
+        )
+
+    def test_deep_model_first_then_shallow(self, scope_setup):
+        input_scope, sym, sym_df = scope_setup(
+            [("deep", ("close",), 6), ("shallow", ("close",), 2)]
+        )
+        deep_matrix = feature_matrix_from_model_input(
+            input_scope.fetch(sym, "deep")
+        )
+        shallow_matrix = feature_matrix_from_model_input(
+            input_scope.fetch(sym, "shallow")
+        )
+        np.testing.assert_array_equal(
+            deep_matrix,
+            self._expected_lags(sym_df, "close", 6, len(deep_matrix)),
+        )
+        np.testing.assert_array_equal(
+            shallow_matrix,
+            self._expected_lags(sym_df, "close", 2, len(shallow_matrix)),
+        )
+
+    def test_two_models_different_lag_columns_same_symbol(self, scope_setup):
+        input_scope, sym, sym_df = scope_setup(
+            [("on_close", ("close",), 2), ("on_volume", ("volume",), 2)]
+        )
+        close_matrix = feature_matrix_from_model_input(
+            input_scope.fetch(sym, "on_close")
+        )
+        volume_matrix = feature_matrix_from_model_input(
+            input_scope.fetch(sym, "on_volume")
+        )
+        np.testing.assert_array_equal(
+            close_matrix,
+            self._expected_lags(sym_df, "close", 2, len(close_matrix)),
+        )
+        np.testing.assert_array_equal(
+            volume_matrix,
+            self._expected_lags(sym_df, "volume", 2, len(volume_matrix)),
+        )
+
+
+class TestLagCacheBounds:
+    def test_store_stacked_lags_keeps_tallest(self):
+        from pybroker.model import _store_stacked_lags_in_cache
+
+        cache = {}
+        values = np.arange(10, dtype=float)
+        _store_stacked_lags_in_cache(
+            cache, "SPY", "close", 6, _build_stacked_lags(values, 6)
+        )
+        _store_stacked_lags_in_cache(
+            cache, "SPY", "close", 2, _build_stacked_lags(values, 2)
+        )
+        assert cache[LagSeriesKey("SPY", "close", 0)].shape[0] == 7
+
+    def test_build_lag_feature_matrix_rejects_shallow_cache(self):
+        values = np.arange(10, dtype=float)
+        dates = np.arange(
+            np.datetime64("2020-01-01"),
+            np.datetime64("2020-01-11"),
+        )
+        cache = {}
+        from pybroker.model import _store_stacked_lags_in_cache
+
+        _store_stacked_lags_in_cache(
+            cache, "SPY", "close", 2, _build_stacked_lags(values, 2)
+        )
+        with pytest.raises(ValueError, match="lag rows"):
+            build_lag_feature_matrix("SPY", ("close",), 6, dates, dates, cache)
+
+    def test_build_lag_feature_matrix_rejects_missing_column(self):
+        dates = np.arange(
+            np.datetime64("2020-01-01"),
+            np.datetime64("2020-01-11"),
+        )
+        with pytest.raises(ValueError, match="Lag history missing"):
+            build_lag_feature_matrix("SPY", ("close",), 2, dates, dates, {})
+
+
+class TestLagFeaturesAttrs:
+    """The lag matrix rides in ``attrs``; it must not break pandas ops."""
+
+    @pytest.fixture()
+    def sample_df(self):
+        return pd.DataFrame(
+            {
+                DataCol.SYMBOL.value: ["SPY"] * 5,
+                DataCol.DATE.value: pd.date_range("2020-01-01", periods=5),
+                DataCol.CLOSE.value: [100.0, 101.0, 102.0, 103.0, 104.0],
+            }
+        )
+
+    @pytest.fixture()
+    def lagged_df(self, sample_df):
+        cache = compute_lag_series_cache(sample_df, ("SPY",), ("close",), 2)
+        sym_df = sample_df[sample_df[DataCol.SYMBOL.value] == "SPY"].drop(
+            columns=DataCol.SYMBOL.value
+        )
+        history_dates_arr, _ = symbol_history_arrays(
+            sample_df, "SPY", ("close",)
+        )
+        model_input = model_input_from_frame(sym_df)
+        apply_lags_to_model_input(
+            model_input, ("close",), 2, cache, "SPY", history_dates_arr
+        )
+        from pybroker.model import model_input_to_dataframe
+
+        return model_input_to_dataframe(model_input)
+
+    def test_concat_does_not_raise(self, lagged_df):
+        # A bare ndarray in attrs makes pandas' attrs comparison raise.
+        assert len(pd.concat([lagged_df, lagged_df.copy()])) == 2 * len(
+            lagged_df
+        )
+
+    def test_merge_does_not_raise(self, lagged_df):
+        merged = lagged_df.merge(lagged_df.copy(), on=DataCol.CLOSE.value)
+        assert not merged.empty
+
+    def test_matrix_is_not_copied(self, lagged_df):
+        holder = lagged_df.attrs["lag_features"]
+        assert lagged_df.head(2).attrs["lag_features"] is holder
+
+    def test_dropped_rows_raise_instead_of_misaligning(self, lagged_df):
+        trimmed = lagged_df.iloc[1:]
+        with pytest.raises(ValueError, match="one row per bar"):
+            feature_matrix_from_model_input(trimmed)
+
+
+class TestColumnOrderDeterminism:
+    def test_model_input_columns_stable_across_hash_seeds(self):
+        # Iterating the registered column frozenset yields a different order
+        # per process, which makes the positionally-consumed lag matrix
+        # irreproducible across runs.
+        import subprocess
+        import sys
+
+        code = (
+            "import pybroker;"
+            "from pybroker.model import _model_input_columns;"
+            "from pybroker.scope import StaticScope;"
+            "pybroker.register_columns('zeta', 'alpha');"
+            "s = StaticScope.instance();"
+            "print(_model_input_columns(('ind',), s.all_data_cols))"
+        )
+        outs = set()
+        for seed in ("0", "1", "12345"):
+            result = subprocess.run(
+                [sys.executable, "-c", code],
+                capture_output=True,
+                text=True,
+                env={"PYTHONHASHSEED": seed, "PATH": "/usr/bin:/bin"},
+            )
+            assert result.returncode == 0, result.stderr
+            outs.add(result.stdout.strip())
+        assert len(outs) == 1, outs

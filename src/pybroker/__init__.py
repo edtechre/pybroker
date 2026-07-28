@@ -67,7 +67,10 @@ from pybroker.model import (
     ModelLoader as ModelLoader,
     ModelSource as ModelSource,
     ModelTrainer as ModelTrainer,
+    feature_matrix_from_model_input as feature_matrix_from_model_input,
     model as model,
+    model_input_lag_columns as model_input_lag_columns,
+    model_input_lags as model_input_lags,
 )
 from pybroker.portfolio import (
     Entry as Entry,

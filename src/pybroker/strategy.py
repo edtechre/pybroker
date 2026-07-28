@@ -71,7 +71,6 @@ from pybroker.scope import (
     TimeframeScope,
     column_scope_from_frame,
     get_signals,
-    merge_symbol_array_stores,
     slice_symbol_array_store_by_dates,
     sym_exec_dates_from_store,
     symbol_array_store_from_frame,
@@ -1873,7 +1872,7 @@ class Strategy(
             df,
             symbols,
             self._timeframes,
-            self._scope.custom_data_cols,
+            sorted(self._scope.custom_data_cols),
             self._base_bar_seconds,
         )
 
@@ -2524,8 +2523,16 @@ class Strategy(
                     master_store, train_dates_arr
                 )
                 if test_store is not None:
-                    history_store = merge_symbol_array_stores(
-                        train_store, test_store
+                    # Slice the contiguous span rather than merging the two
+                    # windows: with lookahead > 1 the skipped bars fall
+                    # between them, and omitting those would make "lag 1" at
+                    # the train/test boundary reach lookahead bars back.
+                    span_mask = (master_dates_arr >= train_dates_arr[0]) & (
+                        master_dates_arr <= test_dates_arr[-1]
+                    )
+                    history_store = slice_symbol_array_store_by_dates(
+                        master_store,
+                        np.unique(master_dates_arr[span_mask]),
                     )
                 else:
                     history_store = train_store

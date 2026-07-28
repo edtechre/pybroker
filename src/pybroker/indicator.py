@@ -90,7 +90,7 @@ def _to_bar_data(df: pd.DataFrame) -> BarData:
         },  # type: ignore[arg-type]
         **{
             col: df[col].to_numpy(copy=False) if col in df.columns else None
-            for col in StaticScope.instance().custom_data_cols
+            for col in sorted(StaticScope.instance().custom_data_cols)
         },  # type: ignore[arg-type]
     )
 
@@ -446,7 +446,7 @@ class IndicatorsMixin:
             symbol_store = symbol_array_store_from_frame(
                 df, symbols=needed_syms
             )
-        sym_data = sym_data_from_store(symbol_store, scope.all_data_cols)
+        sym_data = sym_data_from_store(symbol_store, scope.ordered_data_cols)
         for i, (ind_sym, series) in enumerate(
             self._run_indicators(
                 sym_data,
@@ -533,7 +533,7 @@ class IndicatorsMixin:
                 continue
             fns[ind_name] = _decorate_indicator_fn(ind_name, hyperparams)
         scope = StaticScope.instance()
-        custom_data_cols = tuple(scope.custom_data_cols)
+        custom_data_cols = tuple(sorted(scope.custom_data_cols))
         default_data_cols = scope.default_data_cols
         ind_names_by_sym: dict[str, list[str]] = defaultdict(list)
         for ind_name, sym in ind_syms:
