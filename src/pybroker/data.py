@@ -562,6 +562,10 @@ class YFinance(DataSource):
         df = df.reset_index()
         if len(symbols) == 1:
             sym = next(iter(symbols))
+            if isinstance(df.columns, pd.MultiIndex):
+                # yfinance returns symbol-keyed MultiIndex columns even for a
+                # single symbol, which would make each df[col] a DataFrame.
+                df.columns = df.columns.get_level_values(0)
             result = pd.DataFrame(
                 {
                     DataCol.DATE.value: df["Date"].values,

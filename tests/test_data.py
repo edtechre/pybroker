@@ -540,6 +540,38 @@ class TestYFinance:
         assert (df["date"].unique() == expected_df.index.unique()).all()
 
     @pytest.mark.usefixtures("setup_ds_cache")
+    @pytest.mark.parametrize("auto_adjust", [True, False])
+    def test_query_when_single_symbol_multiindex_columns(
+        self, yfinance_single_df, auto_adjust
+    ):
+        # yfinance returns symbol-keyed MultiIndex columns even when a single
+        # symbol is downloaded.
+        expected_df = yfinance_single_df.copy()
+        if auto_adjust:
+            expected_df = expected_df.drop(columns=["Adj Close"])
+        expected_df.columns = pd.MultiIndex.from_product(
+            [expected_df.columns, ["SPY"]]
+        )
+        yf = YFinance(auto_adjust=auto_adjust)
+        with mock.patch.object(yfinance, "download", return_value=expected_df):
+            df = yf.query(["SPY"], START_DATE, END_DATE)
+        expected_columns = {
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "symbol",
+        }
+        if not auto_adjust:
+            expected_columns.add("adj_close")
+        assert set(df.columns) == expected_columns
+        assert df.shape[0] == 505
+        assert set(df["symbol"].unique()) == {"SPY"}
+        assert (df["date"].unique() == expected_df.index.unique()).all()
+
+    @pytest.mark.usefixtures("setup_ds_cache")
     @pytest.mark.parametrize(
         "columns",
         [
