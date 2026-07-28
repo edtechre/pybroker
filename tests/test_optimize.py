@@ -4,6 +4,7 @@ import json
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+import pandas as pd
 import pytest
 
 import pybroker
@@ -17,6 +18,7 @@ from pybroker.indicator import indicator
 from pybroker.model import ModelLoader, model
 from pybroker.scope import StaticScope
 from pybroker.strategy import Strategy
+from pybroker.timeframe import compress_symbol_df
 from pybroker.vect import highv
 from .fixtures import *  # noqa: F401,F403
 
@@ -368,3 +370,52 @@ def test_optimize_indicator_memo_max_validation(data_source_df):
             n_trials=1,
             disable_parallel_indicators=True,
         )
+
+
+def test_optimize_trial_timeframe_alignment_matches_walkforward(
+    data_source_df,
+):
+    # Trials run over the train window, so their timeframe data must be
+    # realigned to it -- otherwise `completed` still indexes from the very
+    # first bar of history and every window after the first is shifted.
+    hyperparam("lookback", default=10, low=5, high=10, step=5)
+    pretrained = model(
+        "tf_align",
+        lambda sym, train_start_date, train_end_date: FakeModel(
+            sym, np.zeros(1)
+        ),
+        pretrained=True,
+        predict_fn=lambda m, d: np.zeros(len(d)),
+    )
+    seen: list[tuple[np.datetime64, int]] = []
+
+    def exec_fn(ctx):
+        seen.append(
+            (np.datetime64(ctx.dt), len(ctx.timeframe("weekly").close))
+        )
+
+    strategy = _make_strategy(data_source_df)
+    strategy.enable_timeframes("weekly", base_timeframe="1d")
+    strategy.add_execution(exec_fn, "AAPL", models=[pretrained])
+    strategy.optimize(
+        lambda r: r.metrics.total_pnl,
+        sampler="grid",
+        windows=2,
+        train_size=0.5,
+        disable_parallel_indicators=True,
+    )
+    assert seen
+
+    sym_df = data_source_df[data_source_df["symbol"] == "AAPL"]
+    sym_df = sym_df[
+        (sym_df["date"] >= pd.Timestamp(START_DATE))
+        & (sym_df["date"] <= pd.Timestamp(END_DATE))
+    ].sort_values("date")
+    reference = compress_symbol_df(
+        sym_df.drop(columns=["symbol"]), "weekly", frozenset(), 86400.0
+    )
+    base_dates = reference.base_dates
+    for date, count in seen:
+        idx = int(np.searchsorted(base_dates, date))
+        assert base_dates[idx] == date
+        assert count == int(reference.completed[idx]) + 1

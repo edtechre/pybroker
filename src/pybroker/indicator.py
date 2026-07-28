@@ -32,6 +32,7 @@ from pybroker.timeframe import (
     CompressedBars,
     compressed_bars_to_bar_data,
     parse_indicator_timeframe_name,
+    validate_source_name,
 )
 from pybroker.vect import highv, lowv, returnv
 from collections import defaultdict
@@ -204,7 +205,7 @@ def _indicator_args(
             "low": bars.low,
             "close": bars.close,
             "volume": bars.volume,
-            "vwap": None,
+            "vwap": bars.vwap,
             "custom_col_data": bars.custom,
         }
     return {
@@ -305,6 +306,7 @@ def indicator(
     Returns:
         :class:`.Indicator` instance.
     """
+    validate_source_name(name, "indicator")
     scope = StaticScope.instance()
     ind = Indicator(name, fn, kwargs)
     scope.set_indicator(ind)

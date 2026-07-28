@@ -30,6 +30,7 @@ from pybroker.timeframe import (
     parse_model_timeframe_name,
     format_timeframe_interval,
     slice_arrays_by_dates,
+    validate_source_name,
 )
 from dataclasses import dataclass
 from datetime import datetime
@@ -1217,6 +1218,7 @@ def model(
         raise ValueError("per_bar=True is not supported with pooled=True.")
     if per_bar and predict_fn is None:
         raise ValueError("per_bar=True requires predict_fn to be set.")
+    validate_source_name(name, "model")
     scope = StaticScope.instance()
     indicator_names = (
         tuple(sorted(set(ind.name for ind in indicators)))

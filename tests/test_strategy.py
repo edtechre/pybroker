@@ -4651,6 +4651,14 @@ class TestStrategy:
         strategy.walkforward(windows=2, calc_bootstrap=False)
 
 
+def _sma(bar_data, period):
+    close = bar_data.close
+    out = np.full(len(close), np.nan)
+    for i in range(period - 1, len(close)):
+        out[i] = np.mean(close[i - period + 1 : i + 1])
+    return out
+
+
 class TestStrategyTimeframes:
     @pytest.mark.parametrize("disable_parallel_indicators", [True, False])
     def test_weekly_timeframe_backtest(
@@ -4957,3 +4965,259 @@ class TestStrategyTimeframes:
             assert n_weekly > 0
             assert n_every5 > 0
             assert n_weekly != n_every5
+
+    def test_per_bar_model_predicts_one_row_per_compressed_bar(
+        self, data_source_df, scope
+    ):
+        # per_bar predictions are counted in compressed bars, so they must not
+        # be routed through the base-bar `completed` map.
+        sma_ind = indicator("sma2", _sma, period=2)
+
+        class _Fake:
+            def predict(self, X):
+                return np.full(len(X), float(len(X)))
+
+        per_bar_model = model(
+            "per_bar_m",
+            lambda sym, train_data, test_data: _Fake(),
+            [sma_ind],
+            per_bar=True,
+            predict_fn=lambda m, d: m.predict(d),
+        )
+        seen = []
+
+        def exec_fn(ctx):
+            preds = ctx.timeframe("weekly").preds("per_bar_m")
+            if len(preds):
+                seen.append(list(preds))
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.enable_timeframes("weekly", base_timeframe="1d")
+        strategy.add_execution(exec_fn, "SPY", models=[per_bar_model])
+        strategy.walkforward(windows=1, train_size=0.9)
+        assert seen
+        last = seen[-1]
+        assert last == [float(i + 1) for i in range(len(last))]
+
+    def test_timeframe_preds_do_not_see_future_windows(
+        self, data_source_df, scope
+    ):
+        # A cross-row transform must not reach compressed bars belonging to a
+        # later walkforward window.
+        sma_ind = indicator("sma2", _sma, period=2)
+
+        class _MaxClose:
+            def predict(self, X):
+                return np.full(len(X), float(np.asarray(X["close"]).max()))
+
+        def make(name):
+            return model(
+                name,
+                lambda sym, train_data, test_data: _MaxClose(),
+                [sma_ind],
+                predict_fn=lambda m, d: m.predict(d),
+            )
+
+        tf_model, base_model = make("tf_max"), make("base_max")
+        seen = []
+
+        def exec_fn(ctx):
+            tf_preds = ctx.timeframe("weekly").preds("tf_max")
+            base_preds = ctx.preds("base_max")
+            if len(tf_preds) and len(base_preds):
+                seen.append((tf_preds[-1], base_preds[-1]))
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.enable_timeframes("weekly", base_timeframe="1d")
+        strategy.add_execution(exec_fn, "SPY", models=[tf_model, base_model])
+        strategy.walkforward(windows=3, train_size=0.5)
+        assert seen
+        for tf_max, base_max in seen:
+            assert tf_max <= base_max
+
+    def test_pretrained_model_allowed_with_timeframes(
+        self, data_source_df, scope
+    ):
+        # Pretrained models stay bound to the base timeframe; declaring a
+        # timeframe must not try to train them per interval.
+        sma_ind = indicator("sma2", _sma, period=2)
+
+        class _Zeros:
+            def predict(self, X):
+                return np.zeros(len(X))
+
+        pretrained = model(
+            "pre",
+            lambda sym, *args, **kwargs: _Zeros(),
+            [sma_ind],
+            pretrained=True,
+            predict_fn=lambda m, d: m.predict(d),
+        )
+        seen = []
+
+        def exec_fn(ctx):
+            seen.append(len(ctx.preds("pre")))
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.enable_timeframes("weekly", base_timeframe="1d")
+        strategy.add_execution(exec_fn, "SPY", models=[pretrained])
+        strategy.walkforward(windows=1)
+        assert seen
+        assert all(n > 0 for n in seen)
+
+    def test_pretrained_model_on_timeframe_then_error(
+        self, data_source_df, scope
+    ):
+        sma_ind = indicator("sma2", _sma, period=2)
+
+        class _Zeros:
+            def predict(self, X):
+                return np.zeros(len(X))
+
+        pretrained = model(
+            "pre",
+            lambda sym, *args, **kwargs: _Zeros(),
+            [sma_ind],
+            pretrained=True,
+            predict_fn=lambda m, d: m.predict(d),
+        )
+        errors = []
+
+        def exec_fn(ctx):
+            try:
+                ctx.timeframe("weekly").preds("pre")
+            except ValueError as e:
+                errors.append(str(e))
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.enable_timeframes("weekly", base_timeframe="1d")
+        strategy.add_execution(exec_fn, "SPY", models=[pretrained])
+        strategy.walkforward(windows=1)
+        assert errors
+        assert "not trained per timeframe" in errors[0]
+
+    def test_timeframe_indicator_not_readable_from_base_ctx(
+        self, data_source_df, scope
+    ):
+        sma_ind = indicator("sma2", _sma, period=2)
+        errors = []
+
+        def exec_fn(ctx):
+            try:
+                ctx.indicator("sma2@weekly")
+            except ValueError as e:
+                errors.append(str(e))
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.enable_timeframes("weekly", base_timeframe="1d")
+        strategy.add_execution(exec_fn, "SPY", indicators=[sma_ind])
+        strategy.walkforward(windows=1)
+        assert errors
+        assert "ctx.timeframe('weekly').indicator('sma2')" in errors[0]
+
+    def test_timeframe_model_predicts_once_per_window(
+        self, data_source_df, scope
+    ):
+        # Compressed data is immutable per window, so predictions are computed
+        # once -- not rebuilt on every base bar.
+        sma_ind = indicator("sma2", _sma, period=2)
+        calls = []
+
+        class _Counting:
+            def predict(self, X):
+                calls.append(len(X))
+                return np.zeros(len(X))
+
+        counted = model(
+            "counted",
+            lambda sym, train_data, test_data: _Counting(),
+            [sma_ind],
+            predict_fn=lambda m, d: m.predict(d),
+        )
+
+        def exec_fn(ctx):
+            ctx.timeframe("weekly").preds("counted")
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.enable_timeframes("weekly", base_timeframe="1d")
+        strategy.add_execution(exec_fn, "SPY", models=[counted])
+        strategy.walkforward(windows=1)
+        assert len(calls) == 1
+
+    def test_vwap_indicator_with_declared_timeframe(
+        self, data_source_df, scope
+    ):
+        # Declaring a timeframe must not strip vwap from compressed bars.
+        df = data_source_df.copy()
+        df["vwap"] = df["close"] + 0.5
+        vwap_ind = indicator("vwap2", lambda bar_data: bar_data.vwap * 2.0)
+        seen = []
+
+        def exec_fn(ctx):
+            values = ctx.timeframe("weekly").indicator("vwap2")
+            if len(values):
+                seen.append(values[-1])
+
+        strategy = Strategy(df, START_DATE, END_DATE)
+        strategy.enable_timeframes("weekly", base_timeframe="1d")
+        strategy.add_execution(exec_fn, "SPY", indicators=[vwap_ind])
+        strategy.walkforward(windows=1)
+        assert seen
+        assert all(np.isfinite(v) for v in seen)
+
+    def test_symbol_with_single_bar_does_not_abort(self, scope):
+        # A newly listed or halted symbol has too few bars to contradict the
+        # declared base spacing, so it must not kill the whole run.
+        dates = pd.date_range(START_DATE, periods=40, freq="B")
+        close = np.arange(1.0, len(dates) + 1)
+        full = pd.DataFrame(
+            {
+                "symbol": "AAA",
+                "date": dates,
+                "open": close,
+                "high": close + 1,
+                "low": close - 1,
+                "close": close,
+                "volume": np.ones(len(dates)),
+            }
+        )
+        thin = full.iloc[[10]].copy()
+        thin["symbol"] = "BBB"
+        df = pd.concat([full, thin]).reset_index(drop=True)
+        seen = set()
+
+        def exec_fn(ctx):
+            seen.add(ctx.symbol)
+
+        strategy = Strategy(df, dates[0], dates[-1])
+        strategy.enable_timeframes("weekly", base_timeframe="1d")
+        strategy.add_execution(exec_fn, ["AAA", "BBB"])
+        strategy.walkforward(windows=1)
+        assert "AAA" in seen
+
+    def test_days_filter_with_declared_timeframe(self, scope):
+        # `days=` thins the frame on purpose; the resulting weekly gaps are
+        # multiples of the base spacing and must still validate.
+        dates = pd.date_range(START_DATE, periods=60, freq="B")
+        close = np.arange(1.0, len(dates) + 1)
+        df = pd.DataFrame(
+            {
+                "symbol": "AAA",
+                "date": dates,
+                "open": close,
+                "high": close + 1,
+                "low": close - 1,
+                "close": close,
+                "volume": np.ones(len(dates)),
+            }
+        )
+        seen = []
+
+        def exec_fn(ctx):
+            seen.append(ctx.dt)
+
+        strategy = Strategy(df, dates[0], dates[-1])
+        strategy.enable_timeframes("monthly", base_timeframe="1d")
+        strategy.add_execution(exec_fn, "AAA")
+        strategy.walkforward(windows=1, days="mon")
+        assert seen

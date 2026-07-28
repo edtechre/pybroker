@@ -1070,6 +1070,11 @@ class OptimizeMixin:
                         model_syms.add(ModelSymbol(model_name, sym))
                         continue
                     model_syms.add(ModelSymbol(model_name, sym))
+                    if not _is_trainable_model_source(
+                        StaticScope.instance().get_model_source(base_name)
+                    ):
+                        # Pretrained models stay bound to the base timeframe.
+                        continue
                     for tf in self._timeframes:
                         model_syms.add(
                             ModelSymbol(
@@ -1180,7 +1185,9 @@ class OptimizeMixin:
             sessions=sessions,
             models=pretrained_models,
             indicator_data=indicator_data,
-            timeframe_data=timeframe_data,
+            timeframe_data=timeframe_data.slice_for_test(
+                symbol_dates_from_frame(train_data)
+            ),
             declared_timeframes=self._timeframes,
             test_data=train_data,
             portfolio=portfolio,

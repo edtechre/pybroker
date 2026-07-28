@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from numba import njit
 from numpy.typing import NDArray
 from pybroker.common import BarData, DataCol, IndicatorSymbol, to_seconds
-from typing import Iterable, Literal, Mapping, Optional, Union, cast
+from typing import Any, Iterable, Literal, Mapping, Optional, Union, cast
 
 _BASE_TIMEFRAME_TOLERANCE_SECONDS = 1.0
 
@@ -56,6 +56,7 @@ _RESERVED_OHLCV_COLS: frozenset[str] = frozenset(
         DataCol.LOW.value,
         DataCol.CLOSE.value,
         DataCol.VOLUME.value,
+        DataCol.VWAP.value,
         DataCol.SYMBOL.value,
     }
 )
@@ -72,6 +73,7 @@ class _OhlcvArrays:
     close: NDArray[np.float64]
     volume: NDArray[np.float64]
     custom: Mapping[str, NDArray[np.float64]]
+    vwap: Optional[NDArray[np.float64]] = None
 
 
 @dataclass(frozen=True)
@@ -85,6 +87,7 @@ class CompressedBars:
     volume: NDArray[np.float64]
     dates: NDArray[np.datetime64]
     custom: Mapping[str, NDArray[np.float64]] = field(default_factory=dict)
+    vwap: Optional[NDArray[np.float64]] = None
 
     def slice_by_dates(
         self, dates: Iterable[np.datetime64]
@@ -114,6 +117,7 @@ class CompressedBars:
             volume=self.volume[mask],
             dates=self.dates[mask],
             custom=custom,
+            vwap=None if self.vwap is None else self.vwap[mask],
         )
 
 
@@ -221,9 +225,36 @@ def format_timeframe_interval(interval: TimeframeInterval) -> str:
     return interval
 
 
+TIMEFRAME_NAME_SEPARATOR = "@"
+"""Separator reserved for timeframe bindings in indicator and model names."""
+
+
+def validate_source_name(name: str, kind: str) -> None:
+    """Raises if ``name`` cannot be used as an indicator or model name.
+
+    Args:
+        name: Name being registered.
+        kind: ``'indicator'`` or ``'model'``, used in the error message.
+    """
+    if TIMEFRAME_NAME_SEPARATOR in name:
+        base = name.split(TIMEFRAME_NAME_SEPARATOR, 1)[0]
+        raise ValueError(
+            f"Invalid {kind} name {name!r}: "
+            f"{TIMEFRAME_NAME_SEPARATOR!r} is reserved for timeframe "
+            f"bindings, which PyBroker generates itself (e.g. {base!r} on "
+            f"'weekly' becomes "
+            f"{base + TIMEFRAME_NAME_SEPARATOR + 'weekly'!r}). Rename the "
+            f"{kind} and read higher timeframes with "
+            f"ctx.timeframe(interval)."
+        )
+
+
 def indicator_timeframe_name(base: str, interval: TimeframeInterval) -> str:
     """Returns the suffixed indicator name for a timeframe binding."""
-    return f"{base}@{format_timeframe_interval(interval)}"
+    return (
+        f"{base}{TIMEFRAME_NAME_SEPARATOR}"
+        f"{format_timeframe_interval(interval)}"
+    )
 
 
 def parse_indicator_timeframe_name(
@@ -254,19 +285,41 @@ def parse_model_timeframe_name(
     return parse_indicator_timeframe_name(name)
 
 
+def _symbol_row_groups(df: pd.DataFrame) -> dict[str, NDArray[np.int64]]:
+    """Returns row indices per symbol from a single sort of the symbol column.
+
+    One ``argsort`` plus a boundary scan replaces a full-length boolean mask
+    per symbol, which was ``O(n_symbols * n_rows)``.
+    """
+    sym_col = DataCol.SYMBOL.value
+    symbols = np.asarray(df[sym_col].to_numpy(copy=False), dtype=object)
+    if len(symbols) == 0:
+        return {}
+    order = np.argsort(symbols, kind="stable")
+    ordered = symbols[order]
+    # Boundaries where the sorted symbol changes.
+    starts = np.flatnonzero(
+        np.concatenate(([True], ordered[1:] != ordered[:-1]))
+    )
+    ends = np.append(starts[1:], len(ordered))
+    return {
+        str(ordered[start]): order[start:end]
+        for start, end in zip(starts, ends)
+    }
+
+
 def _iter_symbol_date_groups(
     df: pd.DataFrame,
 ) -> Iterable[tuple[str, NDArray[np.datetime64]]]:
-    """Yields per-symbol date arrays using mask slicing (no groupby frames)."""
+    """Yields per-symbol date arrays without building per-symbol frames."""
     date_col = DataCol.DATE.value
     dates = df[date_col].to_numpy(copy=False, dtype="datetime64[ns]")
     sym_col = DataCol.SYMBOL.value
     if sym_col not in df.columns:
         yield "data", dates
         return
-    symbols = df[sym_col].to_numpy(copy=False)
-    for sym in np.unique(symbols):
-        yield str(sym), dates[symbols == sym]
+    for sym, rows in _symbol_row_groups(df).items():
+        yield sym, dates[rows]
 
 
 def _extract_ohlcv_arrays(
@@ -283,7 +336,7 @@ def _extract_ohlcv_arrays(
     empty_d = np.array([], dtype="datetime64[ns]")
     if n == 0:
         return _OhlcvArrays(
-            empty_d, empty_f, empty_f, empty_f, empty_f, empty_f, {}
+            empty_d, empty_f, empty_f, empty_f, empty_f, empty_f, {}, None
         )
 
     date_col = DataCol.DATE.value
@@ -297,6 +350,12 @@ def _extract_ohlcv_arrays(
         volume = df[vol_col].to_numpy(copy=False, dtype=np.float64)
     else:
         volume = np.zeros(n, dtype=np.float64)
+    vwap_col = DataCol.VWAP.value
+    vwap = (
+        df[vwap_col].to_numpy(copy=False, dtype=np.float64)
+        if vwap_col in df.columns
+        else None
+    )
 
     custom: dict[str, NDArray[np.float64]] = {}
     if extra_custom_cols is not None:
@@ -315,20 +374,27 @@ def _extract_ohlcv_arrays(
         close=close,
         volume=volume,
         custom=custom,
+        vwap=vwap,
     )
 
 
 def _extract_ohlcv_arrays_masked(
     df: pd.DataFrame,
-    row_mask: NDArray[np.bool_],
+    row_mask: NDArray[Any],
     extra_custom_cols: Optional[Iterable[str]] = None,
 ) -> _OhlcvArrays:
-    """Extracts masked OHLCV views without building a per-symbol DataFrame."""
+    """Extracts OHLCV views for selected rows without building a sub-frame.
+
+    ``row_mask`` may be a boolean mask or an array of row indices.
+    """
     empty_f = np.array([], dtype=np.float64)
     empty_d = np.array([], dtype="datetime64[ns]")
-    if not row_mask.any():
+    n_rows = (
+        int(row_mask.sum()) if row_mask.dtype == np.bool_ else len(row_mask)
+    )
+    if n_rows == 0:
         return _OhlcvArrays(
-            empty_d, empty_f, empty_f, empty_f, empty_f, empty_f, {}
+            empty_d, empty_f, empty_f, empty_f, empty_f, empty_f, {}, None
         )
 
     date_col = DataCol.DATE.value
@@ -349,7 +415,13 @@ def _extract_ohlcv_arrays_masked(
     if vol_col in df.columns:
         volume = df[vol_col].to_numpy(copy=False, dtype=np.float64)[row_mask]
     else:
-        volume = np.zeros(int(row_mask.sum()), dtype=np.float64)
+        volume = np.zeros(n_rows, dtype=np.float64)
+    vwap_col = DataCol.VWAP.value
+    vwap = (
+        df[vwap_col].to_numpy(copy=False, dtype=np.float64)[row_mask]
+        if vwap_col in df.columns
+        else None
+    )
 
     custom: dict[str, NDArray[np.float64]] = {}
     if extra_custom_cols is not None:
@@ -366,6 +438,7 @@ def _extract_ohlcv_arrays_masked(
         close=close,
         volume=volume,
         custom=custom,
+        vwap=vwap,
     )
 
 
@@ -387,6 +460,7 @@ def _ohlcv_from_bar_data(data: BarData) -> _OhlcvArrays:
         close=data.close,
         volume=volume,
         custom=custom,
+        vwap=data.vwap,
     )
 
 
@@ -580,35 +654,54 @@ def resolve_base_bar_seconds(
     )
 
 
-def _min_bar_seconds_from_dates(
-    dates: NDArray[np.datetime64],
-) -> Optional[float]:
-    if len(dates) < 2:
-        return None
-    unique_dates = np.unique(dates.astype("datetime64[ns]"))
-    if len(unique_dates) < 2:
-        return None
-    deltas_ns = np.diff(unique_dates.astype("datetime64[ns]").astype(np.int64))
-    positive = deltas_ns[deltas_ns > 0]
-    if len(positive) == 0:
-        return None
-    return float(positive.min() / 1_000_000_000)
+def _base_spacing_tolerance(base_bar_seconds: float) -> float:
+    """Returns the allowed deviation from an exact base-spacing multiple.
+
+    Daily and coarser bars are commonly stamped in a local timezone and
+    normalized to UTC, so a DST transition shifts them by an hour. Sub-daily
+    bars keep the tight tolerance.
+    """
+    if base_bar_seconds >= 86400:
+        return 3600.0 + _BASE_TIMEFRAME_TOLERANCE_SECONDS
+    return _BASE_TIMEFRAME_TOLERANCE_SECONDS
 
 
 def _validate_symbol_dates_for_base(
     label: str, dates: NDArray[np.datetime64], base_bar_seconds: float
 ) -> None:
-    observed = _min_bar_seconds_from_dates(dates)
-    if observed is None:
-        raise ValueError(
-            f"Need at least 2 bars to validate base timeframe for {label!r}."
-        )
-    if abs(observed - base_bar_seconds) > _BASE_TIMEFRAME_TOLERANCE_SECONDS:
-        raise ValueError(
-            f"Bar spacing for {label!r} is inconsistent with base "
-            f"timeframe ({int(base_bar_seconds)}s expected, "
-            f"{int(observed)}s observed minimum spacing)."
-        )
+    """Raises if any gap between bars is not a multiple of the base spacing.
+
+    Gaps wider than the base spacing are expected and allowed: sessions close,
+    symbols halt, illiquid feeds drop empty intervals, and ``days=`` /
+    ``between_time=`` thin the frame on purpose. Only a gap *finer* than the
+    declared base -- or one that is not a whole multiple of it -- contradicts
+    the declared timeframe.
+    """
+    if len(dates) < 2:
+        # A symbol with a single bar cannot contradict the declared spacing.
+        return
+    unique_dates = np.unique(np.asarray(dates, dtype="datetime64[ns]"))
+    if len(unique_dates) < 2:
+        return
+    epoch_ns: NDArray[np.int64] = unique_dates.astype(np.int64)
+    deltas_ns: NDArray[np.int64] = np.diff(epoch_ns)
+    positive = deltas_ns[deltas_ns > 0]
+    if len(positive) == 0:
+        return
+    gaps: NDArray[np.float64] = positive.astype(np.float64) / 1e9
+    tolerance = _base_spacing_tolerance(base_bar_seconds)
+    multiples = np.maximum(np.round(gaps / base_bar_seconds), 1.0)
+    residuals = np.abs(gaps - multiples * base_bar_seconds)
+    bad = np.flatnonzero(residuals > tolerance * multiples)
+    if len(bad) == 0:
+        return
+    observed = float(gaps[bad[0]])
+    raise ValueError(
+        f"Bar spacing for {label!r} is inconsistent with base "
+        f"timeframe ({int(base_bar_seconds)}s expected, "
+        f"{int(observed)}s observed between consecutive bars). Gaps must be "
+        "whole multiples of the base timeframe."
+    )
 
 
 def validate_base_timeframe_data(
@@ -630,7 +723,7 @@ def compressed_bars_to_bar_data(bars: CompressedBars) -> BarData:
         low=bars.low,
         close=bars.close,
         volume=bars.volume,
-        vwap=None,
+        vwap=bars.vwap,
         **bars.custom,
     )
 
@@ -798,22 +891,57 @@ def _aggregate_custom_cols(
     return out
 
 
+def _aggregate_vwap(
+    vwap: Optional[NDArray[np.float64]],
+    volume: NDArray[np.float64],
+    starts: NDArray[np.int64],
+) -> Optional[NDArray[np.float64]]:
+    """Aggregates VWAP per bin, weighted by volume.
+
+    Falls back to the arithmetic mean for bins with no volume, matching what a
+    volume-weighted average degenerates to when every weight is zero.
+    """
+    if vwap is None:
+        return None
+    if len(starts) == 0:
+        return np.array([], dtype=np.float64)
+    weighted = np.add.reduceat(vwap * volume, starts)
+    vol_sums = np.add.reduceat(volume, starts)
+    counts = np.diff(np.append(starts, len(vwap))).astype(np.float64)
+    plain = np.add.reduceat(vwap, starts) / counts
+    with np.errstate(invalid="ignore", divide="ignore"):
+        out = np.where(vol_sums > 0, weighted / vol_sums, plain)
+    return np.asarray(out, dtype=np.float64)
+
+
 def _compute_completed(
     n: int,
     starts: NDArray[np.int64],
     ends: NDArray[np.int64],
     interval_n: int,
 ) -> NDArray[np.int64]:
+    """Maps each base bar to the last *completed* compressed bar.
+
+    ``interval_n > 0`` is the every-``n``-bars case, where a trailing bin is
+    known to be short when it holds fewer than ``n`` base bars. For calendar
+    and duration bins (``interval_n <= 0``) the trailing bin's boundary is never
+    observed — no later bar exists to close it — so it is always treated as
+    still forming. Interior bins are unaffected: they close at their final base
+    bar, matching ``ctx.close[-1]`` being the current bar's close.
+    """
     completed = (
         np.searchsorted(ends, np.arange(n, dtype=np.int64), side="right") - 1
     )
-    if interval_n > 0 and len(ends) > 0:
-        last_bin = len(ends) - 1
+    if len(ends) == 0:
+        return completed
+    last_bin = len(ends) - 1
+    if interval_n > 0:
         last_bin_size = ends[last_bin] - starts[last_bin] + 1
-        if last_bin_size < interval_n:
-            mask = completed == last_bin
-            completed = completed.copy()
-            completed[mask] = last_bin - 1
+        if last_bin_size >= interval_n:
+            return completed
+    mask = completed == last_bin
+    completed = completed.copy()
+    completed[mask] = last_bin - 1
     return completed
 
 
@@ -826,6 +954,7 @@ def _compress_every_n_bars(
     close: NDArray[np.float64],
     volume: NDArray[np.float64],
     custom_cols: Optional[Mapping[str, NDArray[np.float64]]] = None,
+    vwap: Optional[NDArray[np.float64]] = None,
 ) -> tuple[CompressedBars, NDArray[np.int64]]:
     n = len(dates)
     n_full = (n // k) * k
@@ -876,6 +1005,10 @@ def _compress_every_n_bars(
         last_bin = bin_idx[-1]
         completed[bin_idx == last_bin] = last_bin - 1
 
+    starts = np.concatenate(
+        [np.arange(0, n_full, k, dtype=np.int64)]
+        + ([np.array([n_full], dtype=np.int64)] if n_full < n else [])
+    )
     bars = CompressedBars(
         open=np.concatenate(o_parts),
         high=np.concatenate(h_parts),
@@ -884,6 +1017,7 @@ def _compress_every_n_bars(
         volume=np.concatenate(v_parts),
         dates=np.concatenate(d_parts),
         custom=custom,
+        vwap=_aggregate_vwap(vwap, volume, starts),
     )
     return bars, completed
 
@@ -897,6 +1031,7 @@ def compress(
     volume: NDArray[np.float64],
     interval: TimeframeInterval,
     custom_cols: Optional[Mapping[str, NDArray[np.float64]]] = None,
+    vwap: Optional[NDArray[np.float64]] = None,
 ) -> tuple[CompressedBars, NDArray[np.int64]]:
     """Compresses base bars into higher-timeframe bars.
 
@@ -928,6 +1063,8 @@ def compress(
     close = _ascontiguous_f64(close)
     volume = _ascontiguous_f64(volume)
     dates = _ascontiguous_dt64(dates)
+    if vwap is not None:
+        vwap = _ascontiguous_f64(vwap)
 
     if isinstance(interval, int):
         return _compress_every_n_bars(
@@ -939,6 +1076,7 @@ def compress(
             close,
             volume,
             custom_cols,
+            vwap,
         )
 
     bin_ids: NDArray[np.int64]
@@ -977,6 +1115,7 @@ def compress(
         volume=v,
         dates=timeframe_dates,
         custom=custom,
+        vwap=_aggregate_vwap(vwap, volume, starts),
     )
     return bars, completed
 
@@ -995,6 +1134,7 @@ def _compress_ohlcv(
         volume=arrays.volume,
         interval=interval,
         custom_cols=arrays.custom,
+        vwap=arrays.vwap,
     )
 
 
@@ -1033,6 +1173,18 @@ def compress_bars(
                     interval,
                 )[0]
             )
+        sym_col = DataCol.SYMBOL.value
+        if sym_col in data.columns:
+            symbols = pd.unique(data[sym_col])
+            if len(symbols) > 1:
+                found = ", ".join(repr(str(sym)) for sym in symbols[:5])
+                raise ValueError(
+                    f"compress_bars expects data for a single symbol but "
+                    f"found {len(symbols)}: {found}"
+                    f"{', ...' if len(symbols) > 5 else ''}. Use "
+                    "compress_symbol_from_frame or "
+                    "compress_timeframes_from_frame for multi-symbol frames."
+                )
         validate_base_timeframe_data(data, base_bar_seconds)
         arrays = _extract_ohlcv_arrays(data)
     bars, _ = _compress_ohlcv(arrays, interval)
@@ -1047,18 +1199,25 @@ def compress_symbol_intervals_from_frame(
     base_bar_seconds: float,
     *,
     validate_dates: bool = True,
+    rows: Optional[NDArray[np.int64]] = None,
 ) -> dict[TimeframeInterval, CompressedSymbolData]:
-    """Compresses one symbol to multiple intervals with a single OHLCV extract."""
+    """Compresses one symbol to multiple intervals with a single OHLCV extract.
+
+    ``rows`` optionally supplies this symbol's precomputed row indices, so a
+    caller compressing many symbols groups the frame once instead of scanning
+    the symbol column per symbol.
+    """
     interval_tuple = tuple(intervals)
-    sym_col = DataCol.SYMBOL.value
-    symbols = df[sym_col].to_numpy(copy=False)
-    row_mask = symbols == symbol
-    if not row_mask.any():
+    if rows is None:
+        sym_col = DataCol.SYMBOL.value
+        symbols = df[sym_col].to_numpy(copy=False)
+        rows = np.flatnonzero(symbols == symbol)
+    if len(rows) == 0:
         empty = _empty_compressed_symbol_data()
         return {interval: empty for interval in interval_tuple}
 
     arrays = _extract_ohlcv_arrays_masked(
-        df, row_mask, extra_custom_cols=custom_cols
+        df, rows, extra_custom_cols=custom_cols
     )
     if validate_dates:
         _validate_symbol_dates_for_base(symbol, arrays.date, base_bar_seconds)
@@ -1082,14 +1241,11 @@ def compress_timeframes_from_frame(
 ) -> TimeframeData:
     """Compresses multiple symbols and intervals from one multi-symbol frame."""
     interval_tuple = tuple(intervals)
-    symbol_set = set(symbols)
-    sym_col = DataCol.SYMBOL.value
-    all_symbols = df[sym_col].to_numpy(copy=False)
+    symbol_set = {str(sym) for sym in symbols}
     timeframe_data = TimeframeData()
-    for sym in np.unique(all_symbols):
-        if sym not in symbol_set:
+    for sym_str, rows in _symbol_row_groups(df).items():
+        if sym_str not in symbol_set:
             continue
-        sym_str = str(sym)
         compressed = compress_symbol_intervals_from_frame(
             df,
             sym_str,
@@ -1097,6 +1253,7 @@ def compress_timeframes_from_frame(
             custom_cols,
             base_bar_seconds,
             validate_dates=False,
+            rows=rows,
         )
         for interval, data in compressed.items():
             timeframe_data.compressed[(sym_str, interval)] = data

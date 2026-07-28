@@ -20,7 +20,7 @@ from pybroker.common import (
     to_decimal,
 )
 from pybroker.config import StrategyConfig
-from pybroker.model import TrainedModel
+from pybroker.model import ModelLoader, TrainedModel
 from pybroker.portfolio import Entry, Order, Portfolio, Position, Stop, Trade
 from pybroker.scope import (
     ColumnScope,
@@ -356,8 +356,20 @@ class TimeframeContext:
             model_timeframe_name(name, self._interval), self._symbol
         )
         if model_sym not in self._models:
-            raise ValueError(f"Model {name!r} not found for {self._symbol}.")
+            raise ValueError(self._missing_model_error(name))
         return self._models[model_sym].instance
+
+    def _missing_model_error(self, name: str) -> str:
+        """Returns the error message for a model missing on this timeframe."""
+        if not self._scope.has_model_source(name):
+            return f"Model {name!r} not found for {self._symbol}."
+        if isinstance(self._scope.get_model_source(name), ModelLoader):
+            return (
+                f"Pretrained model {name!r} is not trained per timeframe. "
+                f"Access it on the base timeframe with ctx.model({name!r}) / "
+                f"ctx.preds({name!r})."
+            )
+        return f"Model {name!r} not found for {self._symbol}."
 
     def input(self, model_name: str) -> pd.DataFrame:
         """Returns model input data on the compressed timeframe."""

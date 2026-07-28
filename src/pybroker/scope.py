@@ -68,6 +68,7 @@ class _ModelImports:
     merge_lag_series_cache_from_arrays: Callable[..., None]
     merge_timeframe_lag_series_cache: Callable[..., LagSeriesCache]
     model_input_to_dataframe: Callable[..., pd.DataFrame]
+    model_trainer_cls: type
 
 
 _model_imports: _ModelImports | None = None
@@ -89,6 +90,7 @@ def _model() -> _ModelImports:
                 model_mod.merge_timeframe_lag_series_cache
             ),
             model_input_to_dataframe=model_mod.model_input_to_dataframe,
+            model_trainer_cls=model_mod.ModelTrainer,
         )
     return _model_imports
 
@@ -1011,6 +1013,16 @@ class IndicatorScope:
             :class:`numpy.ndarray` of :class:`pybroker.indicator.Indicator`
             data for every bar until ``end_index`` (when specified).
         """
+        _, token = parse_indicator_timeframe_name(name)
+        if token is not None and end_index is not None:
+            # Timeframe series are indexed by compressed bar, so truncating one
+            # with a base bar index would expose future data.
+            base_name, _ = parse_indicator_timeframe_name(name)
+            raise ValueError(
+                f"Indicator {name!r} is bound to timeframe {token!r} and "
+                "cannot be read from the base context. Use "
+                f"ctx.timeframe({token!r}).indicator({base_name!r}) instead."
+            )
         ind_sym = IndicatorSymbol(name, symbol)
         if ind_sym in self._sym_inds:
             cached = self._sym_inds[ind_sym]
@@ -1018,7 +1030,6 @@ class IndicatorScope:
         if ind_sym not in self._indicator_data:
             raise ValueError(f"Indicator {name!r} not found for {symbol}.")
         raw = self._indicator_data[ind_sym]
-        _, token = parse_indicator_timeframe_name(name)
         if isinstance(raw, np.ndarray):
             ind_data = np.asarray(raw, dtype=np.float64)
         elif token is not None:
@@ -1067,6 +1078,9 @@ class TimeframeScope:
         self._declared_timeframes = declared_timeframes
         self._models = models or {}
         self._lag_series_cache: LagSeriesCache = {}
+        self._lag_cache_keys: set[tuple[str, str, tuple[str, ...], int]] = (
+            set()
+        )
         self._test_dates = [] if test_dates is None else test_dates
         self._scope = StaticScope.instance()
         self._bar_cache: dict[
@@ -1089,6 +1103,10 @@ class TimeframeScope:
         model = _model()
         interval = normalize_timeframe_interval(interval)
         interval_str = format_timeframe_interval(interval)
+        memo_key = (symbol, interval_str, lag_cols, lags)
+        if memo_key in self._lag_cache_keys:
+            return
+        self._lag_cache_keys.add(memo_key)
 
         def bars_by_symbol(sym, interval_str=interval_str, interval=interval):
             key = (sym, interval)
@@ -1109,6 +1127,41 @@ class TimeframeScope:
         interval = normalize_timeframe_interval(interval)
         return interval in self._declared_timeframes
 
+    def window_len(self, symbol: str, interval: TimeframeInterval) -> int:
+        """Returns the compressed bar count visible in the current window.
+
+        ``completed`` is realigned to the walkforward test window by
+        :meth:`pybroker.timeframe.TimeframeData.slice_for_test`, so its last
+        entry is the newest compressed bar that completes within the window.
+        Model input and predictions are capped here so user callbacks never see
+        compressed bars belonging to a future window.
+        """
+        interval = normalize_timeframe_interval(interval)
+        key = (symbol, interval)
+        if key not in self._timeframe_data.compressed:
+            raise ValueError(
+                f"Timeframe {interval!r} data not found for {symbol!r}."
+            )
+        data = self._timeframe_data.compressed[key]
+        if len(data.completed) == 0:
+            return 0
+        last = int(data.completed[-1])
+        if last < 0:
+            return 0
+        return min(last + 1, len(data.bars.dates))
+
+    def _missing_model_error(self, base_model_name: str, symbol: str) -> str:
+        """Returns the error for a model missing on a compressed timeframe."""
+        if self._scope.has_model_source(base_model_name):
+            source = self._scope.get_model_source(base_model_name)
+            if not isinstance(source, _model().model_trainer_cls):
+                return (
+                    f"Pretrained model {base_model_name!r} is not trained per "
+                    f"timeframe. Access it on the base timeframe with "
+                    f"ctx.preds({base_model_name!r})."
+                )
+        return f"Model {base_model_name!r} not found for {symbol}."
+
     def completed_index(
         self, symbol: str, interval: TimeframeInterval, end_index: int
     ) -> int:
@@ -1119,6 +1172,12 @@ class TimeframeScope:
                 f"Timeframe {interval!r} data not found for {symbol!r}."
             )
         completed = self._timeframe_data.compressed[key].completed
+        if end_index <= 0 or len(completed) == 0:
+            return -1
+        # Clamp instead of allowing a negative index to wrap around to the last
+        # completed bar of the window, which would expose future data.
+        if end_index > len(completed):
+            end_index = len(completed)
         return int(completed[end_index - 1])
 
     def fetch_bar(
@@ -1150,6 +1209,8 @@ class TimeframeScope:
                 data = bars.close
             elif col == DataCol.VOLUME.value:
                 data = bars.volume
+            elif col == DataCol.VWAP.value and bars.vwap is not None:
+                data = bars.vwap
             elif col in bars.custom:
                 data = bars.custom[col]
             else:
@@ -1187,10 +1248,10 @@ class TimeframeScope:
     ) -> pd.DataFrame:
         model = _model()
         interval = normalize_timeframe_interval(interval)
+        idx = self.completed_index(symbol, interval, end_index)
         model_input = self._prepare_full_input(
             symbol, interval, base_model_name
         )
-        idx = self.completed_index(symbol, interval, end_index)
         if idx < 0:
             return model.model_input_to_dataframe(model_input.slice(0))
         return model.model_input_to_dataframe(model_input.slice(idx + 1))
@@ -1209,7 +1270,7 @@ class TimeframeScope:
         trained_model = self._models.get(model_sym)
         if trained_model is None:
             raise ValueError(
-                f"Model {base_model_name!r} not found for {symbol}."
+                self._missing_model_error(base_model_name, symbol)
             )
         if trained_model.per_bar:
             return self._fetch_preds_per_bar(
@@ -1220,6 +1281,9 @@ class TimeframeScope:
                 trained_model,
                 end_index,
             )
+        idx = self.completed_index(symbol, interval, end_index)
+        if idx < 0:
+            return np.array([], dtype=np.float64)
         if model_sym not in self._sym_preds:
             input_ = self._prepare_full_input(
                 symbol, interval, base_model_name
@@ -1233,9 +1297,6 @@ class TimeframeScope:
             pred = self._run_predict(trained_model, input_)
             self._sym_preds[model_sym] = pred
         pred = self._sym_preds[model_sym]
-        idx = self.completed_index(symbol, interval, end_index)
-        if idx < 0:
-            return np.array([], dtype=pred.dtype)
         return pred[: idx + 1]
 
     def _fetch_preds_per_bar(
@@ -1255,17 +1316,15 @@ class TimeframeScope:
             return np.array([], dtype=pred.dtype)
         if len(pred) >= target_len:
             return pred[:target_len]
+        model_input = self._prepare_full_input(
+            symbol, interval, base_model_name
+        )
         pred_values = pred.tolist()
         while len(pred_values) < target_len:
-            bar_end_index = len(pred_values) + 1
-            model_input = self._prepare_full_input(
-                symbol, interval, base_model_name
-            )
-            idx = self.completed_index(symbol, interval, bar_end_index)
-            if idx < 0:
-                sliced = model_input.slice(0)
-            else:
-                sliced = model_input.slice(idx + 1)
+            # ``pred_values`` counts compressed bars, so slice the compressed
+            # input directly. Routing this through ``completed_index`` would mix
+            # it with the base-bar index space.
+            sliced = model_input.slice(len(pred_values) + 1)
             scalar = self._run_predict_scalar(trained_model, sliced)
             pred_values.append(scalar)
         pred = np.asarray(pred_values, dtype=np.float64)
@@ -1308,7 +1367,7 @@ class TimeframeScope:
         )
         if model_sym not in self._models:
             raise ValueError(
-                f"Model {base_model_name!r} not found for {symbol}."
+                self._missing_model_error(base_model_name, symbol)
             )
         trained_model = self._models[model_sym]
         if trained_model.input_cols is not None:
@@ -1337,7 +1396,7 @@ class TimeframeScope:
                     self._timeframe_data.compressed[
                         (symbol, interval)
                     ].bars.dates
-                ),
+                )[: self.window_len(symbol, interval)],
                 format_timeframe_interval(interval),
             )
         if not trained_model.input_cols or source._input_data_fn:
@@ -1361,28 +1420,42 @@ class TimeframeScope:
                 f"Timeframe {interval!r} data not found for {symbol!r}."
             )
         bars = self._timeframe_data.compressed[key].bars
+        # Cap at the window so cross-row user transforms (normalization,
+        # ranking, fillna(mean)) cannot read compressed bars from a future
+        # walkforward window.
+        cap = self.window_len(symbol, interval)
+        dates = bars.dates[:cap]
         arrays: dict[str, NDArray[Any]] = {
-            DataCol.DATE.value: bars.dates,
-            DataCol.OPEN.value: bars.open,
-            DataCol.HIGH.value: bars.high,
-            DataCol.LOW.value: bars.low,
-            DataCol.CLOSE.value: bars.close,
-            DataCol.VOLUME.value: bars.volume,
+            DataCol.DATE.value: dates,
+            DataCol.OPEN.value: bars.open[:cap],
+            DataCol.HIGH.value: bars.high[:cap],
+            DataCol.LOW.value: bars.low[:cap],
+            DataCol.CLOSE.value: bars.close[:cap],
+            DataCol.VOLUME.value: bars.volume[:cap],
         }
         for col in self._scope.custom_data_cols:
             if col in bars.custom:
-                arrays[col] = bars.custom[col]
+                arrays[col] = bars.custom[col][:cap]
         for ind_name in source.indicators:
             arrays[ind_name] = self._ind_scope.fetch_full(
                 symbol, indicator_timeframe_name(ind_name, interval)
-            )
+            )[:cap]
         columns = tuple(arrays.keys())
-        return model.model_input_cls(columns, arrays, bars.dates)
+        return model.model_input_cls(columns, arrays, dates)
 
     def clear_cache(self):
+        """Drops every cached array.
+
+        Compressed data is immutable for the lifetime of a scope (a new one is
+        built per walkforward window), and each cache is keyed independently of
+        the current bar, so this is only for tearing a scope down -- calling it
+        per bar would rebuild model input and rerun ``predict`` on every bar.
+        """
         self._bar_cache.clear()
         self._sym_inputs.clear()
         self._sym_preds.clear()
+        self._lag_series_cache.clear()
+        self._lag_cache_keys.clear()
 
 
 class ModelInputScope:

@@ -643,7 +643,6 @@ class BacktestMixin:
         for i, date in enumerate(test_dates):
             active_ctxs.clear()
             price_scope.reset_bar()
-            timeframe_scope.clear_cache()
             if calendar_aligned:
                 active_iter: Iterable[tuple[str, ExecContext]] = (
                     exec_ctxs.items()
@@ -1829,6 +1828,18 @@ class Strategy(
             for interval in self._timeframes:
                 validate_timeframe_interval(interval, base_seconds)
 
+    def _supports_timeframe_training(self, base_model_name: str) -> bool:
+        """Returns whether a model source can be trained per timeframe.
+
+        Pretrained models (:class:`pybroker.model.ModelLoader`) are loaded
+        rather than trained, so they stay bound to the base timeframe and are
+        accessed with :meth:`pybroker.context.ExecContext.preds` instead of
+        ``ctx.timeframe(interval).preds()``.
+        """
+        return isinstance(
+            self._scope.get_model_source(base_model_name), ModelTrainer
+        )
+
     def _validate_timeframes_for_base(
         self, df: pd.DataFrame, timeframe: str
     ) -> None:
@@ -2526,6 +2537,10 @@ class Strategy(
                                 model_syms.add(ModelSymbol(model_name, sym))
                                 continue
                             model_syms.add(ModelSymbol(model_name, sym))
+                            if not self._supports_timeframe_training(
+                                base_name
+                            ):
+                                continue
                             for tf in self._timeframes:
                                 model_syms.add(
                                     ModelSymbol(
@@ -2681,7 +2696,9 @@ class Strategy(
                                     sym,
                                 )
                             )
-                        elif self._timeframes:
+                        elif self._timeframes and (
+                            self._supports_timeframe_training(base_name)
+                        ):
                             for tf in self._timeframes:
                                 indicator_syms.add(
                                     IndicatorSymbol(

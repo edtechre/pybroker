@@ -4,11 +4,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from .fixtures import *  # noqa: F401,F403
 from pybroker.common import DataCol, IndicatorSymbol
 from pybroker.indicator import IndicatorsMixin, indicator
+from pybroker.model import model
 from pybroker.scope import StaticScope
 from pybroker.timeframe import (
     TimeframeData,
+    _validate_symbol_dates_for_base,
     build_compressed_symbol_df,
     compress,
     compress_bars,
@@ -427,7 +430,8 @@ class TestCompressEveryN:
 
 class TestCompressWeekly:
     def test_iso_week_alignment(self):
-        # Mon 2020-01-06 through Fri 2020-01-10 -> one week
+        # Mon 2020-01-06 through Fri 2020-01-10 -> one week. The trailing Mon
+        # starts a second bin, which closes the first one.
         dates = np.array(
             [
                 "2020-01-06",
@@ -435,41 +439,49 @@ class TestCompressWeekly:
                 "2020-01-08",
                 "2020-01-09",
                 "2020-01-10",
+                "2020-01-13",
             ],
             dtype="datetime64[D]",
         )
-        o = np.array([1, 2, 3, 4, 5], dtype=np.float64)
+        o = np.array([1, 2, 3, 4, 5, 6], dtype=np.float64)
         h = o + 1
         low = o - 0.5
         c = o + 0.5
-        v = np.ones(5)
+        v = np.ones(6)
         bars, completed = compress(dates, o, h, low, c, v, "weekly")
-        assert len(bars.close) == 1
+        assert len(bars.close) == 2
         assert bars.open[0] == 1
         assert bars.close[0] == 5.5
         assert bars.high[0] == 6
         assert bars.low[0] == 0.5
         assert bars.volume[0] == 5
-        assert list(completed) == [-1, -1, -1, -1, 0]
+        # The trailing bin is still forming, so it is never completed.
+        assert list(completed) == [-1, -1, -1, -1, 0, 0]
 
     def test_holiday_split_week(self):
         # Mon-Thu only (4 bars) still one weekly bin
         dates = np.array(
-            ["2020-01-06", "2020-01-07", "2020-01-08", "2020-01-09"],
+            [
+                "2020-01-06",
+                "2020-01-07",
+                "2020-01-08",
+                "2020-01-09",
+                "2020-01-13",
+            ],
             dtype="datetime64[D]",
         )
-        c = np.array([10, 11, 12, 13], dtype=np.float64)
+        c = np.array([10, 11, 12, 13, 14], dtype=np.float64)
         o = c - 1
         h = c + 1
         low = c - 2
-        v = np.ones(4)
+        v = np.ones(5)
         bars, completed = compress(dates, o, h, low, c, v, "weekly")
-        assert len(bars.close) == 1
+        assert len(bars.close) == 2
         assert bars.close[0] == 13
-        assert completed[-1] == 0
+        assert completed[3] == 0
 
     def test_mid_week_start(self):
-        # Wed-Fri then Mon-Tue of next week
+        # Wed-Fri, then Mon-Tue, then the Mon that closes the second bin.
         dates = np.array(
             [
                 "2020-01-08",
@@ -477,16 +489,17 @@ class TestCompressWeekly:
                 "2020-01-10",
                 "2020-01-13",
                 "2020-01-14",
+                "2020-01-20",
             ],
             dtype="datetime64[D]",
         )
-        c = np.arange(5, dtype=np.float64)
+        c = np.arange(6, dtype=np.float64)
         o = c
         h = c + 1
         low = c - 1
-        v = np.ones(5)
+        v = np.ones(6)
         bars, completed = compress(dates, o, h, low, c, v, "weekly")
-        assert len(bars.close) == 2
+        assert len(bars.close) == 3
         assert bars.close[0] == 2
         assert bars.close[1] == 4
         assert completed[2] == 0
@@ -494,17 +507,39 @@ class TestCompressWeekly:
 
     def test_completed_at_bin_boundary(self):
         dates = np.array(
-            ["2020-01-06", "2020-01-07", "2020-01-13"],
+            ["2020-01-06", "2020-01-07", "2020-01-13", "2020-01-20"],
             dtype="datetime64[D]",
         )
-        c = np.array([1, 2, 3], dtype=np.float64)
+        c = np.array([1, 2, 3, 4], dtype=np.float64)
         o = h = low = c
-        v = np.ones(3)
+        v = np.ones(4)
         bars, completed = compress(dates, o, h, low, c, v, "weekly")
         assert completed[1] == 0
         assert bars.close[completed[1]] == 2
         assert completed[2] == 1
         assert bars.close[completed[2]] == 3
+
+    def test_final_bin_never_completed(self):
+        # A calendar bin is only closed once a bar in a later bin arrives, so
+        # the trailing bin -- complete or partial -- stays invisible.
+        for periods in (8, 10):
+            dates = (
+                pd.date_range("2023-01-02", periods=periods, freq="B")
+                .to_numpy()
+                .astype("datetime64[ns]")
+            )
+            n = len(dates)
+            c = np.arange(1.0, n + 1, dtype=np.float64)
+            bars, completed = compress(
+                dates,
+                c,
+                (c + 1).astype(np.float64),
+                (c - 1).astype(np.float64),
+                c,
+                np.ones(n, dtype=np.float64),
+                "weekly",
+            )
+            assert completed[-1] == len(bars.close) - 2
 
     def test_pandas_resample_reference(self):
         dates = pd.date_range("2020-01-06", periods=10, freq="B")
@@ -610,7 +645,7 @@ class TestCompressBars:
 
 class TestCompressDuration:
     def test_five_minute_bins(self):
-        dates = pd.date_range("2020-01-01 09:30", periods=10, freq="1min")
+        dates = pd.date_range("2020-01-01 09:30", periods=11, freq="1min")
         n = len(dates)
         close = np.arange(n, dtype=np.float64) + 1
         o = close
@@ -626,11 +661,12 @@ class TestCompressDuration:
             v,
             "5m",
         )
-        assert len(bars.close) == 2
+        assert len(bars.close) == 3
         assert bars.open[0] == 1
         assert bars.close[0] == 5
         assert bars.open[1] == 6
         assert bars.close[1] == 10
+        # Bin 1 closes once the 11th bar opens bin 2; bin 2 is still forming.
         assert completed[-1] == 1
 
 
@@ -856,3 +892,150 @@ class TestTimeframeIndicatorCompute:
         np.testing.assert_array_almost_equal(
             result[key].to_numpy(), hand.to_numpy()
         )
+
+
+class TestReservedNameSeparator:
+    @pytest.mark.parametrize(
+        "name", ["vol@30", "sma@2", "close@1h", "spread@weekly", "a@b"]
+    )
+    def test_indicator_rejects_at_sign(self, name, scope):
+        with pytest.raises(ValueError, match="reserved for timeframe"):
+            indicator(name, lambda bar_data: bar_data.close)
+
+    def test_model_rejects_at_sign(self, scope):
+        with pytest.raises(ValueError, match="reserved for timeframe"):
+            model("m@5", lambda sym, train_data, test_data: None)
+
+    def test_plain_names_still_accepted(self, scope):
+        assert indicator("sma20", lambda bar_data: bar_data.close).name == (
+            "sma20"
+        )
+
+
+class TestBaseSpacingValidation:
+    def _dates(self, values):
+        return np.array(values, dtype="datetime64[ns]")
+
+    @pytest.mark.parametrize(
+        "label,values,base",
+        [
+            (
+                "weekend gap",
+                ["2020-01-02", "2020-01-03", "2020-01-06"],
+                86400.0,
+            ),
+            (
+                "dst shift",
+                ["2023-03-10T05:00", "2023-03-13T04:00", "2023-03-14T04:00"],
+                86400.0,
+            ),
+            (
+                "days filter",
+                ["2020-01-06", "2020-01-13", "2020-01-20"],
+                86400.0,
+            ),
+            (
+                "sparse minutes",
+                [
+                    "2020-01-01T09:30",
+                    "2020-01-01T09:32",
+                    "2020-01-01T09:34",
+                ],
+                60.0,
+            ),
+            ("single bar", ["2020-01-02"], 86400.0),
+        ],
+    )
+    def test_accepts_multiples_of_base(self, label, values, base):
+        _validate_symbol_dates_for_base(label, self._dates(values), base)
+
+    @pytest.mark.parametrize(
+        "values,base",
+        [
+            (
+                [
+                    "2020-01-01T09:30:00",
+                    "2020-01-01T09:30:30",
+                    "2020-01-01T09:31:00",
+                ],
+                60.0,
+            ),
+            (
+                [
+                    "2020-01-01T09:30:00",
+                    "2020-01-01T09:31:30",
+                    "2020-01-01T09:33:00",
+                ],
+                60.0,
+            ),
+        ],
+    )
+    def test_rejects_non_multiples(self, values, base):
+        with pytest.raises(ValueError, match="inconsistent with base"):
+            _validate_symbol_dates_for_base("X", self._dates(values), base)
+
+
+class TestCompressBarsSymbolGuard:
+    def _sym_df(self, symbol):
+        dates = pd.date_range("2020-01-06", periods=10, freq="B")
+        close = np.arange(1.0, len(dates) + 1)
+        return pd.DataFrame(
+            {
+                "symbol": symbol,
+                "date": dates,
+                "open": close,
+                "high": close + 1,
+                "low": close - 1,
+                "close": close,
+                "volume": np.ones(len(dates)),
+            }
+        )
+
+    def test_multi_symbol_frame_raises(self):
+        df = pd.concat([self._sym_df("AAA"), self._sym_df("BBB")])
+        with pytest.raises(ValueError, match="single symbol"):
+            compress_bars(df, "weekly", base_timeframe="1d")
+
+    def test_single_symbol_frame_allowed(self):
+        bars = compress_bars(
+            self._sym_df("AAA"), "weekly", base_timeframe="1d"
+        )
+        assert len(bars.close) > 0
+
+
+class TestCompressVwap:
+    def _df(self, volume):
+        dates = pd.date_range("2020-01-06", periods=10, freq="B")
+        close = np.arange(1.0, len(dates) + 1)
+        return pd.DataFrame(
+            {
+                "date": dates,
+                "open": close,
+                "high": close + 1,
+                "low": close - 1,
+                "close": close,
+                "volume": volume,
+                "vwap": close + 0.5,
+            }
+        )
+
+    def test_volume_weighted(self):
+        volume = np.arange(1.0, 11.0)
+        bars = compress_bars(self._df(volume), "weekly", base_timeframe="1d")
+        week = np.arange(1.0, 6.0)
+        expected = ((week + 0.5) * week).sum() / week.sum()
+        assert bars.vwap is not None
+        assert bars.vwap[0] == pytest.approx(expected)
+
+    def test_zero_volume_falls_back_to_mean(self):
+        bars = compress_bars(
+            self._df(np.zeros(10)), "weekly", base_timeframe="1d"
+        )
+        assert bars.vwap is not None
+        assert bars.vwap[0] == pytest.approx(
+            (np.arange(1.0, 6.0) + 0.5).mean()
+        )
+
+    def test_missing_vwap_column_stays_none(self):
+        df = self._df(np.ones(10)).drop(columns=["vwap"])
+        assert compress_bars(df, "weekly", base_timeframe="1d").vwap is None
