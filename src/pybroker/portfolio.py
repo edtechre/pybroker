@@ -301,15 +301,17 @@ class PortfolioBar(NamedTuple):
     Attributes:
         date: Date of bar.
         cash: Available cash in :class:`.Portfolio`.
-        equity: Amount of equity in :class:`.Portfolio`.
+        equity: Amount of equity in :class:`.Portfolio`. Open short positions
+            are held at cost, so their unrealized PnL is excluded.
         margin: Notional exposure of open short positions at mark.
         margin_loan: Borrowed funds used for leveraged long and short
             positions.
         net_cash_balance: ``cash - margin_loan``.
-        market_value: Market value of :class:`.Portfolio`.
+        market_value: Market value of :class:`.Portfolio`, equal to ``equity``
+            plus the unrealized PnL of all open short positions.
         pnl: Realized profit and loss (PnL) of :class:`.Portfolio`.
         unrealized_pnl: Unrealized profit and loss (PnL) of
-            :class:`.Portfolio`.
+            :class:`.Portfolio`, equal to ``market_value - equity``.
         fees: Brokerage fees.
     """
 
@@ -413,10 +415,13 @@ class Portfolio:
 
     Attributes:
         cash: Current cash balance.
-        equity: Current amount of equity.
+        equity: Current amount of equity, defined as the net cash balance plus
+            the market value of all open long positions plus the collateral
+            posted for all open short positions. Short positions are held at
+            cost, so their unrealized PnL is excluded.
         market_value: Current market value. The market value is defined as
-            the amount of equity held in cash and long positions added together
-            with the unrealized PnL of all open short positions.
+            :attr:`.equity` added together with the unrealized PnL of all open
+            short positions.
         fees: Current brokerage fees.
         fee_amount: Brokerage fee amount.
         enable_fractional_shares: Whether to enable trading fractional shares.
@@ -1269,6 +1274,10 @@ class Portfolio:
             if sym in self.short_positions:
                 pos = self.short_positions[sym]
                 entry_notional = pos.entry_notional
+                # Shorting posts collateral out of cash, so the collateral is
+                # added back here. Equity holds it at cost and market value
+                # marks it to market with the position's unrealized PnL.
+                total_equity += float(entry_notional)
                 if close_f is not None:
                     _calculate_pnl_mae_mfe(
                         pos, close=close_f, low=low_f, high=high_f
@@ -1279,14 +1288,12 @@ class Portfolio:
                     pos.market_value = pos.margin + pos.pnl
                     pos_margin += pos.margin
                     pos_short_shares += pos.shares
-                    short_equity = entry_notional + pos.pnl
-                    pos_equity += short_equity
+                    pos_equity += entry_notional + pos.pnl
                     pos_market_value += pos.market_value
                     pos_pnl += pos.pnl
-                    total_equity += float(short_equity)
-                    total_market_value += float(pos.pnl)
+                    total_market_value += float(entry_notional + pos.pnl)
                 else:
-                    total_equity += float(entry_notional)
+                    total_market_value += float(entry_notional)
                 total_margin += float(pos.margin)
             if close_f is not None and self._record_position_bars:
                 self.position_bars.append(

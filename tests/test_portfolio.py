@@ -3691,11 +3691,11 @@ def test_capture_bar_when_short_position():
     bar = portfolio.bars[0]
     assert bar.date == DATE_1
     assert bar.cash == cash - shares * fill_price
-    assert bar.equity == cash + (fill_price - close_price) * shares
+    assert bar.equity == cash
     assert bar.margin == close_price * shares
     assert bar.pnl == bar.equity - cash
     assert bar.unrealized_pnl == bar.market_value - bar.equity
-    assert bar.market_value == bar.cash + (fill_price - close_price) * shares
+    assert bar.market_value == cash + (fill_price - close_price) * shares
     assert bar.fees == 0
     assert len(portfolio.position_bars) == 1
     pos_bar = portfolio.position_bars[0]
@@ -3711,6 +3711,46 @@ def test_capture_bar_when_short_position():
     assert pos_bar.margin == close_price * shares
     assert pos_bar.unrealized_pnl == (fill_price - close_price) * shares
     assert pos_bar.market_value == pos_bar.margin + pos_bar.unrealized_pnl
+
+
+def test_capture_bar_when_short_position_and_no_price_data():
+    cash = 100_000
+    fill_price = Decimal("16.72")
+    shares = 100
+    portfolio = Portfolio(cash, record_portfolio_bars=True)
+    portfolio.sell(DATE_1, SYMBOL_1, shares, fill_price)
+    df = pd.DataFrame(
+        [], columns=["symbol", "date", "close", "low", "high"]
+    ).set_index(["symbol", "date"])
+    portfolio.capture_bar(DATE_1, ColumnScope(df), {SYMBOL_1: 0})
+    bar = portfolio.bars[0]
+    assert bar.cash == cash - shares * fill_price
+    assert bar.equity == cash
+    assert bar.market_value == cash
+    assert bar.unrealized_pnl == 0
+    assert not portfolio.position_bars
+
+
+def test_capture_bar_when_short_position_and_leverage():
+    fill_price = Decimal("16.72")
+    shares = 100
+    close_price = Decimal("16.7")
+    portfolio = Portfolio(
+        CASH, leverage=2.0, record_portfolio_bars=True, record_stops=False
+    )
+    portfolio.sell(DATE_1, SYMBOL_1, shares, fill_price)
+    df = pd.DataFrame(
+        [[SYMBOL_1, DATE_1, close_price, Decimal("15.00"), Decimal("18.00")]],
+        columns=["symbol", "date", "close", "low", "high"],
+    ).set_index(["symbol", "date"])
+    portfolio.capture_bar(DATE_1, ColumnScope(df), {SYMBOL_1: 1})
+    entry_notional = shares * fill_price
+    bar = portfolio.bars[0]
+    assert bar.cash == CASH - entry_notional / 2
+    assert bar.margin_loan == entry_notional / 2
+    assert bar.net_cash_balance == CASH - entry_notional
+    assert bar.equity == CASH
+    assert bar.market_value == CASH + (fill_price - close_price) * shares
 
 
 def test_capture_bar_when_long_position():
