@@ -3652,10 +3652,12 @@ def test_incr_bars():
     assert len(portfolio.long_positions) == 1
     assert len(portfolio.short_positions) == 1
     long_pos = portfolio.long_positions[SYMBOL_1]
+    assert long_pos.bars == 3
     assert len(long_pos.entries) == 2
     assert long_pos.entries[0].bars == 3
     assert long_pos.entries[1].bars == 2
     short_pos = portfolio.short_positions[SYMBOL_2]
+    assert short_pos.bars == 2
     assert len(short_pos.entries) == 1
     assert short_pos.entries[0].bars == 2
 

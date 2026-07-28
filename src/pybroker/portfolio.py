@@ -1338,6 +1338,7 @@ class Portfolio:
         for pos in itertools.chain(
             self.long_positions.values(), self.short_positions.values()
         ):
+            pos.bars += 1
             for entry in pos.entries:
                 entry.bars += 1
 
