@@ -18,6 +18,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import itertools
 import json
 import math
 import warnings
@@ -41,6 +42,7 @@ import numpy as np
 import optuna
 import pandas as pd
 from joblib import delayed
+from optuna.distributions import BaseDistribution, CategoricalDistribution
 from optuna.samplers import BaseSampler, GridSampler, RandomSampler, TPESampler
 
 from pybroker.scope import StaticScope
@@ -316,7 +318,7 @@ from pybroker.common import (
     to_seconds,
     verify_date_range,
 )
-from pybroker.parallel import parallel
+from pybroker.parallel import _effective_n_jobs, parallel
 from pybroker.portfolio import Portfolio
 from pybroker.scope import (
     ColumnScope,
@@ -800,6 +802,83 @@ class ObjectiveBundle:
 
     objective: Callable[[optuna.Trial], float]
     search_space: SearchSpace
+    score_overrides: Callable[[dict[str, Any]], float]
+
+
+def _grid_combos(search_space: SearchSpace) -> list[dict[str, Any]]:
+    """Enumerates every point of ``search_space`` in a deterministic order."""
+    names = sorted(search_space.hyperparams)
+    values = [list(search_space.specs[name]) for name in names]
+    return [dict(zip(names, combo)) for combo in itertools.product(*values)]
+
+
+def _grid_distributions(
+    search_space: SearchSpace,
+) -> dict[str, BaseDistribution]:
+    return {
+        name: CategoricalDistribution(list(search_space.specs[name]))
+        for name in sorted(search_space.hyperparams)
+    }
+
+
+def _run_study(
+    study: optuna.Study,
+    bundle: ObjectiveBundle,
+    n_trials: int,
+    sampler: BaseSampler,
+) -> None:
+    """Runs ``n_trials`` of ``study``, in parallel when configured.
+
+    Grid search needs no feedback between trials, so every point is enumerated
+    up front and evaluated at once, then registered as a completed trial. This
+    also sidesteps ``GridSampler.after_trial`` calling ``Study.stop()``, which
+    raises outside of :meth:`optuna.Study.optimize`.
+
+    Other samplers are adaptive, so trials are evaluated in batches: each batch
+    is asked, scored concurrently, then told back before the next is drawn.
+    Batching costs the sampler some information (a batch cannot observe its own
+    results), which matters for :class:`optuna.samplers.TPESampler` but not for
+    :class:`optuna.samplers.RandomSampler`.
+    """
+    workers = _effective_n_jobs()
+    if workers <= 1:
+        study.optimize(bundle.objective, n_trials=n_trials)
+        return
+    scope = StaticScope.instance()
+    if isinstance(sampler, GridSampler):
+        combos = _grid_combos(bundle.search_space)[:n_trials]
+        dists = _grid_distributions(bundle.search_space)
+        with parallel() as pool:
+            scores = pool(
+                delayed(_run_scoped_task)(
+                    scope, bundle.score_overrides, params
+                )
+                for params in combos
+            )
+        for params, score in zip(combos, scores):
+            study.add_trial(
+                optuna.trial.create_trial(
+                    params=params, distributions=dists, value=score
+                )
+            )
+        return
+    remaining = n_trials
+    while remaining > 0:
+        size = min(workers, remaining)
+        trials = [study.ask() for _ in range(size)]
+        overrides = [
+            _trial_params(trial, bundle.search_space) for trial in trials
+        ]
+        with parallel() as pool:
+            scores = pool(
+                delayed(_run_scoped_task)(
+                    scope, bundle.score_overrides, params
+                )
+                for params in overrides
+            )
+        for trial, score in zip(trials, scores):
+            study.tell(trial, score)
+        remaining -= size
 
 
 def _run_scoped_task(scope: StaticScope, fn: Callable[..., Any], *args) -> Any:
@@ -832,8 +911,13 @@ def make_objective(
 ) -> ObjectiveBundle:
     """Builds an Optuna objective for train-window scoring."""
 
-    def objective(trial: optuna.Trial) -> float:
-        overrides = _trial_params(trial, search_space)
+    def score_overrides(overrides: dict[str, Any]) -> float:
+        """Scores one already-resolved set of hyperparam values.
+
+        Kept separate from ``objective`` so trials can be evaluated in worker
+        processes: an :class:`optuna.Trial` holds a reference to its study and
+        must not cross a process boundary, but a plain params ``dict`` can.
+        """
         run_hp = build_run_hyperparams(hyperparams, overrides)
         result = strategy._run_optimize_trial(
             df=df,
@@ -849,7 +933,14 @@ def make_objective(
         )
         return score_fn(result)
 
-    return ObjectiveBundle(objective=objective, search_space=search_space)
+    def objective(trial: optuna.Trial) -> float:
+        return score_overrides(_trial_params(trial, search_space))
+
+    return ObjectiveBundle(
+        objective=objective,
+        search_space=search_space,
+        score_overrides=score_overrides,
+    )
 
 
 class OptimizeMixin:
@@ -1370,7 +1461,7 @@ class OptimizeMixin:
                 study = optuna.create_study(
                     direction=direction, sampler=built_sampler, pruner=pruner
                 )
-            study.optimize(bundle.objective, n_trials=n_trials)
+            _run_study(study, bundle, n_trials, built_sampler)
             best_params = build_run_hyperparams(hyperparams, study.best_params)
             test_result = self._run_optimize_test(
                 df=df,
@@ -1598,7 +1689,7 @@ class OptimizeMixin:
             window_study = optuna.create_study(
                 direction=direction, sampler=built_sampler, pruner=pruner
             )
-            window_study.optimize(bundle.objective, n_trials=window_n_trials)
+            _run_study(window_study, bundle, window_n_trials, built_sampler)
             best_params = build_run_hyperparams(
                 hyperparams, window_study.best_params
             )

@@ -124,3 +124,19 @@ def _is_nested() -> bool:
     """
     backend, _ = get_active_backend()
     return bool(getattr(backend, "nesting_level", 0))
+
+
+def _effective_n_jobs() -> int:
+    """Number of workers a :func:`parallel` pool would actually use.
+
+    Returns ``1`` when work would run sequentially, so callers can skip
+    fanning out rather than pay to set up a pool of one.
+    """
+    if _is_nested():
+        return 1
+    n_jobs = (
+        _config.parallel.n_jobs
+        if _config.parallel is not None
+        else _config.n_jobs
+    )
+    return max(1, joblib.effective_n_jobs(n_jobs))
