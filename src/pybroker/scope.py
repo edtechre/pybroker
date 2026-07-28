@@ -350,6 +350,22 @@ class StaticScope:
         cls.__instance = scope
 
 
+def run_with_scope(
+    scope: StaticScope, fn: Callable[..., Any], *args: Any
+) -> Any:
+    """Installs ``scope`` as this process' scope, then runs ``fn``.
+
+    :class:`StaticScope` is a per-process singleton, so a worker process starts
+    with an empty one and would not see the caller's registered indicators,
+    model sources, params or custom columns. Wrap work dispatched to
+    :func:`pybroker.parallel.parallel` in this to ship the caller's scope along
+    with it. Running sequentially, ``scope`` is already the installed instance
+    and this is a no-op.
+    """
+    StaticScope.set_instance(scope)
+    return fn(*args)
+
+
 def disable_logging():
     """Disables event logging."""
     StaticScope.instance().logger.disable()

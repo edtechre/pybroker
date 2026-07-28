@@ -323,6 +323,7 @@ from pybroker.portfolio import Portfolio
 from pybroker.scope import (
     ColumnScope,
     merge_symbol_array_stores,
+    run_with_scope,
     slice_symbol_array_store_by_dates,
     symbol_array_store_from_frame,
 )
@@ -889,8 +890,7 @@ def _run_scoped_task(scope: StaticScope, fn: Callable[..., Any], *args) -> Any:
     indicators, model sources, params or custom columns. Running sequentially,
     ``scope`` is already the installed instance and this is a no-op.
     """
-    StaticScope.set_instance(scope)
-    return fn(*args)
+    return run_with_scope(scope, fn, *args)
 
 
 def make_objective(

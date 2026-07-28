@@ -22,13 +22,14 @@ from pybroker.common import (
 )
 from pybroker.indicator import IndicatorsMixin, indicator
 from pybroker.model import ModelLoader, ModelsMixin, ModelTrainer, model
+from pybroker.parallel import set_parallel
 from pybroker.timeframe import (
     TimeframeData,
     compress_symbol_df,
     indicator_timeframe_name,
     model_timeframe_name,
 )
-from pybroker.scope import ModelInputScope
+from pybroker.scope import ModelInputScope, param, register_columns
 
 TF_SECONDS = 60
 BETWEEN_TIME = ("10:00", "15:30")
@@ -37,6 +38,25 @@ BETWEEN_TIME = ("10:00", "15:30")
 @pytest.fixture(params=[True, False])
 def enable_parallel_models(request):
     return request.param
+
+
+@pytest.fixture()
+def multi_worker_parallel_config():
+    """Configures more than one worker for the duration of a test.
+
+    ``_run_model_trainers`` skips the pool when the configured worker count is
+    ``1`` (the default), since building one would just run the tasks
+    sequentially anyway. Tests that assert the pool *is* entered have to opt
+    in.
+    """
+    import pybroker.parallel as parallel_mod
+
+    saved = parallel_mod._config
+    set_parallel(n_jobs=2)
+    try:
+        yield
+    finally:
+        parallel_mod._config = saved
 
 
 @pytest.fixture()
@@ -204,6 +224,11 @@ class TestModelSource:
         assert repr(trainer) == "ModelLoader('loader', {'a': 1})"
 
 
+def _param_reading_train_fn(symbol, train_df, test_df):
+    """Reads a param set by the parent. Module-level so it pickles to loky."""
+    return param("scope_probe")
+
+
 class TestModelsMixin:
     def _assert_models(self, models, expected_model_syms):
         assert set(models.keys()) == set(expected_model_syms)
@@ -279,7 +304,9 @@ class TestModelsMixin:
         )
         self._assert_models(models, model_syms)
 
-    @pytest.mark.usefixtures("setup_model_cache")
+    @pytest.mark.usefixtures(
+        "setup_model_cache", "multi_worker_parallel_config"
+    )
     def test_train_models_parallel_invokes_pool(
         self,
         train_data,
@@ -325,6 +352,54 @@ class TestModelsMixin:
             mock_parallel.assert_called_once()
             mock_pool.assert_called_once()
         self._assert_models(models, trainer_syms)
+
+    @pytest.mark.usefixtures("setup_model_cache")
+    def test_train_models_parallel_propagates_static_scope(
+        self,
+        scope,
+        indicators,
+        train_data,
+        test_data,
+        ind_data,
+        cache_date_fields,
+    ):
+        """A ``train_fn`` must see the caller's params in a worker process.
+
+        Worker processes start with an empty
+        :class:`pybroker.scope.StaticScope`, so without shipping the caller's
+        scope alongside each task ``pybroker.param()`` silently returns
+        ``None`` under parallel training while returning the real value when
+        run serially.
+        """
+        import pybroker.parallel as parallel_mod
+
+        saved = parallel_mod._config
+        param("scope_probe", "from-parent")
+        source = model(
+            "scope_probe_model", _param_reading_train_fn, indicators
+        )
+        model_syms = sorted(
+            ModelSymbol(source.name, sym)
+            for sym in train_data["symbol"].unique()
+        )
+        # More than one task, otherwise the pool is skipped entirely.
+        assert len(model_syms) > 1
+        set_parallel(n_jobs=2)
+        try:
+            # loky, i.e. genuinely separate processes rather than threads.
+            assert parallel_mod._config.backend == "loky"
+            models = ModelsMixin().train_models(
+                model_syms,
+                train_data,
+                test_data,
+                ind_data,
+                cache_date_fields,
+                enable_parallel_models=True,
+            )
+        finally:
+            parallel_mod._config = saved
+        for model_sym in model_syms:
+            assert models[model_sym].instance == "from-parent"
 
 
 class TestPooledModelsMixin:
@@ -587,6 +662,52 @@ class TestPooledModelsMixin:
         assert "date" in input_cols
 
     @pytest.mark.usefixtures("setup_model_cache")
+    @pytest.mark.parametrize("pooled", [False, True])
+    def test_train_models_infers_registered_custom_data_cols(
+        self,
+        scope,
+        indicators,
+        train_data,
+        test_data,
+        ind_data,
+        cache_date_fields,
+        pooled,
+    ):
+        """Columns from ``register_columns`` are trained on, so they belong in
+        the inferred input columns.
+
+        Dropping them here while the prediction side keeps them would feed the
+        model fewer features than it saw during training.
+        """
+        register_columns("adj_close")
+        seen_train_cols = []
+
+        def train_fn(*args):
+            seen_train_cols.append(tuple(args[-2].columns))
+            return FakeModel("custom_col", np.array([1.0]))
+
+        source = model("custom_col_model", train_fn, indicators, pooled=pooled)
+        symbols = frozenset(train_data["symbol"].unique())
+        model_syms = [ModelSymbol(source.name, sym) for sym in sorted(symbols)]
+        pooled_model_groups = {(source.name, 1): symbols} if pooled else None
+        mixin = ModelsMixin()
+        models = mixin.train_models(
+            model_syms,
+            train_data,
+            test_data,
+            ind_data,
+            cache_date_fields,
+            pooled_model_groups=pooled_model_groups,
+        )
+        assert seen_train_cols
+        assert all("adj_close" in cols for cols in seen_train_cols)
+        for model_sym in model_syms:
+            input_cols = models[model_sym].input_cols
+            assert input_cols is not None
+            assert "adj_close" in input_cols
+            assert DataCol.SYMBOL.value not in input_cols
+
+    @pytest.mark.usefixtures("setup_model_cache")
     def test_pooled_predict_input_omits_symbol(
         self,
         scope,
@@ -621,7 +742,9 @@ class TestPooledModelsMixin:
         assert DataCol.SYMBOL.value not in df.columns
         assert list(df.columns) == list(models[model_sym].input_cols)
 
-    @pytest.mark.usefixtures("setup_model_cache")
+    @pytest.mark.usefixtures(
+        "setup_model_cache", "multi_worker_parallel_config"
+    )
     def test_train_models_single_pooled_group_parallel_skips_pool(
         self,
         scope,
@@ -652,7 +775,9 @@ class TestPooledModelsMixin:
             )
             mock_parallel.assert_not_called()
 
-    @pytest.mark.usefixtures("setup_model_cache")
+    @pytest.mark.usefixtures(
+        "setup_model_cache", "multi_worker_parallel_config"
+    )
     def test_train_models_multiple_pooled_groups_parallel_invokes_pool(
         self,
         scope,
@@ -717,7 +842,9 @@ class TestPooledModelsMixin:
             mock_pool.assert_called_once()
         assert len(models) == len(model_syms)
 
-    @pytest.mark.usefixtures("setup_model_cache")
+    @pytest.mark.usefixtures(
+        "setup_model_cache", "multi_worker_parallel_config"
+    )
     def test_train_models_pooled_mixed_parallel_invokes_pool(
         self,
         scope,
@@ -1150,18 +1277,25 @@ def test_train_models_reuses_history_store(
     )
 
     sym = sorted(train_data["symbol"].unique())[0]
+    # lags= is what actually reads the merged store, so without it this would
+    # pass on laziness alone and never exercise the supplied store.
     model(
         "store_model",
         lambda symbol, train_df, test_df: FakeModel(symbol, np.array([1.0])),
         indicators,
+        lags=2,
+        lag_cols=("close",),
     )
     train_store = symbol_array_store_from_frame(train_data)
     test_store = symbol_array_store_from_frame(test_data)
     history_store = merge_symbol_array_stores(train_store, test_store)
     mixin = ModelsMixin()
-    with patch(
-        "pybroker.model.symbol_array_store_from_frame"
-    ) as store_from_frame:
+    with (
+        patch(
+            "pybroker.model.symbol_array_store_from_frame"
+        ) as store_from_frame,
+        patch("pybroker.model.merge_symbol_array_stores") as merge_stores,
+    ):
         mixin.train_models(
             [ModelSymbol("store_model", sym)],
             train_data,
@@ -1173,6 +1307,37 @@ def test_train_models_reuses_history_store(
             test_store=test_store,
         )
         store_from_frame.assert_not_called()
+        # The caller already merged train+test; redoing it would concatenate
+        # every column of every symbol a second time, on every window.
+        merge_stores.assert_not_called()
+
+
+def test_train_models_skips_history_store_without_lags(
+    scope,
+    indicators,
+    train_data,
+    test_data,
+    ind_data,
+    cache_date_fields,
+):
+    """Only lagged models read the merged store, so it must stay unbuilt."""
+    sym = sorted(train_data["symbol"].unique())[0]
+    model(
+        "no_lags_model",
+        lambda symbol, train_df, test_df: FakeModel(symbol, np.array([1.0])),
+        indicators,
+    )
+    mixin = ModelsMixin()
+    with patch("pybroker.model._history_store") as history_store_fn:
+        models = mixin.train_models(
+            [ModelSymbol("no_lags_model", sym)],
+            train_data,
+            test_data,
+            ind_data,
+            cache_date_fields,
+        )
+        history_store_fn.assert_not_called()
+    assert len(models) == 1
 
 
 def test_get_cached_models_pooled_single_pass(

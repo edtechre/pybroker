@@ -22,7 +22,7 @@ from pybroker.common import (
     to_datetime,
 )
 from pybroker.indicator import Indicator
-from pybroker.parallel import parallel
+from pybroker.parallel import _effective_n_jobs, parallel
 from pybroker.timeframe import (
     TimeframeData,
     TimeframeInterval,
@@ -792,6 +792,7 @@ from pybroker.scope import (
     StaticScope,
     SymbolArrayStore,
     merge_symbol_array_stores,
+    run_with_scope,
     symbol_array_store_from_frame,
 )
 
@@ -1527,7 +1528,11 @@ TrainerReturn = Union[PooledTrainerReturn, SymTrainerReturn]
 def _infer_input_cols(
     train_data: ModelInput, pooled: bool, indicators: tuple[str, ...]
 ) -> tuple[str, ...]:
-    data_cols = {col.value for col in DataCol}
+    # Columns registered with register_columns() are part of the training
+    # frame, so they belong in the inferred input columns too. Filtering on
+    # the DataCol enum instead would drop them here while the prediction side
+    # keeps them, feeding the model fewer features than it trained on.
+    data_cols = StaticScope.instance().all_data_cols
     cols = [
         col
         for col in train_data.columns
@@ -1700,12 +1705,25 @@ class ModelsMixin:
             train_store = symbol_array_store_from_frame(train_data)
         if test_store is None and not test_data.empty:
             test_store = symbol_array_store_from_frame(test_data)
-        history_store = _history_store(
-            train_data,
-            test_data,
-            train_store=train_store,
-            test_store=test_store,
-        )
+        resolved_history_store = history_store
+
+        def get_history_store() -> SymbolArrayStore:
+            """Returns the merged train+test store, building it on first use.
+
+            Only models with ``lags`` read it, and callers that already hold
+            the merge pass it in, so neither pays for a second full
+            concatenation of every symbol column.
+            """
+            nonlocal resolved_history_store
+            if resolved_history_store is None:
+                resolved_history_store = _history_store(
+                    train_data,
+                    test_data,
+                    train_store=train_store,
+                    test_store=test_store,
+                )
+            return resolved_history_store
+
         lag_series_cache: LagSeriesCache = {}
         history_dates: dict[str, np.ndarray] = {}
         if pooled_model_groups is None:
@@ -1774,7 +1792,7 @@ class ModelsMixin:
                         source,
                         train_dates,
                         test_dates,
-                        history_store,
+                        get_history_store,
                         lag_series_cache,
                         history_dates,
                         train_store=train_store,
@@ -1850,7 +1868,7 @@ class ModelsMixin:
                     )
                     merge_lag_series_cache_from_store(
                         lag_series_cache,
-                        history_store,
+                        get_history_store(),
                         (sym,),
                         lag_cols,
                         source.lags,
@@ -1996,10 +2014,19 @@ class ModelsMixin:
         trainer_tasks: Collection[_TrainerTask],
         enable_parallel_models: bool,
     ) -> list[TrainerReturn]:
-        if enable_parallel_models and len(trainer_tasks) > 1:
+        if (
+            enable_parallel_models
+            and len(trainer_tasks) > 1
+            and _effective_n_jobs() > 1
+        ):
+            # Workers start with an empty StaticScope, so ship the caller's
+            # along with each task: a train_fn reading pybroker.param() must
+            # see the same values it would see running sequentially.
+            scope = StaticScope.instance()
             with parallel() as pool:
                 return pool(
-                    delayed(_run_trainer_task)(task) for task in trainer_tasks
+                    delayed(run_with_scope)(scope, _run_trainer_task, task)
+                    for task in trainer_tasks
                 )
         return [_run_trainer_task(task) for task in trainer_tasks]
 
@@ -2012,7 +2039,7 @@ class ModelsMixin:
         source: ModelTrainer,
         train_dates: Collection,
         test_dates: Collection,
-        history_store: SymbolArrayStore,
+        get_history_store: Callable[[], SymbolArrayStore],
         lag_series_cache: LagSeriesCache,
         history_dates: dict[str, np.ndarray],
         *,
@@ -2045,7 +2072,7 @@ class ModelsMixin:
             )
             merge_lag_series_cache_from_store(
                 lag_series_cache,
-                history_store,
+                get_history_store(),
                 symbols,
                 lag_cols,
                 source.lags,
