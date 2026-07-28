@@ -13,6 +13,7 @@ import pandas as pd
 import pytest
 import re
 from datetime import datetime
+from numba import njit
 from pybroker.eval import (
     BootstrapResult,
     BootConfIntervals,
@@ -156,6 +157,30 @@ def test_bca_boot_conf_short_data_keeps_n_boot():
     assert intervals.low_2p5 != intervals.high_2p5
 
 
+def test_bca_boot_conf_does_not_mutate_input():
+    """The generic path jackknifes by building leave-one-out samples in a
+    scratch buffer. Swapping within x would mutate the caller's array, since
+    np.ascontiguousarray does not copy an already-contiguous float64 array."""
+    x = np.array([1.0, 2.0, -5.0, 3.0, -1.0, 4.0, -2.0])
+    original = x.copy()
+    bca_boot_conf(x, 100, max_drawdown)
+    assert np.array_equal(x, original)
+
+
+def test_bca_boot_conf_does_not_corrupt_input_when_fn_raises():
+    @njit
+    def raises_midway(a):
+        if len(a) == 6:
+            raise ValueError("boom")
+        return 0.0
+
+    x = np.array([1.0, 2.0, 3.0, 4.0, 5.0, -1.0, -2.0])
+    original = x.copy()
+    with pytest.raises(ValueError):
+        bca_boot_conf(x, 10, raises_midway)
+    assert np.array_equal(x, original)
+
+
 def test_drawdown_conf_uses_full_history():
     np.random.seed(789)
     changes = np.concatenate(
@@ -206,20 +231,53 @@ def test_sharpe_ratio(values, obs, expected_sharpe):
 @pytest.mark.parametrize(
     "values, obs, expected_sortino",
     [
-        ([0.1, -0.2, 0.3, 0, -0.4, 0.5], None, 0.499999),
+        ([0.1, -0.2, 0.3, 0, -0.4, 0.5], None, 0.273861),
         (
             [0.1, -0.2, 0.3, 0, -0.4, 0.5],
             252,
-            0.4999999999999999 * np.sqrt(252),
+            0.273861278752583 * np.sqrt(252),
         ),
-        ([1, 1, 1, 1], None, 0),
-        ([1], None, 0),
+        ([-0.01, -0.02], None, -0.9486832980505139),
+        ([0, 0, 0, 0], None, 0),
         ([], None, 0),
     ],
 )
 def test_sortino_ratio(values, obs, expected_sortino):
     sortino = sortino_ratio(np.array(values), obs)
     assert truncate(sortino, 6) == truncate(expected_sortino, 6)
+
+
+@pytest.mark.parametrize("values", [[1, 1, 1, 1], [1], [0.01, 0.02, 0.03]])
+def test_sortino_ratio_when_no_downside_then_inf(values):
+    """A gain with zero downside is unbounded, not zero. Returning 0 here
+    would rank the best possible input alongside a flat one."""
+    assert sortino_ratio(np.array(values, dtype=np.float64)) == np.inf
+
+
+def test_sortino_ratio_matches_reference_definition():
+    """Denominator is downside deviation: negative returns squared about zero,
+    averaged over *all* observations. Matches quantstats.stats.sortino."""
+    rng = np.random.default_rng(11)
+    returns = rng.normal(0.0005, 0.01, 1000)
+    expected = returns.mean() / np.sqrt(
+        (returns[returns < 0] ** 2).sum() / len(returns)
+    )
+    assert sortino_ratio(returns) == pytest.approx(expected, rel=1e-12)
+
+
+def test_sortino_ratio_is_continuous_in_loss_count():
+    """Regression: np.std of a one-element array is 0, which used to trip the
+    zero-variance guard and collapse a single-loss series to 0."""
+    one_loss = np.concatenate([np.full(999, 0.001), [-0.0005]])
+    two_losses = np.concatenate([np.full(998, 0.001), [-0.0005, -0.0006]])
+    assert sortino_ratio(one_loss) > sortino_ratio(two_losses) > 0
+
+
+def test_sortino_ratio_accounts_for_loss_depth():
+    """Regression: a single loss used to score 0 regardless of magnitude."""
+    small = np.concatenate([np.full(99, 0.001), [-0.0005]])
+    large = np.concatenate([np.full(99, 0.001), [-0.5]])
+    assert sortino_ratio(small) > sortino_ratio(large)
 
 
 @pytest.mark.parametrize(
@@ -512,11 +570,11 @@ class TestEvaluateMixin:
     @pytest.mark.parametrize(
         "bars_per_year, expected_sharpe, expected_sortino",
         [
-            (None, 0.026013464180574847, 0.02727734785007549),
+            (None, 0.026013464180574847, 0.037930595687473444),
             (
                 252,
                 0.026013464180574847 * np.sqrt(252),
-                0.02727734785007549 * np.sqrt(252),
+                0.037930595687473444 * np.sqrt(252),
             ),
         ],
     )
@@ -717,6 +775,80 @@ class TestEvaluateMixin:
             assert result.bootstrap.drawdown is not None
         else:
             assert result.bootstrap is None
+
+    def test_evaluate_bootstrap_is_reproducible_with_seed(
+        self, portfolio_df, trades_df
+    ):
+        """Resampling happens inside @njit code, and Numba keeps a random state
+        separate from NumPy's. Seeding via np.random.seed() from Python left
+        the bootstrap non-reproducible despite the documented seed argument."""
+        mixin = EvaluateMixin()
+
+        def run(seed):
+            return mixin.evaluate(
+                portfolio_df,
+                trades_df,
+                calc_bootstrap=True,
+                bootstrap_samples=100,
+                bars_per_year=252,
+                seed=seed,
+            ).bootstrap
+
+        first, second = run(42), run(42)
+        assert first.profit_factor == second.profit_factor
+        assert first.sharpe == second.sharpe
+        assert first.drawdown == second.drawdown
+        assert run(7).sharpe != first.sharpe
+        assert run(None).sharpe != run(None).sharpe
+
+    @pytest.mark.parametrize("calc_bootstrap", [True, False])
+    def test_evaluate_preserves_global_numpy_random_state(
+        self, portfolio_df, trades_df, calc_bootstrap
+    ):
+        """evaluate() used to seed the process-global NumPy RNG and only
+        restore it on the bootstrap path, silently hijacking the caller's
+        stream on every other path."""
+        mixin = EvaluateMixin()
+        np.random.seed(999)
+        expected = np.random.rand(3)
+        np.random.seed(999)
+        mixin.evaluate(
+            portfolio_df,
+            trades_df,
+            calc_bootstrap,
+            bootstrap_samples=50,
+            bars_per_year=252,
+            seed=42,
+        )
+        assert np.array_equal(np.random.rand(3), expected)
+
+    def test_evaluate_when_market_value_reaches_zero(self, trades_df):
+        """A zero market value used to emit NaN returns, which poisoned
+        sharpe/sortino/calmar/volatility and desynced the date index used to
+        label max_drawdown_date."""
+        market_values = [100.0, 0.0, 0.0, 0.0, 100.0, 120.0, 150.0, 60.0]
+        index = pd.date_range("2023-04-12", periods=len(market_values))
+        mixin = EvaluateMixin()
+        metrics = mixin.evaluate(
+            pd.DataFrame(
+                {"market_value": market_values, "fees": 0.0}, index=index
+            ),
+            trades_df,
+            calc_bootstrap=False,
+            bootstrap_samples=100,
+            bars_per_year=252,
+        ).metrics
+        for field in (
+            "sharpe",
+            "sortino",
+            "calmar",
+            "annual_volatility_pct",
+            "max_drawdown_pct",
+        ):
+            assert np.isfinite(getattr(metrics, field)), field
+        # Ruin happens on the second bar; the date must name that bar.
+        assert metrics.max_drawdown_pct == -100.0
+        assert metrics.max_drawdown_date == index[1].to_pydatetime()
 
 
 def test_eval_metrics_to_json():

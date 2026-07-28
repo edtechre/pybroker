@@ -46,6 +46,18 @@ def _bootstrap_indices(n: int, n_boot: int) -> NDArray[np.int64]:
 
 
 @njit(cache=True)
+def _seed_bootstrap(seed: int) -> None:
+    """Seeds the RNG used for bootstrap resampling.
+
+    Numba keeps a random state that is separate from NumPy's, so calling
+    :func:`numpy.random.seed` from Python has no effect on the resampling done
+    by :func:`._bootstrap_indices`. Seeding must happen from within compiled
+    code to be effective.
+    """
+    np.random.seed(seed)
+
+
+@njit(cache=True)
 def _bca_clamp(k: int, n_boot: int) -> int:
     return min(max(k, 0), n_boot - 1)
 
@@ -130,7 +142,6 @@ def _jackknife_sharpe(x: NDArray[np.float64]) -> NDArray[np.float64]:
 @njit(cache=True)
 def _bca_intervals_from_boot(
     boot: NDArray[np.float64],
-    theta_hat: float,
     z0_count: int,
     jackknife: NDArray[np.float64],
     n: int,
@@ -201,7 +212,7 @@ def _bca_boot_conf_pf(
         if param < theta_hat:
             z0_count += 1
     jackknife = _jackknife_profit_factor(x, use_log)
-    return _bca_intervals_from_boot(boot, theta_hat, z0_count, jackknife, n)
+    return _bca_intervals_from_boot(boot, z0_count, jackknife, n)
 
 
 @njit(cache=True)
@@ -226,7 +237,7 @@ def _bca_boot_conf_sharpe(
         if param < theta_hat:
             z0_count += 1
     jackknife = _jackknife_sharpe(x)
-    return _bca_intervals_from_boot(boot, theta_hat, z0_count, jackknife, n)
+    return _bca_intervals_from_boot(boot, z0_count, jackknife, n)
 
 
 @njit(cache=True)
@@ -253,12 +264,21 @@ def _bca_boot_conf_generic(
         if param < theta_hat:
             z0_count += 1
     jackknife = np.zeros(n)
-    for i in range(n):
-        x_temp = x[i]
-        x[i] = x[n - 1]
-        jackknife[i] = fn(x[: n - 1])
-        x[i] = x_temp
-    return _bca_intervals_from_boot(boot, theta_hat, z0_count, jackknife, n)
+    if n > 1:
+        # Build each leave-one-out sample into a scratch buffer rather than
+        # swapping elements within x. Swapping would mutate the caller's array
+        # (np.ascontiguousarray does not copy an already-contiguous float64
+        # array) and would leave it corrupted if fn raised. It would also
+        # reorder the sample, making the acceleration constant wrong for
+        # order-dependent statistics such as max_drawdown.
+        buff = np.empty(n - 1, dtype=np.float64)
+        for i in range(n):
+            for j in range(i):
+                buff[j] = x[j]
+            for j in range(i + 1, n):
+                buff[j - 1] = x[j]
+            jackknife[i] = fn(buff)
+    return _bca_intervals_from_boot(boot, z0_count, jackknife, n)
 
 
 def bca_boot_conf(
@@ -337,7 +357,6 @@ def log_profit_factor(changes: NDArray[np.float64]) -> float:
 def sharpe_ratio(
     returns: NDArray[np.float64],
     obs: Optional[int] = None,
-    downside_only: bool = False,
 ) -> float:
     """Computes the
     `Sharpe Ratio <https://en.wikipedia.org/wiki/Sharpe_ratio>`_.
@@ -351,13 +370,7 @@ def sharpe_ratio(
     n = len(returns)
     if not n:
         return 0.0
-    if downside_only:
-        std_changes = returns[returns < 0]
-        if not len(std_changes):
-            return 0.0
-        std = np.std(std_changes)
-    else:
-        std = np.std(returns)
+    std = np.std(returns)
     if std == 0:
         return 0.0
     sr = np.mean(returns) / std
@@ -366,11 +379,36 @@ def sharpe_ratio(
     return float(sr)
 
 
+@njit(cache=True)
+def downside_deviation(returns: NDArray[np.float64]) -> float:
+    """Computes downside deviation, the denominator of the
+    `Sortino Ratio <https://en.wikipedia.org/wiki/Sortino_ratio>`_.
+
+    Negative returns are squared about zero and averaged over **all**
+    observations, not just the negative ones.
+
+    Args:
+        returns: Array of returns centered at 0.
+    """
+    n = len(returns)
+    if not n:
+        return 0.0
+    downside_sq = 0.0
+    for r in returns:
+        if r < 0:
+            downside_sq += r * r
+    return np.sqrt(downside_sq / n)
+
+
+@njit(cache=True)
 def sortino_ratio(
     returns: NDArray[np.float64], obs: Optional[int] = None
 ) -> float:
     """Computes the
     `Sortino Ratio <https://en.wikipedia.org/wiki/Sortino_ratio>`_.
+
+    Returns ``inf`` when there is no downside and the mean return is positive,
+    and ``0`` when there is no downside and no gain either.
 
     Args:
         returns: Array of returns centered at 0.
@@ -378,7 +416,19 @@ def sortino_ratio(
             example, a value of ``252`` would be used to annualize daily
             returns.
     """
-    return float(sharpe_ratio(returns, obs, downside_only=True))
+    n = len(returns)
+    if not n:
+        return 0.0
+    mean = np.mean(returns)
+    dd = downside_deviation(returns)
+    if dd == 0:
+        # No losing bar. Falling through to 0 here would score the best
+        # possible input identically to a flat one.
+        return 0.0 if mean <= 0 else np.inf
+    sr = mean / dd
+    if obs is not None:
+        sr *= np.sqrt(obs)
+    return float(sr)
 
 
 def conf_profit_factor(
@@ -617,14 +667,12 @@ def bootstrap_eval_all(
             z0_sharpe += 1
     log_pf_intervals = _bca_intervals_from_boot(
         boot_log_pf,
-        theta_log_pf,
         z0_log_pf,
         _jackknife_log_profit_factor(changes),
         n,
     )
     sharpe_intervals = _bca_intervals_from_boot(
         boot_sharpe,
-        theta_sharpe,
         z0_sharpe,
         _jackknife_sharpe(returns),
         n,
@@ -639,10 +687,7 @@ def bootstrap_eval_all(
             sharpe_intervals.low_10 * factor,
             sharpe_intervals.high_10 * factor,
         )
-    dd_metrics = DrawdownMetrics(
-        _dd_confs(boot_dd.copy()),
-        _dd_confs(boot_dd_pct.copy()),
-    )
+    dd_metrics = DrawdownMetrics(_dd_confs(boot_dd), _dd_confs(boot_dd_pct))
     return log_pf_intervals, sharpe_intervals, dd_metrics
 
 
@@ -1072,7 +1117,11 @@ def _bar_returns_and_changes(
         cur = market_values[i]
         changes[i - 1] = cur - prev
         if prev == 0:
-            returns[i - 1] = np.nan
+            # A zero portfolio cannot produce a return. Emitting NaN here would
+            # silently poison sharpe/sortino/calmar/volatility downstream, and
+            # would freeze max_drawdown_percent at a stale value, since every
+            # comparison against NaN is False.
+            returns[i - 1] = 0.0
         else:
             returns[i - 1] = (cur - prev) / prev
     return returns, changes
@@ -1155,6 +1204,8 @@ class EvalMetrics:
             computed per bar.
         sortino: `Sortino Ratio
             <https://en.wikipedia.org/wiki/Sortino_ratio>`_, computed per bar.
+            ``inf`` when there are no losing bars and the mean return is
+            positive.
         calmar: Calmar Ratio, computed per bar.
         profit_factor: Ratio of gross profit to gross loss, computed per bar.
         ulcer_index: `Ulcer Index
@@ -1249,17 +1300,6 @@ class EvalResult(NamedTuple):
     bootstrap: Optional[BootstrapResult]
 
 
-class _ConfsResult(NamedTuple):
-    df: pd.DataFrame
-    profit_factor: BootConfIntervals
-    sharpe: BootConfIntervals
-
-
-class _DrawdownResult(NamedTuple):
-    df: pd.DataFrame
-    metrics: DrawdownMetrics
-
-
 class EvaluateMixin:
     """Mixin for computing evaluation metrics."""
 
@@ -1289,17 +1329,12 @@ class EvaluateMixin:
         Returns:
             :class:`.EvalResult` containing evaluation metrics.
         """
-        if seed is not None:
-            np.random.seed(seed)
         market_values = portfolio_df["market_value"].to_numpy(
             dtype=np.float64, copy=True
         )
         fees = portfolio_df["fees"].to_numpy(dtype=np.float64, copy=True)
-        bar_returns_series = self._calc_bar_returns(portfolio_df)
-        bar_return_dates = bar_returns_series.index.to_series().reset_index(
-            drop=True
-        )
         bar_returns, bar_changes = _bar_returns_and_changes(market_values)
+        bar_return_dates = portfolio_df.index[1:]
         if (
             not len(market_values)
             or not len(bar_returns)
@@ -1357,6 +1392,8 @@ class EvaluateMixin:
             samples=bootstrap_samples, bars=len(bar_returns)
         )
         annualize = bars_per_year if bars_per_year is not None else 0
+        if seed is not None:
+            _seed_bootstrap(seed)
         log_pf_intervals, sharpe_intervals, dd_metrics = bootstrap_eval_all(
             bar_changes,
             bar_returns,
@@ -1390,18 +1427,7 @@ class EvaluateMixin:
             drawdown=dd_metrics,
         )
         logger.calc_bootstrap_metrics_completed()
-        if seed is not None:
-            np.random.seed()
         return EvalResult(metrics, bootstrap)
-
-    def _calc_bar_returns(self, df: pd.DataFrame) -> pd.Series:
-        prev_market_value = df["market_value"].shift(1)
-        returns = (df["market_value"] - prev_market_value) / prev_market_value
-        return returns.dropna()
-
-    def _calc_bar_changes(self, df: pd.DataFrame) -> NDArray[np.float64]:
-        changes = df["market_value"] - df["market_value"].shift(1)
-        return changes.dropna().to_numpy(copy=True)
 
     def _calc_eval_metrics(
         self,
@@ -1417,7 +1443,7 @@ class EvaluateMixin:
         max_dd = max_drawdown(bar_changes)
         max_dd_pct, max_dd_index = max_drawdown_percent(bar_returns)
         max_dd_date = (
-            bar_return_dates.iloc[max_dd_index].to_pydatetime()
+            bar_return_dates[max_dd_index].to_pydatetime()
             if max_dd_index is not None
             else None
         )
@@ -1496,25 +1522,6 @@ class EvaluateMixin:
             annual_volatility_pct=annual_volatility_pct,
         )
 
-    def _calc_conf_intervals(
-        self,
-        changes: NDArray[np.float64],
-        returns: NDArray[np.float64],
-        samples: int,
-        bars_per_year: Optional[int],
-    ) -> _ConfsResult:
-        pf_intervals = conf_profit_factor(changes, samples)
-        pf_conf = self._to_conf_intervals("Profit Factor", pf_intervals)
-        sr_intervals = conf_sharpe_ratio(returns, samples, bars_per_year)
-        sharpe_conf = self._to_conf_intervals("Sharpe Ratio", sr_intervals)
-        df = pd.DataFrame.from_records(
-            pf_conf + sharpe_conf, columns=ConfInterval._fields
-        )
-        df.set_index(["name", "conf"], inplace=True)
-        return _ConfsResult(
-            df=df, profit_factor=pf_intervals, sharpe=sr_intervals
-        )
-
     def _to_conf_intervals(
         self, name: str, conf: BootConfIntervals
     ) -> deque[ConfInterval]:
@@ -1525,17 +1532,3 @@ class EvaluateMixin:
         results.append(ConfInterval(name, "95%", conf.low_5, conf.high_5))
         results.append(ConfInterval(name, "90%", conf.low_10, conf.high_10))
         return results
-
-    def _calc_drawdown_conf(
-        self,
-        changes: NDArray[np.float64],
-        returns: NDArray[np.float64],
-        samples: int,
-    ) -> _DrawdownResult:
-        metrics = drawdown_conf(changes, returns, samples)
-        df = pd.DataFrame(
-            zip(("99.9%", "99%", "95%", "90%"), *metrics),
-            columns=("conf", "amount", "percent"),
-        )
-        df.set_index("conf", inplace=True)
-        return _DrawdownResult(df=df, metrics=metrics)
