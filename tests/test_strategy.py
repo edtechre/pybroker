@@ -3532,6 +3532,57 @@ class TestStrategy:
         # 4 equal slots of 200k deployable capital at $100 a share.
         assert buys["shares"].iloc[0] == 500
 
+    def test_backtest_when_same_bar_rotation_respects_leverage(self):
+        """Exiting one symbol and entering another on the same bar.
+
+        Both fills land before ``capture_bar``, so sizing the entry off the
+        last snapshot would value the account as if the exit had not happened
+        yet. No stops involved -- plain scheduled orders reach this.
+        """
+        dates = pd.date_range(START_DATE, periods=12, freq="D")
+        # A gaps down 20% on the bar the exit fills; B is flat.
+        a_prices = [100.0] * 6 + [80.0] * 6
+        rows = [
+            {
+                "symbol": sym,
+                "date": date,
+                "open": price,
+                "high": price,
+                "low": price,
+                "close": price,
+                "volume": 1_000_000,
+            }
+            for sym, prices in (("A", a_prices), ("B", [100.0] * 12))
+            for date, price in zip(dates, prices)
+        ]
+        df = pd.DataFrame(rows)
+
+        # Orders fill on the bar after the one that schedules them, so both
+        # the exit and the entry land on the first gapped bar.
+        entry_date, rotate_date = dates[0], dates[5]
+
+        def a_fn(ctx):
+            if ctx.dt == entry_date:
+                ctx.buy_shares = 2000
+            elif ctx.dt == rotate_date:
+                ctx.sell_all_shares()
+
+        def b_fn(ctx):
+            if ctx.dt == rotate_date:
+                ctx.buy_shares = 5000
+
+        config = StrategyConfig(initial_cash=100_000, leverage=2.0)
+        strategy = Strategy(df, dates[0], dates[-1], config)
+        strategy.add_execution(a_fn, "A")
+        strategy.add_execution(b_fn, "B")
+        result = strategy.backtest(calc_bootstrap=False)
+        pf = result.portfolio
+        assert (pf["market_value"] > 0).all()
+        assert (pf["margin_loan"] >= 0).all()
+        # Gross exposure never exceeds the configured leverage, on any bar.
+        gross = pf["market_value"] + pf["margin_loan"] - pf["cash"]
+        assert (gross <= 2.0 * pf["market_value"] + 1e-6).all()
+
     def test_backtest_when_leverage(self, data_source_df):
         def buy_exec_fn(ctx):
             if ctx.long_pos() is None:

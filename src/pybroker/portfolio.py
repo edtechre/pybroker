@@ -508,6 +508,12 @@ class Portfolio:
         self._entry_id: int = 0
         self._trade_id: int = 0
         self._stop_records: list[StopRecord] = []
+        # Running sums of Position.entry_notional, kept in step with the four
+        # sites that mutate it. They keep margin_loan and _live_market_value
+        # O(1); both are hit on every fill via _clamp_shares, where an O(n)
+        # pass over open positions is measurable.
+        self._long_entry_notional: Decimal = Decimal()
+        self._short_entry_notional: Decimal = Decimal()
 
     @property
     def margin_loan(self) -> Decimal:
@@ -519,15 +525,7 @@ class Portfolio:
         if self._leverage <= 1:
             return self._accrued_interest
         leverage = to_decimal(self._leverage)
-        notional = sum(
-            (
-                pos.entry_notional
-                for pos in itertools.chain(
-                    self.long_positions.values(), self.short_positions.values()
-                )
-            ),
-            Decimal(),
-        )
+        notional = self._long_entry_notional + self._short_entry_notional
         return notional - notional / leverage + self._accrued_interest
 
     @property
@@ -785,12 +783,36 @@ class Portfolio:
     def _net_cash_balance(self) -> Decimal:
         return self.cash - self.margin_loan
 
+    def _live_market_value(self) -> Decimal:
+        """Market value of the account computed from current state.
+
+        :attr:`.market_value` is only refreshed in :meth:`.capture_bar`, which
+        runs *after* every fill in the bar, so it cannot be used to size an
+        order: it would value the account as it stood before the exits that
+        happened earlier in the same bar.
+
+        Shorts contribute ``entry_notional + pnl``, expressed here as
+        ``2 * entry_notional - marked`` because ``pnl`` is only recomputed in
+        :meth:`.capture_bar` and so is stale after a partial cover, while
+        :meth:`._short_market_value` tracks live share counts.
+
+        Positions open since the last mark are still valued at that mark, so
+        this trails the true value by at most one bar's price move.
+        """
+        return (
+            self.cash
+            - self.margin_loan
+            + self._long_market_value()
+            + 2 * self._short_entry_notional
+            - self._short_market_value()
+        )
+
     def _available_buying_power(self) -> Decimal:
         if self._leverage <= 1:
             return max(self.cash, Decimal())
         leverage = to_decimal(self._leverage)
         committed = self._long_market_value() + self._short_market_value()
-        return max(self.market_value * leverage - committed, Decimal())
+        return max(self._live_market_value() * leverage - committed, Decimal())
 
     def _sweep_accrued_interest(self):
         """Repays accrued margin interest out of any available cash.
@@ -964,6 +986,7 @@ class Portfolio:
         pos.shares -= shares
         entry.shares -= shares
         pos.entry_notional -= entry_amount
+        self._short_entry_notional -= entry_amount
         pnl_per_bar = entry_pnl if not entry.bars else entry_pnl / entry.bars
         return_pct = ((entry.price / fill_price) - 1) * 100
         pnl = entry.price - fill_price
@@ -1039,6 +1062,7 @@ class Portfolio:
         if stops is not None:
             self._add_stops(entry, stops)
         pos.entry_notional += shares * fill_price
+        self._long_entry_notional += shares * fill_price
         self._invalidate_mv_cache()
         return shares
 
@@ -1150,6 +1174,7 @@ class Portfolio:
         pos.shares -= shares
         entry.shares -= shares
         pos.entry_notional -= entry_amount
+        self._long_entry_notional -= entry_amount
         pnl_per_bar = entry_pnl if not entry.bars else entry_pnl / entry.bars
         return_pct = ((fill_price / entry.price) - 1) * 100
         pnl = fill_price - entry.price
@@ -1242,6 +1267,7 @@ class Portfolio:
         if stops is not None:
             self._add_stops(entry, stops)
         pos.entry_notional += shares * fill_price
+        self._short_entry_notional += shares * fill_price
         self._invalidate_mv_cache()
         return shares
 
@@ -1330,11 +1356,18 @@ class Portfolio:
                     total_equity += float(pos.equity)
                     total_market_value += float(pos.equity)
                 else:
-                    # No bar for this symbol on this date, so the position
-                    # cannot be marked. Hold it at cost, matching the short
-                    # branch below and _long_market_value.
-                    total_equity += float(pos.entry_notional)
-                    total_market_value += float(pos.entry_notional)
+                    # No bar for this symbol on this date, so hold the
+                    # position at its last known mark, falling back to cost if
+                    # it has never been marked. This matches
+                    # _long_market_value, so the snapshot taken here and
+                    # _live_market_value agree by construction.
+                    held = (
+                        pos.shares * pos.close
+                        if pos.close > 0
+                        else pos.entry_notional
+                    )
+                    total_equity += float(held)
+                    total_market_value += float(held)
             if sym in self.short_positions:
                 pos = self.short_positions[sym]
                 entry_notional = pos.entry_notional
@@ -1357,7 +1390,15 @@ class Portfolio:
                     pos_pnl += pos.pnl
                     total_market_value += float(entry_notional + pos.pnl)
                 else:
-                    total_market_value += float(entry_notional)
+                    # As above: hold at the last known mark. A short's value
+                    # is ``entry_notional + pnl``, which equals
+                    # ``2 * entry_notional - marked``.
+                    marked = (
+                        pos.shares * pos.close
+                        if pos.close > 0
+                        else entry_notional
+                    )
+                    total_market_value += float(2 * entry_notional - marked)
                 total_margin += float(pos.margin)
             if close_f is not None and self._record_position_bars:
                 self.position_bars.append(

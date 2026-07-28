@@ -4154,19 +4154,48 @@ def test_buying_power_when_adverse_mark_respects_leverage(close, type):
         assert order is None
 
 
-def test_capture_bar_when_no_data_holds_long_at_cost():
-    """A long with no bar on this date must not drop out of equity."""
-    portfolio = Portfolio(CASH, leverage=2.0, record_portfolio_bars=True)
-    portfolio.buy(DATE_1, SYMBOL_1, Decimal(1000), Decimal(100))
+def _capture_bar_without_data(portfolio, date):
+    """Runs ``capture_bar`` for a date that has no bar for any symbol."""
+    rows = [
+        [sym, DATE_4, Decimal(1), Decimal(1), Decimal(1)]
+        for sym in portfolio.symbols
+    ]
     df = pd.DataFrame(
-        [[SYMBOL_1, DATE_2, Decimal(100), Decimal(100), Decimal(100)]],
-        columns=["symbol", "date", "close", "low", "high"],
+        rows, columns=["symbol", "date", "close", "low", "high"]
     ).set_index(["symbol", "date"])
-    # sym_end_index points at DATE_2, so there is no bar for DATE_1.
-    portfolio.capture_bar(DATE_1, ColumnScope(df), {SYMBOL_1: 1})
+    portfolio.capture_bar(
+        date, ColumnScope(df), {sym: 1 for sym in portfolio.symbols}
+    )
+
+
+def test_capture_bar_when_no_data_and_never_marked_holds_at_cost():
+    """A never-marked long with no bar must not drop out of equity."""
+    portfolio = Portfolio(CASH, leverage=2.0)
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(1000), Decimal(100))
+    _capture_bar_without_data(portfolio, DATE_1)
     assert portfolio.equity == CASH
     assert portfolio.market_value == CASH
     assert portfolio._long_market_value() == Decimal(100_000)
+
+
+@pytest.mark.parametrize("type", ["long", "short"])
+def test_capture_bar_when_no_data_holds_at_last_mark(type):
+    """A marked position with no bar keeps its last mark, not its cost.
+
+    capture_bar and _long_market_value/_short_market_value must agree, since
+    _available_buying_power subtracts one from the other.
+    """
+    portfolio = Portfolio(CASH, leverage=2.0)
+    shares = Decimal(500)
+    if type == "long":
+        portfolio.buy(DATE_1, SYMBOL_1, shares, Decimal(100))
+    else:
+        portfolio.sell(DATE_1, SYMBOL_1, shares, Decimal(100))
+    _mark(portfolio, DATE_1, {SYMBOL_1: 120})
+    marked = portfolio.market_value
+    _capture_bar_without_data(portfolio, DATE_2)
+    assert portfolio.market_value == marked
+    assert portfolio.market_value == portfolio._live_market_value()
 
 
 @pytest.mark.parametrize(
@@ -4247,3 +4276,138 @@ def test_cover_when_fractional_shares_leaves_no_dust():
     assert not portfolio.short_positions
     assert not portfolio.long_positions
     assert SYMBOL_1 not in portfolio.symbols
+
+
+def _exit_before_mark(type, exit_shares, leverage=Decimal(2)):
+    """Exits, then fills a second order on the same bar, before any mark."""
+    portfolio = Portfolio(CASH, leverage=float(leverage))
+    shares = Decimal(2000)
+    # Adverse move for whichever side is held.
+    exit_price = Decimal(85) if type == "long" else Decimal(115)
+    if type == "long":
+        portfolio.buy(DATE_1, SYMBOL_1, shares, Decimal(100))
+        _mark(portfolio, DATE_1, {SYMBOL_1: 100})
+        portfolio.sell(DATE_2, SYMBOL_1, exit_shares, exit_price)
+    else:
+        portfolio.sell(DATE_1, SYMBOL_1, shares, Decimal(100))
+        _mark(portfolio, DATE_1, {SYMBOL_1: 100})
+        portfolio.buy(DATE_2, SYMBOL_1, exit_shares, exit_price)
+    # No mark in between: this fill is still on the same bar as the exit.
+    order = portfolio.buy(DATE_2, SYMBOL_2, Decimal(5000), Decimal(100))
+    _mark(portfolio, DATE_2, {SYMBOL_1: exit_price, SYMBOL_2: 100})
+    gross = (shares - exit_shares) * exit_price
+    if order is not None:
+        gross += order.shares * Decimal(100)
+    return portfolio, gross
+
+
+@pytest.mark.parametrize("type", ["long", "short"])
+def test_buying_power_when_full_exit_before_mark_respects_leverage(type):
+    """An order filling after a full exit, before the mark, must not over-lever.
+
+    Every fill in the bar loop happens before ``capture_bar``, so sizing off
+    the last snapshot would value the account as it stood before this bar's
+    exits. With the position fully closed there is nothing left carrying a
+    stale mark, so the cap must bind exactly.
+    """
+    leverage = Decimal(2)
+    portfolio, gross = _exit_before_mark(type, Decimal(2000), leverage)
+    assert portfolio.market_value > 0
+    assert gross / portfolio.market_value <= leverage
+
+
+@pytest.mark.parametrize(
+    "type, excess", [("long", Decimal(22_500)), ("short", Decimal(67_500))]
+)
+def test_buying_power_when_partial_exit_before_mark_trails_by_one_bar(
+    type, excess
+):
+    """Pins the known residual: the *unexited* remainder keeps its last mark.
+
+    Everything realized is exact, but a position still open since the last
+    ``capture_bar`` is valued at that mark, so buying power trails by
+    ``(leverage - 1) * delta`` for longs and ``(leverage + 1) * delta`` for
+    shorts, where ``delta`` is the remainder's one-bar move (1500 shares
+    moving 15 here). Inherent to the bar loop, not to this formula; fixing it
+    means marking at the fill price before pre-``capture_bar`` fills.
+    """
+    leverage = Decimal(2)
+    portfolio, gross = _exit_before_mark(type, Decimal(500), leverage)
+    assert gross - leverage * portfolio.market_value == excess
+
+
+@pytest.mark.parametrize("close", [80, 100, 120])
+@pytest.mark.parametrize(
+    "ops",
+    [
+        [("buy", 1000)],
+        [("sell", 1000)],
+        [("buy", 1000), ("sell", 400)],
+        [("sell", 1000), ("buy", 400)],
+        [("buy", 1000), ("sell", 1000)],
+        [("sell", 1000), ("buy", 1000)],
+    ],
+)
+def test_live_market_value_matches_capture_bar(ops, close):
+    """The live mark must equal the snapshot when taken right after one.
+
+    This is what catches expressing a short as ``entry_notional + pnl``:
+    ``pnl`` is only recomputed in ``capture_bar``, so it is stale after a
+    partial cover, while the realized slice has already been paid to cash.
+    """
+    portfolio = Portfolio(CASH, leverage=2.0)
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(200), Decimal(100))
+    portfolio.sell(DATE_1, SYMBOL_2, Decimal(300), Decimal(100))
+    _mark(portfolio, DATE_1, {SYMBOL_1: close, SYMBOL_2: close})
+    for op, qty in ops:
+        if op == "buy":
+            portfolio.buy(DATE_2, SYMBOL_2, Decimal(qty), to_decimal(close))
+        else:
+            portfolio.sell(DATE_2, SYMBOL_1, Decimal(qty), to_decimal(close))
+    _mark(portfolio, DATE_2, {SYMBOL_1: close, SYMBOL_2: close})
+    assert portfolio._live_market_value() == portfolio.market_value
+
+
+def test_buying_power_when_unrealized_gain_is_not_capped_by_cash():
+    """Guards against reintroducing a ``cash * leverage`` term.
+
+    Cash is depleted by design under leverage, so capping on it would strand
+    the capacity an unrealized gain creates.
+    """
+    portfolio = Portfolio(CASH, leverage=2.0)
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(2000), Decimal(100))
+    _mark(portfolio, DATE_1, {SYMBOL_1: 100})
+    assert portfolio.cash == 0
+    _mark(portfolio, DATE_2, {SYMBOL_1: 120})
+    # Equity 140k, exposure 240k, so 2 * 140k - 240k is still deployable.
+    assert portfolio.market_value == Decimal(140_000)
+    assert portfolio._available_buying_power() == Decimal(40_000)
+
+
+@pytest.mark.parametrize("leverage", [1.0, 2.0])
+@pytest.mark.parametrize("fractional", [True, False])
+def test_entry_notional_totals_track_positions(leverage, fractional):
+    """The running totals must never drift from the open book."""
+    rng = np.random.default_rng(7)
+    dates = [DATE_1, DATE_2, DATE_3, DATE_4]
+    for _ in range(200):
+        portfolio = Portfolio(
+            CASH, leverage=leverage, enable_fractional_shares=fractional
+        )
+        for i in range(12):
+            date = dates[i % len(dates)]
+            symbol = SYMBOL_1 if rng.random() < 0.5 else SYMBOL_2
+            price = to_decimal(round(float(rng.uniform(20, 200)), 2))
+            shares = to_decimal(round(float(rng.uniform(1, 900)), 2))
+            if rng.random() < 0.5:
+                portfolio.buy(date, symbol, shares, price)
+            else:
+                portfolio.sell(date, symbol, shares, price)
+            for total, positions in (
+                (portfolio._long_entry_notional, portfolio.long_positions),
+                (portfolio._short_entry_notional, portfolio.short_positions),
+            ):
+                assert total == sum(
+                    (pos.entry_notional for pos in positions.values()),
+                    Decimal(),
+                )
