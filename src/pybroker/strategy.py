@@ -23,7 +23,13 @@ from pybroker.common import (
     PriceType,
     SymbolSelector,
     _dataframe_records,
+    _ensure_range_index,
+    _is_symbol_selector,
     _json_safe,
+    _resolve_executions,
+    _selected_symbols,
+    _selection_df,
+    _static_symbols,
     get_unique_sorted_dates,
     get_unique_sorted_dates_array,
     quantize,
@@ -112,7 +118,6 @@ from typing import (
     Sequence,
     TypeGuard,
     Union,
-    cast,
 )
 from typing_extensions import Concatenate, ParamSpec
 
@@ -543,31 +548,6 @@ class Execution(NamedTuple):
     kwargs: tuple[tuple[str, Any], ...] = tuple()
 
 
-def _ensure_range_index(df: pd.DataFrame) -> pd.DataFrame:
-    if (
-        isinstance(df.index, pd.RangeIndex)
-        and df.index.start == 0
-        and df.index.step == 1
-        and len(df.index) == len(df)
-    ):
-        return df
-    return df.reset_index(drop=True)
-
-
-def _is_symbol_selector(
-    symbols: Union[frozenset[str], SymbolSelector],
-) -> TypeGuard[SymbolSelector]:
-    return callable(symbols) and not isinstance(symbols, (str, bytes))
-
-
-def _static_symbols(
-    symbols: Union[frozenset[str], SymbolSelector],
-) -> frozenset[str]:
-    if _is_symbol_selector(symbols):
-        return frozenset()
-    return cast(frozenset[str], symbols)
-
-
 def _all_intervals(
     executions: Iterable[Execution],
 ) -> frozenset[TimeframeInterval]:
@@ -605,71 +585,6 @@ def _symbol_intervals(
         for sym in df[DataCol.SYMBOL.value].unique():
             result[str(sym)].update(selector_intervals)
     return {sym: frozenset(intervals) for sym, intervals in result.items()}
-
-
-def _resolve_execution_symbols(
-    execution: Execution,
-    selection_df: pd.DataFrame,
-) -> frozenset[str]:
-    if _is_symbol_selector(execution.symbols):
-        selected = execution.symbols(selection_df)
-        if not isinstance(selected, list):
-            raise TypeError(
-                "symbol selector must return a list[str], "
-                f"received {type(selected)!r}."
-            )
-        if not selected:
-            raise ValueError("symbol selector returned an empty list.")
-        if len(selected) != len(set(selected)):
-            seen: set[str] = set()
-            dupes = []
-            for sym in selected:
-                if sym in seen:
-                    dupes.append(sym)
-                seen.add(sym)
-            raise ValueError(
-                f"symbol selector returned duplicate symbols: {sorted(set(dupes))}."
-            )
-        loaded = set(selection_df[DataCol.SYMBOL.value].unique())
-        unknown = set(selected) - loaded
-        if unknown:
-            raise ValueError(
-                f"symbol selector returned unknown symbols: {sorted(unknown)}."
-            )
-        return frozenset(selected)
-    return cast(frozenset[str], execution.symbols)
-
-
-def _resolve_executions(
-    executions: set[Execution],
-    selection_df: pd.DataFrame,
-) -> set[Execution]:
-    resolved: set[Execution] = set()
-    seen_syms: set[str] = set()
-    for execution in executions:
-        syms = _resolve_execution_symbols(execution, selection_df)
-        overlap = seen_syms & syms
-        if overlap:
-            sym = sorted(overlap)[0]
-            raise ValueError(f"{sym} was already added to an execution.")
-        seen_syms.update(syms)
-        resolved.add(execution._replace(symbols=syms))
-    return resolved
-
-
-def _selection_df(
-    train_data: pd.DataFrame,
-    test_data: pd.DataFrame,
-) -> pd.DataFrame:
-    if not train_data.empty:
-        return train_data
-    if not test_data.empty:
-        return (
-            test_data
-            if train_data.empty
-            else pd.concat([train_data, test_data], ignore_index=True)
-        )
-    return train_data
 
 
 class BacktestMixin:
@@ -752,6 +667,12 @@ class BacktestMixin:
             test_dates = get_unique_sorted_dates(test_data[DataCol.DATE.value])
             test_syms = sorted(test_data[DataCol.SYMBOL.value].unique())
             col_scope = column_scope_from_frame(_ensure_range_index(test_data))
+        # A SymbolSelector leaves the whole candidate universe in the store,
+        # so signals are scoped to what these executions actually traded.
+        exec_syms = {
+            sym for exec in executions for sym in _static_symbols(exec.symbols)
+        }
+        signal_syms = [sym for sym in test_syms if sym in exec_syms]
         ind_scope = IndicatorScope(indicator_data, test_dates)
         input_scope = ModelInputScope(
             col_scope,
@@ -769,7 +690,9 @@ class BacktestMixin:
         pred_scope = PredictionScope(models, input_scope)
         if train_only:
             if config.return_signals:
-                return get_signals(test_syms, col_scope, ind_scope, pred_scope)
+                return get_signals(
+                    signal_syms, col_scope, ind_scope, pred_scope
+                )
             return {}
         sym_end_index: dict[str, int] = defaultdict(int)
         price_scope = PriceScope(col_scope, sym_end_index, round_fill_price)
@@ -1021,7 +944,7 @@ class BacktestMixin:
             if i % 10 == 0 or i == len(test_dates) - 1:
                 logger.backtest_executions_loading(i + 1)
         return (
-            get_signals(test_syms, col_scope, ind_scope, pred_scope)
+            get_signals(signal_syms, col_scope, ind_scope, pred_scope)
             if config.return_signals
             else {}
         )
@@ -2051,8 +1974,20 @@ class Strategy(
                 for each ticker symbol in ``symbols``.
             symbols: Ticker symbols used to run ``fn``, where ``fn`` is called
                 separately for each symbol. Can also be a
-                :class:`Callable` ``(df) -> list[str]`` that selects symbols
-                from train-window data during walkforward.
+                :class:`pybroker.common.SymbolSelector` — a :class:`Callable`
+                ``(df) -> Sequence[str]`` that picks the symbols to trade once
+                per walkforward window, so the universe changes over the
+                backtest. It receives the window's **training** data, never test
+                data, and therefore requires a training window:
+                :meth:`.backtest` and ``train_size=0`` raise ``ValueError``.
+                The candidate universe must be supplied as a
+                :class:`pandas.DataFrame` rather than a
+                :class:`pybroker.data.DataSource`, since the symbols to query
+                are unknown until a window is split. A position in a symbol that
+                a later window drops is closed at the first bar of that window;
+                if the symbol has no bars left, it is closed at its final bar.
+                Note that ``shuffle=True`` randomizes the training frame's row
+                order, so avoid it with a selector that depends on bar order.
             models: :class:`Iterable` of :class:`pybroker.model.ModelSource`\ s
                 to train/load for backtesting.
             indicators: :class:`Iterable` of
@@ -2559,32 +2494,94 @@ class Strategy(
         portfolio: Portfolio,
         selected_syms: set[str],
         test_data: pd.DataFrame,
+        master_store: Optional[SymbolArrayStore] = None,
+        slippage_model: Optional[SlippageModel] = None,
     ) -> None:
+        """Closes positions in symbols the new window no longer selects.
+
+        A dropped symbol exits on the first bar of the new test window. One with
+        no bars left there -- delisted, or simply absent from the window -- exits
+        at its final bar in ``master_store`` instead: leaving it open would
+        strand the capital for the rest of the run and record no
+        :class:`pybroker.portfolio.Trade`.
+        """
         held = set(portfolio.long_positions) | set(portfolio.short_positions)
-        dropped = held - selected_syms
-        if not dropped or test_data.empty:
+        dropped = frozenset(held - selected_syms)
+        if not dropped:
             return
-        test_store = symbol_array_store_from_frame(
-            _ensure_range_index(test_data)
-        )
-        col_scope = ColumnScope(test_store)
-        sym_end_index = {sym: 1 for sym in dropped}
+        exited: set[str] = set()
+        if not test_data.empty:
+            exited = self._exit_dropped_at_bar(
+                portfolio=portfolio,
+                store=symbol_array_store_from_frame(
+                    _ensure_range_index(test_data), symbols=dropped
+                ),
+                symbols=dropped,
+                first_bar=True,
+                slippage_model=slippage_model,
+            )
+        remaining = dropped - exited
+        if remaining and master_store is not None:
+            self._exit_dropped_at_bar(
+                portfolio=portfolio,
+                store=master_store,
+                symbols=remaining,
+                first_bar=False,
+                slippage_model=slippage_model,
+            )
+
+    def _exit_dropped_at_bar(
+        self,
+        portfolio: Portfolio,
+        store: SymbolArrayStore,
+        symbols: Iterable[str],
+        first_bar: bool,
+        slippage_model: Optional[SlippageModel],
+    ) -> set[str]:
+        """Exits ``symbols`` at their first or last bar in ``store``.
+
+        Returns the symbols that had a bar to exit on.
+        """
+        date_col = DataCol.DATE.value
+        sym_end_index: dict[str, int] = {}
+        exit_dates: dict[str, np.datetime64] = {}
+        for sym in symbols:
+            arrays = store.sym_arrays.get(sym)
+            if arrays is None:
+                continue
+            date_arr = arrays.get(date_col)
+            if date_arr is None or not len(date_arr):
+                continue
+            # Locate the bar rather than indexing the ends, since a store is
+            # only as ordered as the frame it was built from.
+            loc = int(
+                np.argmin(date_arr) if first_bar else np.argmax(date_arr)
+            )
+            sym_end_index[sym] = loc + 1
+            exit_dates[sym] = date_arr[loc]
+        if not sym_end_index:
+            return set()
+        col_scope = ColumnScope(store)
         price_scope = PriceScope(
             col_scope, sym_end_index, self._config.round_fill_price
         )
-        store_dates = sym_exec_dates_from_store(test_store)
-        for sym in dropped:
-            sym_dates = store_dates.get(sym)
-            if not sym_dates:
-                continue
-            date = min(sym_dates)
-            buy_fill = price_scope.fetch(
-                sym, self._config.exit_cover_fill_price
+        ind_scope = IndicatorScope({}, sorted(set(exit_dates.values())))
+        for sym, date in exit_dates.items():
+            portfolio.exit_position(
+                date,
+                sym,
+                buy_fill_price=price_scope.fetch(
+                    sym, self._config.exit_cover_fill_price
+                ),
+                sell_fill_price=price_scope.fetch(
+                    sym, self._config.exit_sell_fill_price
+                ),
+                col_scope=col_scope,
+                ind_scope=ind_scope,
+                sym_end_index=sym_end_index,
+                slippage_model=slippage_model,
             )
-            sell_fill = price_scope.fetch(
-                sym, self._config.exit_sell_fill_price
-            )
-            portfolio.exit_position(date, sym, buy_fill, sell_fill)
+        return set(sym_end_index)
 
     def _fractional_shares_enabled(self):
         return self._config.enable_fractional_shares or isinstance(
@@ -2658,7 +2655,9 @@ class Strategy(
                 df.iloc[train_rows] if len(train_rows) else df.iloc[:0]
             )
             test_data = df.iloc[test_rows] if len(test_rows) else df.iloc[:0]
-            selection_data = _selection_df(train_data, test_data)
+            selection_data = _selection_df(
+                self._executions, train_data, test_data
+            )
             if has_selector:
                 if global_cache_date_fields is None:
                     raise ValueError("global_cache_date_fields is required.")
@@ -2677,13 +2676,15 @@ class Strategy(
                 indicator_data.update(window_indicator_data)
             else:
                 window_executions = self._executions
-            selected_syms = {
-                sym
-                for execution in window_executions
-                for sym in _static_symbols(execution.symbols)
-            }
+            selected_syms = _selected_symbols(
+                window_executions, test_data, has_selector
+            )
             self._liquidate_dropped_symbols(
-                portfolio, selected_syms, test_data
+                portfolio,
+                selected_syms,
+                test_data,
+                master_store=master_store,
+                slippage_model=self._slippage_model,
             )
             train_store = None
             test_store = None

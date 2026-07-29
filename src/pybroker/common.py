@@ -9,22 +9,55 @@ This code is licensed under Apache 2.0 with Commons Clause license
 import numpy as np
 import pandas as pd
 import re
+import warnings
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 from enum import Enum
 from numpy.typing import NDArray
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
+    Iterable,
     Final,
     Literal,
     NamedTuple,
     Optional,
     Sequence,
+    TypeGuard,
     Union,
+    cast,
 )
 
-SymbolSelector = Callable[[pd.DataFrame], list[str]]
+if TYPE_CHECKING:
+    from pybroker.strategy import Execution
+
+SymbolSelector = Callable[[pd.DataFrame], Sequence[str]]
+"""Chooses which ticker symbols an execution trades, per walkforward window.
+
+Passed to :meth:`pybroker.strategy.Strategy.add_execution` in place of a fixed
+symbol list. Called once per walkforward window with the window's **training**
+:class:`pandas.DataFrame` — never with test data — and must return a non-empty
+sequence of unique symbols that the frame contains. Any sequence of ``str`` is
+accepted, including a ``list``, ``tuple``, :class:`pandas.Index`, or
+:class:`numpy.ndarray`, so ``ranked.nlargest(10).index`` works as written.
+
+Notes:
+    - A training window is required. :meth:`pybroker.strategy.Strategy.backtest`
+      and ``train_size=0`` raise :class:`ValueError`, since selecting from test
+      data would look ahead at the bars about to be traded.
+    - The candidate universe must come from a :class:`pandas.DataFrame` data
+      source; a :class:`pybroker.data.DataSource` cannot be used, because the
+      symbols to query are not known until a window is split.
+    - ``shuffle=True`` randomizes the training frame's row order, so a selector
+      that depends on bars being in date order should not be combined with it.
+    - When a window drops a symbol that is still held, the position is closed at
+      the first bar of the new test window using
+      :attr:`pybroker.config.StrategyConfig.exit_sell_fill_price` and
+      :attr:`pybroker.config.StrategyConfig.exit_cover_fill_price`. A symbol that
+      has no bars left at all is closed at its final bar instead.
+"""
+
 
 _tf_pattern: Final = re.compile(r"(\d+)([A-Za-z]+)")
 _tf_abbr: Final = {
@@ -490,3 +523,146 @@ def _dataframe_records(
     if max_rows is not None:
         out = out.head(max_rows)
     return [_json_safe(record) for record in out.to_dict(orient="records")]
+
+
+def _is_symbol_selector(
+    symbols: Union[frozenset[str], SymbolSelector],
+) -> TypeGuard[SymbolSelector]:
+    """Returns whether ``symbols`` is a :class:`.SymbolSelector`."""
+    return callable(symbols) and not isinstance(symbols, (str, bytes))
+
+
+def _static_symbols(
+    symbols: Union[frozenset[str], SymbolSelector],
+) -> frozenset[str]:
+    """Returns ``symbols`` when fixed, or an empty ``frozenset`` for a
+    :class:`.SymbolSelector`, whose symbols are not known until a walkforward
+    window is split."""
+    if _is_symbol_selector(symbols):
+        return frozenset()
+    return cast(frozenset[str], symbols)
+
+
+def _ensure_range_index(df: pd.DataFrame) -> pd.DataFrame:
+    if (
+        isinstance(df.index, pd.RangeIndex)
+        and df.index.start == 0
+        and df.index.step == 1
+        and len(df.index) == len(df)
+    ):
+        return df
+    return df.reset_index(drop=True)
+
+
+def _selected_symbol_list(selected: Any) -> list[str]:
+    """Normalizes a :class:`.SymbolSelector` return value to ``list[str]``."""
+    if isinstance(selected, (str, bytes)) or not hasattr(selected, "__iter__"):
+        raise TypeError(
+            "symbol selector must return a sequence of symbols, "
+            f"received {type(selected)!r}."
+        )
+    result: list[str] = []
+    for sym in selected:
+        if not isinstance(sym, (str, np.str_)):
+            raise TypeError(
+                "symbol selector must return a sequence of symbols, "
+                f"received {type(sym)!r} in the returned sequence."
+            )
+        result.append(str(sym))
+    return result
+
+
+def _resolve_execution_symbols(
+    execution: "Execution",
+    selection_df: pd.DataFrame,
+) -> frozenset[str]:
+    """Resolves an :class:`pybroker.strategy.Execution`'s symbols against
+    ``selection_df``, running its :class:`.SymbolSelector` when it has one."""
+    if _is_symbol_selector(execution.symbols):
+        selected = _selected_symbol_list(execution.symbols(selection_df))
+        if not selected:
+            raise ValueError("symbol selector returned an empty list.")
+        if len(selected) != len(set(selected)):
+            seen: set[str] = set()
+            dupes = []
+            for sym in selected:
+                if sym in seen:
+                    dupes.append(sym)
+                seen.add(sym)
+            raise ValueError(
+                f"symbol selector returned duplicate symbols: {sorted(set(dupes))}."
+            )
+        loaded = set(selection_df[DataCol.SYMBOL.value].unique())
+        unknown = set(selected) - loaded
+        if unknown:
+            raise ValueError(
+                f"symbol selector returned unknown symbols: {sorted(unknown)}."
+            )
+        return frozenset(selected)
+    return cast(frozenset[str], execution.symbols)
+
+
+def _resolve_executions(
+    executions: set["Execution"],
+    selection_df: pd.DataFrame,
+) -> set["Execution"]:
+    r"""Resolves every :class:`pybroker.strategy.Execution`\ 's symbols against
+    ``selection_df``, verifying that no symbol is claimed twice."""
+    resolved: set["Execution"] = set()
+    seen_syms: set[str] = set()
+    for execution in executions:
+        syms = _resolve_execution_symbols(execution, selection_df)
+        overlap = seen_syms & syms
+        if overlap:
+            sym = sorted(overlap)[0]
+            raise ValueError(f"{sym} was already added to an execution.")
+        seen_syms.update(syms)
+        resolved.add(execution._replace(symbols=syms))
+    return resolved
+
+
+def _selected_symbols(
+    executions: Iterable["Execution"],
+    test_data: pd.DataFrame,
+    warn_unbacked: bool,
+) -> set[str]:
+    r"""Returns the symbols ``executions`` resolved to.
+
+    When ``warn_unbacked``, warns about symbols that ``test_data`` holds no bars
+    for. A :class:`.SymbolSelector` picks from training data, so it can name a
+    symbol that stops trading at the train/test boundary; that symbol would
+    otherwise run nothing and report nothing.
+    """
+    syms = {sym for e in executions for sym in _static_symbols(e.symbols)}
+    if warn_unbacked and syms and not test_data.empty:
+        unbacked = syms - set(test_data[DataCol.SYMBOL.value].unique())
+        if unbacked:
+            warnings.warn(
+                "Selected symbols have no data in this test window and will "
+                f"not be traded: {sorted(unbacked)}.",
+                stacklevel=3,
+            )
+    return syms
+
+
+def _selection_df(
+    executions: Iterable["Execution"],
+    train_data: pd.DataFrame,
+    test_data: pd.DataFrame,
+) -> pd.DataFrame:
+    """Returns the frame a :class:`.SymbolSelector` selects from.
+
+    Selection always reads training data. When a window has none, there is no
+    lookahead-free frame to select from, so this raises instead of silently
+    handing the selector the test bars it is about to trade.
+    """
+    if not train_data.empty:
+        return train_data
+    if any(_is_symbol_selector(e.symbols) for e in executions):
+        raise ValueError(
+            "Dynamic symbol selection requires a training window: selecting "
+            "from test data would look ahead at the bars being traded. Use "
+            "walkforward(train_size=...) with train_size > 0 instead of "
+            "backtest() or train_size=0."
+        )
+    return train_data

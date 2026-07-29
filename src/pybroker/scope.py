@@ -1955,6 +1955,15 @@ class PriceScope:
         """Clears the per-bar OHLC cache. Call once at the start of each bar."""
         self._bar_cache.clear()
 
+    def has_bar(self, symbol: str) -> bool:
+        """Returns whether ``symbol`` has a bar that can be priced.
+
+        ``False`` for a symbol absent from the current test window -- one that
+        stopped trading, or that a :class:`pybroker.common.SymbolSelector`
+        dropped -- whose prices would otherwise raise.
+        """
+        return self._sym_end_index.get(symbol, 0) > 0
+
     def _column_value(self, symbol: str, col: str) -> float:
         end_index = self._sym_end_index[symbol]
         if end_index <= 0:

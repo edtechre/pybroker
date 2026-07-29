@@ -478,3 +478,45 @@ def test_optimize_when_volume_column_missing_then_error(data_source_df):
             train_size=0.5,
             disable_parallel_indicators=True,
         )
+
+
+def test_optimize_walkforward_resolves_selector_once_per_window(
+    data_source_df,
+):
+    # The replay that produces the reported result used to re-run the
+    # selector, so a stateful one described a different universe than the
+    # study had tuned.
+    hyperparam("lookback", default=10, low=5, high=10, step=5)
+    calls: list[int] = []
+
+    def counting_selector(_selection_df):
+        calls.append(len(calls))
+        return ["AAPL"]
+
+    def exec_fn(ctx):
+        if not ctx.long_pos():
+            ctx.buy_shares = 10
+
+    strategy = _make_strategy(data_source_df)
+    strategy.add_execution(exec_fn, counting_selector)
+    strategy.optimize(
+        lambda r: r.metrics.total_pnl,
+        sampler="grid",
+        windows=2,
+        train_size=0.5,
+        disable_parallel_indicators=True,
+    )
+    assert len(calls) == 2
+
+
+def test_optimize_with_selector_and_no_train_window_raises(data_source_df):
+    hyperparam("lookback", default=10, low=5, high=10, step=5)
+    strategy = _make_strategy(data_source_df)
+    strategy.add_execution(lambda _ctx: None, lambda _d: ["AAPL"])
+    with pytest.raises(ValueError, match="requires a training window"):
+        strategy.optimize(
+            lambda r: 0.0,
+            sampler="grid",
+            train_size=0,
+            disable_parallel_indicators=True,
+        )

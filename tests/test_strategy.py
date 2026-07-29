@@ -12,6 +12,7 @@ import os
 import pandas as pd
 import pytest
 import re
+import warnings
 from importlib import import_module
 from .fixtures import *  # noqa: F401
 from collections import defaultdict, deque
@@ -50,8 +51,11 @@ from pybroker.strategy import (
     _is_rankable,
     _rank_by_score,
     _rank_by_short_score,
+)
+from pybroker.common import (
     _resolve_execution_symbols,
     _resolve_executions,
+    _selection_df,
 )
 from unittest.mock import Mock, patch
 
@@ -157,6 +161,52 @@ def _run_rotation(
         exit_dates={},
     )
     return portfolio
+
+
+def _selector_trending_df(
+    symbol_bars: dict[str, tuple[float, int]],
+    num_bars: int = 12,
+    start: str = "2020-01-01",
+) -> pd.DataFrame:
+    """Universe of rising prices, where each symbol trades ``bars`` bars.
+
+    A symbol with fewer bars than ``num_bars`` stops trading partway through,
+    which is what a :class:`pybroker.common.SymbolSelector` has to cope with.
+    """
+    dates = pd.date_range(start, periods=num_bars, freq="D")
+    rows = []
+    for sym, (base, bars) in symbol_bars.items():
+        for i, date in enumerate(dates[:bars]):
+            rows.append(
+                {
+                    "symbol": sym,
+                    "date": date,
+                    "open": base + i,
+                    "high": base + i + 1,
+                    "low": base + i - 1,
+                    "close": base + i,
+                    "volume": 100 + i,
+                    "adj_close": base + i,
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def _rotating_selector(picks: list[list[str]]):
+    """Selector returning ``picks[n]`` on its nth call."""
+    state = {"n": 0}
+
+    def selector(_df):
+        result = picks[min(state["n"], len(picks) - 1)]
+        state["n"] += 1
+        return result
+
+    return selector
+
+
+def _buy_once(ctx):
+    if ctx.long_pos() is None:
+        ctx.buy_shares = 10
 
 
 def _selector_universe_df(
@@ -452,6 +502,169 @@ class TestSymbolSelector:
         strategy.add_execution(exec_fn, "SPY")
         result = strategy.walkforward(windows=1, train_size=0.5)
         assert result.metrics is not None
+
+    def test_selection_df_without_train_window_raises(self):
+        df = _selector_universe_df({"AAA": 100})
+        with pytest.raises(ValueError, match="requires a training window"):
+            _selection_df(
+                {self._execution(lambda _d: ["AAA"])}, df.iloc[:0], df
+            )
+
+    def test_selection_df_without_selector_returns_empty_train(self):
+        df = _selector_universe_df({"AAA": 100})
+        assert _selection_df(
+            {self._execution(frozenset(("AAA",)))}, df.iloc[:0], df
+        ).empty
+
+    def test_backtest_with_selector_raises(self):
+        df = _selector_universe_df({"AAA": 100, "BBB": 200}, num_bars=12)
+        strategy = Strategy(df, "2020-01-01", "2020-01-12")
+        strategy.add_execution(lambda _ctx: None, lambda _d: ["AAA"])
+        with pytest.raises(ValueError, match="requires a training window"):
+            strategy.backtest()
+
+    def test_walkforward_with_selector_and_no_train_size_raises(self):
+        df = _selector_universe_df({"AAA": 100, "BBB": 200}, num_bars=12)
+        strategy = Strategy(df, "2020-01-01", "2020-01-12")
+        strategy.add_execution(lambda _ctx: None, lambda _d: ["AAA"])
+        with pytest.raises(ValueError, match="requires a training window"):
+            strategy.walkforward(windows=1, train_size=0)
+
+    @pytest.mark.parametrize(
+        "selector",
+        [
+            lambda d: d.groupby("symbol")["volume"].mean().nlargest(1).index,
+            lambda d: d["symbol"].unique()[:1],
+            lambda d: ("BBB",),
+            lambda d: (s for s in ["BBB"]),
+        ],
+    )
+    def test_selector_accepts_any_symbol_sequence(self, selector):
+        df = _selector_universe_df({"BBB": 500}, num_bars=8)
+        assert _resolve_execution_symbols(
+            self._execution(selector), df
+        ) == frozenset(("BBB",))
+
+    def test_selector_non_string_symbols_raises(self):
+        df = _selector_universe_df({"AAA": 100}, num_bars=8)
+        with pytest.raises(TypeError, match="in the returned sequence"):
+            _resolve_execution_symbols(
+                self._execution(lambda _d: ["AAA", 7]), df
+            )
+
+    def test_selector_returning_a_string_raises(self):
+        df = _selector_universe_df({"AAA": 100}, num_bars=8)
+        with pytest.raises(TypeError, match="sequence of symbols"):
+            _resolve_execution_symbols(self._execution(lambda _d: "AAA"), df)
+
+    def test_dropped_symbol_without_new_bars_exits_at_last_bar(self):
+        # AAA stops trading before the window that drops it, so there is no
+        # bar in the new window to exit on.
+        df = _selector_trending_df({"AAA": (100.0, 9), "BBB": (200.0, 12)})
+        strategy = Strategy(
+            df,
+            "2020-01-01",
+            "2020-01-12",
+            StrategyConfig(initial_cash=Decimal(100_000), buy_delay=1),
+        )
+        strategy.add_execution(
+            _buy_once, _rotating_selector([["AAA"], ["BBB"]])
+        )
+        result = strategy.walkforward(windows=2, train_size=0.5, lookahead=1)
+        aaa_trades = result.trades[result.trades["symbol"] == "AAA"]
+        assert len(aaa_trades) == 1
+        # AAA's final bar, not a bar of the window that dropped it.
+        assert aaa_trades.iloc[0]["exit_date"] == pd.Timestamp("2020-01-09")
+        assert float(aaa_trades.iloc[0]["exit"]) == 108.0
+
+    def test_dropped_symbol_with_stops_and_no_new_bars(self):
+        df = _selector_trending_df({"AAA": (100.0, 9), "BBB": (200.0, 12)})
+
+        def buy_with_stop(ctx):
+            if ctx.long_pos() is None:
+                ctx.buy_shares = 10
+                ctx.stop_loss_pct = 50
+
+        strategy = Strategy(
+            df,
+            "2020-01-01",
+            "2020-01-12",
+            StrategyConfig(initial_cash=Decimal(100_000), buy_delay=1),
+        )
+        strategy.add_execution(
+            buy_with_stop, _rotating_selector([["AAA"], ["BBB"]])
+        )
+        # A stop on a dropped symbol with no bar left must not raise when the
+        # next window checks stops.
+        result = strategy.walkforward(windows=2, train_size=0.5, lookahead=1)
+        assert not result.trades[result.trades["symbol"] == "AAA"].empty
+
+    def test_boundary_liquidation_applies_slippage(self):
+        df = _selector_trending_df({"AAA": (100.0, 12), "BBB": (200.0, 12)})
+        calls = []
+
+        class _HalvingSlippage(SlippageModel):
+            def process(self, buy_shares, sell_shares, ctx):
+                return buy_shares, sell_shares
+
+            def adjust_fill(
+                self,
+                side,
+                symbol,
+                shares,
+                fill_price,
+                col_scope=None,
+                ind_scope=None,
+                sym_end_index=None,
+            ):
+                calls.append((side, symbol))
+                return shares, fill_price / 2
+
+        strategy = Strategy(
+            df,
+            "2020-01-01",
+            "2020-01-12",
+            StrategyConfig(initial_cash=Decimal(100_000), buy_delay=1),
+        )
+        strategy.set_slippage_model(_HalvingSlippage())
+        strategy.add_execution(
+            _buy_once, _rotating_selector([["AAA"], ["BBB"]])
+        )
+        result = strategy.walkforward(windows=2, train_size=0.5, lookahead=1)
+        assert ("sell", "AAA") in calls
+        aaa_sell = result.orders[
+            (result.orders["symbol"] == "AAA")
+            & (result.orders["type"] == "sell")
+        ]
+        assert len(aaa_sell) == 1
+        assert float(aaa_sell.iloc[0]["fill_price"]) == 109.0 / 2
+
+    def test_signals_scoped_to_selected_symbols(self):
+        df = _selector_universe_df(
+            {"AAA": 100, "BBB": 200, "CCC": 300}, num_bars=8
+        )
+        strategy = Strategy(
+            df, "2020-01-01", "2020-01-08", StrategyConfig(return_signals=True)
+        )
+        strategy.add_execution(lambda _ctx: None, lambda _d: ["BBB"])
+        result = strategy.walkforward(windows=1, train_size=0.5, lookahead=1)
+        assert set(result.signals) == {"BBB"}
+
+    def test_warns_when_selected_symbol_has_no_test_data(self):
+        # AAA trades only during the train half.
+        df = _selector_trending_df({"AAA": (100.0, 6), "BBB": (200.0, 12)})
+        strategy = Strategy(df, "2020-01-01", "2020-01-12")
+        strategy.add_execution(lambda _ctx: None, lambda _d: ["AAA"])
+        with pytest.warns(UserWarning, match="no data in this test window"):
+            strategy.walkforward(windows=1, train_size=0.5, lookahead=1)
+
+    def test_no_warning_when_selected_symbols_have_test_data(self):
+        df = _selector_trending_df({"AAA": (100.0, 12), "BBB": (200.0, 12)})
+        strategy = Strategy(df, "2020-01-01", "2020-01-12")
+        strategy.add_execution(lambda _ctx: None, lambda _d: ["AAA"])
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", UserWarning)
+            strategy.walkforward(windows=1, train_size=0.5, lookahead=1)
 
 
 class TestWalkforwardMixin:

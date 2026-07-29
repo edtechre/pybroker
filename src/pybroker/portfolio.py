@@ -1576,6 +1576,11 @@ class Portfolio:
         executed: deque[tuple[Position, Entry]] = deque()
         triggered_entry_ids: set[int] = set()
         for sym, sym_stops in self._active_stops.items():
+            if not price_scope.has_bar(sym):
+                # The symbol has no bar to price in this window, so its stops
+                # cannot be evaluated. Skipping keeps a held position whose
+                # symbol stopped trading from raising mid-backtest.
+                continue
             for stop_data in sym_stops:
                 stop = stop_data.stop
                 entry = stop_data.entry
@@ -1607,6 +1612,8 @@ class Portfolio:
         for pos in itertools.chain(
             self.long_positions.values(), self.short_positions.values()
         ):
+            if not price_scope.has_bar(pos.symbol):
+                continue
             for entry in pos.entries:
                 for stop in entry.stops:
                     if stop.stop_type not in (StopType.BAR, StopType.CUSTOM):

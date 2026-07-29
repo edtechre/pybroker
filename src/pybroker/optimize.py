@@ -33,7 +33,6 @@ from typing import (
     Mapping,
     Optional,
     Protocol,
-    TypeGuard,
     Union,
     cast,
 )
@@ -311,8 +310,12 @@ from pybroker.common import (
     DataCol,
     IndicatorSymbol,
     ModelSymbol,
-    SymbolSelector,
+    _ensure_range_index,
     _json_safe,
+    _resolve_executions,
+    _selected_symbols,
+    _selection_df,
+    _static_symbols,
     get_unique_sorted_dates,
     to_datetime,
     to_seconds,
@@ -383,96 +386,6 @@ _DEFAULT_INDICATOR_MEMO_MAX = 256
 
 def _is_trainable_model_source(source: object) -> bool:
     return hasattr(source, "_train_fn")
-
-
-def _ensure_range_index(df: pd.DataFrame) -> pd.DataFrame:
-    if (
-        isinstance(df.index, pd.RangeIndex)
-        and df.index.start == 0
-        and df.index.step == 1
-        and len(df.index) == len(df)
-    ):
-        return df
-    return df.reset_index(drop=True)
-
-
-def _is_symbol_selector(
-    symbols: Union[frozenset[str], SymbolSelector],
-) -> TypeGuard[SymbolSelector]:
-    return callable(symbols) and not isinstance(symbols, (str, bytes))
-
-
-def _static_symbols(
-    symbols: Union[frozenset[str], SymbolSelector],
-) -> frozenset[str]:
-    if _is_symbol_selector(symbols):
-        return frozenset()
-    return cast(frozenset[str], symbols)
-
-
-def _resolve_execution_symbols(
-    execution: Execution,
-    selection_df: pd.DataFrame,
-) -> frozenset[str]:
-    if _is_symbol_selector(execution.symbols):
-        selected = execution.symbols(selection_df)
-        if not isinstance(selected, list):
-            raise TypeError(
-                "symbol selector must return a list[str], "
-                f"received {type(selected)!r}."
-            )
-        if not selected:
-            raise ValueError("symbol selector returned an empty list.")
-        if len(selected) != len(set(selected)):
-            seen: set[str] = set()
-            dupes = []
-            for sym in selected:
-                if sym in seen:
-                    dupes.append(sym)
-                seen.add(sym)
-            raise ValueError(
-                f"symbol selector returned duplicate symbols: {sorted(set(dupes))}."
-            )
-        loaded = set(selection_df[DataCol.SYMBOL.value].unique())
-        unknown = set(selected) - loaded
-        if unknown:
-            raise ValueError(
-                f"symbol selector returned unknown symbols: {sorted(unknown)}."
-            )
-        return frozenset(selected)
-    return cast(frozenset[str], execution.symbols)
-
-
-def _resolve_executions(
-    executions: set[Execution],
-    selection_df: pd.DataFrame,
-) -> set[Execution]:
-    resolved: set[Execution] = set()
-    seen_syms: set[str] = set()
-    for execution in executions:
-        syms = _resolve_execution_symbols(execution, selection_df)
-        overlap = seen_syms & syms
-        if overlap:
-            sym = sorted(overlap)[0]
-            raise ValueError(f"{sym} was already added to an execution.")
-        seen_syms.update(syms)
-        resolved.add(execution._replace(symbols=syms))
-    return resolved
-
-
-def _selection_df(
-    train_data: pd.DataFrame,
-    test_data: pd.DataFrame,
-) -> pd.DataFrame:
-    if not train_data.empty:
-        return train_data
-    if not test_data.empty:
-        return (
-            test_data
-            if train_data.empty
-            else pd.concat([train_data, test_data], ignore_index=True)
-        )
-    return train_data
 
 
 def collect_hyperparams(strategy: _ExecutionsHost) -> dict[str, Hyperparam]:
@@ -694,6 +607,11 @@ class WindowOptimizeResult:
     test_result: TestResult
     train_score: float
     train_pnl: float
+    # Symbols each execution id resolved to for this window. Carried back from
+    # the study so the final replay reuses the study's selection instead of
+    # running the SymbolSelector a second time, which a stateful selector would
+    # answer differently. ``None`` when no execution uses a selector.
+    execution_symbols: Optional[dict[int, frozenset[str]]] = None
 
     def to_json(
         self,
@@ -1395,7 +1313,9 @@ class OptimizeMixin:
                 df.iloc[train_rows] if len(train_rows) else df.iloc[:0]
             )
             test_data = df.iloc[test_rows] if len(test_rows) else df.iloc[:0]
-            selection_data = _selection_df(train_data, test_data)
+            selection_data = _selection_df(
+                self._executions, train_data, test_data
+            )
             window_executions = (
                 _resolve_executions(self._executions, selection_data)
                 if has_selector
@@ -1627,7 +1547,9 @@ class OptimizeMixin:
                 df.iloc[train_rows] if len(train_rows) else df.iloc[:0]
             )
             test_data = df.iloc[test_rows] if len(test_rows) else df.iloc[:0]
-            selection_data = _selection_df(train_data, test_data)
+            selection_data = _selection_df(
+                self._executions, train_data, test_data
+            )
             window_executions = (
                 _resolve_executions(self._executions, selection_data)
                 if has_selector
@@ -1718,6 +1640,14 @@ class OptimizeMixin:
                 test_result=test_result,
                 train_score=window_study.best_value,
                 train_pnl=is_result.metrics.total_pnl,
+                execution_symbols=(
+                    {
+                        e.id: _static_symbols(e.symbols)
+                        for e in window_executions
+                    }
+                    if has_selector
+                    else None
+                ),
             )
 
         scope = StaticScope.instance()
@@ -1755,10 +1685,15 @@ class OptimizeMixin:
                 df.iloc[train_rows] if len(train_rows) else df.iloc[:0]
             )
             test_data = df.iloc[test_rows] if len(test_rows) else df.iloc[:0]
-            selection_data = _selection_df(train_data, test_data)
+            # Reuse the study's selection rather than re-running the selector,
+            # which a stateful one would answer differently and leave the
+            # replayed result describing a different universe than was tuned.
             window_executions = (
-                _resolve_executions(self._executions, selection_data)
-                if has_selector
+                {
+                    e._replace(symbols=wr.execution_symbols[e.id])
+                    for e in self._executions
+                }
+                if wr.execution_symbols is not None
                 else self._executions
             )
             invariant_data = self._compute_invariant_indicators(
@@ -1810,13 +1745,15 @@ class OptimizeMixin:
                 )
             elif test_store is not None:
                 history_store = test_store
-            selected_syms = {
-                sym
-                for execution in window_executions
-                for sym in _static_symbols(execution.symbols)
-            }
+            selected_syms = _selected_symbols(
+                window_executions, test_data, has_selector
+            )
             self._liquidate_dropped_symbols(
-                portfolio, selected_syms, test_data
+                portfolio,
+                selected_syms,
+                test_data,
+                master_store=master_store,
+                slippage_model=self._slippage_model,
             )
             sessions: dict[str, dict] = defaultdict(dict)
             window_settings = self._resolve_backtest_settings(wr.params)
