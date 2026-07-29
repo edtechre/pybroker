@@ -63,6 +63,51 @@ def test_float_lattice_matches_optuna_snapping():
     assert optuna_values == list(hp)
 
 
+@pytest.mark.parametrize(
+    "low, high, step",
+    [
+        (0.0, 1.0, 0.25),
+        (0.0, 10.0, 2.5),
+        (0.0, 1.0, 0.125),
+        (0.0, 3.0, 0.75),
+        (1.0, 4.0, 1.5),
+        (0.0, 0.9, 0.15),
+        (0.05, 0.8, 0.25),
+        (0.05, 1.05, 0.1),
+        (-1.0, 1.0, 0.25),
+        (0.0, 1.0, 0.05),
+        (0.0, 0.1, 0.01),
+    ],
+)
+def test_float_lattice_matches_optuna_distribution(low, high, step):
+    # The lattice used to be rounded to a precision guessed from step's
+    # magnitude, which snapped steps like 0.25 onto a coarser decimal grid and
+    # produced values optuna's own distribution rejects.
+    hp = Hyperparam(name="x", default=low, low=low, high=high, step=step)
+    values = list(hp)
+    dist = optuna.distributions.FloatDistribution(
+        low=low, high=high, step=step
+    )
+    assert values[0] == low
+    assert len(values) == len(hp)
+    assert len(set(values)) == len(values)
+    for value in values:
+        assert dist._contains(dist.to_internal_repr(value)), (
+            f"{value} is not on optuna's lattice for "
+            f"low={low}, high={high}, step={step}"
+        )
+    assert values[-1] == pytest.approx(dist.high)
+
+
+@pytest.mark.parametrize(
+    "low, high, step",
+    [(0.0, 1.0, 0.3), (0.0, 9.7, 1.0), (0.05, 1.0, 0.25), (5, 50, 7)],
+)
+def test_rejects_step_misaligned_with_bounds(low, high, step):
+    with pytest.raises(ValueError, match="must be a multiple of step"):
+        Hyperparam(name="bad", default=low, low=low, high=high, step=step)
+
+
 def test_resolve_hyperparams():
     lookback = hyperparam("lookback", default=14, low=5, high=50, step=5)
     kwargs = {"period": lookback}

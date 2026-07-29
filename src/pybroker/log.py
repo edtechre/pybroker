@@ -276,6 +276,9 @@ class Logger:
             msg = f"Optimizing: {n_trials} trials ({sampler})"
         self._out(msg)
 
+    def info_optimize_search_space(self, hyperparams: Sequence[str]):
+        self._info("Searched hyperparams: %s", list(hyperparams))
+
     def calc_bootstrap_metrics_start(self, samples, bars):
         self._out(
             f"Calculating bootstrap metrics: bars={bars}, samples={samples}..."

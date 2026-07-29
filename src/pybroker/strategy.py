@@ -2621,24 +2621,9 @@ class Strategy(
         if rotation_sizer is None:
             rotation_sizer = self._rotation_sizer
         sessions: dict[str, dict] = defaultdict(dict)
-        exit_dates: dict[str, np.datetime64] = {}
         sym_col = DataCol.SYMBOL.value
         date_col = DataCol.DATE.value
-        if self._config.exit_on_last_bar:
-            if has_selector:
-                exit_symbols = set(df[sym_col].unique())
-            else:
-                exit_symbols = {
-                    sym
-                    for exec in self._executions
-                    for sym in _static_symbols(exec.symbols)
-                }
-            if exit_symbols and not df.empty:
-                mask = df[sym_col].isin(exit_symbols)
-                masked = df.loc[mask]
-                for sym, sym_dates in _iter_symbol_date_groups(masked):
-                    if sym in exit_symbols:
-                        exit_dates[sym] = np.datetime64(sym_dates.max())
+        exit_dates = self._build_exit_dates(df, has_selector)
         signals: dict[str, pd.DataFrame] = {}
         signal_frames: dict[str, list[pd.DataFrame]] = defaultdict(list)
         for train_rows, test_rows in self.walkforward_split(
@@ -2684,37 +2669,15 @@ class Strategy(
                 master_store=master_store,
                 slippage_model=self._slippage_model,
             )
-            train_store = None
-            test_store = None
-            history_store = None
-            if not test_data.empty:
-                test_dates_arr = _unique_dates_from_rows(
-                    master_dates_arr, test_rows
-                )
-                test_store = slice_symbol_array_store_by_dates(
-                    master_store, test_dates_arr
-                )
+            train_store, test_store, history_store = self._build_window_stores(
+                master_store=master_store,
+                master_dates_arr=master_dates_arr,
+                train_rows=train_rows,
+                test_rows=test_rows,
+                train_empty=train_data.empty,
+                test_empty=test_data.empty,
+            )
             if not train_data.empty:
-                train_dates_arr = _unique_dates_from_rows(
-                    master_dates_arr, train_rows
-                )
-                train_store = slice_symbol_array_store_by_dates(
-                    master_store, train_dates_arr
-                )
-                if test_store is not None:
-                    # Slice the contiguous span rather than merging the two
-                    # windows: with lookahead > 1 the skipped bars fall
-                    # between them, and omitting those would make "lag 1" at
-                    # the train/test boundary reach lookahead bars back.
-                    span_mask = (master_dates_arr >= train_dates_arr[0]) & (
-                        master_dates_arr <= test_dates_arr[-1]
-                    )
-                    history_store = slice_symbol_array_store_by_dates(
-                        master_store,
-                        np.unique(master_dates_arr[span_mask]),
-                    )
-                else:
-                    history_store = train_store
                 train_symbols = set(train_data[sym_col].unique())
                 model_syms: set[ModelSymbol] = set()
                 for sym in train_symbols:
@@ -2859,16 +2822,98 @@ class Strategy(
             df = df.reset_index()
         return df
 
-    def _fetch_indicators(
+    def _build_window_stores(
         self,
-        df: pd.DataFrame,
-        cache_date_fields: CacheDateFields,
-        disable_parallel_indicators: bool,
-        interval_data: Optional[IntervalData] = None,
-        executions: Optional[set[Execution]] = None,
-        symbol_store: Optional[SymbolArrayStore] = None,
-        hyperparams: Optional[dict[str, Any]] = None,
-    ) -> dict[IndicatorSymbol, pd.Series]:
+        master_store: SymbolArrayStore,
+        master_dates_arr: NDArray[np.datetime64],
+        train_rows: np.ndarray,
+        test_rows: np.ndarray,
+        train_empty: bool,
+        test_empty: bool,
+    ) -> tuple[
+        Optional[SymbolArrayStore],
+        Optional[SymbolArrayStore],
+        Optional[SymbolArrayStore],
+    ]:
+        """Slices per-window train, test, and history stores from
+        ``master_store``.
+
+        Returns ``(train_store, test_store, history_store)``. ``history_store``
+        spans the train window through the end of the test window and backs
+        :class:`pybroker.scope.ModelInputScope`, which needs bars from before
+        the test window to compute lag features at its first bar.
+        """
+        train_store = None
+        test_store = None
+        history_store = None
+        test_dates_arr = None
+        if not test_empty:
+            test_dates_arr = _unique_dates_from_rows(
+                master_dates_arr, test_rows
+            )
+            test_store = slice_symbol_array_store_by_dates(
+                master_store, test_dates_arr
+            )
+        if not train_empty:
+            train_dates_arr = _unique_dates_from_rows(
+                master_dates_arr, train_rows
+            )
+            train_store = slice_symbol_array_store_by_dates(
+                master_store, train_dates_arr
+            )
+            if test_dates_arr is not None:
+                # Slice the contiguous span rather than merging the two
+                # windows: with lookahead > 1 the skipped bars fall
+                # between them, and omitting those would make "lag 1" at
+                # the train/test boundary reach lookahead bars back.
+                span_mask = (master_dates_arr >= train_dates_arr[0]) & (
+                    master_dates_arr <= test_dates_arr[-1]
+                )
+                history_store = slice_symbol_array_store_by_dates(
+                    master_store,
+                    np.unique(master_dates_arr[span_mask]),
+                )
+            else:
+                history_store = train_store
+        elif test_store is not None:
+            history_store = test_store
+        return train_store, test_store, history_store
+
+    def _build_exit_dates(
+        self, df: pd.DataFrame, has_selector: bool
+    ) -> dict[str, np.datetime64]:
+        """Returns each symbol's final bar date when ``exit_on_last_bar`` is on.
+
+        Computed over the whole ``df`` rather than per window so that only the
+        true final bar liquidates.
+        """
+        exit_dates: dict[str, np.datetime64] = {}
+        if not self._config.exit_on_last_bar:
+            return exit_dates
+        sym_col = DataCol.SYMBOL.value
+        if has_selector:
+            exit_symbols = set(df[sym_col].unique())
+        else:
+            exit_symbols = {
+                sym
+                for exec in self._executions
+                for sym in _static_symbols(exec.symbols)
+            }
+        if exit_symbols and not df.empty:
+            mask = df[sym_col].isin(exit_symbols)
+            masked = df.loc[mask]
+            for sym, sym_dates in _iter_symbol_date_groups(masked):
+                if sym in exit_symbols:
+                    exit_dates[sym] = np.datetime64(sym_dates.max())
+        return exit_dates
+
+    def _indicator_syms(
+        self, executions: Optional[set[Execution]] = None
+    ) -> set[IndicatorSymbol]:
+        """Returns every :class:`pybroker.common.IndicatorSymbol` pair that
+        ``executions`` needs, including indicators registered on model sources
+        and their per-interval variants.
+        """
         exec_set = executions if executions is not None else self._executions
         indicator_syms: set[IndicatorSymbol] = set()
         for execution in exec_set:
@@ -2906,6 +2951,21 @@ class Strategy(
                                     sym,
                                 )
                             )
+        return indicator_syms
+
+    def _fetch_indicators(
+        self,
+        df: pd.DataFrame,
+        cache_date_fields: CacheDateFields,
+        disable_parallel_indicators: bool,
+        interval_data: Optional[IntervalData] = None,
+        executions: Optional[set[Execution]] = None,
+        symbol_store: Optional[SymbolArrayStore] = None,
+        hyperparams: Optional[dict[str, Any]] = None,
+        indicator_syms: Optional[set[IndicatorSymbol]] = None,
+    ) -> dict[IndicatorSymbol, pd.Series]:
+        if indicator_syms is None:
+            indicator_syms = self._indicator_syms(executions)
         return self.compute_indicators(
             df=df,
             indicator_syms=indicator_syms,

@@ -18,13 +18,12 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
-import itertools
 import json
-import math
 import warnings
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -109,22 +108,39 @@ class Hyperparam:
             raise ValueError(
                 f"Hyperparam {self.name!r}: low cannot exceed high."
             )
+        if self.low != self.high:
+            span = Decimal(str(self.high)) - Decimal(str(self.low))
+            if span % Decimal(str(self.step)) != 0:
+                raise ValueError(
+                    f"Hyperparam {self.name!r}: high - low "
+                    f"({self.high} - {self.low}) must be a multiple of step "
+                    f"({self.step}); otherwise the largest candidate value "
+                    "falls short of high."
+                )
 
     def _is_float(self) -> bool:
         return isinstance(self.default, float)
 
-    def _ndigits(self) -> int:
-        step = float(self.step)
-        if step >= 1:
-            return max(0, -int(math.floor(math.log10(step))))
-        return max(0, -int(math.floor(math.log10(step))))
+    def _decimals(self) -> tuple[Decimal, Decimal, Decimal]:
+        """Returns ``(low, high, step)`` as exact decimals.
+
+        Candidates are generated as ``low + i * step`` in :class:`Decimal`
+        rather than binary floats so that the lattice is exactly the one the
+        user declared. Rounding the running value to a precision guessed from
+        ``step`` would snap candidates onto a coarser decimal grid: a ``step``
+        of ``0.25`` would yield ``0.2`` and ``0.8``, values that Optuna's own
+        :class:`optuna.distributions.FloatDistribution` rejects.
+        """
+        return (
+            Decimal(str(self.low)),
+            Decimal(str(self.high)),
+            Decimal(str(self.step)),
+        )
 
     def _within_high(self, val: Union[int, float]) -> bool:
         if self._is_float():
-            ndigits = self._ndigits()
-            return round(float(val), ndigits) <= round(
-                float(self.high), ndigits
-            )
+            _, high, _ = self._decimals()
+            return Decimal(str(val)) <= high
         return int(val) <= int(self.high)
 
     def _lattice_count(self) -> int:
@@ -133,20 +149,12 @@ class Hyperparam:
                 f"Hyperparam {self.name!r} is fixed; lattice is undefined."
             )
         if self._is_float():
-            count = 0
-            ndigits = self._ndigits()
-            i = 0
-            while True:
-                val = round(float(self.low) + i * float(self.step), ndigits)
-                if not self._within_high(val):
-                    break
-                count += 1
-                i += 1
-            return count
-        low = int(self.low)
-        high = int(self.high)
-        step = int(self.step)
-        return (high - low) // step + 1
+            low, high, step = self._decimals()
+            return int((high - low) // step) + 1
+        low_i = int(self.low)
+        high_i = int(self.high)
+        step_i = int(self.step)
+        return (high_i - low_i) // step_i + 1
 
     def _lattice_values(self) -> Iterator[Union[int, float]]:
         if self.low == self.high:
@@ -159,22 +167,19 @@ class Hyperparam:
                 f"low={self.low}, high={self.high}, step={self.step}."
             )
         if self._is_float():
-            ndigits = self._ndigits()
-            i = 0
-            while True:
-                val = round(float(self.low) + i * float(self.step), ndigits)
-                if not self._within_high(val):
-                    break
-                yield val
-                i += 1
-        else:
-            low = int(self.low)
-            high = int(self.high)
-            step = int(self.step)
+            low, high, step = self._decimals()
             val = low
             while val <= high:
-                yield val
+                yield float(val)
                 val += step
+        else:
+            low_i = int(self.low)
+            high_i = int(self.high)
+            step_i = int(self.step)
+            val_i = low_i
+            while val_i <= high_i:
+                yield val_i
+                val_i += step_i
 
     def __iter__(self) -> Iterator[Union[int, float]]:
         return self._lattice_values()
@@ -325,9 +330,7 @@ from pybroker.parallel import _effective_n_jobs, parallel
 from pybroker.portfolio import Portfolio
 from pybroker.scope import (
     ColumnScope,
-    merge_symbol_array_stores,
     run_with_scope,
-    slice_symbol_array_store_by_dates,
     symbol_array_store_from_frame,
 )
 from pybroker.interval import (
@@ -369,6 +372,7 @@ if TYPE_CHECKING:
             disable_parallel_indicators: bool,
             warmup: Optional[int],
             pretrained_models: Mapping[ModelSymbol, TrainedModel],
+            exit_dates: Mapping[str, np.datetime64],
         ) -> TestResult: ...
 
 
@@ -407,17 +411,30 @@ def collect_hyperparams(strategy: _ExecutionsHost) -> dict[str, Hyperparam]:
             names.add(value.name)
             specs[value.name] = scope.get_hyperparam(value.name)
 
+    def add_indicator_hyperparams(ind_name: str) -> None:
+        base, _ = parse_indicator_interval_name(ind_name)
+        ind = scope.get_indicator(base)
+        for hp_name in ind.hyperparam_names:
+            if not scope.has_hyperparam(hp_name):
+                raise ValueError(
+                    f"Hyperparam {hp_name!r} in indicator "
+                    f"{ind_name!r} is not registered."
+                )
+            names.add(hp_name)
+            specs[hp_name] = scope.get_hyperparam(hp_name)
+
     for execution in strategy._executions:
         for ind_name in execution.indicator_names:
-            ind = scope.get_indicator(ind_name)
-            for hp_name in ind.hyperparam_names:
-                if not scope.has_hyperparam(hp_name):
-                    raise ValueError(
-                        f"Hyperparam {hp_name!r} in indicator "
-                        f"{ind_name!r} is not registered."
-                    )
-                names.add(hp_name)
-                specs[hp_name] = scope.get_hyperparam(hp_name)
+            add_indicator_hyperparams(ind_name)
+
+        # Indicators registered on a model source are expanded by
+        # Strategy._fetch_indicators even when they are not also listed on the
+        # execution, so their hyperparams have to be collected here or the run
+        # hyperparams dict is missing a name the indicator asks for.
+        for model_name in execution.model_names:
+            base_name, _ = parse_model_interval_name(model_name)
+            for ind_name in scope.get_indicator_names(base_name):
+                add_indicator_hyperparams(ind_name)
 
         for hp_name in execution.hyperparam_names:
             if not scope.has_hyperparam(hp_name):
@@ -448,11 +465,17 @@ def collect_hyperparams(strategy: _ExecutionsHost) -> dict[str, Hyperparam]:
     return specs
 
 
-def collect_search_space(strategy: _ExecutionsHost) -> SearchSpace:
-    """Collects searchable hyperparams reachable from ``strategy``."""
-    specs = collect_hyperparams(strategy)
+def _search_space_from_specs(
+    specs: Mapping[str, Hyperparam],
+) -> SearchSpace:
+    """Builds the searchable subset of already collected ``specs``."""
     searchable = {name: hp for name, hp in specs.items() if hp.low < hp.high}
     return SearchSpace(frozenset(searchable), searchable)
+
+
+def collect_search_space(strategy: _ExecutionsHost) -> SearchSpace:
+    """Collects searchable hyperparams reachable from ``strategy``."""
+    return _search_space_from_specs(collect_hyperparams(strategy))
 
 
 def _validate_optimize_models(strategy: _ExecutionsHost) -> None:
@@ -487,9 +510,13 @@ def _suggest_from_spec(
 def _trial_params(
     trial: optuna.Trial, search_space: SearchSpace
 ) -> dict[str, Any]:
+    # Sorted, not frozenset order: samplers draw from one sequential RNG, so
+    # the order of suggest_* calls decides which draw lands on which
+    # hyperparam. Iterating the frozenset would vary with string hash
+    # randomization and make ``seed`` fail to reproduce across processes.
     return {
         name: _suggest_from_spec(trial, search_space.specs[name])
-        for name in search_space.hyperparams
+        for name in sorted(search_space.hyperparams)
     }
 
 
@@ -505,7 +532,9 @@ def _build_sampler(
             name: list(search_space.specs[name])
             for name in sorted(search_space.hyperparams)
         }
-        return GridSampler(grid) if grid else GridSampler({})
+        # GridSampler shuffles the grid, so seed it too or a truncated grid
+        # search (n_trials < grid_size) is not reproducible.
+        return GridSampler(grid, seed=seed)
     if sampler == "tpe":
         return TPESampler(seed=seed)
     if sampler == "random":
@@ -531,6 +560,26 @@ def _validate_grid_sampler(
                 f"GridSampler param {name!r} is not in the declared search "
                 f"space: {sorted(declared)}."
             )
+
+
+def _validate_study_direction(study: optuna.Study, direction: str) -> None:
+    """Rejects a supplied ``study`` whose direction contradicts ``direction``.
+
+    ``optuna.create_study`` defaults to minimizing, so silently deferring to
+    the study would return the worst trial as the best one.
+    """
+    expected = direction.strip().lower()
+    if expected not in ("minimize", "maximize"):
+        raise ValueError(
+            f"Unknown direction {direction!r}; use 'minimize' or 'maximize'."
+        )
+    actual = study.direction.name.lower()
+    if actual != expected:
+        raise ValueError(
+            f"study= has direction {actual!r} but direction={direction!r} was "
+            "requested. Create the study with the matching direction, or omit "
+            "direction."
+        )
 
 
 def _grid_trial_count(search_space: SearchSpace) -> int:
@@ -580,7 +629,7 @@ def _log_optimize_trials(
 def _log_search_space(search_space: SearchSpace) -> None:
     searched = sorted(search_space.hyperparams)
     if searched:
-        warnings.warn(f"Searched hyperparams: {searched}", stacklevel=3)
+        StaticScope.instance().logger.info_optimize_search_space(searched)
 
 
 def _study_summary(study: optuna.Study) -> dict[str, Any]:
@@ -593,8 +642,6 @@ def _study_summary(study: optuna.Study) -> dict[str, Any]:
         summary["best_params"] = {}
     if study.user_attrs:
         summary["user_attrs"] = dict(study.user_attrs)
-    if study.system_attrs:
-        summary["system_attrs"] = dict(study.system_attrs)
     return _json_safe(summary)
 
 
@@ -659,7 +706,27 @@ class WindowOptimizeResult:
 
 @dataclass(frozen=True)
 class OptimizeResult:
-    """Result of :meth:`Strategy.optimize`."""
+    r"""Result of :meth:`Strategy.optimize`.
+
+    Attributes:
+        best_params: Winning hyperparameter values, including the ones that were
+            fixed rather than searched. When ``windows`` is set, these are the
+            **last** window's values, since each window is tuned separately.
+        best_score: ``score_fn`` value that ``best_params`` earned on the train
+            window. When ``windows`` is set, this is the last window's score.
+        result: :class:`pybroker.strategy.TestResult` for the test window. When
+            ``windows`` is set, this is a single continuous result stitched from
+            every window's test data, with positions and cash carried across
+            window boundaries -- so it is *not* the same as
+            ``windows[-1].test_result``.
+        study: :class:`optuna.Study` holding the trials. When ``windows`` is set,
+            this is the last window's study; see ``windows`` for the rest.
+        windows: Per-window results, or ``None`` for a single train/test split.
+        walkforward_efficiency: Sum of the windows' out-of-sample profit divided
+            by the sum of their in-sample profit. Above ``1`` means the tuned
+            values held up out of sample. ``None`` for a single split, or when
+            in-sample profit was not positive, which leaves the ratio undefined.
+    """
 
     best_params: dict[str, Any]
     best_score: float
@@ -729,20 +796,28 @@ class ObjectiveBundle:
     score_overrides: Callable[[dict[str, Any]], float]
 
 
-def _grid_combos(search_space: SearchSpace) -> list[dict[str, Any]]:
-    """Enumerates every point of ``search_space`` in a deterministic order."""
-    names = sorted(search_space.hyperparams)
-    values = [list(search_space.specs[name]) for name in names]
-    return [dict(zip(names, combo)) for combo in itertools.product(*values)]
+def _sampler_grid(
+    sampler: GridSampler,
+) -> tuple[list[dict[str, Any]], dict[str, BaseDistribution]]:
+    """Returns ``sampler``'s grid points and their matching distributions.
 
+    Points come back in the order the sampler will visit them:
+    :class:`optuna.samplers.GridSampler` shuffles its grid at construction
+    (seeded by ``seed or 0``) so that a truncated search does not just take the
+    lexicographic prefix. Reading that order back is what keeps the parallel
+    path evaluating the same points as the sequential one.
 
-def _grid_distributions(
-    search_space: SearchSpace,
-) -> dict[str, BaseDistribution]:
-    return {
-        name: CategoricalDistribution(list(search_space.specs[name]))
-        for name in sorted(search_space.hyperparams)
+    Distributions are derived from the same grid so their names always match the
+    points', including when a caller supplied a sampler covering only some of
+    the declared hyperparams.
+    """
+    names = sampler._param_names
+    combos = [dict(zip(names, grid)) for grid in sampler._all_grids]
+    dists: dict[str, BaseDistribution] = {
+        name: CategoricalDistribution(list(sampler._search_space[name]))
+        for name in names
     }
+    return combos, dists
 
 
 def _run_study(
@@ -770,8 +845,13 @@ def _run_study(
         return
     scope = StaticScope.instance()
     if isinstance(sampler, GridSampler):
-        combos = _grid_combos(bundle.search_space)[:n_trials]
-        dists = _grid_distributions(bundle.search_space)
+        # Taken from the sampler's own already-shuffled grid rather than
+        # re-enumerating it. itertools.product order would pin every hyperparam
+        # but the last to its lowest values whenever n_trials < grid_size, and
+        # reshuffling here with a different RNG would still not agree with the
+        # sequential path, where GridSampler picks the points itself.
+        combos, dists = _sampler_grid(sampler)
+        combos = combos[:n_trials]
         with parallel() as pool:
             scores = pool(
                 delayed(_run_scoped_task)(
@@ -831,6 +911,7 @@ def make_objective(
     disable_parallel_indicators: bool,
     warmup: Optional[int],
     pretrained_models: Mapping[ModelSymbol, TrainedModel],
+    exit_dates: Mapping[str, np.datetime64],
 ) -> ObjectiveBundle:
     """Builds an Optuna objective for train-window scoring."""
 
@@ -853,6 +934,7 @@ def make_objective(
             disable_parallel_indicators=disable_parallel_indicators,
             warmup=warmup,
             pretrained_models=pretrained_models,
+            exit_dates=exit_dates,
         )
         return score_fn(result)
 
@@ -892,6 +974,20 @@ class OptimizeMixin:
         def _fetch_indicators(
             self, *args: Any, **kwargs: Any
         ) -> dict[IndicatorSymbol, pd.Series]: ...
+
+        def _indicator_syms(
+            self, executions: Optional[set[Execution]] = None
+        ) -> set[IndicatorSymbol]: ...
+
+        def _build_window_stores(
+            self, *args: Any, **kwargs: Any
+        ) -> tuple[Any, Any, Any]: ...
+
+        def _build_exit_dates(
+            self, df: pd.DataFrame, has_selector: bool
+        ) -> dict[str, np.datetime64]: ...
+
+        def _indicator_memo_store(self) -> dict[Any, pd.Series]: ...
 
         def _resolve_backtest_settings(
             self, run_hyperparams: Optional[dict[str, Any]] = None
@@ -959,22 +1055,14 @@ class OptimizeMixin:
         master_dates_arr = df[date_col].to_numpy(
             dtype="datetime64[ns]", copy=False
         )
-        train_store = None
-        test_store = None
-        history_store = None
-        if not test_data.empty:
-            test_dates_arr = np.unique(master_dates_arr[test_rows])
-            test_store = slice_symbol_array_store_by_dates(
-                master_store, test_dates_arr
-            )
-        train_dates_arr = np.unique(master_dates_arr[train_rows])
-        train_store = slice_symbol_array_store_by_dates(
-            master_store, train_dates_arr
+        train_store, test_store, history_store = self._build_window_stores(
+            master_store=master_store,
+            master_dates_arr=master_dates_arr,
+            train_rows=train_rows,
+            test_rows=test_rows,
+            train_empty=train_data.empty,
+            test_empty=test_data.empty,
         )
-        if test_store is not None:
-            history_store = merge_symbol_array_stores(train_store, test_store)
-        else:
-            history_store = train_store
         train_symbols = set(train_data[sym_col].unique())
         model_syms: set[ModelSymbol] = set()
         for sym in train_symbols:
@@ -1050,16 +1138,29 @@ class OptimizeMixin:
         disable_parallel_indicators: bool,
         warmup: Optional[int],
         pretrained_models: Mapping[ModelSymbol, TrainedModel],
+        exit_dates: Mapping[str, np.datetime64],
     ) -> TestResult:
         train_data = df.iloc[train_rows] if len(train_rows) else df.iloc[:0]
-        trial_indicators = self._fetch_indicators(
-            df=train_data,
-            cache_date_fields=None,
-            disable_parallel_indicators=disable_parallel_indicators,
-            interval_data=interval_data,
-            executions=window_executions,
-            symbol_store=master_store,
-            hyperparams=run_hyperparams,
+        # Only the hyperparameterized indicators vary per trial. Fetching the
+        # whole set would recompute the invariant ones on every trial and
+        # discard ``invariant_indicator_data`` by overwriting it in the merge
+        # below, since hyperparam-free indicators are neither disk cached here
+        # (cache_date_fields=None) nor memoized (Indicator._memo_key is None
+        # without hyperparams).
+        _, tuned_syms = self._partition_indicator_syms(window_executions)
+        trial_indicators = (
+            self._fetch_indicators(
+                df=df,
+                cache_date_fields=None,
+                disable_parallel_indicators=disable_parallel_indicators,
+                interval_data=interval_data,
+                executions=window_executions,
+                symbol_store=master_store,
+                hyperparams=run_hyperparams,
+                indicator_syms=tuned_syms,
+            )
+            if tuned_syms
+            else {}
         )
         indicator_data = {**invariant_indicator_data, **trial_indicators}
         backtest_settings = self._resolve_backtest_settings(run_hyperparams)
@@ -1080,15 +1181,16 @@ class OptimizeMixin:
             record_position_bars=effective_config.record_position_bars,
         )
         date_col = DataCol.DATE.value
-        train_store = None
-        if not train_data.empty:
-            master_dates_arr = df[date_col].to_numpy(
+        train_store, _, _ = self._build_window_stores(
+            master_store=master_store,
+            master_dates_arr=df[date_col].to_numpy(
                 dtype="datetime64[ns]", copy=False
-            )
-            train_dates_arr = np.unique(master_dates_arr[train_rows])
-            train_store = slice_symbol_array_store_by_dates(
-                master_store, train_dates_arr
-            )
+            ),
+            train_rows=train_rows,
+            test_rows=train_rows[:0],
+            train_empty=train_data.empty,
+            test_empty=True,
+        )
         sessions: dict[str, dict] = defaultdict(dict)
         for sym in _static_symbols_from_executions(
             window_executions, train_data
@@ -1107,7 +1209,7 @@ class OptimizeMixin:
             ),
             test_data=train_data,
             portfolio=portfolio,
-            exit_dates={},
+            exit_dates=dict(exit_dates),
             backtest_settings=backtest_settings,
             rotation_sizer=self._rotation_sizer,
             slippage_model=self._slippage_model,
@@ -1115,9 +1217,11 @@ class OptimizeMixin:
             round_fill_price=effective_config.round_fill_price,
             warmup=warmup,
             history_col_scope=ColumnScope(train_store)
-            if train_store
+            if train_store is not None
             else None,
-            test_col_scope=ColumnScope(train_store) if train_store else None,
+            test_col_scope=ColumnScope(train_store)
+            if train_store is not None
+            else None,
             run_hyperparams=run_hyperparams,
         )
         if train_data.empty:
@@ -1137,6 +1241,29 @@ class OptimizeMixin:
             seed=None,
         )
 
+    def _partition_indicator_syms(
+        self, executions: set[Execution]
+    ) -> tuple[set[IndicatorSymbol], set[IndicatorSymbol]]:
+        """Splits ``executions``' indicator symbols into invariant and tuned.
+
+        Returns ``(invariant, tuned)``, where ``invariant`` names indicators
+        that declare no hyperparams and so produce the same series for every
+        trial, and ``tuned`` names the rest. Partitioning the set that
+        :meth:`pybroker.strategy.Strategy._indicator_syms` builds keeps model
+        registered indicators and per-interval variants on the invariant side
+        instead of leaving them to be recomputed each trial.
+        """
+        scope = StaticScope.instance()
+        invariant: set[IndicatorSymbol] = set()
+        tuned: set[IndicatorSymbol] = set()
+        for ind_sym in self._indicator_syms(executions):
+            base, _ = parse_indicator_interval_name(ind_sym.ind_name)
+            if scope.get_indicator(base).hyperparam_names:
+                tuned.add(ind_sym)
+            else:
+                invariant.add(ind_sym)
+        return invariant, tuned
+
     def _compute_invariant_indicators(
         self,
         df: pd.DataFrame,
@@ -1146,21 +1273,7 @@ class OptimizeMixin:
         master_store: Any,
         executions: set[Execution],
     ) -> dict[IndicatorSymbol, pd.Series]:
-        scope = StaticScope.instance()
-        invariant_names: set[str] = set()
-        for execution in executions:
-            for ind_name in execution.indicator_names:
-                base, _ = parse_indicator_interval_name(ind_name)
-                ind = scope.get_indicator(base)
-                if not ind.hyperparam_names:
-                    invariant_names.add(ind_name)
-        ind_syms: set[IndicatorSymbol] = set()
-        for execution in executions:
-            for sym in _static_symbols(execution.symbols):
-                for ind_name in execution.indicator_names:
-                    if ind_name not in invariant_names:
-                        continue
-                    ind_syms.add(IndicatorSymbol(ind_name, sym))
+        ind_syms, _ = self._partition_indicator_syms(executions)
         if not ind_syms:
             return {}
         return self.compute_indicators(
@@ -1194,34 +1307,127 @@ class OptimizeMixin:
         warmup: Optional[int] = None,
         disable_parallel_indicators: bool = False,
         adjust: Optional[Any] = None,
+        calc_bootstrap: bool = False,
         indicator_memo_max: int = _DEFAULT_INDICATOR_MEMO_MAX,
     ) -> OptimizeResult:
-        """Optimizes hyperparameters on the train window, then evaluates on test.
+        r"""Searches :func:`pybroker.optimize.hyperparam` values on a training
+        window, then evaluates the best values on the held out test window.
 
-        Pretrained models (``model(..., pretrained=True)``) are loaded once per
-        train window and reused across trials. Trainable models are not
-        supported.
+        Data supplied by the :class:`pybroker.data.DataSource` is split into
+        train and test as specified by ``train_size``. Every trial backtests the
+        train window with one combination of hyperparameter values and scores it
+        with ``score_fn``. The winning combination is then replayed on the test
+        window, which ``score_fn`` never sees.
+
+        Pretrained models (``model(..., pretrained=True)``) are loaded per train
+        window and reused across that window's trials. Trainable models are not
+        supported; tune them inside ``train_fn`` with a validation split, or use
+        :meth:`pybroker.strategy.Strategy.walkforward`.
 
         Args:
+            score_fn: ``Callable[[TestResult], float]`` that scores one trial's
+                train window backtest. Maximized by default; see ``direction``.
+            sampler: How candidate values are chosen. ``"grid"`` (the default)
+                exhaustively enumerates every combination, ``"tpe"`` uses
+                :class:`optuna.samplers.TPESampler`, ``"random"`` uses
+                :class:`optuna.samplers.RandomSampler`. An
+                :class:`optuna.samplers.BaseSampler` instance is also accepted.
+            n_trials: Number of trials to run. Required for every sampler except
+                ``"grid"``, where it defaults to the full grid size and a
+                smaller value samples that many combinations at random.
+            direction: ``"maximize"`` (default) or ``"minimize"`` ``score_fn``.
+            seed: Random seed for the sampler and for bootstrap metrics.
+                Defaults to ``None``, which does not reproduce.
+            windows: When greater than ``1``, hyperparameters are optimized
+                separately in each of ``windows`` walkforward windows and the
+                test windows are stitched into one continuous result. Defaults
+                to ``None``, a single train/test split.
+            study: Existing :class:`optuna.Study` to record trials in, for
+                example one backed by persistent storage. The study's own
+                sampler and pruner are used, and its direction must match
+                ``direction``. Not supported when ``windows`` is greater
+                than ``1``.
+            pruner: :class:`optuna.pruners.BasePruner` attached to the created
+                study. Each trial is one complete backtest with no intermediate
+                values to report, so pruning never actually triggers.
+            train_size: Fraction of each window used for training, exclusive of
+                ``0`` and ``1``. Defaults to ``0.5``.
+            lookahead: Number of bars in the future of the target prediction.
+                Held out between train and test to prevent training data from
+                leaking across the boundary. Defaults to ``1``.
+            start_date: Starting date of the optimization (inclusive). Must be
+                within the range passed to :meth:`.__init__`.
+            end_date: Ending date of the optimization (inclusive). Must be
+                within the range passed to :meth:`.__init__`.
+            timeframe: Formatted string specifying the timeframe resolution of
+                the data, as in :meth:`pybroker.strategy.Strategy.walkforward`.
+            between_time: ``tuple[str, str]`` of times of day e.g.
+                ``('9:30', '16:00')`` used to filter the data (inclusive).
+            days: Days (e.g. ``"mon"``, ``"tues"``) used to filter the data.
+            warmup: Number of bars that need to pass before running the
+                executions. Must be greater than ``0`` when set.
+            disable_parallel_indicators: If ``True``,
+                :class:`pybroker.indicator.Indicator` data is computed serially.
+                Defaults to ``False``.
+            adjust: The type of adjustment to make to the
+                :class:`pybroker.data.DataSource`.
+            calc_bootstrap: Whether to compute randomized bootstrap evaluation
+                metrics for the test result. Defaults to ``False``.
             indicator_memo_max: Maximum in-memory hyperparameter indicator
                 results to retain while optimizing. Hyperparameterized
                 indicators bypass the disk cache; this memo avoids recomputing
                 identical ``(indicator, symbol, hyperparams)`` combinations
                 across trials. When full, the oldest entry is evicted. Set to
                 ``0`` to disable. Defaults to
-                :data:`pybroker.indicator.DEFAULT_INDICATOR_MEMO_MAX`.
+                :data:`pybroker.indicator.DEFAULT_INDICATOR_MEMO_MAX`. The memo
+                is discarded when ``optimize`` returns.
+
+        Returns:
+            :class:`.OptimizeResult` with the winning hyperparameter values, the
+            train window score they earned, and the test window
+            :class:`pybroker.strategy.TestResult` they produced. When ``windows``
+            is greater than ``1``, ``best_params``, ``best_score``, and ``study``
+            describe the **last** window while ``result`` is stitched across all
+            of them; see :attr:`.OptimizeResult.windows` for the per-window
+            results.
+
+        Raises:
+            ValueError: If no executions were added, if any model source is
+                trainable, if ``train_size`` is not between ``0`` and ``1``
+                exclusive, if ``warmup`` is not greater than ``0``, if
+                ``windows`` is not greater than ``0``, if ``study`` is combined
+                with ``windows`` greater than ``1`` or has a conflicting
+                direction, or if the dates fall outside the range passed to
+                :meth:`.__init__`.
         """
         if indicator_memo_max < 0:
             raise ValueError(
                 "indicator_memo_max must be greater than or equal to 0."
+            )
+        if not 0 < train_size < 1:
+            raise ValueError(
+                f"optimize requires 0 < train_size < 1, got {train_size}. "
+                "train_size=0 leaves no data to score trials on, and "
+                "train_size=1 leaves no test window to evaluate on."
+            )
+        if warmup is not None and warmup < 1:
+            raise ValueError("warmup must be > 0.")
+        if windows is not None and windows < 1:
+            raise ValueError("windows must be > 0.")
+        if study is not None and windows is not None and windows > 1:
+            raise ValueError(
+                "study= is not supported with windows > 1, which runs one "
+                "study per window. Inspect OptimizeResult.windows instead."
             )
         _validate_optimize_models(self)
         if not self._executions:
             raise ValueError("No executions were added.")
         if self._slippage_model is not None:
             self._slippage_model.validate(cast("Strategy", self))
-        search_space = collect_search_space(self)
+        # Collected once: collect_hyperparams warns about registered but
+        # unreachable hyperparams, and calling it twice would warn twice.
         hyperparams = collect_hyperparams(self)
+        search_space = _search_space_from_specs(hyperparams)
         _log_search_space(search_space)
         optuna.logging.set_verbosity(optuna.logging.WARNING)
 
@@ -1234,9 +1440,19 @@ class OptimizeMixin:
                 if start_date is None
                 else to_datetime(start_date)
             )
+            if start_dt < self._start_date or start_dt > self._end_date:
+                raise ValueError(
+                    f"start_date must be between {self._start_date} and "
+                    f"{self._end_date}."
+                )
             end_dt = (
                 self._end_date if end_date is None else to_datetime(end_date)
             )
+            if end_dt < self._start_date or end_dt > self._end_date:
+                raise ValueError(
+                    f"end_date must be between {self._start_date} and "
+                    f"{self._end_date}."
+                )
             verify_date_range(start_dt, end_dt)
             df = self._fetch_data(timeframe, adjust)
             day_ids = self._to_day_ids(days)
@@ -1298,6 +1514,7 @@ class OptimizeMixin:
                     windows=windows,
                     start_dt=start_dt,
                     end_dt=end_dt,
+                    calc_bootstrap=calc_bootstrap,
                 )
 
             splits = list(
@@ -1329,15 +1546,26 @@ class OptimizeMixin:
                 master_store=master_store,
                 executions=window_executions,
             )
-            default_run_hp = build_run_hyperparams(hyperparams)
-            load_indicators = self._fetch_indicators(
-                df=df,
-                cache_date_fields=cache_date_fields,
-                disable_parallel_indicators=disable_parallel_indicators,
-                interval_data=interval_data,
-                executions=window_executions,
-                symbol_store=master_store,
-                hyperparams=default_run_hp,
+            # Model features only: _load_pretrained_models is a no-op without
+            # models, and the invariant indicators are already computed above,
+            # so only the tuned ones are fetched here.
+            _, tuned_syms = self._partition_indicator_syms(window_executions)
+            needs_models = any(
+                execution.model_names for execution in window_executions
+            )
+            load_indicators = (
+                self._fetch_indicators(
+                    df=df,
+                    cache_date_fields=cache_date_fields,
+                    disable_parallel_indicators=disable_parallel_indicators,
+                    interval_data=interval_data,
+                    executions=window_executions,
+                    symbol_store=master_store,
+                    hyperparams=build_run_hyperparams(hyperparams),
+                    indicator_syms=tuned_syms,
+                )
+                if needs_models and tuned_syms
+                else {}
             )
             pretrained_models = self._load_pretrained_models(
                 df=df,
@@ -1365,20 +1593,29 @@ class OptimizeMixin:
                 disable_parallel_indicators=disable_parallel_indicators,
                 warmup=warmup,
                 pretrained_models=pretrained_models,
+                exit_dates=self._build_exit_dates(train_data, has_selector),
             )
-            built_sampler = _build_sampler(sampler, search_space, seed)
-            _validate_grid_sampler(built_sampler, search_space)
-            n_trials = _resolve_n_trials(n_trials, built_sampler, search_space)
-            _log_optimize_trials(n_trials, built_sampler, search_space)
             if study is None:
+                built_sampler = _build_sampler(sampler, search_space, seed)
+                _validate_grid_sampler(built_sampler, search_space)
                 study = optuna.create_study(
                     direction=direction, sampler=built_sampler, pruner=pruner
                 )
+            else:
+                # A supplied study owns its own sampler, direction and pruner.
+                # Deriving the trial budget or the _run_study branch from the
+                # arguments instead would search a grid the study never samples.
+                _validate_study_direction(study, direction)
+                built_sampler = study.sampler
+                _validate_grid_sampler(built_sampler, search_space)
+            n_trials = _resolve_n_trials(n_trials, built_sampler, search_space)
+            _log_optimize_trials(n_trials, built_sampler, search_space)
             _run_study(study, bundle, n_trials, built_sampler)
             best_params = build_run_hyperparams(hyperparams, study.best_params)
             test_result = self._run_optimize_test(
                 df=df,
                 test_rows=test_rows,
+                train_rows=train_rows,
                 run_hyperparams=best_params,
                 invariant_indicator_data=invariant_data,
                 window_executions=window_executions,
@@ -1389,6 +1626,9 @@ class OptimizeMixin:
                 warmup=warmup,
                 start_dt=start_dt,
                 end_dt=end_dt,
+                exit_dates=self._build_exit_dates(test_data, has_selector),
+                seed=seed,
+                calc_bootstrap=calc_bootstrap,
                 pretrained_models=pretrained_models,
             )
             return OptimizeResult(
@@ -1401,6 +1641,10 @@ class OptimizeMixin:
             scope.unfreeze_data_cols()
             if hasattr(self, "_indicator_memo_max"):
                 del self._indicator_memo_max
+            # The memo is keyed by (indicator, symbol, hyperparams) with no
+            # notion of the data window, so keeping it past this call would
+            # serve this run's series to a later optimize() over other dates.
+            self._indicator_memo_store().clear()
 
     def _run_optimize_test(
         self,
@@ -1416,21 +1660,33 @@ class OptimizeMixin:
         warmup: Optional[int],
         start_dt: datetime,
         end_dt: datetime,
+        exit_dates: Mapping[str, np.datetime64],
+        train_rows: np.ndarray,
+        seed: Optional[int],
         portfolio: Optional[Portfolio] = None,
-        calc_bootstrap: bool = True,
+        calc_bootstrap: bool = False,
         pretrained_models: Optional[Mapping[ModelSymbol, TrainedModel]] = None,
     ) -> TestResult:
         if pretrained_models is None:
             pretrained_models = {}
+        train_data = df.iloc[train_rows] if len(train_rows) else df.iloc[:0]
         test_data = df.iloc[test_rows] if len(test_rows) else df.iloc[:0]
-        trial_indicators = self._fetch_indicators(
-            df=df,
-            cache_date_fields=cache_date_fields,
-            disable_parallel_indicators=disable_parallel_indicators,
-            interval_data=interval_data,
-            executions=window_executions,
-            symbol_store=master_store,
-            hyperparams=run_hyperparams,
+        # Only the tuned indicators are refetched; the invariant ones were
+        # already computed once for this window and do not depend on the params.
+        _, tuned_syms = self._partition_indicator_syms(window_executions)
+        trial_indicators = (
+            self._fetch_indicators(
+                df=df,
+                cache_date_fields=cache_date_fields,
+                disable_parallel_indicators=disable_parallel_indicators,
+                interval_data=interval_data,
+                executions=window_executions,
+                symbol_store=master_store,
+                hyperparams=run_hyperparams,
+                indicator_syms=tuned_syms,
+            )
+            if tuned_syms
+            else {}
         )
         indicator_data = {**invariant_indicator_data, **trial_indicators}
         backtest_settings = self._resolve_backtest_settings(run_hyperparams)
@@ -1455,12 +1711,14 @@ class OptimizeMixin:
         master_dates_arr = df[date_col].to_numpy(
             dtype="datetime64[ns]", copy=False
         )
-        test_store = None
-        if not test_data.empty:
-            test_dates_arr = np.unique(master_dates_arr[test_rows])
-            test_store = slice_symbol_array_store_by_dates(
-                master_store, test_dates_arr
-            )
+        _, test_store, history_store = self._build_window_stores(
+            master_store=master_store,
+            master_dates_arr=master_dates_arr,
+            train_rows=train_rows,
+            test_rows=test_rows,
+            train_empty=train_data.empty,
+            test_empty=test_data.empty,
+        )
         sessions: dict[str, dict] = defaultdict(dict)
         self.backtest_executions(
             config=effective_config,
@@ -1475,14 +1733,19 @@ class OptimizeMixin:
             ),
             test_data=test_data,
             portfolio=portfolio,
-            exit_dates={},
+            exit_dates=dict(exit_dates),
             backtest_settings=backtest_settings,
             rotation_sizer=self._rotation_sizer,
             slippage_model=self._slippage_model,
             enable_fractional_shares=self._fractional_shares_enabled(),
             round_fill_price=effective_config.round_fill_price,
             warmup=warmup,
-            test_col_scope=ColumnScope(test_store) if test_store else None,
+            history_col_scope=ColumnScope(history_store)
+            if history_store is not None
+            else None,
+            test_col_scope=ColumnScope(test_store)
+            if test_store is not None
+            else None,
             run_hyperparams=run_hyperparams,
         )
         return self._to_test_result(
@@ -1492,7 +1755,7 @@ class OptimizeMixin:
             calc_bootstrap=calc_bootstrap,
             train_only=False,
             signals=None,
-            seed=None,
+            seed=seed,
         )
 
     def _optimize_walkforward(
@@ -1518,6 +1781,7 @@ class OptimizeMixin:
         windows: int,
         start_dt: datetime,
         end_dt: datetime,
+        calc_bootstrap: bool,
     ) -> OptimizeResult:
         splits = list(
             self.walkforward_split(
@@ -1527,19 +1791,27 @@ class OptimizeMixin:
                 train_size=train_size,
             )
         )
-        built_sampler = _build_sampler(sampler, search_space, seed)
-        _validate_grid_sampler(built_sampler, search_space)
+        # Sized from a throwaway sampler so the budget can be logged up front.
+        # Each window builds its own below: samplers carry RNG state, and one
+        # shared instance pickled into every worker process would make every
+        # window replay the same draws.
+        budget_sampler = _build_sampler(sampler, search_space, seed)
+        _validate_grid_sampler(budget_sampler, search_space)
         window_n_trials = _resolve_n_trials(
-            n_trials, built_sampler, search_space
+            n_trials, budget_sampler, search_space
         )
         _log_optimize_trials(
             window_n_trials,
-            built_sampler,
+            budget_sampler,
             search_space,
             windows=windows,
         )
 
+        def window_seed(index: int) -> Optional[int]:
+            return None if seed is None else seed + index
+
         def run_window_study(
+            index: int,
             train_rows: np.ndarray,
             test_rows: np.ndarray,
         ) -> WindowOptimizeResult:
@@ -1547,6 +1819,7 @@ class OptimizeMixin:
                 df.iloc[train_rows] if len(train_rows) else df.iloc[:0]
             )
             test_data = df.iloc[test_rows] if len(test_rows) else df.iloc[:0]
+            train_exit_dates = self._build_exit_dates(train_data, has_selector)
             selection_data = _selection_df(
                 self._executions, train_data, test_data
             )
@@ -1563,15 +1836,26 @@ class OptimizeMixin:
                 master_store=master_store,
                 executions=window_executions,
             )
-            default_run_hp = build_run_hyperparams(hyperparams)
-            load_indicators = self._fetch_indicators(
-                df=df,
-                cache_date_fields=cache_date_fields,
-                disable_parallel_indicators=disable_parallel_indicators,
-                interval_data=interval_data,
-                executions=window_executions,
-                symbol_store=master_store,
-                hyperparams=default_run_hp,
+            # Model features only: _load_pretrained_models is a no-op without
+            # models, and the invariant indicators are already computed above,
+            # so only the tuned ones are fetched here.
+            _, tuned_syms = self._partition_indicator_syms(window_executions)
+            needs_models = any(
+                execution.model_names for execution in window_executions
+            )
+            load_indicators = (
+                self._fetch_indicators(
+                    df=df,
+                    cache_date_fields=cache_date_fields,
+                    disable_parallel_indicators=disable_parallel_indicators,
+                    interval_data=interval_data,
+                    executions=window_executions,
+                    symbol_store=master_store,
+                    hyperparams=build_run_hyperparams(hyperparams),
+                    indicator_syms=tuned_syms,
+                )
+                if needs_models and tuned_syms
+                else {}
             )
             pretrained_models = self._load_pretrained_models(
                 df=df,
@@ -1599,11 +1883,14 @@ class OptimizeMixin:
                 disable_parallel_indicators=disable_parallel_indicators,
                 warmup=warmup,
                 pretrained_models=pretrained_models,
+                exit_dates=train_exit_dates,
             )
+            this_seed = window_seed(index)
+            window_sampler = _build_sampler(sampler, search_space, this_seed)
             window_study = optuna.create_study(
-                direction=direction, sampler=built_sampler, pruner=pruner
+                direction=direction, sampler=window_sampler, pruner=pruner
             )
-            _run_study(window_study, bundle, window_n_trials, built_sampler)
+            _run_study(window_study, bundle, window_n_trials, window_sampler)
             best_params = build_run_hyperparams(
                 hyperparams, window_study.best_params
             )
@@ -1618,10 +1905,12 @@ class OptimizeMixin:
                 disable_parallel_indicators=disable_parallel_indicators,
                 warmup=warmup,
                 pretrained_models=pretrained_models,
+                exit_dates=train_exit_dates,
             )
             test_result = self._run_optimize_test(
                 df=df,
                 test_rows=test_rows,
+                train_rows=train_rows,
                 run_hyperparams=best_params,
                 invariant_indicator_data=invariant_data,
                 window_executions=window_executions,
@@ -1632,6 +1921,9 @@ class OptimizeMixin:
                 warmup=warmup,
                 start_dt=start_dt,
                 end_dt=end_dt,
+                exit_dates=self._build_exit_dates(test_data, has_selector),
+                seed=this_seed,
+                calc_bootstrap=calc_bootstrap,
                 pretrained_models=pretrained_models,
             )
             return WindowOptimizeResult(
@@ -1654,20 +1946,26 @@ class OptimizeMixin:
         with parallel() as pool:
             window_results = pool(
                 delayed(_run_scoped_task)(
-                    scope, run_window_study, train_rows, test_rows
+                    scope, run_window_study, i, train_rows, test_rows
                 )
-                for train_rows, test_rows in splits
+                for i, (train_rows, test_rows) in enumerate(splits)
             )
 
-        default_settings = self._resolve_backtest_settings(None)
+        # Sized from the first window's winning values rather than the
+        # hyperparam defaults: _resolve_backtest_settings(None) raises when a
+        # position limit is a Hyperparam. The caps are re-applied per window
+        # below, since the Portfolio enforces the ones it was constructed with.
+        first_settings = self._resolve_backtest_settings(
+            window_results[0].params
+        )
         portfolio = Portfolio(
             self._config.initial_cash,
             self._config.fee_mode,
             self._config.fee_amount,
             self._fractional_shares_enabled(),
             self._config.position_mode,
-            default_settings.max_long_positions,
-            default_settings.max_short_positions,
+            first_settings.max_long_positions,
+            first_settings.max_short_positions,
             self._config.return_stops,
             self._config.leverage,
             self._config.interest_rate,
@@ -1679,6 +1977,12 @@ class OptimizeMixin:
         master_dates_arr = df[date_col].to_numpy(
             dtype="datetime64[ns]", copy=False
         )
+        # Allocated once, like Strategy._run_walkforward does: the stitched
+        # replay carries positions and cash across window boundaries, so
+        # ctx.session has to persist across them too.
+        sessions: dict[str, dict] = defaultdict(dict)
+        # Computed over the whole df so only the true final bar liquidates.
+        stitched_exit_dates = self._build_exit_dates(df, has_selector)
         for i, (train_rows, test_rows) in enumerate(splits):
             wr = window_results[i]
             train_data = (
@@ -1726,25 +2030,14 @@ class OptimizeMixin:
                 between_time=cache_date_fields.between_time,
                 days=cache_date_fields.days,
             )
-            test_store = None
-            history_store = None
-            if not test_data.empty:
-                test_dates_arr = np.unique(master_dates_arr[test_rows])
-                test_store = slice_symbol_array_store_by_dates(
-                    master_store, test_dates_arr
-                )
-            if not train_data.empty:
-                train_dates_arr = np.unique(master_dates_arr[train_rows])
-                train_store = slice_symbol_array_store_by_dates(
-                    master_store, train_dates_arr
-                )
-                history_store = (
-                    merge_symbol_array_stores(train_store, test_store)
-                    if test_store is not None
-                    else train_store
-                )
-            elif test_store is not None:
-                history_store = test_store
+            _, test_store, history_store = self._build_window_stores(
+                master_store=master_store,
+                master_dates_arr=master_dates_arr,
+                train_rows=train_rows,
+                test_rows=test_rows,
+                train_empty=train_data.empty,
+                test_empty=test_data.empty,
+            )
             selected_syms = _selected_symbols(
                 window_executions, test_data, has_selector
             )
@@ -1755,9 +2048,15 @@ class OptimizeMixin:
                 master_store=master_store,
                 slippage_model=self._slippage_model,
             )
-            sessions: dict[str, dict] = defaultdict(dict)
             window_settings = self._resolve_backtest_settings(wr.params)
             window_config = self._effective_config(window_settings)
+            # The Portfolio gates position counts with the caps it was built
+            # with, so a tuned limit has to be pushed onto it per window or the
+            # stitched result silently trades the first window's caps.
+            portfolio._max_long_positions = window_settings.max_long_positions
+            portfolio._max_short_positions = (
+                window_settings.max_short_positions
+            )
             self.backtest_executions(
                 config=window_config,
                 executions=window_executions,
@@ -1771,7 +2070,7 @@ class OptimizeMixin:
                 ),
                 test_data=test_data,
                 portfolio=portfolio,
-                exit_dates={},
+                exit_dates=dict(stitched_exit_dates),
                 backtest_settings=window_settings,
                 rotation_sizer=self._rotation_sizer,
                 slippage_model=self._slippage_model,
@@ -1779,9 +2078,11 @@ class OptimizeMixin:
                 round_fill_price=window_config.round_fill_price,
                 warmup=warmup,
                 history_col_scope=ColumnScope(history_store)
-                if history_store
+                if history_store is not None
                 else None,
-                test_col_scope=ColumnScope(test_store) if test_store else None,
+                test_col_scope=ColumnScope(test_store)
+                if test_store is not None
+                else None,
                 run_hyperparams=wr.params,
             )
 
@@ -1789,15 +2090,18 @@ class OptimizeMixin:
             wr.test_result.metrics.total_pnl for wr in window_results
         )
         is_pnl = sum(wr.train_pnl for wr in window_results)
-        wfe = oos_pnl / is_pnl if is_pnl != 0 else float("nan")
+        # Only defined against a profitable in-sample leg: dividing by a
+        # negative denominator flips the sign, so a losing out-of-sample run
+        # would report an efficiency above 1 and a winning one below 0.
+        wfe = oos_pnl / is_pnl if is_pnl > 0 else None
         stitched = self._to_test_result(
             start_dt,
             end_dt,
             portfolio,
-            calc_bootstrap=True,
+            calc_bootstrap=calc_bootstrap,
             train_only=False,
             signals=None,
-            seed=None,
+            seed=seed,
         )
         last = window_results[-1]
         return OptimizeResult(
