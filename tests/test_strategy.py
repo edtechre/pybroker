@@ -107,6 +107,58 @@ def _rotational_test_df(symbols, num_bars=5):
     return pd.DataFrame(rows)
 
 
+def _run_rotation(
+    symbols,
+    exec_fn,
+    *,
+    num_bars,
+    worst_rank_held,
+    max_long_positions=None,
+    max_short_positions=None,
+    leverage=1.0,
+    config=None,
+    rotation_sizer=None,
+):
+    if config is None:
+        config = StrategyConfig(
+            max_long_positions=max_long_positions,
+            max_short_positions=max_short_positions,
+            leverage=leverage,
+        )
+    portfolio = Portfolio(
+        100_000,
+        max_long_positions=max_long_positions,
+        max_short_positions=max_short_positions,
+        leverage=config.leverage,
+    )
+    exec = Execution(
+        id=1,
+        symbols=frozenset(symbols),
+        fn=exec_fn,
+        model_names=frozenset(),
+        indicator_names=frozenset(),
+    )
+    BacktestMixin().backtest_executions(
+        config=config,
+        backtest_settings=BacktestSettings(
+            max_long_positions=max_long_positions,
+            max_short_positions=max_short_positions,
+            worst_rank_held=worst_rank_held,
+        ),
+        executions={exec},
+        before_exec_fn=None,
+        after_exec_fn=None,
+        rotation_sizer=rotation_sizer,
+        sessions=defaultdict(dict),
+        models={},
+        indicator_data={},
+        test_data=_rotational_test_df(symbols, num_bars=num_bars),
+        portfolio=portfolio,
+        exit_dates={},
+    )
+    return portfolio
+
+
 def _selector_universe_df(
     symbol_volumes: dict[str, int],
     num_bars: int = 20,
@@ -1393,7 +1445,7 @@ class TestBacktestMixin:
                 exit_dates={},
             )
 
-    def test_backtest_executions_when_worst_rank_held_user_sell(self):
+    def test_backtest_executions_when_worst_rank_held_ignores_user_sell(self):
         symbols = ["S1", "S2", "S3"]
         scores_by_bar = [
             {"S1": 30, "S2": 20, "S3": 10},
@@ -1404,10 +1456,6 @@ class TestBacktestMixin:
         def exec_fn(ctx):
             idx = min(ctx.bars - 1, len(scores_by_bar) - 1)
             ctx.long_score = scores_by_bar[idx][ctx.symbol]
-            if ctx.buy_shares is not None:
-                ctx.buy_fill_price = PriceType.CLOSE
-            if ctx.sell_shares is not None:
-                ctx.sell_fill_price = PriceType.CLOSE
             if ctx.bars == 2 and ctx.symbol == "S1":
                 ctx.sell_shares = 100
                 ctx.sell_fill_price = PriceType.CLOSE
@@ -1443,9 +1491,11 @@ class TestBacktestMixin:
             for order in portfolio.orders
             if order.type == "sell" and order.symbol == "S1"
         ]
-        assert len(s1_sells) == 1
-        assert s1_sells[0].shares == 100
+        # S1 stays inside the hold band, so rotation keeps it and the sell
+        # placed by the execution is discarded.
         assert user_sells == ["S1"]
+        assert s1_sells == []
+        assert "S1" in portfolio.long_positions
 
     def test_backtest_executions_when_after_rotation_custom_size(self):
         symbols = ["S1", "S2", "S3"]
@@ -1664,6 +1714,223 @@ class TestBacktestMixin:
                 portfolio=portfolio,
                 exit_dates={},
             )
+
+    def test_backtest_executions_when_rotation_shared_long_short_universe(
+        self,
+    ):
+        # Ranking one universe from both ends: the strongest names are the best
+        # longs and the weakest are the best shorts.
+        symbols = ["A", "B", "C", "D"]
+        momentum = {"A": 40, "B": 30, "C": 20, "D": 10}
+
+        def exec_fn(ctx):
+            ctx.long_score = momentum[ctx.symbol]
+            ctx.short_score = momentum[ctx.symbol]
+
+        portfolio = _run_rotation(
+            symbols,
+            exec_fn,
+            num_bars=4,
+            max_long_positions=2,
+            max_short_positions=2,
+            worst_rank_held=3,
+            leverage=2.0,
+        )
+        assert set(portfolio.long_positions) == {"A", "B"}
+        assert set(portfolio.short_positions) == {"C", "D"}
+
+    def test_backtest_executions_when_rotation_overlapping_candidates(self):
+        # Limits sum to more slots than there are symbols, so B is a candidate
+        # on both sides and is resolved to the side it ranks better on.
+        symbols = ["A", "B", "C"]
+        momentum = {"A": 30, "B": 20, "C": 10}
+
+        def exec_fn(ctx):
+            ctx.long_score = momentum[ctx.symbol]
+            ctx.short_score = momentum[ctx.symbol]
+
+        portfolio = _run_rotation(
+            symbols,
+            exec_fn,
+            num_bars=4,
+            max_long_positions=2,
+            max_short_positions=2,
+            worst_rank_held=3,
+            leverage=2.0,
+        )
+        # B ranks 2nd both ways, and ties go long.
+        assert set(portfolio.long_positions) == {"A", "B"}
+        assert set(portfolio.short_positions) == {"C"}
+
+    def test_backtest_executions_when_rotation_buy_delay(self):
+        symbols = ["A", "B"]
+
+        def exec_fn(ctx):
+            ctx.long_score = {"A": 30, "B": 20}[ctx.symbol]
+
+        portfolio = _run_rotation(
+            symbols,
+            exec_fn,
+            num_bars=6,
+            max_long_positions=4,
+            worst_rank_held=4,
+            config=StrategyConfig(max_long_positions=4, buy_delay=2),
+        )
+        # A delayed entry stays pending for a bar. Re-issuing it would stack a
+        # second order and double the 25% target allocation.
+        buy_orders = [
+            order for order in portfolio.orders if order.type == "buy"
+        ]
+        assert len(buy_orders) == 2
+        assert {
+            sym: pos.shares for sym, pos in portfolio.long_positions.items()
+        } == {"A": 250, "B": 250}
+
+    def test_backtest_executions_when_rotation_fills_free_slots_only(self):
+        symbols = ["S1", "S2", "S3", "S4", "S5", "S6"]
+        scores = {"S1": 60, "S2": 50, "S3": 40, "S4": 30, "S5": 20, "S6": 10}
+        entries_per_bar = []
+
+        def exec_fn(ctx):
+            ctx.long_score = scores[ctx.symbol]
+
+        def rotation_sizer(rotation: RotationContext):
+            entries_per_bar.append(
+                sum(
+                    1
+                    for ctx in rotation.ctxs.values()
+                    if ctx.buy_shares is not None
+                    or ctx.sell_shares is not None
+                )
+            )
+
+        _run_rotation(
+            symbols,
+            exec_fn,
+            num_bars=3,
+            max_long_positions=2,
+            worst_rank_held=5,
+            rotation_sizer=rotation_sizer,
+        )
+        # Two slots are filled on the first bar and both holdings stay inside
+        # the band, so no further entries are generated.
+        assert entries_per_bar == [2, 0, 0]
+
+    def test_backtest_executions_when_rotation_ignores_user_buy(self):
+        symbols = ["A", "B", "C", "D"]
+        scores_by_bar = [
+            {"A": 40, "B": 30, "C": 20, "D": 10},
+            {"A": 40, "B": 30, "C": 20, "D": 10},
+            {"A": 1, "B": 2, "C": 40, "D": 30},
+        ]
+
+        def exec_fn(ctx):
+            idx = min(ctx.bars - 1, len(scores_by_bar) - 1)
+            ctx.long_score = scores_by_bar[idx][ctx.symbol]
+            if ctx.long_pos() is not None:
+                ctx.buy_shares = 1
+
+        portfolio = _run_rotation(
+            symbols,
+            exec_fn,
+            num_bars=5,
+            max_long_positions=2,
+            worst_rank_held=2,
+        )
+        # Pyramiding is discarded, so every fill is a full rotation entry.
+        assert [
+            order.shares for order in portfolio.orders if order.type == "buy"
+        ] == [500, 500, 500, 500]
+        assert set(portfolio.long_positions) == {"C", "D"}
+
+    def test_backtest_executions_when_rotation_ignores_user_short(self):
+        symbols = ["A", "B", "C"]
+
+        def exec_fn(ctx):
+            ctx.long_score = {"A": 30, "B": 20, "C": 10}[ctx.symbol]
+            if ctx.symbol == "C" and ctx.short_pos() is None:
+                ctx.sell_shares = 10
+                ctx.sell_fill_price = PriceType.CLOSE
+
+        portfolio = _run_rotation(
+            symbols,
+            exec_fn,
+            num_bars=4,
+            max_long_positions=2,
+            worst_rank_held=3,
+        )
+        assert not portfolio.short_positions
+        assert not [
+            order for order in portfolio.orders if order.type == "sell"
+        ]
+        assert set(portfolio.long_positions) == {"A", "B"}
+
+    def test_backtest_executions_when_rotation_stops(self):
+        symbols = ["S1", "S2", "S3"]
+
+        def exec_fn(ctx):
+            ctx.long_score = {"S1": 30, "S2": 20, "S3": 10}[ctx.symbol]
+            ctx.stop_loss_pct = 10
+
+        portfolio = _run_rotation(
+            symbols,
+            exec_fn,
+            num_bars=3,
+            max_long_positions=2,
+            worst_rank_held=3,
+        )
+        # Stops attach to the positions rotation opens, and are dropped for the
+        # symbol it left untraded.
+        assert set(portfolio.long_positions) == {"S1", "S2"}
+        assert set(portfolio._active_stops) == {"S1", "S2"}
+
+    def test_backtest_executions_when_cover_and_buy_on_same_date(self):
+        symbols = ["A", "B", "S"]
+
+        def exec_fn(ctx):
+            if ctx.symbol == "S":
+                if ctx.bars == 1:
+                    ctx.sell_shares = 10
+                    ctx.sell_fill_price = PriceType.CLOSE
+                elif ctx.bars == 2:
+                    ctx.cover_all_shares()
+                    ctx.cover_fill_price = PriceType.CLOSE
+                return
+            if ctx.bars == 2:
+                ctx.buy_shares = 100
+                ctx.buy_fill_price = PriceType.CLOSE
+                ctx.long_score = {"A": 10, "B": 20}[ctx.symbol]
+
+        test_df = _rotational_test_df(symbols, num_bars=6)
+        exec = Execution(
+            id=1,
+            symbols=frozenset(symbols),
+            fn=exec_fn,
+            model_names=frozenset(),
+            indicator_names=frozenset(),
+        )
+        portfolio = Portfolio(
+            100_000, max_long_positions=1, max_short_positions=1
+        )
+        BacktestMixin().backtest_executions(
+            config=StrategyConfig(max_long_positions=1, max_short_positions=1),
+            backtest_settings=BacktestSettings(
+                max_long_positions=1, max_short_positions=1
+            ),
+            executions={exec},
+            before_exec_fn=None,
+            after_exec_fn=None,
+            sessions=defaultdict(dict),
+            models={},
+            indicator_data={},
+            test_data=test_df,
+            portfolio=portfolio,
+            exit_dates={},
+        )
+        # The cover lands on the same date as both buys. Buys still need to be
+        # ranked, or the position limit hands the slot to whichever symbol was
+        # scheduled first.
+        assert set(portfolio.long_positions) == {"B"}
 
     def test_backtest_when_after_rotation(self):
         symbols = ["S1", "S2", "S3"]
@@ -3436,8 +3703,19 @@ class TestStrategy:
         self, data_source_df, setup_fn, expected_msg
     ):
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        # Rotation settings are validated when the backtest resolves them, so
+        # that enable_rotation can be called before the position limits.
+        setup_fn(strategy)
         with pytest.raises(ValueError, match=re.escape(expected_msg)):
-            setup_fn(strategy)
+            strategy._resolve_backtest_settings()
+
+    def test_when_enable_rotation_before_position_limits(self, data_source_df):
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.enable_rotation(5)
+        strategy.set_max_long_positions(2)
+        settings = strategy._resolve_backtest_settings()
+        assert settings.worst_rank_held == 5
+        assert settings.max_long_positions == 2
 
     @pytest.mark.parametrize(
         "leverage, expected_msg",

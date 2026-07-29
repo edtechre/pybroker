@@ -186,7 +186,8 @@ class ExecResult:
             by :meth:`pybroker.strategy.Strategy.set_max_long_positions`.
             When rotation is enabled with
             :meth:`pybroker.strategy.Strategy.enable_rotation`, ``long_score``
-            is used for long rotational hold-band logic.
+            drives long rotation and orders set during an
+            :class:`pybroker.strategy.Execution` are ignored.
             Mutually exclusive with ``score``.
         short_score: Score used to rank ``symbol`` when ranking sell signals.
             Orders are placed for symbols with the lowest ``short_score``
@@ -195,7 +196,8 @@ class ExecResult:
             :meth:`pybroker.strategy.Strategy.set_max_short_positions`.
             When rotation is enabled with
             :meth:`pybroker.strategy.Strategy.enable_rotation`, ``short_score``
-            is used for short rotational hold-band logic.
+            drives short rotation and orders set during an
+            :class:`pybroker.strategy.Execution` are ignored.
             Mutually exclusive with ``score``.
         hold_bars: Number of bars to hold a long or short position for, after
             which the position is automatically liquidated.
@@ -451,7 +453,8 @@ class ExecContext:
             by :meth:`pybroker.strategy.Strategy.set_max_long_positions`.
             When rotation is enabled with
             :meth:`pybroker.strategy.Strategy.enable_rotation`, ``long_score``
-            is used for long rotational hold-band logic.
+            drives long rotation and orders set during an
+            :class:`pybroker.strategy.Execution` are ignored.
             Mutually exclusive with ``score``.
         short_score: Score used to rank ``symbol`` when ranking sell signals.
             Orders are placed for symbols with the lowest ``short_score``
@@ -460,7 +463,8 @@ class ExecContext:
             :meth:`pybroker.strategy.Strategy.set_max_short_positions`.
             When rotation is enabled with
             :meth:`pybroker.strategy.Strategy.enable_rotation`, ``short_score``
-            is used for short rotational hold-band logic.
+            drives short rotation and orders set during an
+            :class:`pybroker.strategy.Execution` are ignored.
             Mutually exclusive with ``score``.
         session: ``dict`` used to store custom data that persists for each
             bar during the :class:`pybroker.strategy.Strategy`\ 's execution.

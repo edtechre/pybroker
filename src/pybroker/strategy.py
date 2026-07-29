@@ -278,66 +278,187 @@ def _rotation_target_size(settings: BacktestSettings) -> float:
     return 1 / slots
 
 
-def _apply_worst_rank_held_long(
+def _reset_rotation_orders(active_ctxs: Mapping[str, ExecContext]) -> None:
+    """Discards orders placed by execution functions.
+
+    Rotation drives trading entirely from :attr:`.ExecContext.long_score` and
+    :attr:`.ExecContext.short_score`, so orders set during an execution are
+    ignored. Fill prices and stops are kept, since those still shape the orders
+    that rotation goes on to place.
+    """
+    for ctx in active_ctxs.values():
+        ctx.buy_shares = None
+        ctx.buy_limit_price = None
+        ctx.buy_timeout_bars = None
+        ctx.sell_shares = None
+        ctx.sell_limit_price = None
+        ctx.sell_timeout_bars = None
+        ctx.hold_bars = None
+        ctx._cover = False
+        ctx._exiting_pos = False
+
+
+def _clear_unused_rotation_signals(
+    active_ctxs: Mapping[str, ExecContext],
+) -> None:
+    """Drops fill prices and stops that rotation left without an order.
+
+    :meth:`pybroker.context.ExecContext.to_result` rejects a fill price or stop
+    that has no accompanying order, and an execution function has no way to
+    know in advance which symbols rotation will trade, or in which direction.
+    """
+    for ctx in active_ctxs.values():
+        if ctx.buy_shares is None:
+            ctx.buy_fill_price = None
+        if ctx.sell_shares is None:
+            ctx.sell_fill_price = None
+        if ctx.buy_shares is not None or ctx.sell_shares is not None:
+            continue
+        ctx.stop_loss = None
+        ctx.stop_loss_pct = None
+        ctx.stop_loss_limit = None
+        ctx.stop_loss_exit_price = None
+        ctx.stop_profit = None
+        ctx.stop_profit_pct = None
+        ctx.stop_profit_limit = None
+        ctx.stop_profit_exit_price = None
+        ctx.stop_trailing = None
+        ctx.stop_trailing_pct = None
+        ctx.stop_trailing_limit = None
+        ctx.stop_trailing_exit_price = None
+        ctx.stop_fn = None
+        ctx.stop_fn_limit = None
+
+
+def _rotation_ranks(
+    active_ctxs: Mapping[str, ExecContext],
+    dir: Literal["long", "short"],
+) -> dict[str, int]:
+    scores: dict[str, float] = {}
+    for sym, ctx in active_ctxs.items():
+        score = (
+            _long_rotation_score(ctx)
+            if dir == "long"
+            else _short_rotation_score(ctx)
+        )
+        if score is not None:
+            scores[sym] = score
+    if dir == "long":
+        return _rank_by_score(scores)
+    return _rank_by_short_score(scores)
+
+
+def _has_pending_order(
+    ctx: ExecContext, order_type: Literal["buy", "sell"]
+) -> bool:
+    return any(
+        order.type == order_type for order in ctx.pending_orders(ctx.symbol)
+    )
+
+
+def _rotation_exits(
     active_ctxs: Mapping[str, ExecContext],
     portfolio: Portfolio,
-    max_long_positions: int,
+    ranks: Mapping[str, int],
     worst_rank_held: int,
-    target_size: float,
-) -> dict[str, int]:
-    rankable_scores: dict[str, float] = {}
-    for sym, ctx in active_ctxs.items():
-        score = _long_rotation_score(ctx)
-        if score is not None:
-            rankable_scores[sym] = score
-    ranks = _rank_by_score(rankable_scores)
-    for sym in portfolio.long_positions:
-        if sym not in active_ctxs:
-            continue
-        ctx = active_ctxs[sym]
-        if ctx.sell_shares is not None:
+    dir: Literal["long", "short"],
+) -> int:
+    """Liquidates held positions ranked outside the hold band.
+
+    Returns the number of positions leaving the portfolio, which frees the same
+    number of slots for entries on this bar.
+    """
+    if dir == "long":
+        positions: Mapping[str, Any] = portfolio.long_positions
+        exit_order_type: Literal["buy", "sell"] = "sell"
+    else:
+        positions = portfolio.short_positions
+        exit_order_type = "buy"
+    exiting = 0
+    for sym in positions:
+        ctx = active_ctxs.get(sym)
+        if ctx is None:
+            # Without a bar for this symbol there is nothing to trade against,
+            # so the position keeps its slot.
             continue
         rank = ranks.get(sym)
-        if rank is None or rank > worst_rank_held:
+        if rank is not None and rank <= worst_rank_held:
+            continue
+        exiting += 1
+        if _has_pending_order(ctx, exit_order_type):
+            # The liquidation is already in flight. Re-issuing it would queue a
+            # redundant order against a position that is already spoken for.
+            continue
+        if dir == "long":
             ctx.sell_all_shares()
+        else:
+            ctx.cover_all_shares()
+    return exiting
+
+
+def _rotation_candidates(
+    active_ctxs: Mapping[str, ExecContext],
+    portfolio: Portfolio,
+    ranks: Mapping[str, int],
+    worst_rank_held: int,
+    max_positions: int,
+    exiting: int,
+    dir: Literal["long", "short"],
+) -> list[str]:
+    """Returns the top-ranked symbols to enter, limited to free position slots.
+
+    Candidates ranked worse than ``worst_rank_held`` are excluded, since such a
+    position would be liquidated on the following bar.
+    """
+    if dir == "long":
+        held: Mapping[str, Any] = portfolio.long_positions
+        entry_order_type: Literal["buy", "sell"] = "buy"
+    else:
+        held = portfolio.short_positions
+        entry_order_type = "sell"
+    pending = 0
+    eligible: list[str] = []
     for sym, ctx in active_ctxs.items():
         if sym in portfolio.long_positions or sym in portfolio.short_positions:
             continue
-        if ctx.buy_shares is not None or _long_rotation_score(ctx) is None:
-            continue
-        ctx.set_target_shares(target_size, dir="long")
-    return ranks
-
-
-def _apply_worst_rank_held_short(
-    active_ctxs: Mapping[str, ExecContext],
-    portfolio: Portfolio,
-    max_short_positions: int,
-    worst_rank_held: int,
-    target_size: float,
-) -> dict[str, int]:
-    rankable_scores: dict[str, float] = {}
-    for sym, ctx in active_ctxs.items():
-        score = _short_rotation_score(ctx)
-        if score is not None:
-            rankable_scores[sym] = score
-    ranks = _rank_by_short_score(rankable_scores)
-    for sym in portfolio.short_positions:
-        if sym not in active_ctxs:
-            continue
-        ctx = active_ctxs[sym]
-        if ctx.buy_shares is not None:
-            continue
         rank = ranks.get(sym)
         if rank is None or rank > worst_rank_held:
-            ctx.cover_all_shares()
-    for sym, ctx in active_ctxs.items():
-        if sym in portfolio.short_positions or sym in portfolio.long_positions:
             continue
-        if ctx.sell_shares is not None or _short_rotation_score(ctx) is None:
+        if _has_pending_order(ctx, entry_order_type):
+            # The entry is already in flight and holds its slot. Re-issuing it
+            # would stack a second order and overshoot the target allocation.
+            pending += 1
             continue
-        ctx.set_target_shares(target_size, dir="short")
-    return ranks
+        eligible.append(sym)
+    free = max_positions - (len(held) - exiting) - pending
+    if free <= 0:
+        return []
+    eligible.sort(key=lambda sym: ranks[sym])
+    return eligible[:free]
+
+
+def _resolve_rotation_overlap(
+    long_cands: list[str],
+    short_cands: list[str],
+    long_ranks: Mapping[str, int],
+    short_ranks: Mapping[str, int],
+) -> tuple[list[str], list[str]]:
+    """Assigns a symbol picked by both legs to the side it ranks better on.
+
+    Ties go long. Overlap is only reachable when the long and short position
+    limits together exceed the number of rankable symbols.
+    """
+    overlap = set(long_cands) & set(short_cands)
+    if not overlap:
+        return long_cands, short_cands
+    drop_from_long = {
+        sym for sym in overlap if short_ranks[sym] < long_ranks[sym]
+    }
+    drop_from_short = overlap - drop_from_long
+    return (
+        [sym for sym in long_cands if sym not in drop_from_long],
+        [sym for sym in short_cands if sym not in drop_from_short],
+    )
 
 
 def _apply_worst_rank_held(
@@ -351,22 +472,43 @@ def _apply_worst_rank_held(
     target_size = _rotation_target_size(settings)
     long_ranks: dict[str, int] = {}
     short_ranks: dict[str, int] = {}
+    long_cands: list[str] = []
+    short_cands: list[str] = []
+    # Both legs decide before either places an order, so a symbol that ranks on
+    # both sides cannot end up with a buy and a sell on the same bar.
     if settings.max_long_positions is not None:
-        long_ranks = _apply_worst_rank_held_long(
+        long_ranks = _rotation_ranks(active_ctxs, "long")
+        long_cands = _rotation_candidates(
             active_ctxs,
             portfolio,
-            settings.max_long_positions,
+            long_ranks,
             worst_rank_held,
-            target_size,
+            settings.max_long_positions,
+            _rotation_exits(
+                active_ctxs, portfolio, long_ranks, worst_rank_held, "long"
+            ),
+            "long",
         )
     if settings.max_short_positions is not None:
-        short_ranks = _apply_worst_rank_held_short(
+        short_ranks = _rotation_ranks(active_ctxs, "short")
+        short_cands = _rotation_candidates(
             active_ctxs,
             portfolio,
-            settings.max_short_positions,
+            short_ranks,
             worst_rank_held,
-            target_size,
+            settings.max_short_positions,
+            _rotation_exits(
+                active_ctxs, portfolio, short_ranks, worst_rank_held, "short"
+            ),
+            "short",
         )
+    long_cands, short_cands = _resolve_rotation_overlap(
+        long_cands, short_cands, long_ranks, short_ranks
+    )
+    for sym in long_cands:
+        active_ctxs[sym].set_target_shares(target_size, dir="long")
+    for sym in short_cands:
+        active_ctxs[sym].set_target_shares(target_size, dir="short")
     return long_ranks, short_ranks
 
 
@@ -716,11 +858,14 @@ class BacktestMixin:
             is_buy_sched = date in buy_sched
             is_sell_sched = date in sell_sched
             if config.max_long_positions is not None:
+                # Covers and buys are placed from separate schedules, so both
+                # need sorting; ranking only one leaves the other filling in
+                # scheduling order once the position limit binds.
                 if is_cover_sched:
                     cover_sched[date].sort(
                         key=_sort_by_buy_score, reverse=True
                     )
-                elif is_buy_sched:
+                if is_buy_sched:
                     buy_sched[date].sort(key=_sort_by_buy_score, reverse=True)
             if is_sell_sched and config.max_short_positions is not None:
                 sell_sched[date].sort(key=_sort_by_sell_score, reverse=True)
@@ -797,6 +942,7 @@ class BacktestMixin:
             if after_exec_fn is not None and active_ctxs:
                 after_exec_fn(active_ctxs)
             if backtest_settings.worst_rank_held is not None:
+                _reset_rotation_orders(active_ctxs)
                 long_ranks, short_ranks = _apply_worst_rank_held(
                     active_ctxs, portfolio, backtest_settings
                 )
@@ -810,6 +956,7 @@ class BacktestMixin:
                             config=config,
                         )
                     )
+                _clear_unused_rotation_signals(active_ctxs)
             for ctx in active_ctxs.values():
                 if (
                     slippage_model
@@ -837,48 +984,26 @@ class BacktestMixin:
                     col_scope=col_scope,
                     pending_order_scope=pending_order_scope,
                 )
-            if backtest_settings.worst_rank_held is not None:
-                while sell_results:
-                    self._schedule_order(
-                        result=sell_results.popleft(),
-                        created=date,
-                        sym_end_index=sym_end_index,
-                        delay=config.sell_delay,
-                        sched=sell_sched,
-                        col_scope=col_scope,
-                        pending_order_scope=pending_order_scope,
-                    )
-                while buy_results:
-                    self._schedule_order(
-                        result=buy_results.popleft(),
-                        created=date,
-                        sym_end_index=sym_end_index,
-                        delay=config.buy_delay,
-                        sched=buy_sched,
-                        col_scope=col_scope,
-                        pending_order_scope=pending_order_scope,
-                    )
-            else:
-                while buy_results:
-                    self._schedule_order(
-                        result=buy_results.popleft(),
-                        created=date,
-                        sym_end_index=sym_end_index,
-                        delay=config.buy_delay,
-                        sched=buy_sched,
-                        col_scope=col_scope,
-                        pending_order_scope=pending_order_scope,
-                    )
-                while sell_results:
-                    self._schedule_order(
-                        result=sell_results.popleft(),
-                        created=date,
-                        sym_end_index=sym_end_index,
-                        delay=config.sell_delay,
-                        sched=sell_sched,
-                        col_scope=col_scope,
-                        pending_order_scope=pending_order_scope,
-                    )
+            while buy_results:
+                self._schedule_order(
+                    result=buy_results.popleft(),
+                    created=date,
+                    sym_end_index=sym_end_index,
+                    delay=config.buy_delay,
+                    sched=buy_sched,
+                    col_scope=col_scope,
+                    pending_order_scope=pending_order_scope,
+                )
+            while sell_results:
+                self._schedule_order(
+                    result=sell_results.popleft(),
+                    created=date,
+                    sym_end_index=sym_end_index,
+                    delay=config.sell_delay,
+                    sched=sell_sched,
+                    col_scope=col_scope,
+                    pending_order_scope=pending_order_scope,
+                )
             while exit_ctxs:
                 self._exit_position(
                     portfolio=portfolio,
@@ -1692,25 +1817,6 @@ class Strategy(
                 "for daily bars or 98280 for 1-minute US equity bars."
             )
 
-    def _concrete_position_limits(
-        self,
-    ) -> tuple[Optional[int], Optional[int]]:
-        max_long = (
-            self._max_long_positions
-            if isinstance(self._max_long_positions, int)
-            else None
-        )
-        max_short = (
-            self._max_short_positions
-            if isinstance(self._max_short_positions, int)
-            else None
-        )
-        if max_long is None:
-            max_long = self._config.max_long_positions
-        if max_short is None:
-            max_short = self._config.max_short_positions
-        return max_long, max_short
-
     def _resolve_backtest_settings(
         self, run_hyperparams: Optional[dict[str, Any]] = None
     ) -> BacktestSettings:
@@ -1799,14 +1905,27 @@ class Strategy(
     ) -> None:
         r"""Enables rotational hold-band logic and optional custom sizing.
 
-        When enabled, the engine liquidates held positions ranked worse than
-        ``worst_rank_held`` and generates entry signals for new positions.
-        Without a ``sizer``, equal-weight sizing is applied.
+        Each bar, held positions ranked worse than ``worst_rank_held`` are
+        liquidated, and the top-ranked symbols are entered to fill the position
+        slots that remain free. Without a ``sizer``, entries are equal-weighted
+        across :meth:`.set_max_long_positions` plus
+        :meth:`.set_max_short_positions` slots.
+
+        Rotation is exclusive: trading is driven entirely by
+        :attr:`pybroker.context.ExecContext.long_score` and
+        :attr:`pybroker.context.ExecContext.short_score`, and orders placed by
+        an :class:`.Execution` are ignored. Fill prices and stops set during an
+        execution are kept and applied to the orders rotation places.
+
+        Ranking spans the whole portfolio, so a held position without a
+        rankable score is liquidated even when another :class:`.Execution`
+        opened it.
 
         Args:
             worst_rank_held: Worst score rank at which a held position is
                 kept, a searchable :class:`pybroker.optimize.Hyperparam`, or
-                ``None`` to disable rotation.
+                ``None`` to disable rotation. Must be greater than or equal to
+                the maximum long and short position counts.
             sizer: Optional :class:`Callable` that takes a
                 :class:`pybroker.context.RotationContext` to override
                 equal-weight entry sizing after rotation decisions are made.
@@ -1818,9 +1937,6 @@ class Strategy(
             return
         self._worst_rank_held = worst_rank_held
         self._rotation_sizer = sizer
-        if isinstance(worst_rank_held, int):
-            max_long, max_short = self._concrete_position_limits()
-            _validate_worst_rank_held(worst_rank_held, max_long, max_short)
 
     def _verify_data_source(
         self, data_source: Union[DataSource, pd.DataFrame]
