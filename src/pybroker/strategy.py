@@ -331,8 +331,6 @@ def _clear_unused_rotation_signals(
         ctx.stop_trailing_pct = None
         ctx.stop_trailing_limit = None
         ctx.stop_trailing_exit_price = None
-        ctx.stop_fn = None
-        ctx.stop_fn_limit = None
 
 
 def _rotation_ranks(

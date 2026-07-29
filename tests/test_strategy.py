@@ -5123,37 +5123,49 @@ class TestStrategy:
         assert np.isnan(sell_order["limit_price"])
         assert sell_order["fees"] == 0
 
-    def test_backtest_when_custom_stop(self, data_source_df):
+    def test_backtest_when_bar_stop_and_invalid_fill_price_then_error(
+        self, data_source_df
+    ):
+        # A bar stop's fill price never reaches _verify_input, so without a
+        # guard a zero or negative silently books a completed trade.
         def exec_fn(ctx):
             if ctx.bars == 1:
                 ctx.buy_shares = 100
+                ctx.hold_bars = 1
+                ctx.sell_fill_price = 0
 
-                def stop_fn(stop_ctx):
-                    if stop_ctx.close[-1] < float(stop_ctx.entry.price) - 10:
-                        return PriceType.CLOSE
-                    return None
-
-                ctx.stop_fn = stop_fn
-
-        df = data_source_df[data_source_df["symbol"] == "SPY"]
-        dates = df["date"].unique()
-        dates = dates[dates <= np.datetime64(END_DATE)]
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
         strategy.add_execution(exec_fn, "SPY")
-        result = strategy.backtest(calc_bootstrap=False)
-        assert len(result.trades) == 1
-        trade = result.trades.iloc[0]
-        assert trade["type"] == "long"
-        assert trade["symbol"] == "SPY"
-        assert trade["entry_date"] == dates[1]
-        assert trade["shares"] == 100
-        assert trade["stop"] == "custom"
-        assert trade["pnl"] < 0
-        assert len(result.orders) == 2
-        sell_order = result.orders.iloc[1]
-        assert sell_order["type"] == "sell"
-        assert sell_order["symbol"] == "SPY"
-        assert sell_order["order_type"] == "stop_custom"
+        with pytest.raises(ValueError, match=re.escape("must be > 0")):
+            strategy.backtest(calc_bootstrap=False)
+
+    def test_backtest_when_multiple_stops_then_deterministic(
+        self, data_source_df
+    ):
+        # Stops reach the portfolio as a frozenset whose iteration order is
+        # not reproducible across processes, so which of two stops that hit on
+        # the same bar wins used to vary run to run. Sorting by stop id fixes
+        # it; here the stop loss is set first and must always win.
+        def run():
+            def exec_fn(ctx):
+                if ctx.long_pos() is None:
+                    ctx.buy_shares = 100
+                    ctx.stop_loss_pct = 1
+                    ctx.stop_profit_pct = 1
+
+            strategy = Strategy(data_source_df, START_DATE, END_DATE)
+            strategy.add_execution(exec_fn, "SPY")
+            result = strategy.backtest(calc_bootstrap=False)
+            return [
+                (row["stop"], float(row["exit"]))
+                for _, row in result.trades.iterrows()
+            ]
+
+        runs = [run() for _ in range(4)]
+        assert all(r == runs[0] for r in runs), runs
+        # Bars that straddle both levels are the ones that used to flip; a
+        # loss exit on at least one of them means the ordering was exercised.
+        assert any(stop == "loss" for stop, _ in runs[0])
 
     def test_backtest_when_sell_before_stop_loss(self, data_source_df):
         def exec_fn(ctx):

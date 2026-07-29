@@ -97,7 +97,7 @@ class SlippageModel(ABC):
     :meth:`apply_at_fill`.
 
     :meth:`apply_at_fill` is called for scheduled buy and sell orders, for
-    stop exits (stop loss, take profit, trailing, bar, and custom stops), and
+    stop exits (stop loss, take profit, trailing, and bar stops), and
     for :meth:`pybroker.portfolio.Portfolio.exit_position` fills. Stop and
     exit fills apply the returned **fill price only**; a returned share
     quantity is ignored, since those paths exit an entry in full.

@@ -1214,35 +1214,6 @@ def test_set_exec_ctx_data(ctx, sym_end_index):
     assert ctx.stop_trailing_pct is None
     assert ctx.stop_trailing_limit is None
     assert ctx.stop_trailing_exit_price is None
-    assert ctx.stop_fn is None
-    assert ctx.stop_fn_limit is None
-
-
-def test_to_result_when_stop_fn(ctx, symbol, date):
-    def stop_fn(_):
-        return None
-
-    ctx.buy_shares = 100
-    ctx.stop_fn = stop_fn
-    ctx.stop_fn_limit = 50
-    result = ctx.to_result()
-    assert result.symbol == symbol
-    assert result.date == date
-    assert len(result.long_stops) == 1
-    stop = next(iter(result.long_stops))
-    assert stop.stop_type == StopType.CUSTOM
-    assert stop.fill_price is stop_fn
-    assert stop.limit_price == Decimal(50)
-
-
-def test_to_result_when_stop_fn_limit_without_fn_then_error(ctx):
-    ctx.buy_shares = 100
-    ctx.stop_fn_limit = 50
-    with pytest.raises(
-        ValueError,
-        match=re.escape("stop_fn must be set when stop_fn_limit is set."),
-    ):
-        ctx.to_result()
 
 
 def test_to_result_buy_timeout_bars(ctx, symbol, date):
@@ -1272,10 +1243,18 @@ def test_timeout_bars_reset_each_bar(ctx):
     assert ctx.sell_timeout_bars is None
 
 
-def test_to_result_not_buy_shares_and_not_sell_shares_and_stop_fn_then_error(
-    ctx,
-):
-    ctx.stop_fn = lambda _: None
+@pytest.mark.parametrize(
+    "attr, value",
+    [
+        ("stop_loss_exit_price", PriceType.LOW),
+        ("stop_profit_exit_price", PriceType.HIGH),
+        ("stop_trailing_exit_price", PriceType.LOW),
+    ],
+)
+def test_to_result_when_stop_attr_without_shares_then_error(ctx, attr, value):
+    # These used to fall through the guard and be silently discarded, unlike
+    # every other stop attribute.
+    setattr(ctx, attr, value)
     with pytest.raises(
         ValueError,
         match=re.escape(

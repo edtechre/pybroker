@@ -182,14 +182,12 @@ class StopType(Enum):
         LOSS: Stop loss.
         PROFIT: Take profit.
         TRAILING: Trailing stop loss.
-        CUSTOM: User-defined stop function.
     """
 
     BAR = "bar"
     LOSS = "loss"
     PROFIT = "profit"
     TRAILING = "trailing"
-    CUSTOM = "custom"
 
 
 class OrderType(Enum):
@@ -202,7 +200,6 @@ class OrderType(Enum):
         STOP_LOSS: Stop loss triggered order.
         STOP_PROFIT: Take profit triggered order.
         STOP_TRAILING: Trailing stop triggered order.
-        STOP_CUSTOM: Custom stop function triggered order.
     """
 
     MARKET = "market"
@@ -211,7 +208,6 @@ class OrderType(Enum):
     STOP_LOSS = "stop_loss"
     STOP_PROFIT = "stop_profit"
     STOP_TRAILING = "stop_trailing"
-    STOP_CUSTOM = "stop_custom"
 
 
 class PositionIntent(Enum):

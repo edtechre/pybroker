@@ -35,7 +35,6 @@ from pybroker.common import (
 from pybroker.context import (
     ExecContext as ExecContext,
     RotationContext as RotationContext,
-    StopContext as StopContext,
     IntervalContext as IntervalContext,
 )
 from pybroker.config import StrategyConfig as StrategyConfig

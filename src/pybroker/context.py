@@ -29,7 +29,6 @@ from pybroker.scope import (
     PendingOrder,
     PendingOrderScope,
     PredictionScope,
-    PriceScope,
     StaticScope,
     IntervalScope,
 )
@@ -58,110 +57,6 @@ from typing import (
 _SCORE_DEPRECATION = (
     "ExecContext.score is deprecated; use long_score or short_score instead."
 )
-
-
-StopFn = Callable[
-    ["StopContext"],
-    Optional[Union[int, float, Decimal, PriceType]],
-]
-
-
-class StopContext:
-    """Read-only context passed to custom stop functions during
-    :meth:`pybroker.portfolio.Portfolio.check_stops`.
-
-    Attributes:
-        symbol: Ticker symbol of the stop.
-        date: Date of the current bar.
-        entry: :class:`pybroker.portfolio.Entry` the stop is attached to.
-        pos_type: Type of position, either ``long`` or ``short``.
-    """
-
-    def __init__(
-        self,
-        symbol: str,
-        date: np.datetime64,
-        entry: Entry,
-        pos_type: Literal["long", "short"],
-        col_scope: ColumnScope,
-        sym_end_index: Mapping[str, int],
-        price_scope: PriceScope,
-    ):
-        self.symbol = symbol
-        self.date = date
-        self.entry = entry
-        self.pos_type = pos_type
-        self._col_scope = col_scope
-        self._sym_end_index = sym_end_index
-        self._price_scope = price_scope
-
-    @property
-    def open(self) -> NDArray[np.float64]:
-        """Current bar's open price."""
-        return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol,
-            DataCol.OPEN.value,
-            self._sym_end_index[self.symbol],
-        )
-
-    @property
-    def high(self) -> NDArray[np.float64]:
-        """Current bar's high price."""
-        return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol,
-            DataCol.HIGH.value,
-            self._sym_end_index[self.symbol],
-        )
-
-    @property
-    def low(self) -> NDArray[np.float64]:
-        """Current bar's low price."""
-        return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol,
-            DataCol.LOW.value,
-            self._sym_end_index[self.symbol],
-        )
-
-    @property
-    def close(self) -> NDArray[np.float64]:
-        """Current bar's close price."""
-        return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol,
-            DataCol.CLOSE.value,
-            self._sym_end_index[self.symbol],
-        )
-
-    @property
-    def volume(self) -> Optional[NDArray[np.float64]]:
-        """Current bar's volume."""
-        return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol,
-            DataCol.VOLUME.value,
-            self._sym_end_index[self.symbol],
-        )
-
-    @property
-    def vwap(self) -> Optional[NDArray[np.float64]]:
-        """Current bar's volume-weighted average price (VWAP)."""
-        return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol,
-            DataCol.VWAP.value,
-            self._sym_end_index[self.symbol],
-        )
-
-    def fetch_price(
-        self,
-        price: Union[
-            int,
-            float,
-            np.floating,
-            Decimal,
-            PriceType,
-            Callable[[str, BarData], Union[int, float, Decimal]],
-        ],
-    ) -> Decimal:
-        """Retrieves a price for ``symbol`` on the current bar."""
-        return self._price_scope.fetch(self.symbol, price)
 
 
 @dataclass
@@ -291,8 +186,6 @@ class IntervalContext:
             "stop_trailing_pct",
             "stop_trailing_limit",
             "stop_trailing_exit_price",
-            "stop_fn",
-            "stop_fn_limit",
         }
     )
 
@@ -497,11 +390,6 @@ class ExecContext:
         stop_trailing_exit_price: Exit :class:`pybroker.common.PriceType` to
             use for the trailing stop exit. If set, the stop is checked against
             the ``exit_price`` and exits at the ``exit_price`` when triggered.
-        stop_fn: Custom stop function invoked during
-            :meth:`pybroker.portfolio.Portfolio.check_stops`. Return a fill
-            price or :class:`pybroker.common.PriceType` to trigger the stop,
-            or ``None`` to skip.
-        stop_fn_limit: Limit price to use for the custom stop.
     """
 
     _stop_id: int = 0
@@ -590,8 +478,6 @@ class ExecContext:
         self.stop_trailing_pct: Optional[Union[int, float, Decimal]] = None
         self.stop_trailing_limit: Optional[Union[int, float, Decimal]] = None
         self.stop_trailing_exit_price: Optional[PriceType] = None
-        self.stop_fn: Optional[StopFn] = None
-        self.stop_fn_limit: Optional[Union[int, float, Decimal]] = None
 
         self._cover: bool = False
         self._exiting_pos: bool = False
@@ -1356,14 +1242,13 @@ class ExecContext:
                 Decimal,
                 PriceType,
                 Callable[[str, BarData], Union[int, float, Decimal]],
-                StopFn,
             ]
         ],
         limit_price: Optional[Union[int, float, Decimal]],
         exit_price: Optional[PriceType],
     ):
         percent_dec, points_dec, limit_price_dec = None, None, None
-        if stop_type not in (StopType.BAR, StopType.CUSTOM):
+        if stop_type != StopType.BAR:
             if percent is None and points is None:
                 raise ValueError("Percent or points must be set.")
             if percent is not None:
@@ -1519,19 +1404,6 @@ class ExecContext:
                     exit_price=self.stop_trailing_exit_price,
                 )
             )
-        if self.stop_fn is not None:
-            stops.append(
-                self._create_stop(
-                    stop_type=StopType.CUSTOM,
-                    points=None,
-                    percent=None,
-                    bars=None,
-                    pos_type=pos_type,
-                    fill_price=self.stop_fn,
-                    limit_price=self.stop_fn_limit,
-                    exit_price=None,
-                )
-            )
         if (
             self.stop_loss_limit is not None
             and self.stop_loss is None
@@ -1586,8 +1458,6 @@ class ExecContext:
                 "Either stop_trailing or stop_trailing_pct must be set when "
                 "stop_trailing_exit_price is set."
             )
-        if self.stop_fn_limit is not None and self.stop_fn is None:
-            raise ValueError("stop_fn must be set when stop_fn_limit is set.")
         if pos_type == "long":
             return frozenset(stops), None
         else:
@@ -1619,8 +1489,6 @@ class ExecContext:
             and self.stop_trailing_pct is None
             and self.stop_trailing_limit is None
             and self.stop_trailing_exit_price is None
-            and self.stop_fn is None
-            and self.stop_fn_limit is None
         )
 
     def to_result(self) -> Optional[ExecResult]:
@@ -1662,10 +1530,12 @@ class ExecContext:
                 or self.stop_profit is not None
                 or self.stop_profit_pct is not None
                 or self.stop_profit_limit is not None
+                or self.stop_loss_exit_price is not None
+                or self.stop_profit_exit_price is not None
                 or self.stop_trailing is not None
                 or self.stop_trailing_pct is not None
                 or self.stop_trailing_limit is not None
-                or self.stop_fn is not None
+                or self.stop_trailing_exit_price is not None
             ):
                 raise ValueError(
                     "Either buy_shares or sell_shares must be set when a stop "
@@ -1815,5 +1685,3 @@ def set_exec_ctx_data(ctx: ExecContext, date: np.datetime64):
     ctx.stop_trailing_pct = None
     ctx.stop_trailing_limit = None
     ctx.stop_trailing_exit_price = None
-    ctx.stop_fn = None
-    ctx.stop_fn_limit = None

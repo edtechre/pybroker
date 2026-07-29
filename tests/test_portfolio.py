@@ -10,6 +10,7 @@ import itertools
 import numpy as np
 import pandas as pd
 import pytest
+import re
 from collections import deque
 from decimal import Decimal
 from pybroker.common import (
@@ -1897,100 +1898,76 @@ def test_trigger_long_bar_stop():
     )
 
 
-def test_trigger_long_custom_stop():
-    expected_fill_price = Decimal(90)
+@pytest.mark.parametrize("insertion_order", [(1, 2), (2, 1)])
+def test_check_stops_evaluates_in_stop_id_order(insertion_order):
+    # Stops reach the portfolio as a frozenset. Stop always carries None
+    # fields and hash(None) is address-derived, so iteration order varies per
+    # process and no seed can pin it. The lower stop id must win regardless of
+    # the order the stops were inserted in.
     df = pd.DataFrame(
         [
-            [SYMBOL_1, DATE_1, 100, 100, 100, 100],
-            [SYMBOL_1, DATE_2, 100, 100, expected_fill_price, 95],
+            [SYMBOL_1, DATE_1, 100, 100],
+            [SYMBOL_1, DATE_2, 90, 110],
         ],
-        columns=["symbol", "date", "open", "high", "low", "close"],
+        columns=["symbol", "date", "low", "high"],
     )
     df = df.set_index(["symbol", "date"])
     col_scope = ColumnScope(df)
     sym_end_index = {SYMBOL_1: len(df)}
     price_scope = PriceScope(col_scope, sym_end_index, True)
-
-    def stop_fn(ctx):
-        if ctx.close[-1] < 100:
-            return PriceType.LOW
-        return None
-
-    stops = (
-        Stop(
-            id=1,
-            symbol=SYMBOL_1,
-            stop_type=StopType.CUSTOM,
-            pos_type="long",
-            percent=None,
-            points=None,
-            bars=None,
-            fill_price=stop_fn,
-            limit_price=None,
-            exit_price=None,
-        ),
+    loss_stop = Stop(
+        id=1,
+        symbol=SYMBOL_1,
+        stop_type=StopType.LOSS,
+        pos_type="long",
+        percent=Decimal(5),
+        points=None,
+        bars=None,
+        fill_price=None,
+        limit_price=None,
+        exit_price=None,
     )
-    entry_price = Decimal(100)
+    profit_stop = Stop(
+        id=2,
+        symbol=SYMBOL_1,
+        stop_type=StopType.PROFIT,
+        pos_type="long",
+        percent=Decimal(5),
+        points=None,
+        bars=None,
+        fill_price=None,
+        limit_price=None,
+        exit_price=None,
+    )
+    by_id = {1: loss_stop, 2: profit_stop}
     portfolio = Portfolio(CASH)
     portfolio.buy(
         DATE_1,
         SYMBOL_1,
         SHARES_1,
-        entry_price,
+        Decimal(100),
         limit_price=None,
-        stops=stops,
+        stops=frozenset(by_id[i] for i in insertion_order),
     )
-    portfolio.check_stops(DATE_2, price_scope, col_scope, {SYMBOL_1: len(df)})
-    expected_pnl = (expected_fill_price - entry_price) * SHARES_1
-    assert_portfolio(
-        portfolio=portfolio,
-        cash=CASH + expected_pnl,
-        pnl=expected_pnl,
-        symbols=set(),
-        short_positions_len=0,
-        long_positions_len=0,
-        orders=portfolio.orders,
-    )
+    portfolio.check_stops(DATE_2, price_scope)
     assert len(portfolio.trades) == 1
-    assert_trade(
-        trade=portfolio.trades[0],
-        type="long",
-        symbol=SYMBOL_1,
-        entry_date=DATE_1,
-        exit_date=DATE_2,
-        entry=entry_price,
-        exit=expected_fill_price,
-        shares=SHARES_1,
-        pnl=expected_pnl,
-        return_pct=(expected_fill_price / entry_price - 1) * 100,
-        agg_pnl=expected_pnl,
-        bars=0,
-        pnl_per_bar=expected_pnl,
-        stop_type=StopType.CUSTOM,
-        mae=expected_fill_price - entry_price,
-        mfe=0,
-    )
-    assert_order(
-        order=portfolio.orders[1],
-        date=DATE_2,
-        symbol=SYMBOL_1,
-        type="sell",
-        limit_price=None,
-        fill_price=expected_fill_price,
-        shares=SHARES_1,
-        fees=0,
-        order_type="stop_custom",
-        intent="sell_to_close",
-    )
+    # The bar straddles both levels, so whichever is evaluated first wins.
+    # Stop 1 is the stop loss, exiting at 95.
+    assert portfolio.trades[0].stop == StopType.LOSS.value
+    assert portfolio.trades[0].exit == 95
 
 
-def test_trigger_long_custom_stop_when_none():
+@pytest.mark.parametrize("fill_price", [Decimal(0), Decimal(-5)])
+def test_trigger_bar_stop_when_invalid_fill_price_then_error(fill_price):
+    # A bar stop's fill price comes from the user's sell_fill_price and never
+    # reaches _verify_input, so without a guard a zero or negative silently
+    # books a completed trade.
     df = pd.DataFrame(
         [
-            [SYMBOL_1, DATE_1, 100, 100, 100, 100],
-            [SYMBOL_1, DATE_2, 100, 110, 100, 105],
+            [SYMBOL_1, DATE_1, 100, 100],
+            [SYMBOL_1, DATE_2, 90, 110],
         ],
-        columns=["symbol", "date", "open", "high", "low", "close"],
+        columns=["symbol", "date", "low", "high"],
     )
     df = df.set_index(["symbol", "date"])
     col_scope = ColumnScope(df)
@@ -2000,86 +1977,12 @@ def test_trigger_long_custom_stop_when_none():
         Stop(
             id=1,
             symbol=SYMBOL_1,
-            stop_type=StopType.CUSTOM,
+            stop_type=StopType.BAR,
             pos_type="long",
             percent=None,
             points=None,
-            bars=None,
-            fill_price=lambda _: None,
-            limit_price=None,
-            exit_price=None,
-        ),
-    )
-    entry_price = Decimal(100)
-    portfolio = Portfolio(CASH)
-    portfolio.buy(
-        DATE_1,
-        SYMBOL_1,
-        SHARES_1,
-        entry_price,
-        limit_price=None,
-        stops=stops,
-    )
-    portfolio.check_stops(DATE_2, price_scope, col_scope, {SYMBOL_1: len(df)})
-    assert SYMBOL_1 in portfolio.long_positions
-    assert len(portfolio.trades) == 0
-
-
-def test_trigger_long_custom_stop_with_limit():
-    df = pd.DataFrame(
-        [
-            [SYMBOL_1, DATE_1, 100, 100, 100, 100],
-            [SYMBOL_1, DATE_2, 100, 100, 90, 95],
-        ],
-        columns=["symbol", "date", "open", "high", "low", "close"],
-    )
-    df = df.set_index(["symbol", "date"])
-    col_scope = ColumnScope(df)
-    sym_end_index = {SYMBOL_1: len(df)}
-    price_scope = PriceScope(col_scope, sym_end_index, True)
-    stops = (
-        Stop(
-            id=1,
-            symbol=SYMBOL_1,
-            stop_type=StopType.CUSTOM,
-            pos_type="long",
-            percent=None,
-            points=None,
-            bars=None,
-            fill_price=lambda _: PriceType.LOW,
-            limit_price=Decimal(95),
-            exit_price=None,
-        ),
-    )
-    entry_price = Decimal(100)
-    portfolio = Portfolio(CASH)
-    portfolio.buy(
-        DATE_1,
-        SYMBOL_1,
-        SHARES_1,
-        entry_price,
-        limit_price=None,
-        stops=stops,
-    )
-    portfolio.check_stops(DATE_2, price_scope, col_scope, {SYMBOL_1: len(df)})
-    assert SYMBOL_1 in portfolio.long_positions
-    assert len(portfolio.trades) == 0
-
-
-def test_cancel_custom_stop():
-    def stop_fn(_):
-        return None
-
-    stops = (
-        Stop(
-            id=1,
-            symbol=SYMBOL_1,
-            stop_type=StopType.CUSTOM,
-            pos_type="long",
-            percent=None,
-            points=None,
-            bars=None,
-            fill_price=stop_fn,
+            bars=1,
+            fill_price=fill_price,
             limit_price=None,
             exit_price=None,
         ),
@@ -2089,13 +1992,13 @@ def test_cancel_custom_stop():
         DATE_1,
         SYMBOL_1,
         SHARES_1,
-        FILL_PRICE_1,
+        Decimal(100),
         limit_price=None,
         stops=stops,
     )
-    entry = portfolio.long_positions[SYMBOL_1].entries[0]
-    portfolio.remove_stops(entry, StopType.CUSTOM)
-    assert not entry.stops
+    portfolio.incr_bars()
+    with pytest.raises(ValueError, match=re.escape("must be > 0")):
+        portfolio.check_stops(DATE_2, price_scope)
 
 
 @pytest.mark.parametrize(
@@ -3566,9 +3469,11 @@ def test_capture_stops():
     portfolio.incr_bars()
     portfolio.check_stops(DATE_2, price_scope)
     stops = {stop.stop_id: stop for stop in portfolio._stop_records}
-    print(portfolio._stop_records)
 
-    assert len(stops) == 4
+    # Stop 4 exits the entry, so stop 3 is never reached and is not recorded.
+    # Stops that a sibling preempts produce no row, in either check_stops loop.
+    assert len(stops) == 3
+    assert 3 not in stops
     assert stops[1].date == DATE_2
     assert stops[1].symbol == SYMBOL_1
     assert stops[1].stop_type == StopType.LOSS.value
@@ -3594,19 +3499,6 @@ def test_capture_stops():
     assert stops[2].curr_bars is None
     assert stops[2].exit_price is None
     assert stops[2].fill_price is None
-
-    assert stops[3].date == DATE_2
-    assert stops[3].symbol == SYMBOL_1
-    assert stops[3].stop_type == StopType.BAR.value
-    assert stops[3].pos_type == "long"
-    assert stops[3].curr_value is None
-    assert stops[3].bars == 5
-    assert stops[3].limit_price is None
-    assert stops[3].percent is None
-    assert stops[3].points is None
-    assert stops[3].curr_bars == 1
-    assert stops[3].exit_price == 200
-    assert stops[3].fill_price is None
 
     assert stops[4].date == DATE_2
     assert stops[4].symbol == SYMBOL_1

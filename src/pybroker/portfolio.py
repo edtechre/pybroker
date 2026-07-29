@@ -45,8 +45,6 @@ from typing import (
 )
 
 if TYPE_CHECKING:
-    from pybroker.context import StopFn
-
     # Imported lazily for typing only: pybroker.slippage imports
     # pybroker.context, which imports this module.
     from pybroker.slippage import SlippageModel
@@ -111,7 +109,6 @@ class Stop(NamedTuple):
             Decimal,
             PriceType,
             Callable[[str, BarData], Union[int, float, Decimal]],
-            Callable[..., Optional[Union[int, float, Decimal, PriceType]]],
         ]
     ]
     limit_price: Optional[Decimal]
@@ -257,7 +254,7 @@ class Trade(NamedTuple):
     agg_pnl: Decimal
     bars: int
     pnl_per_bar: Decimal
-    stop: Optional[Literal["bar", "loss", "profit", "trailing", "custom"]]
+    stop: Optional[Literal["bar", "loss", "profit", "trailing"]]
     mae: Decimal
     mfe: Decimal
 
@@ -274,7 +271,7 @@ class Order(NamedTuple):
             for stop-triggered orders.
         order_type: How the order originated, either ``market``,
             ``limit``, ``stop_bar``, ``stop_loss``,
-            ``stop_profit``, ``stop_trailing``, or ``stop_custom``.
+            ``stop_profit``, or ``stop_trailing``.
         intent: Position intent, either ``buy_to_open``,
             ``buy_to_close``, ``sell_to_open``, or
             ``sell_to_close``.
@@ -296,7 +293,6 @@ class Order(NamedTuple):
         "stop_loss",
         "stop_profit",
         "stop_trailing",
-        "stop_custom",
     ]
     intent: Literal[
         "buy_to_open",
@@ -703,11 +699,17 @@ class Portfolio:
         return to_decimal(self._get_stop_amount_f(stop, float(price)))
 
     def _add_stops(self, entry: Entry, stops: Iterable[Stop]):
-        for stop in stops:
+        # Stops arrive as a frozenset, whose iteration order depends on the
+        # hash of every member. Stop always carries None fields, and hash(None)
+        # is address-derived, so the order varies run to run even under a fixed
+        # PYTHONHASHSEED and no seed can pin it. Sorting by the monotonic stop
+        # id makes evaluation order, and therefore which of two stops that hit
+        # on the same bar wins, reproducible.
+        for stop in sorted(stops, key=lambda s: s.id):
             if stop.id in self._stop_data:
                 raise ValueError(f"Duplicate stop ID: {stop.id}")
             entry.stops.append(stop)
-            if stop.stop_type in (StopType.BAR, StopType.CUSTOM):
+            if stop.stop_type == StopType.BAR:
                 continue
             amount = self._get_stop_amount_f(stop, float(entry.price))
             entry_price = float(entry.price)
@@ -1568,6 +1570,10 @@ class Portfolio:
     ):
         """Checks whether stops are triggered.
 
+        Stops on one entry are evaluated in ascending :attr:`Stop.id` order,
+        which is the order they were set in, and the first one to trigger
+        exits the entry.
+
         When ``slippage_model`` is set, triggered stops fill at the adjusted
         price. Slippage never affects whether a stop triggers, and share
         adjustments are ignored because a stop exits its entry in full.
@@ -1615,25 +1621,14 @@ class Portfolio:
             if not price_scope.has_bar(pos.symbol):
                 continue
             for entry in pos.entries:
+                # A preempted stop never executes, so it is not recorded --
+                # matching the loop above, which skips triggered entries
+                # outright. Recording it would emit a real, slippage-adjusted
+                # fill price for a stop that did not fire.
+                if entry.id in triggered_entry_ids:
+                    continue
                 for stop in entry.stops:
-                    if stop.stop_type not in (StopType.BAR, StopType.CUSTOM):
-                        continue
-                    already_triggered = entry.id in triggered_entry_ids
-                    if already_triggered:
-                        if not self._record_stops:
-                            continue
-                        fill_price = self._stop_fill_price_only(
-                            date,
-                            price_scope,
-                            pos,
-                            entry,
-                            stop,
-                            col_scope,
-                            sym_end_index,
-                            ind_scope,
-                            slippage_model,
-                        )
-                        self._capture_stop(date, entry, stop, fill_price)
+                    if stop.stop_type != StopType.BAR:
                         continue
                     triggered, fill_price = self._trigger_stop(
                         date,
@@ -1688,36 +1683,6 @@ class Portfolio:
             fill_price=fill_price,
         )
         self._stop_records.append(stop_record)
-
-    def _stop_fill_price_only(
-        self,
-        date: np.datetime64,
-        price_scope: PriceScope,
-        pos: Position,
-        entry: Entry,
-        stop: Stop,
-        col_scope: Optional[ColumnScope],
-        sym_end_index: Optional[Mapping[str, int]],
-        ind_scope: Optional[IndicatorScope] = None,
-        slippage_model: Optional["SlippageModel"] = None,
-    ) -> Optional[Decimal]:
-        if stop.stop_type == StopType.BAR:
-            fill_price = self._trigger_bar_stop(stop, price_scope, entry)
-        elif stop.stop_type == StopType.CUSTOM:
-            fill_price = self._trigger_custom_stop(
-                stop, price_scope, entry, date, col_scope, sym_end_index
-            )
-        else:
-            return None
-        return self._slip_stop_fill_price(
-            stop,
-            entry,
-            fill_price,
-            col_scope,
-            ind_scope,
-            sym_end_index,
-            slippage_model,
-        )
 
     def _slip_stop_fill_price(
         self,
@@ -1775,15 +1740,6 @@ class Portfolio:
             fill_price = self._trigger_profit_or_loss_stop(stop, price_scope)
         elif stop.stop_type == StopType.TRAILING:
             fill_price = self._trigger_trailing_stop(stop, price_scope)
-        elif stop.stop_type == StopType.CUSTOM:
-            fill_price = self._trigger_custom_stop(
-                stop,
-                price_scope,
-                entry,
-                date,
-                col_scope,
-                sym_end_index,
-            )
         else:
             raise ValueError(f"Unknown stop type: {stop.stop_type}")
         if fill_price is None:
@@ -1831,8 +1787,6 @@ class Portfolio:
             stop_order_type = OrderType.STOP_PROFIT
         elif stop.stop_type == StopType.TRAILING:
             stop_order_type = OrderType.STOP_TRAILING
-        elif stop.stop_type == StopType.CUSTOM:
-            stop_order_type = OrderType.STOP_CUSTOM
         else:
             raise ValueError(f"Unknown stop type: {stop.stop_type}")
         self._add_order(
@@ -1859,7 +1813,9 @@ class Portfolio:
                 if stop.fill_price is None
                 else cast(_BarStopFillPrice, stop.fill_price)
             )
-            return price_scope.fetch(stop.symbol, fill_price)
+            resolved = price_scope.fetch(stop.symbol, fill_price)
+            self._verify_stop_fill_price(stop, resolved)
+            return resolved
         return None
 
     def _trigger_profit_or_loss_stop(
@@ -1906,37 +1862,23 @@ class Portfolio:
                     return to_decimal(max(stop_value, low))
         return None
 
-    def _trigger_custom_stop(
-        self,
-        stop: Stop,
-        price_scope: PriceScope,
-        entry: Entry,
-        date: np.datetime64,
-        col_scope: Optional[ColumnScope],
-        sym_end_index: Optional[Mapping[str, int]],
-    ) -> Optional[Decimal]:
-        if col_scope is None or sym_end_index is None:
-            raise ValueError(
-                "col_scope and sym_end_index must be set for custom stops."
-            )
-        if not callable(stop.fill_price):
-            raise ValueError("Custom stop callback not set.")
-        from pybroker.context import StopContext
+    def _verify_stop_fill_price(self, stop: Stop, fill_price: Decimal):
+        """Rejects a stop fill price that would book a bogus exit.
 
-        ctx = StopContext(
-            symbol=stop.symbol,
-            date=date,
-            entry=entry,
-            pos_type=stop.pos_type,
-            col_scope=col_scope,
-            sym_end_index=sym_end_index,
-            price_scope=price_scope,
-        )
-        callback = cast("StopFn", stop.fill_price)
-        result = callback(ctx)
-        if result is None:
-            return None
-        return price_scope.fetch(stop.symbol, result)
+        Stop exits bypass :meth:`_verify_input`, so without this a fill price
+        of zero, a negative, or a NaN silently becomes a completed trade. NaN
+        is especially quiet: every limit comparison against it is ``False``.
+        """
+        if fill_price.is_nan() or not fill_price.is_finite():
+            raise ValueError(
+                f"Stop {stop.id} for {stop.symbol} resolved to a non-finite "
+                f"fill price: {fill_price}."
+            )
+        if fill_price <= 0:
+            raise ValueError(
+                f"Stop {stop.id} for {stop.symbol} resolved to a fill price "
+                f"of {fill_price}. Stop fill price must be > 0."
+            )
 
     def _trigger_trailing_stop(
         self, stop: Stop, price_scope: PriceScope
