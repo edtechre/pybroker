@@ -22,7 +22,12 @@ from pybroker.common import (
     StopType,
     to_decimal,
 )
-from pybroker.scope import ColumnScope, PriceScope, StaticScope
+from pybroker.scope import (
+    ColumnScope,
+    IndicatorScope,
+    PriceScope,
+    StaticScope,
+)
 from collections import deque
 from dataclasses import dataclass, field
 from decimal import ROUND_DOWN, Decimal
@@ -41,6 +46,10 @@ from typing import (
 
 if TYPE_CHECKING:
     from pybroker.context import StopFn
+
+    # Imported lazily for typing only: pybroker.slippage imports
+    # pybroker.context, which imports this module.
+    from pybroker.slippage import SlippageModel
 
 _BarStopFillPrice = Union[
     int,
@@ -1277,23 +1286,54 @@ class Portfolio:
         symbol: str,
         buy_fill_price: Decimal,
         sell_fill_price: Decimal,
+        col_scope: Optional[ColumnScope] = None,
+        ind_scope: Optional[IndicatorScope] = None,
+        sym_end_index: Optional[Mapping[str, int]] = None,
+        slippage_model: Optional["SlippageModel"] = None,
     ):
         """Exits any long and short positions for ``symbol`` at
         ``buy_fill_price`` and ``sell_fill_price``.
+
+        When ``slippage_model`` is set, both fills are adjusted by it. Share
+        adjustments are ignored because the positions are exited in full.
         """
         if symbol in self.long_positions:
+            long_shares = self.long_positions[symbol].shares
+            fill_price = sell_fill_price
+            if slippage_model is not None:
+                _, fill_price = slippage_model.adjust_fill(
+                    side="sell",
+                    symbol=symbol,
+                    shares=long_shares,
+                    fill_price=fill_price,
+                    col_scope=col_scope,
+                    ind_scope=ind_scope,
+                    sym_end_index=sym_end_index,
+                )
             self.sell(
                 date=date,
                 symbol=symbol,
-                shares=self.long_positions[symbol].shares,
-                fill_price=sell_fill_price,
+                shares=long_shares,
+                fill_price=fill_price,
             )
         if symbol in self.short_positions:
+            short_shares = self.short_positions[symbol].shares
+            fill_price = buy_fill_price
+            if slippage_model is not None:
+                _, fill_price = slippage_model.adjust_fill(
+                    side="buy",
+                    symbol=symbol,
+                    shares=short_shares,
+                    fill_price=fill_price,
+                    col_scope=col_scope,
+                    ind_scope=ind_scope,
+                    sym_end_index=sym_end_index,
+                )
             self.buy(
                 date=date,
                 symbol=symbol,
-                shares=self.short_positions[symbol].shares,
-                fill_price=buy_fill_price,
+                shares=short_shares,
+                fill_price=fill_price,
             )
 
     def capture_bar(
@@ -1523,8 +1563,15 @@ class Portfolio:
         price_scope: PriceScope,
         col_scope: Optional[ColumnScope] = None,
         sym_end_index: Optional[Mapping[str, int]] = None,
+        ind_scope: Optional[IndicatorScope] = None,
+        slippage_model: Optional["SlippageModel"] = None,
     ):
-        """Checks whether stops are triggered."""
+        """Checks whether stops are triggered.
+
+        When ``slippage_model`` is set, triggered stops fill at the adjusted
+        price. Slippage never affects whether a stop triggers, and share
+        adjustments are ignored because a stop exits its entry in full.
+        """
         price_scope.reset_bar()
         executed: deque[tuple[Position, Entry]] = deque()
         triggered_entry_ids: set[int] = set()
@@ -1548,6 +1595,8 @@ class Portfolio:
                     stop,
                     col_scope,
                     sym_end_index,
+                    ind_scope,
+                    slippage_model,
                 )
                 if self._record_stops:
                     self._capture_stop(date, entry, stop, fill_price)
@@ -1574,6 +1623,8 @@ class Portfolio:
                             stop,
                             col_scope,
                             sym_end_index,
+                            ind_scope,
+                            slippage_model,
                         )
                         self._capture_stop(date, entry, stop, fill_price)
                         continue
@@ -1585,6 +1636,8 @@ class Portfolio:
                         stop,
                         col_scope,
                         sym_end_index,
+                        ind_scope,
+                        slippage_model,
                     )
                     if self._record_stops:
                         self._capture_stop(date, entry, stop, fill_price)
@@ -1638,14 +1691,53 @@ class Portfolio:
         stop: Stop,
         col_scope: Optional[ColumnScope],
         sym_end_index: Optional[Mapping[str, int]],
+        ind_scope: Optional[IndicatorScope] = None,
+        slippage_model: Optional["SlippageModel"] = None,
     ) -> Optional[Decimal]:
         if stop.stop_type == StopType.BAR:
-            return self._trigger_bar_stop(stop, price_scope, entry)
-        if stop.stop_type == StopType.CUSTOM:
-            return self._trigger_custom_stop(
+            fill_price = self._trigger_bar_stop(stop, price_scope, entry)
+        elif stop.stop_type == StopType.CUSTOM:
+            fill_price = self._trigger_custom_stop(
                 stop, price_scope, entry, date, col_scope, sym_end_index
             )
-        return None
+        else:
+            return None
+        return self._slip_stop_fill_price(
+            stop,
+            entry,
+            fill_price,
+            col_scope,
+            ind_scope,
+            sym_end_index,
+            slippage_model,
+        )
+
+    def _slip_stop_fill_price(
+        self,
+        stop: Stop,
+        entry: Entry,
+        fill_price: Optional[Decimal],
+        col_scope: Optional[ColumnScope],
+        ind_scope: Optional[IndicatorScope],
+        sym_end_index: Optional[Mapping[str, int]],
+        slippage_model: Optional["SlippageModel"],
+    ) -> Optional[Decimal]:
+        """Returns ``fill_price`` adjusted by ``slippage_model``.
+
+        Share adjustments are discarded: a stop exits its entry in full.
+        """
+        if slippage_model is None or fill_price is None:
+            return fill_price
+        _, fill_price = slippage_model.adjust_fill(
+            side="sell" if stop.pos_type == "long" else "buy",
+            symbol=stop.symbol,
+            shares=entry.shares,
+            fill_price=fill_price,
+            col_scope=col_scope,
+            ind_scope=ind_scope,
+            sym_end_index=sym_end_index,
+        )
+        return fill_price
 
     def _trigger_stop(
         self,
@@ -1656,6 +1748,8 @@ class Portfolio:
         stop: Stop,
         col_scope: Optional[ColumnScope] = None,
         sym_end_index: Optional[Mapping[str, int]] = None,
+        ind_scope: Optional[IndicatorScope] = None,
+        slippage_model: Optional["SlippageModel"] = None,
     ) -> tuple[bool, Optional[Decimal]]:
         fill_price = None
         if stop.pos_type == "long" and stop.symbol not in self.long_positions:
@@ -1687,6 +1781,19 @@ class Portfolio:
             raise ValueError(f"Unknown stop type: {stop.stop_type}")
         if fill_price is None:
             return False, fill_price
+        # Slippage is applied after the trigger decision (which must use the
+        # unslipped price) and before the limit check, matching the order in
+        # which pending orders are filled.
+        fill_price = self._slip_stop_fill_price(
+            stop,
+            entry,
+            fill_price,
+            col_scope,
+            ind_scope,
+            sym_end_index,
+            slippage_model,
+        )
+        assert fill_price is not None
         order_type: Literal["buy", "sell"]
         stop_shares = entry.shares
         if stop.pos_type == "long":

@@ -17,6 +17,10 @@ from pybroker.optimize import (
 from pybroker.indicator import indicator
 from pybroker.model import ModelLoader, model
 from pybroker.scope import StaticScope
+from pybroker.slippage import (
+    VolatilitySlippageModel,
+    VolumeSlippageModel,
+)
 from pybroker.strategy import Strategy
 from pybroker.interval import compress_symbol_df
 from pybroker.vect import highv
@@ -422,3 +426,55 @@ def test_optimize_trial_interval_alignment_matches_walkforward(
         idx = int(np.searchsorted(base_dates, date))
         assert base_dates[idx] == date
         assert count == int(reference.completed[idx]) + 1
+
+
+def test_optimize_when_slippage_indicator_missing_then_error(data_source_df):
+    # optimize() used to skip slippage validation, so a missing indicator
+    # surfaced as a failure deep inside an Optuna trial.
+    lookback = hyperparam("lookback", default=10, low=5, high=10, step=5)
+    hhv = indicator(
+        "hhv_slip",
+        lambda data, period: highv(data.high, period),
+        period=lookback,
+    )
+    strategy = _make_strategy(data_source_df)
+
+    def exec_fn(ctx):
+        if not ctx.long_pos():
+            ctx.buy_shares = 10
+
+    strategy.add_execution(exec_fn, "AAPL", indicators=[hhv])
+    strategy.set_slippage_model(
+        VolatilitySlippageModel(atr_indicator="atr_not_attached")
+    )
+    with pytest.raises(ValueError, match="must be attached to an execution"):
+        strategy.optimize(
+            lambda r: 0.0,
+            sampler="grid",
+            train_size=0.5,
+            disable_parallel_indicators=True,
+        )
+
+
+def test_optimize_when_volume_column_missing_then_error(data_source_df):
+    lookback = hyperparam("lookback", default=10, low=5, high=10, step=5)
+    hhv = indicator(
+        "hhv_vol_slip",
+        lambda data, period: highv(data.high, period),
+        period=lookback,
+    )
+    strategy = _make_strategy(data_source_df.drop(columns=["volume"]))
+
+    def exec_fn(ctx):
+        if not ctx.long_pos():
+            ctx.buy_shares = 10
+
+    strategy.add_execution(exec_fn, "AAPL", indicators=[hhv])
+    strategy.set_slippage_model(VolumeSlippageModel())
+    with pytest.raises(ValueError, match="requires a 'volume' data column"):
+        strategy.optimize(
+            lambda r: 0.0,
+            sampler="grid",
+            train_size=0.5,
+            disable_parallel_indicators=True,
+        )

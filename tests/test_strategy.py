@@ -33,7 +33,12 @@ from pybroker.portfolio import (
     Trade,
 )
 from pybroker.scope import PendingOrder
-from pybroker.slippage import FixedSlippageModel, SlippageModel
+from pybroker.slippage import (
+    FixedSlippageModel,
+    SlippageModel,
+    VolatilitySlippageModel,
+    VolumeSlippageModel,
+)
 from pybroker.strategy import (
     BacktestMixin,
     BacktestSettings,
@@ -4307,6 +4312,7 @@ class TestStrategy:
         result = strategy.backtest(calc_bootstrap=False)
         orders = result.orders
         buy_factor = 1 + bps / 10_000
+        sell_factor = 1 - bps / 10_000
         buy_orders = orders[orders["type"] == "buy"]
         assert len(buy_orders) == len(buy_dates)
         for buy_date in buy_dates:
@@ -4324,10 +4330,9 @@ class TestStrategy:
             assert row["symbol"].item() == "SPY"
             assert row["shares"].item() == 100
             assert np.isnan(row["limit_price"].item())
-            # Bar-stop exits bypass the fill-time slippage hook.
-            assert row["fill_price"].item() == round(
-                df[df["date"] == sell_date]["open"].item(), 2
-            )
+            # Bar-stop exits are slipped adversely, same as scheduled orders.
+            base = round(df[df["date"] == sell_date]["open"].item(), 2)
+            assert row["fill_price"].item() == round(base * sell_factor, 2)
             assert row["fees"].item() == 0
         assert (result.trades["stop"] == "bar").all()
 
@@ -4422,6 +4427,149 @@ class TestStrategy:
         buy_orders = orders[orders["type"] == "buy"]
         assert len(buy_orders) == 1
         assert buy_orders.iloc[0]["shares"] == 90
+
+    def test_backtest_when_volume_slippage_and_nan_volume(
+        self, data_source_df
+    ):
+        # NaN volume used to raise decimal.InvalidOperation from min().
+        df = data_source_df.copy()
+        df.loc[df.index[:20], "volume"] = np.nan
+
+        def buy_exec_fn(ctx):
+            if not ctx.long_pos():
+                ctx.buy_shares = 100
+            elif ctx.bars == 2:
+                ctx.sell_all_shares()
+
+        strategy = Strategy(df, START_DATE, END_DATE)
+        strategy.set_slippage_model(VolumeSlippageModel())
+        strategy.add_execution(buy_exec_fn, "SPY")
+        with pytest.warns(UserWarning, match="missing or NaN 'volume'"):
+            result = strategy.backtest(calc_bootstrap=False)
+        assert len(result.trades)
+        assert not result.orders["fill_price"].isna().any()
+
+    def test_backtest_when_volume_slippage_and_no_volume_column(
+        self, data_source_df
+    ):
+        # Every order used to be silently cancelled; now it fails upfront.
+        df = data_source_df.drop(columns=["volume"])
+
+        def buy_exec_fn(ctx):
+            ctx.buy_shares = 100
+
+        strategy = Strategy(df, START_DATE, END_DATE)
+        strategy.set_slippage_model(VolumeSlippageModel())
+        strategy.add_execution(buy_exec_fn, "SPY")
+        with pytest.raises(
+            ValueError, match=re.escape("requires a 'volume' data column")
+        ):
+            strategy.backtest(calc_bootstrap=False)
+
+    def test_backtest_when_volatility_slippage_and_atr_warmup(
+        self, data_source_df
+    ):
+        # The ATR's leading NaNs used to raise decimal.InvalidOperation.
+        def atr_fn(data):
+            high, low = data.high, data.low
+            tr = np.abs(high - low)
+            return pd.Series(tr).rolling(14).mean().to_numpy()
+
+        atr_ind = indicator("atr_14", atr_fn)
+
+        def buy_exec_fn(ctx):
+            if not ctx.long_pos():
+                ctx.buy_shares = 100
+            elif ctx.bars == 2:
+                ctx.sell_all_shares()
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.set_slippage_model(
+            VolatilitySlippageModel(atr_indicator="atr_14", scale=0.1)
+        )
+        strategy.add_execution(buy_exec_fn, "SPY", indicators=atr_ind)
+        result = strategy.backtest(calc_bootstrap=False)
+        assert len(result.trades)
+        assert not result.orders["fill_price"].isna().any()
+        assert (result.orders["fill_price"] > 0).all()
+
+    def test_backtest_when_slippage_subclass_overrides_apply_at_fill(
+        self, data_source_df
+    ):
+        # A FixedSlippageModel subclass must not be routed to the fast path.
+        class DoublingSlippageModel(FixedSlippageModel):
+            def apply_at_fill(self, fill_ctx):
+                return fill_ctx.shares, fill_ctx.fill_price * Decimal(2)
+
+        def buy_exec_fn(ctx):
+            if not ctx.long_pos():
+                ctx.buy_fill_price = PriceType.CLOSE
+                ctx.buy_shares = 100
+
+        df = data_source_df[data_source_df["symbol"] == "SPY"]
+        strategy = Strategy(
+            df, START_DATE, END_DATE, StrategyConfig(initial_cash=1_000_000)
+        )
+        strategy.set_slippage_model(DoublingSlippageModel(bps=5))
+        strategy.add_execution(buy_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        buy_orders = result.orders[result.orders["type"] == "buy"]
+        assert len(buy_orders) == 1
+        buy_date = buy_orders.iloc[0]["date"]
+        base = df[df["date"] == buy_date]["close"].item()
+        assert buy_orders.iloc[0]["fill_price"] == round(base * 2, 2)
+
+    def test_backtest_when_slippage_and_stop_loss(self, data_source_df):
+        bps = 50
+
+        def exec_fn(ctx):
+            if not ctx.long_pos():
+                ctx.buy_shares = 100
+                ctx.stop_loss_pct = 5
+
+        df = data_source_df[data_source_df["symbol"] == "SPY"]
+        strategy = Strategy(df, START_DATE, END_DATE)
+        strategy.set_slippage_model(FixedSlippageModel(bps=bps))
+        strategy.add_execution(exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        stop_exits = result.orders[result.orders["type"] == "sell"]
+        assert len(stop_exits)
+        assert (result.trades["stop"] == "loss").any()
+
+        unslipped = Strategy(df, START_DATE, END_DATE)
+        unslipped.add_execution(exec_fn, "SPY")
+        base_result = unslipped.backtest(calc_bootstrap=False)
+        base_exits = base_result.orders[base_result.orders["type"] == "sell"]
+        # Stop exits are now slipped, so they can never fill higher than the
+        # unslipped run's first exit.
+        assert (
+            stop_exits.iloc[0]["fill_price"] < base_exits.iloc[0]["fill_price"]
+        )
+
+    def test_backtest_when_slippage_and_exit_on_last_bar(self, data_source_df):
+        bps = 50
+
+        def exec_fn(ctx):
+            if not ctx.long_pos():
+                ctx.buy_shares = 100
+
+        df = data_source_df[data_source_df["symbol"] == "SPY"]
+        config = StrategyConfig(exit_on_last_bar=True)
+        strategy = Strategy(df, START_DATE, END_DATE, config)
+        strategy.set_slippage_model(FixedSlippageModel(bps=bps))
+        strategy.add_execution(exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        sell_orders = result.orders[result.orders["type"] == "sell"]
+        assert len(sell_orders) == 1
+
+        unslipped = Strategy(df, START_DATE, END_DATE, config)
+        unslipped.add_execution(exec_fn, "SPY")
+        base_result = unslipped.backtest(calc_bootstrap=False)
+        base_sells = base_result.orders[base_result.orders["type"] == "sell"]
+        assert (
+            sell_orders.iloc[0]["fill_price"]
+            < base_sells.iloc[0]["fill_price"]
+        )
 
     def test_backtest_when_stop_loss(self, data_source_df):
         def exec_fn(ctx):

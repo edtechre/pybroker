@@ -339,7 +339,12 @@ if TYPE_CHECKING:
     from pybroker.config import StrategyConfig
     from pybroker.context import ExecContext, RotationContext
     from pybroker.slippage import SlippageModel
-    from pybroker.strategy import Execution, TestResult, WalkforwardWindow
+    from pybroker.strategy import (
+        Execution,
+        Strategy,
+        TestResult,
+        WalkforwardWindow,
+    )
     from pybroker.interval import IntervalData
 
     class _ExecutionsHost(Protocol):
@@ -1295,6 +1300,8 @@ class OptimizeMixin:
         _validate_optimize_models(self)
         if not self._executions:
             raise ValueError("No executions were added.")
+        if self._slippage_model is not None:
+            self._slippage_model.validate(cast("Strategy", self))
         search_space = collect_search_space(self)
         hyperparams = collect_hyperparams(self)
         _log_search_space(search_space)

@@ -577,6 +577,9 @@ class BacktestMixin:
             exit_dates: :class:`Mapping` of symbols to exit dates.
             train_only: Whether the backtest is run with trading rules or
                 only trains models.
+            slippage_model: ``Optional``
+                :class:`pybroker.slippage.SlippageModel` applied to order
+                fills, stop exits, and position exits.
             enable_fractional_shares: Whether to enable trading fractional
                 shares.
             round_fill_price: Whether to round fill prices to the nearest cent.
@@ -721,7 +724,14 @@ class BacktestMixin:
                     buy_sched[date].sort(key=_sort_by_buy_score, reverse=True)
             if is_sell_sched and config.max_short_positions is not None:
                 sell_sched[date].sort(key=_sort_by_sell_score, reverse=True)
-            portfolio.check_stops(date, price_scope, col_scope, sym_end_index)
+            portfolio.check_stops(
+                date,
+                price_scope,
+                col_scope,
+                sym_end_index,
+                ind_scope=ind_scope,
+                slippage_model=slippage_model,
+            )
             if is_cover_sched:
                 self._place_buy_orders(
                     date=date,
@@ -877,6 +887,10 @@ class BacktestMixin:
                     exit_cover_fill_price=config.exit_cover_fill_price,
                     exit_sell_fill_price=config.exit_sell_fill_price,
                     price_scope=price_scope,
+                    col_scope=col_scope,
+                    ind_scope=ind_scope,
+                    sym_end_index=sym_end_index,
+                    slippage_model=slippage_model,
                 )
             portfolio.incr_bars()
             if i % 10 == 0 or i == len(test_dates) - 1:
@@ -910,6 +924,10 @@ class BacktestMixin:
             PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
         ],
         price_scope: PriceScope,
+        col_scope: ColumnScope,
+        ind_scope: IndicatorScope,
+        sym_end_index: Mapping[str, int],
+        slippage_model: Optional[SlippageModel],
     ):
         buy_fill_price = price_scope.fetch(ctx.symbol, exit_cover_fill_price)
         sell_fill_price = price_scope.fetch(ctx.symbol, exit_sell_fill_price)
@@ -918,6 +936,10 @@ class BacktestMixin:
             ctx.symbol,
             buy_fill_price=buy_fill_price,
             sell_fill_price=sell_fill_price,
+            col_scope=col_scope,
+            ind_scope=ind_scope,
+            sym_end_index=sym_end_index,
+            slippage_model=slippage_model,
         )
 
     def _schedule_order(
@@ -1183,7 +1205,9 @@ class BacktestMixin:
         shares = self._get_shares(pending.shares, enable_fractional_shares)
         fill_price = price_scope.fetch(pending.symbol, pending.fill_price)
         if slippage_model is not None:
-            if isinstance(slippage_model, FixedSlippageModel):
+            # Exact type check, not isinstance: a subclass may override
+            # apply_at_fill and must not be routed to the fast path.
+            if type(slippage_model) is FixedSlippageModel:
                 fill_price = slippage_model.adjust_fill_price(
                     pending.type, fill_price
                 )
@@ -1196,6 +1220,7 @@ class BacktestMixin:
                     col_scope=col_scope,
                     ind_scope=ind_scope,
                     sym_end_index=sym_end_index,
+                    enable_fractional_shares=enable_fractional_shares,
                 )
                 shares, fill_price = slippage_model.apply_at_fill(fill_ctx)
         if pending.type == "buy":
@@ -1806,7 +1831,19 @@ class Strategy(
             raise TypeError(f"Invalid data_source type: {type(data_source)}")
 
     def set_slippage_model(self, slippage_model: Optional[SlippageModel]):
-        """Sets :class:`pybroker.slippage.SlippageModel`."""
+        """Sets :class:`pybroker.slippage.SlippageModel`.
+
+        Built-in models are
+        :class:`pybroker.slippage.FixedSlippageModel` (fixed basis points),
+        :class:`pybroker.slippage.VolatilitySlippageModel` (ATR-scaled), and
+        :class:`pybroker.slippage.VolumeSlippageModel` (participation cap and
+        square-law price impact). Pass ``None`` to disable slippage.
+
+        Fill-time slippage applies to scheduled orders, stop exits, and
+        position exits. Stop and position exits use the adjusted fill price
+        only; share adjustments are ignored on those paths because they exit
+        an entry in full.
+        """
         self._slippage_model = slippage_model
 
     def _supports_interval_training(self, base_model_name: str) -> bool:
