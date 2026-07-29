@@ -31,12 +31,12 @@ from pybroker.scope import (
     PredictionScope,
     PriceScope,
     StaticScope,
-    TimeframeScope,
+    IntervalScope,
 )
-from pybroker.timeframe import (
+from pybroker.interval import (
     TimeframeInterval,
-    model_timeframe_name,
-    normalize_timeframe_interval,
+    model_interval_name,
+    normalize_interval,
 )
 from collections import deque
 from dataclasses import dataclass, field
@@ -255,12 +255,12 @@ class ExecResult:
     pending_order_id: Optional[int] = field(default=None)
 
 
-class TimeframeContext:
-    """Read-only view of compressed bar data for a higher timeframe."""
+class IntervalContext:
+    """Read-only view of compressed bar data for a coarser interval."""
 
     _symbol: str
     _interval: TimeframeInterval
-    _timeframe_scope: TimeframeScope
+    _interval_scope: IntervalScope
     _sym_end_index: Mapping[str, int]
     _models: Mapping[ModelSymbol, TrainedModel]
     _scope: StaticScope
@@ -298,15 +298,13 @@ class TimeframeContext:
         self,
         symbol: str,
         interval: TimeframeInterval,
-        timeframe_scope: TimeframeScope,
+        interval_scope: IntervalScope,
         sym_end_index: Mapping[str, int],
         models: Mapping[ModelSymbol, TrainedModel],
     ):
         object.__setattr__(self, "_symbol", symbol)
-        object.__setattr__(
-            self, "_interval", normalize_timeframe_interval(interval)
-        )
-        object.__setattr__(self, "_timeframe_scope", timeframe_scope)
+        object.__setattr__(self, "_interval", normalize_interval(interval))
+        object.__setattr__(self, "_interval_scope", interval_scope)
         object.__setattr__(self, "_sym_end_index", sym_end_index)
         object.__setattr__(self, "_models", models)
         object.__setattr__(self, "_scope", StaticScope.instance())
@@ -314,7 +312,7 @@ class TimeframeContext:
     @property
     def bars(self) -> int:
         end_index = self._sym_end_index[self._symbol]
-        idx = self._timeframe_scope.completed_index(
+        idx = self._interval_scope.completed_index(
             self._symbol, self._interval, end_index
         )
         return 0 if idx < 0 else idx + 1
@@ -344,65 +342,65 @@ class TimeframeContext:
         return self._fetch(DataCol.VOLUME.value)
 
     def indicator(self, name: str) -> NDArray[np.float64]:
-        """Returns indicator values on the compressed timeframe."""
+        """Returns indicator values on the compressed interval."""
         end_index = self._sym_end_index[self._symbol]
-        return self._timeframe_scope.fetch_indicator(
+        return self._interval_scope.fetch_indicator(
             self._symbol, self._interval, name, end_index
         )
 
     def model(self, name: str) -> Any:
-        """Returns a trained model on the compressed timeframe."""
+        """Returns a trained model on the compressed interval."""
         model_sym = ModelSymbol(
-            model_timeframe_name(name, self._interval), self._symbol
+            model_interval_name(name, self._interval), self._symbol
         )
         if model_sym not in self._models:
             raise ValueError(self._missing_model_error(name))
         return self._models[model_sym].instance
 
     def _missing_model_error(self, name: str) -> str:
-        """Returns the error message for a model missing on this timeframe."""
+        """Returns the error message for a model missing on this interval."""
         if not self._scope.has_model_source(name):
             return f"Model {name!r} not found for {self._symbol}."
         if isinstance(self._scope.get_model_source(name), ModelLoader):
             return (
-                f"Pretrained model {name!r} is not trained per timeframe. "
+                f"Pretrained model {name!r} is not trained per interval. "
                 f"Access it on the base timeframe with ctx.model({name!r}) / "
                 f"ctx.preds({name!r})."
             )
         return f"Model {name!r} not found for {self._symbol}."
 
     def input(self, model_name: str) -> pd.DataFrame:
-        """Returns model input data on the compressed timeframe."""
+        """Returns model input data on the compressed interval."""
         end_index = self._sym_end_index[self._symbol]
-        return self._timeframe_scope.fetch_input(
+        return self._interval_scope.fetch_input(
             self._symbol, self._interval, model_name, end_index
         )
 
     def preds(self, model_name: str) -> NDArray:
-        """Returns model predictions on the compressed timeframe."""
+        """Returns model predictions on the compressed interval."""
         end_index = self._sym_end_index[self._symbol]
-        return self._timeframe_scope.fetch_preds(
+        return self._interval_scope.fetch_preds(
             self._symbol, self._interval, model_name, end_index
         )
 
     def __setattr__(self, name: str, value: Any) -> None:
         if name in self._READ_ONLY_ATTRS:
             raise AttributeError(
-                f"TimeframeContext is read-only; set {name!r} on the base "
+                f"IntervalContext is read-only; set {name!r} on the base "
                 "ExecContext instead."
             )
         object.__setattr__(self, name, value)
 
     def _fetch(self, col: str) -> NDArray:
         end_index = self._sym_end_index[self._symbol]
-        return self._timeframe_scope.fetch_bar(
+        return self._interval_scope.fetch_bar(
             self._symbol, self._interval, col, end_index
         )
 
     def __getattr__(self, attr: str) -> NDArray:
         if attr in self._scope.custom_data_cols:
             end_index = self._sym_end_index[self._symbol]
-            return self._timeframe_scope.fetch_bar(
+            return self._interval_scope.fetch_bar(
                 self._symbol, self._interval, attr, end_index
             )
         raise AttributeError(f"Attribute {attr!r} not found.")
@@ -511,8 +509,8 @@ class ExecContext:
         portfolio: Portfolio,
         col_scope: ColumnScope,
         ind_scope: IndicatorScope,
-        timeframe_scope: TimeframeScope,
-        declared_timeframes: frozenset[TimeframeInterval],
+        interval_scope: IntervalScope,
+        declared_intervals: frozenset[TimeframeInterval],
         input_scope: ModelInputScope,
         pred_scope: PredictionScope,
         pending_order_scope: PendingOrderScope,
@@ -528,8 +526,8 @@ class ExecContext:
         self._portfolio = portfolio
         self._col_scope = col_scope
         self._ind_scope = ind_scope
-        self._timeframe_scope = timeframe_scope
-        self._declared_timeframes = declared_timeframes
+        self._interval_scope = interval_scope
+        self._declared_intervals = declared_intervals
         self._input_scope = input_scope
         self._pred_scope = pred_scope
         self._models = models
@@ -541,7 +539,7 @@ class ExecContext:
         self._curr_date: Optional[np.datetime64] = None
         self._dt: Optional[datetime] = None
         self._foreign: dict[str, pd.DataFrame] = {}
-        self._timeframe: dict[TimeframeInterval, TimeframeContext] = {}
+        self._interval: dict[TimeframeInterval, IntervalContext] = {}
 
         self.symbol: str = symbol
         self.buy_fill_price: Optional[
@@ -1026,54 +1024,65 @@ class ExecContext:
         end_index = self._sym_end_index[symbol]
         return self._col_scope.fetch(symbol, col, end_index)
 
-    def timeframe(self, interval: TimeframeInterval) -> TimeframeContext:
+    def interval(self, interval: TimeframeInterval) -> IntervalContext:
         r"""Returns a read-only view of compressed bar data for ``interval``.
 
-        ``interval`` must match a value previously passed to
-        :meth:`pybroker.strategy.Strategy.enable_timeframes`. The same
+        ``interval`` must match a value this execution declared with
+        ``intervals`` in
+        :meth:`pybroker.strategy.Strategy.add_execution`. Intervals are
+        scoped per execution: reading an interval that another execution
+        declared raises ``ValueError``, the same way :meth:`.hyperparam` is
+        gated by the execution's ``hyperparams``. The same
         :class:`~pybroker.TimeframeInterval` forms are supported:
 
-        - **Every-n-bars** (``int``): e.g. ``ctx.timeframe(5)`` for bars
+        - **Every-n-bars** (``int``): e.g. ``ctx.interval(5)`` for bars
           formed from every 5 base bars.
 
-        - **Duration** (``str``): e.g. ``ctx.timeframe("5m")`` for
+        - **Duration** (``str``): e.g. ``ctx.interval("5m")`` for
           fixed-duration bins (digits plus unit letter).
 
-        - **Calendar** (``str``): e.g. ``ctx.timeframe("weekly")`` for
+        - **Calendar** (``str``): e.g. ``ctx.interval("weekly")`` for
           calendar weekly bars.
 
         For example::
 
-            strategy.enable_timeframes("weekly", "5m", base_timeframe="1m")
+            strategy.add_execution(
+                exec_fn,
+                "SPY",
+                indicators=[sma20],
+                intervals=["weekly", "5m"],
+            )
+            strategy.walkforward(windows=1, timeframe="1m")
 
             def exec_fn(ctx):
-                weekly = ctx.timeframe("weekly")
-                five_min = ctx.timeframe("5m")
+                weekly = ctx.interval("weekly")
+                five_min = ctx.interval("5m")
                 if len(weekly.close) > 0:
                     wk_sma = weekly.indicator("sma20")
 
         Args:
-            interval: Compression interval declared with
-                :meth:`pybroker.strategy.Strategy.enable_timeframes`.
+            interval: Compression interval declared for this execution with
+                :meth:`pybroker.strategy.Strategy.add_execution`.
 
         Returns:
-            :class:`pybroker.context.TimeframeContext` exposing read-only
+            :class:`pybroker.context.IntervalContext` exposing read-only
             OHLCV, indicators, and model outputs on the compressed bars.
         """
-        interval = normalize_timeframe_interval(interval)
-        if interval not in self._declared_timeframes:
+        interval = normalize_interval(interval)
+        if interval not in self._declared_intervals:
             raise ValueError(
-                f"Timeframe {interval!r} was not declared with enable_timeframes()."
+                f"Interval {interval!r} was not declared for this execution. "
+                "Add it with add_execution(..., intervals=[...])."
             )
-        if interval not in self._timeframe:
-            self._timeframe[interval] = TimeframeContext(
+        if interval not in self._interval:
+            self._interval[interval] = IntervalContext(
                 symbol=self.symbol,
                 interval=interval,
-                timeframe_scope=self._timeframe_scope,
+                interval_scope=self._interval_scope,
                 sym_end_index=self._sym_end_index,
                 models=self._models,
             )
-        return self._timeframe[interval]
+        return self._interval[interval]
 
     def model(self, name: str, symbol: Optional[str] = None) -> Any:
         r"""Returns a trained model.
@@ -1775,7 +1784,7 @@ def set_exec_ctx_data(ctx: ExecContext, date: np.datetime64):
     ctx._curr_date = date
     ctx._dt = None
     ctx._foreign.clear()
-    ctx._timeframe.clear()
+    ctx._interval.clear()
     ctx._cover = False
     ctx._exiting_pos = False
     ctx.buy_fill_price = None

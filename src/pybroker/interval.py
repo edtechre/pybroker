@@ -1,4 +1,4 @@
-"""Multi-timeframe bar compression utilities.
+"""Multi-interval bar compression utilities.
 
 Copyright (C) 2023 Edward West. All rights reserved.
 
@@ -20,7 +20,7 @@ _BASE_TIMEFRAME_TOLERANCE_SECONDS = 1.0
 CalendarInterval = Literal["daily", "weekly", "monthly", "quarterly", "yearly"]
 
 TimeframeInterval = Union[int, CalendarInterval, str]
-"""Compression interval for multi-timeframe data.
+"""Compression interval for multi-interval data.
 
 - ``int`` (``n > 1``): every ``n`` base bars (e.g. ``5``).
 - ``str`` duration: digits plus one unit letter — ``"5m"``, ``"1h"``,
@@ -42,8 +42,8 @@ _CALENDAR_INTERVAL_SECONDS: dict[str, int] = {
 }
 
 _INTERVAL_HELP = (
-    "use timeframe(5) for 5-bar compression, '5m'/'1h' for duration intervals "
-    "(digits + unit letter), or 'weekly' for calendar weeks."
+    "use an int > 1 (e.g. 5) for n-bar compression, '5m'/'1h' for duration "
+    "intervals (digits + unit letter), or 'weekly' for calendar weeks."
 )
 
 _DURATION_PATTERN = re.compile(r"^(\d+)([smhdw])$", re.IGNORECASE)
@@ -131,7 +131,7 @@ class CompressedSymbolData:
 
 
 @dataclass
-class TimeframeData:
+class IntervalData:
     """Compressed data keyed by ``(symbol, interval)``."""
 
     compressed: dict[tuple[str, TimeframeInterval], CompressedSymbolData] = (
@@ -141,10 +141,10 @@ class TimeframeData:
     def slice_for_test(
         self,
         test_symbol_dates: Mapping[str, NDArray[np.datetime64]],
-    ) -> "TimeframeData":
+    ) -> "IntervalData":
         """Returns a copy with ``completed`` arrays aligned to test dates."""
         if not test_symbol_dates or not self.compressed:
-            return TimeframeData()
+            return IntervalData()
         result: dict[tuple[str, TimeframeInterval], CompressedSymbolData] = {}
         for (symbol, interval), data in self.compressed.items():
             if symbol not in test_symbol_dates:
@@ -165,32 +165,24 @@ class TimeframeData:
                 completed=data.completed[idx],
                 base_dates=test_dates,
             )
-        return TimeframeData(compressed=result)
+        return IntervalData(compressed=result)
 
 
 def _normalize_duration_string(value: str) -> str:
     """Normalizes a duration string in ``<digits><unit>`` form (e.g. ``'5m'``)."""
     stripped = value.strip()
     if not stripped or " " in stripped:
-        raise ValueError(
-            f"Invalid timeframe interval {value!r}. {_INTERVAL_HELP}"
-        )
+        raise ValueError(f"Invalid interval {value!r}. {_INTERVAL_HELP}")
     match = _DURATION_PATTERN.fullmatch(stripped)
     if not match:
-        raise ValueError(
-            f"Invalid timeframe interval {value!r}. {_INTERVAL_HELP}"
-        )
+        raise ValueError(f"Invalid interval {value!r}. {_INTERVAL_HELP}")
     amount = int(match.group(1))
     if amount <= 0:
-        raise ValueError(
-            f"Invalid timeframe interval {value!r}. {_INTERVAL_HELP}"
-        )
+        raise ValueError(f"Invalid interval {value!r}. {_INTERVAL_HELP}")
     unit_letter = match.group(2).lower()
     canonical = f"{amount}{unit_letter}"
     if to_seconds(canonical) <= 0:
-        raise ValueError(
-            f"Invalid timeframe interval {value!r}. {_INTERVAL_HELP}"
-        )
+        raise ValueError(f"Invalid interval {value!r}. {_INTERVAL_HELP}")
     return canonical
 
 
@@ -204,29 +196,29 @@ def _is_duration_interval(value: str) -> bool:
     return True
 
 
-def normalize_timeframe_interval(
+def normalize_interval(
     interval: TimeframeInterval,
 ) -> TimeframeInterval:
-    """Normalizes and validates a compression timeframe interval."""
+    """Normalizes and validates a compression interval."""
     if isinstance(interval, int):
         if interval <= 1:
-            raise ValueError("timeframe compression requires n > 1.")
+            raise ValueError("interval compression requires n > 1.")
         return interval
     if interval in _CALENDAR_INTERVALS:
         return interval
     return _normalize_duration_string(interval)
 
 
-def format_timeframe_interval(interval: TimeframeInterval) -> str:
+def format_interval(interval: TimeframeInterval) -> str:
     """Returns a stable string representation of ``interval``."""
-    interval = normalize_timeframe_interval(interval)
+    interval = normalize_interval(interval)
     if isinstance(interval, int):
         return str(interval)
     return interval
 
 
-TIMEFRAME_NAME_SEPARATOR = "@"
-"""Separator reserved for timeframe bindings in indicator and model names."""
+INTERVAL_NAME_SEPARATOR = "@"
+"""Separator reserved for interval bindings in indicator and model names."""
 
 
 def validate_source_name(name: str, kind: str) -> None:
@@ -236,28 +228,25 @@ def validate_source_name(name: str, kind: str) -> None:
         name: Name being registered.
         kind: ``'indicator'`` or ``'model'``, used in the error message.
     """
-    if TIMEFRAME_NAME_SEPARATOR in name:
-        base = name.split(TIMEFRAME_NAME_SEPARATOR, 1)[0]
+    if INTERVAL_NAME_SEPARATOR in name:
+        base = name.split(INTERVAL_NAME_SEPARATOR, 1)[0]
         raise ValueError(
             f"Invalid {kind} name {name!r}: "
-            f"{TIMEFRAME_NAME_SEPARATOR!r} is reserved for timeframe "
+            f"{INTERVAL_NAME_SEPARATOR!r} is reserved for interval "
             f"bindings, which PyBroker generates itself (e.g. {base!r} on "
             f"'weekly' becomes "
-            f"{base + TIMEFRAME_NAME_SEPARATOR + 'weekly'!r}). Rename the "
-            f"{kind} and read higher timeframes with "
-            f"ctx.timeframe(interval)."
+            f"{base + INTERVAL_NAME_SEPARATOR + 'weekly'!r}). Rename the "
+            f"{kind} and read coarser intervals with "
+            f"ctx.interval(interval)."
         )
 
 
-def indicator_timeframe_name(base: str, interval: TimeframeInterval) -> str:
-    """Returns the suffixed indicator name for a timeframe binding."""
-    return (
-        f"{base}{TIMEFRAME_NAME_SEPARATOR}"
-        f"{format_timeframe_interval(interval)}"
-    )
+def indicator_interval_name(base: str, interval: TimeframeInterval) -> str:
+    """Returns the suffixed indicator name for an interval binding."""
+    return f"{base}{INTERVAL_NAME_SEPARATOR}{format_interval(interval)}"
 
 
-def parse_indicator_timeframe_name(
+def parse_indicator_interval_name(
     name: str,
 ) -> tuple[str, Optional[TimeframeInterval]]:
     """Parses a suffixed indicator name into base name and interval."""
@@ -273,16 +262,16 @@ def parse_indicator_timeframe_name(
     return name, None
 
 
-def model_timeframe_name(base: str, interval: TimeframeInterval) -> str:
-    """Returns the suffixed model name for a timeframe binding."""
-    return indicator_timeframe_name(base, interval)
+def model_interval_name(base: str, interval: TimeframeInterval) -> str:
+    """Returns the suffixed model name for an interval binding."""
+    return indicator_interval_name(base, interval)
 
 
-def parse_model_timeframe_name(
+def parse_model_interval_name(
     name: str,
 ) -> tuple[str, Optional[TimeframeInterval]]:
     """Parses a suffixed model name into base name and interval."""
-    return parse_indicator_timeframe_name(name)
+    return parse_indicator_interval_name(name)
 
 
 def _symbol_row_groups(df: pd.DataFrame) -> dict[str, NDArray[np.int64]]:
@@ -484,7 +473,7 @@ def build_compressed_symbol_arrays(
     custom_cols: Iterable[str],
 ) -> tuple[tuple[str, ...], dict[str, NDArray], NDArray[np.datetime64]]:
     """Builds compressed-bar column arrays with base indicator names."""
-    interval = normalize_timeframe_interval(interval)
+    interval = normalize_interval(interval)
     bars = compressed.bars
     columns: list[str] = [
         DataCol.DATE.value,
@@ -507,11 +496,16 @@ def build_compressed_symbol_arrays(
             columns.append(col)
             arrays[col] = bars.custom[col]
     for ind_name in indicator_names:
-        suffixed = indicator_timeframe_name(ind_name, interval)
+        suffixed = indicator_interval_name(ind_name, interval)
+        ind_sym = IndicatorSymbol(suffixed, symbol)
+        if ind_sym not in indicator_data:
+            raise ValueError(
+                f"Indicator {ind_name!r} was not computed for {symbol!r} on "
+                f"interval {interval!r}. Its model and the interval must be "
+                "declared on the same add_execution()."
+            )
         columns.append(ind_name)
-        arrays[ind_name] = indicator_data[
-            IndicatorSymbol(suffixed, symbol)
-        ].to_numpy(copy=False)
+        arrays[ind_name] = indicator_data[ind_sym].to_numpy(copy=False)
     return tuple(columns), arrays, bars.dates
 
 
@@ -624,36 +618,6 @@ def base_timeframe_to_seconds(base_timeframe: str) -> float:
     return float(seconds)
 
 
-def resolve_base_bar_seconds(
-    base_timeframe: Optional[str],
-    backtest_timeframe: str,
-) -> float:
-    """Resolves explicit base bar spacing from declared sources."""
-    from_enable = (
-        base_timeframe_to_seconds(base_timeframe) if base_timeframe else None
-    )
-    from_backtest = (
-        base_timeframe_to_seconds(backtest_timeframe)
-        if backtest_timeframe
-        else None
-    )
-    if from_enable is not None and from_backtest is not None:
-        if from_enable != from_backtest:
-            raise ValueError(
-                f"base_timeframe {base_timeframe!r} does not match backtest "
-                f"timeframe {backtest_timeframe!r}."
-            )
-        return from_enable
-    if from_enable is not None:
-        return from_enable
-    if from_backtest is not None:
-        return from_backtest
-    raise ValueError(
-        "Multi-timeframe strategies require base_timeframe in "
-        "enable_timeframes() or timeframe in backtest()/walkforward()."
-    )
-
-
 def _base_spacing_tolerance(base_bar_seconds: float) -> float:
     """Returns the allowed deviation from an exact base-spacing multiple.
 
@@ -728,29 +692,29 @@ def compressed_bars_to_bar_data(bars: CompressedBars) -> BarData:
     )
 
 
-def validate_timeframe_interval(
+def validate_interval(
     interval: TimeframeInterval, base_bar_seconds: float
 ) -> None:
     """Validates an interval against the base feed bar spacing."""
-    interval = normalize_timeframe_interval(interval)
+    interval = normalize_interval(interval)
     if isinstance(interval, int):
         return
     interval_seconds = _coarser_interval_seconds(interval)
     if interval_seconds <= base_bar_seconds:
         base_label = _bar_seconds_label(base_bar_seconds)
         raise ValueError(
-            f"Cannot compress {base_label} to timeframe {interval!r}. "
-            "Compression only supports strictly coarser timeframes "
-            "(e.g. 'weekly', '5m', timeframe(5))."
+            f"Cannot compress {base_label} to interval {interval!r}. "
+            "Compression only supports strictly coarser intervals "
+            "(e.g. 'weekly', '5m', 5)."
         )
 
 
-def is_valid_timeframe_interval(
+def is_valid_interval(
     interval: TimeframeInterval, base_bar_seconds: float
 ) -> bool:
     """Returns whether ``interval`` is valid for the base feed bar spacing."""
     try:
-        validate_timeframe_interval(interval, base_bar_seconds)
+        validate_interval(interval, base_bar_seconds)
     except ValueError:
         return False
     return True
@@ -1033,13 +997,13 @@ def compress(
     custom_cols: Optional[Mapping[str, NDArray[np.float64]]] = None,
     vwap: Optional[NDArray[np.float64]] = None,
 ) -> tuple[CompressedBars, NDArray[np.int64]]:
-    """Compresses base bars into higher-timeframe bars.
+    """Compresses base bars into coarser interval bars.
 
     Returns compressed bars and a ``completed`` alignment map where
     ``completed[t]`` is the index of the last *completed* compressed bar at
     base bar ``t``, or ``-1`` during warmup.
     """
-    interval = normalize_timeframe_interval(interval)
+    interval = normalize_interval(interval)
     n = len(dates)
     if n == 0:
         empty_f = np.array([], dtype=np.float64)
@@ -1090,7 +1054,7 @@ def compress(
     o, h, lows, c, v = _aggregate_bins(
         starts, ends, open_, high, low, close, volume
     )
-    timeframe_dates = dates[ends]
+    interval_dates = dates[ends]
 
     custom: dict[str, NDArray[np.float64]] = {}
     if custom_cols:
@@ -1113,7 +1077,7 @@ def compress(
         low=lows,
         close=c,
         volume=v,
-        dates=timeframe_dates,
+        dates=interval_dates,
         custom=custom,
         vwap=_aggregate_vwap(vwap, volume, starts),
     )
@@ -1140,24 +1104,24 @@ def _compress_ohlcv(
 
 def compress_bars(
     data: Union[BarData, pd.DataFrame],
-    timeframe: TimeframeInterval,
+    interval: TimeframeInterval,
     *,
     base_timeframe: str,
 ) -> BarData:
-    """Compresses base OHLCV bars to a coarser ``timeframe``.
+    """Compresses base OHLCV bars to a coarser ``interval``.
 
     Args:
         data: Single-symbol :class:`~pybroker.common.BarData` or OHLCV
             :class:`pandas.DataFrame`.
-        timeframe: Target compression interval.
+        interval: Target compression interval.
         base_timeframe: Declared base bar spacing (e.g. ``"1m"``, ``"1d"``).
 
     Returns:
         Compressed :class:`~pybroker.common.BarData`.
     """
     base_bar_seconds = base_timeframe_to_seconds(base_timeframe)
-    interval = normalize_timeframe_interval(timeframe)
-    validate_timeframe_interval(interval, base_bar_seconds)
+    interval = normalize_interval(interval)
+    validate_interval(interval, base_bar_seconds)
     if isinstance(data, BarData):
         arrays = _ohlcv_from_bar_data(data)
     else:
@@ -1183,7 +1147,7 @@ def compress_bars(
                     f"found {len(symbols)}: {found}"
                     f"{', ...' if len(symbols) > 5 else ''}. Use "
                     "compress_symbol_from_frame or "
-                    "compress_timeframes_from_frame for multi-symbol frames."
+                    "compress_intervals_from_frame for multi-symbol frames."
                 )
         validate_base_timeframe_data(data, base_bar_seconds)
         arrays = _extract_ohlcv_arrays(data)
@@ -1224,7 +1188,7 @@ def compress_symbol_intervals_from_frame(
 
     result: dict[TimeframeInterval, CompressedSymbolData] = {}
     for interval in interval_tuple:
-        validate_timeframe_interval(interval, base_bar_seconds)
+        validate_interval(interval, base_bar_seconds)
         bars, completed = _compress_ohlcv(arrays, interval)
         result[interval] = CompressedSymbolData(
             bars=bars, completed=completed, base_dates=arrays.date
@@ -1232,32 +1196,41 @@ def compress_symbol_intervals_from_frame(
     return result
 
 
-def compress_timeframes_from_frame(
+def compress_intervals_from_frame(
     df: pd.DataFrame,
-    symbols: Iterable[str],
-    intervals: Iterable[TimeframeInterval],
+    symbol_intervals: Mapping[str, Iterable[TimeframeInterval]],
     custom_cols: Iterable[str],
     base_bar_seconds: float,
-) -> TimeframeData:
-    """Compresses multiple symbols and intervals from one multi-symbol frame."""
-    interval_tuple = tuple(intervals)
-    symbol_set = {str(sym) for sym in symbols}
-    timeframe_data = TimeframeData()
+) -> IntervalData:
+    """Compresses each symbol to the intervals declared for it.
+
+    Args:
+        df: Multi-symbol OHLCV frame.
+        symbol_intervals: Maps each symbol to the intervals it is compressed
+            to. Symbols absent from the mapping are skipped, so a strategy
+            only pays for the ``(symbol, interval)`` pairs its executions
+            declare rather than the full symbol x interval cross product.
+        custom_cols: Custom data columns carried onto compressed bars.
+        base_bar_seconds: Bar spacing of the base feed, in seconds.
+    """
+    interval_data = IntervalData()
+    if not symbol_intervals:
+        return interval_data
     for sym_str, rows in _symbol_row_groups(df).items():
-        if sym_str not in symbol_set:
+        intervals = symbol_intervals.get(sym_str)
+        if not intervals:
             continue
         compressed = compress_symbol_intervals_from_frame(
             df,
             sym_str,
-            interval_tuple,
+            intervals,
             custom_cols,
             base_bar_seconds,
-            validate_dates=False,
             rows=rows,
         )
         for interval, data in compressed.items():
-            timeframe_data.compressed[(sym_str, interval)] = data
-    return timeframe_data
+            interval_data.compressed[(sym_str, interval)] = data
+    return interval_data
 
 
 def compress_symbol_from_frame(
@@ -1289,7 +1262,7 @@ def compress_symbol_df(
     validate_dates: bool = True,
 ) -> CompressedSymbolData:
     """Compresses a single-symbol DataFrame."""
-    validate_timeframe_interval(interval, base_bar_seconds)
+    validate_interval(interval, base_bar_seconds)
     if len(sym_df) == 0:
         return _empty_compressed_symbol_data()
     if validate_dates:

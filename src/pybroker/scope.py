@@ -23,15 +23,15 @@ from pybroker.common import (
     to_decimal,
 )
 from pybroker.log import Logger
-from pybroker.timeframe import (
-    TimeframeData,
+from pybroker.interval import (
+    IntervalData,
     TimeframeInterval,
     _find_bin_starts_ends,
-    format_timeframe_interval,
-    indicator_timeframe_name,
-    model_timeframe_name,
-    normalize_timeframe_interval,
-    parse_indicator_timeframe_name,
+    format_interval,
+    indicator_interval_name,
+    model_interval_name,
+    normalize_interval,
+    parse_indicator_interval_name,
 )
 from collections import defaultdict
 from dataclasses import dataclass
@@ -66,7 +66,7 @@ class _ModelImports:
     apply_lags_to_model_input: Callable[..., ModelInput]
     apply_prepare_input_data: Callable[..., ModelInput]
     merge_lag_series_cache_from_arrays: Callable[..., None]
-    merge_timeframe_lag_series_cache: Callable[..., LagSeriesCache]
+    merge_interval_lag_series_cache: Callable[..., LagSeriesCache]
     model_input_to_dataframe: Callable[..., pd.DataFrame]
     model_trainer_cls: type
 
@@ -86,8 +86,8 @@ def _model() -> _ModelImports:
             merge_lag_series_cache_from_arrays=(
                 model_mod.merge_lag_series_cache_from_arrays
             ),
-            merge_timeframe_lag_series_cache=(
-                model_mod.merge_timeframe_lag_series_cache
+            merge_interval_lag_series_cache=(
+                model_mod.merge_interval_lag_series_cache
             ),
             model_input_to_dataframe=model_mod.model_input_to_dataframe,
             model_trainer_cls=model_mod.ModelTrainer,
@@ -1048,15 +1048,15 @@ class IndicatorScope:
             :class:`numpy.ndarray` of :class:`pybroker.indicator.Indicator`
             data for every bar until ``end_index`` (when specified).
         """
-        _, token = parse_indicator_timeframe_name(name)
+        _, token = parse_indicator_interval_name(name)
         if token is not None and end_index is not None:
-            # Timeframe series are indexed by compressed bar, so truncating one
+            # Interval series are indexed by compressed bar, so truncating one
             # with a base bar index would expose future data.
-            base_name, _ = parse_indicator_timeframe_name(name)
+            base_name, _ = parse_indicator_interval_name(name)
             raise ValueError(
-                f"Indicator {name!r} is bound to timeframe {token!r} and "
+                f"Indicator {name!r} is bound to interval {token!r} and "
                 "cannot be read from the base context. Use "
-                f"ctx.timeframe({token!r}).indicator({base_name!r}) instead."
+                f"ctx.interval({token!r}).indicator({base_name!r}) instead."
             )
         ind_sym = IndicatorSymbol(name, symbol)
         if ind_sym in self._sym_inds:
@@ -1121,20 +1121,18 @@ def _resolve_lag_cols(
     return tuple(col for col in trained_model.input_cols if col != date_col)
 
 
-class TimeframeScope:
+class IntervalScope:
     """Serves compressed bar and indicator data through alignment maps."""
 
     def __init__(
         self,
-        timeframe_data: TimeframeData,
+        interval_data: IntervalData,
         ind_scope: IndicatorScope,
-        declared_timeframes: frozenset[TimeframeInterval],
         models: Optional[Mapping[ModelSymbol, TrainedModel]] = None,
         test_dates: Optional[Sequence[np.datetime64]] = None,
     ):
-        self._timeframe_data = timeframe_data
+        self._interval_data = interval_data
         self._ind_scope = ind_scope
-        self._declared_timeframes = declared_timeframes
         self._models = models or {}
         self._lag_series_cache: LagSeriesCache = {}
         self._lag_cache_keys: set[tuple[str, str, tuple[str, ...], int]] = (
@@ -1156,8 +1154,8 @@ class TimeframeScope:
         lags: int,
     ) -> None:
         model = _model()
-        interval = normalize_timeframe_interval(interval)
-        interval_str = format_timeframe_interval(interval)
+        interval = normalize_interval(interval)
+        interval_str = format_interval(interval)
         memo_key = (symbol, interval_str, lag_cols, lags)
         if memo_key in self._lag_cache_keys:
             return
@@ -1165,11 +1163,11 @@ class TimeframeScope:
 
         def bars_by_symbol(sym, interval_str=interval_str, interval=interval):
             key = (sym, interval)
-            if key not in self._timeframe_data.compressed:
+            if key not in self._interval_data.compressed:
                 return None
-            return self._timeframe_data.compressed[key].bars
+            return self._interval_data.compressed[key].bars
 
-        model.merge_timeframe_lag_series_cache(
+        model.merge_interval_lag_series_cache(
             self._lag_series_cache,
             (symbol,),
             lag_cols,
@@ -1178,26 +1176,22 @@ class TimeframeScope:
             bars_by_symbol,
         )
 
-    def is_declared(self, interval: TimeframeInterval) -> bool:
-        interval = normalize_timeframe_interval(interval)
-        return interval in self._declared_timeframes
-
     def window_len(self, symbol: str, interval: TimeframeInterval) -> int:
         """Returns the compressed bar count visible in the current window.
 
         ``completed`` is realigned to the walkforward test window by
-        :meth:`pybroker.timeframe.TimeframeData.slice_for_test`, so its last
+        :meth:`pybroker.interval.IntervalData.slice_for_test`, so its last
         entry is the newest compressed bar that completes within the window.
         Model input and predictions are capped here so user callbacks never see
         compressed bars belonging to a future window.
         """
-        interval = normalize_timeframe_interval(interval)
+        interval = normalize_interval(interval)
         key = (symbol, interval)
-        if key not in self._timeframe_data.compressed:
+        if key not in self._interval_data.compressed:
             raise ValueError(
                 f"Timeframe {interval!r} data not found for {symbol!r}."
             )
-        data = self._timeframe_data.compressed[key]
+        data = self._interval_data.compressed[key]
         if len(data.completed) == 0:
             return 0
         last = int(data.completed[-1])
@@ -1206,13 +1200,13 @@ class TimeframeScope:
         return min(last + 1, len(data.bars.dates))
 
     def _missing_model_error(self, base_model_name: str, symbol: str) -> str:
-        """Returns the error for a model missing on a compressed timeframe."""
+        """Returns the error for a model missing on a compressed interval."""
         if self._scope.has_model_source(base_model_name):
             source = self._scope.get_model_source(base_model_name)
             if not isinstance(source, _model().model_trainer_cls):
                 return (
                     f"Pretrained model {base_model_name!r} is not trained per "
-                    f"timeframe. Access it on the base timeframe with "
+                    f"interval. Access it on the base timeframe with "
                     f"ctx.preds({base_model_name!r})."
                 )
         return f"Model {base_model_name!r} not found for {symbol}."
@@ -1220,13 +1214,13 @@ class TimeframeScope:
     def completed_index(
         self, symbol: str, interval: TimeframeInterval, end_index: int
     ) -> int:
-        interval = normalize_timeframe_interval(interval)
+        interval = normalize_interval(interval)
         key = (symbol, interval)
-        if key not in self._timeframe_data.compressed:
+        if key not in self._interval_data.compressed:
             raise ValueError(
                 f"Timeframe {interval!r} data not found for {symbol!r}."
             )
-        completed = self._timeframe_data.compressed[key].completed
+        completed = self._interval_data.compressed[key].completed
         if end_index <= 0 or len(completed) == 0:
             return -1
         # Clamp instead of allowing a negative index to wrap around to the last
@@ -1242,16 +1236,16 @@ class TimeframeScope:
         col: str,
         end_index: int,
     ) -> NDArray[Any]:
-        interval = normalize_timeframe_interval(interval)
+        interval = normalize_interval(interval)
         cache_key = (symbol, interval, col)
         data: NDArray[Any]
         if cache_key not in self._bar_cache:
             key = (symbol, interval)
-            if key not in self._timeframe_data.compressed:
+            if key not in self._interval_data.compressed:
                 raise ValueError(
                     f"Timeframe {interval!r} data not found for {symbol!r}."
                 )
-            bars = self._timeframe_data.compressed[key].bars
+            bars = self._interval_data.compressed[key].bars
             if col == DataCol.DATE.value:
                 data = bars.dates
             elif col == DataCol.OPEN.value:
@@ -1270,7 +1264,7 @@ class TimeframeScope:
                 data = bars.custom[col]
             else:
                 raise ValueError(
-                    f"Column {col!r} not found for timeframe {interval!r}."
+                    f"Column {col!r} not found for interval {interval!r}."
                 )
             self._bar_cache[cache_key] = data
         data = self._bar_cache[cache_key]
@@ -1286,8 +1280,8 @@ class TimeframeScope:
         base_name: str,
         end_index: int,
     ) -> NDArray[np.float64]:
-        interval = normalize_timeframe_interval(interval)
-        name = indicator_timeframe_name(base_name, interval)
+        interval = normalize_interval(interval)
+        name = indicator_interval_name(base_name, interval)
         values = self._ind_scope.fetch_full(symbol, name)
         idx = self.completed_index(symbol, interval, end_index)
         if idx < 0:
@@ -1302,7 +1296,7 @@ class TimeframeScope:
         end_index: int,
     ) -> pd.DataFrame:
         model = _model()
-        interval = normalize_timeframe_interval(interval)
+        interval = normalize_interval(interval)
         idx = self.completed_index(symbol, interval, end_index)
         model_input = self._prepare_full_input(
             symbol, interval, base_model_name
@@ -1318,9 +1312,9 @@ class TimeframeScope:
         base_model_name: str,
         end_index: int,
     ) -> NDArray:
-        interval = normalize_timeframe_interval(interval)
+        interval = normalize_interval(interval)
         model_sym = ModelSymbol(
-            model_timeframe_name(base_model_name, interval), symbol
+            model_interval_name(base_model_name, interval), symbol
         )
         trained_model = self._models.get(model_sym)
         if trained_model is None:
@@ -1407,9 +1401,9 @@ class TimeframeScope:
         base_model_name: str,
     ) -> ModelInput:
         model = _model()
-        interval = normalize_timeframe_interval(interval)
+        interval = normalize_interval(interval)
         model_sym = ModelSymbol(
-            model_timeframe_name(base_model_name, interval), symbol
+            model_interval_name(base_model_name, interval), symbol
         )
         if model_sym in self._sym_inputs:
             return self._sym_inputs[model_sym]
@@ -1445,11 +1439,11 @@ class TimeframeScope:
                 self._lag_series_cache,
                 symbol,
                 np.asarray(
-                    self._timeframe_data.compressed[
+                    self._interval_data.compressed[
                         (symbol, interval)
                     ].bars.dates
                 )[: self.window_len(symbol, interval)],
-                format_timeframe_interval(interval),
+                format_interval(interval),
             )
         if trained_model.input_cols is not None:
             for input_col in trained_model.input_cols:
@@ -1473,13 +1467,13 @@ class TimeframeScope:
         source,
     ) -> ModelInput:
         model = _model()
-        interval = normalize_timeframe_interval(interval)
+        interval = normalize_interval(interval)
         key = (symbol, interval)
-        if key not in self._timeframe_data.compressed:
+        if key not in self._interval_data.compressed:
             raise ValueError(
                 f"Timeframe {interval!r} data not found for {symbol!r}."
             )
-        bars = self._timeframe_data.compressed[key].bars
+        bars = self._interval_data.compressed[key].bars
         # Cap at the window so cross-row user transforms (normalization,
         # ranking, fillna(mean)) cannot read compressed bars from a future
         # walkforward window.
@@ -1498,7 +1492,7 @@ class TimeframeScope:
                 arrays[col] = bars.custom[col][:cap]
         for ind_name in source.indicators:
             arrays[ind_name] = self._ind_scope.fetch_full(
-                symbol, indicator_timeframe_name(ind_name, interval)
+                symbol, indicator_interval_name(ind_name, interval)
             )[:cap]
         columns = tuple(arrays.keys())
         return model.model_input_cls(columns, arrays, dates)

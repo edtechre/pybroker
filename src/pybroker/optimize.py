@@ -327,10 +327,10 @@ from pybroker.scope import (
     slice_symbol_array_store_by_dates,
     symbol_array_store_from_frame,
 )
-from pybroker.timeframe import (
-    model_timeframe_name,
-    parse_indicator_timeframe_name,
-    parse_model_timeframe_name,
+from pybroker.interval import (
+    model_interval_name,
+    parse_indicator_interval_name,
+    parse_model_interval_name,
     symbol_dates_from_frame,
 )
 
@@ -340,7 +340,7 @@ if TYPE_CHECKING:
     from pybroker.context import ExecContext, RotationContext
     from pybroker.slippage import SlippageModel
     from pybroker.strategy import Execution, TestResult, WalkforwardWindow
-    from pybroker.timeframe import TimeframeData, TimeframeInterval
+    from pybroker.interval import IntervalData
 
     class _ExecutionsHost(Protocol):
         _executions: set[Execution]
@@ -357,7 +357,7 @@ if TYPE_CHECKING:
             invariant_indicator_data: dict[IndicatorSymbol, pd.Series],
             window_executions: set[Execution],
             master_store: Any,
-            timeframe_data: Any,
+            interval_data: Any,
             disable_parallel_indicators: bool,
             warmup: Optional[int],
             pretrained_models: Mapping[ModelSymbol, TrainedModel],
@@ -508,7 +508,7 @@ def collect_hyperparams(strategy: _ExecutionsHost) -> dict[str, Hyperparam]:
             specs[hp_name] = scope.get_hyperparam(hp_name)
 
         for model_name in execution.model_names:
-            base_name, _ = parse_model_timeframe_name(model_name)
+            base_name, _ = parse_model_interval_name(model_name)
             source = scope.get_model_source(base_name)
             if _find_hyperparam_names(source._kwargs):
                 raise ValueError(
@@ -542,7 +542,7 @@ def _validate_optimize_models(strategy: _ExecutionsHost) -> None:
     trainable: list[str] = []
     for execution in strategy._executions:
         for model_name in execution.model_names:
-            base_name, _ = parse_model_timeframe_name(model_name)
+            base_name, _ = parse_model_interval_name(model_name)
             source = scope.get_model_source(base_name)
             if _is_trainable_model_source(source):
                 trainable.append(model_name)
@@ -904,7 +904,7 @@ def make_objective(
     invariant_indicator_data: dict[IndicatorSymbol, pd.Series],
     window_executions: set[Execution],
     master_store: Any,
-    timeframe_data: Any,
+    interval_data: Any,
     disable_parallel_indicators: bool,
     warmup: Optional[int],
     pretrained_models: Mapping[ModelSymbol, TrainedModel],
@@ -926,7 +926,7 @@ def make_objective(
             invariant_indicator_data=invariant_indicator_data,
             window_executions=window_executions,
             master_store=master_store,
-            timeframe_data=timeframe_data,
+            interval_data=interval_data,
             disable_parallel_indicators=disable_parallel_indicators,
             warmup=warmup,
             pretrained_models=pretrained_models,
@@ -956,10 +956,8 @@ class OptimizeMixin:
         _worst_rank_held: Any
         _rotation_sizer: Optional[Callable[[RotationContext], None]]
         _slippage_model: Optional[SlippageModel]
-        _timeframes: frozenset[TimeframeInterval]
         _start_date: datetime
         _end_date: datetime
-        _base_bar_seconds: Optional[float]
         _indicator_memo_max: int
 
         def _fractional_shares_enabled(self) -> bool: ...
@@ -994,15 +992,11 @@ class OptimizeMixin:
 
         def _filter_dates(self, *args: Any, **kwargs: Any) -> pd.DataFrame: ...
 
-        def _validate_timeframes_for_base(
-            self, *args: Any, **kwargs: Any
-        ) -> None: ...
-
         def _has_symbol_selector(self) -> bool: ...
 
-        def _compress_timeframes(
+        def _build_interval_data(
             self, *args: Any, **kwargs: Any
-        ) -> TimeframeData: ...
+        ) -> IntervalData: ...
 
         def walkforward_split(
             self, *args: Any, **kwargs: Any
@@ -1026,7 +1020,7 @@ class OptimizeMixin:
         window_executions: set[Execution],
         indicator_data: Mapping[IndicatorSymbol, pd.Series],
         master_store: Any,
-        timeframe_data: Any,
+        interval_data: Any,
         tf_seconds: int,
         between_time: Optional[tuple[str, str]],
         days: Optional[Any],
@@ -1065,7 +1059,7 @@ class OptimizeMixin:
                 if sym not in _static_symbols(execution.symbols):
                     continue
                 for model_name in execution.model_names:
-                    base_name, token = parse_model_timeframe_name(model_name)
+                    base_name, token = parse_model_interval_name(model_name)
                     if token is not None:
                         model_syms.add(ModelSymbol(model_name, sym))
                         continue
@@ -1075,10 +1069,10 @@ class OptimizeMixin:
                     ):
                         # Pretrained models stay bound to the base timeframe.
                         continue
-                    for tf in self._timeframes:
+                    for tf in execution.intervals:
                         model_syms.add(
                             ModelSymbol(
-                                model_timeframe_name(base_name, tf), sym
+                                model_interval_name(base_name, tf), sym
                             )
                         )
         pooled_model_groups: dict[tuple[str, int], frozenset[str]] = {}
@@ -1091,15 +1085,15 @@ class OptimizeMixin:
             if not exec_syms:
                 continue
             for model_name in execution.model_names:
-                base_name, token = parse_model_timeframe_name(model_name)
+                base_name, token = parse_model_interval_name(model_name)
                 if token is not None:
                     continue
                 source = StaticScope.instance().get_model_source(base_name)
                 if _is_trainable_model_source(source) and source.pooled:
                     pooled_model_groups[(model_name, execution.id)] = exec_syms
-                    for tf in self._timeframes:
+                    for tf in execution.intervals:
                         pooled_model_groups[
-                            (model_timeframe_name(base_name, tf), execution.id)
+                            (model_interval_name(base_name, tf), execution.id)
                         ] = exec_syms
         train_dates = get_unique_sorted_dates(train_data[date_col])
         return self.train_models(
@@ -1115,7 +1109,7 @@ class OptimizeMixin:
                 days=days,
             ),
             pooled_model_groups=pooled_model_groups,
-            timeframe_data=timeframe_data,
+            interval_data=interval_data,
             history_store=history_store,
             train_store=train_store,
             test_store=test_store,
@@ -1129,7 +1123,7 @@ class OptimizeMixin:
         invariant_indicator_data: dict[IndicatorSymbol, pd.Series],
         window_executions: set[Execution],
         master_store: Any,
-        timeframe_data: Any,
+        interval_data: Any,
         disable_parallel_indicators: bool,
         warmup: Optional[int],
         pretrained_models: Mapping[ModelSymbol, TrainedModel],
@@ -1139,7 +1133,7 @@ class OptimizeMixin:
             df=train_data,
             cache_date_fields=None,
             disable_parallel_indicators=disable_parallel_indicators,
-            timeframe_data=timeframe_data,
+            interval_data=interval_data,
             executions=window_executions,
             symbol_store=master_store,
             hyperparams=run_hyperparams,
@@ -1185,10 +1179,9 @@ class OptimizeMixin:
             sessions=sessions,
             models=pretrained_models,
             indicator_data=indicator_data,
-            timeframe_data=timeframe_data.slice_for_test(
+            interval_data=interval_data.slice_for_test(
                 symbol_dates_from_frame(train_data)
             ),
-            declared_timeframes=self._timeframes,
             test_data=train_data,
             portfolio=portfolio,
             exit_dates={},
@@ -1226,7 +1219,7 @@ class OptimizeMixin:
         df: pd.DataFrame,
         cache_date_fields: CacheDateFields,
         disable_parallel_indicators: bool,
-        timeframe_data: Any,
+        interval_data: Any,
         master_store: Any,
         executions: set[Execution],
     ) -> dict[IndicatorSymbol, pd.Series]:
@@ -1234,7 +1227,7 @@ class OptimizeMixin:
         invariant_names: set[str] = set()
         for execution in executions:
             for ind_name in execution.indicator_names:
-                base, _ = parse_indicator_timeframe_name(ind_name)
+                base, _ = parse_indicator_interval_name(ind_name)
                 ind = scope.get_indicator(base)
                 if not ind.hyperparam_names:
                     invariant_names.add(ind_name)
@@ -1252,7 +1245,7 @@ class OptimizeMixin:
             indicator_syms=ind_syms,
             cache_date_fields=cache_date_fields,
             disable_parallel_indicators=disable_parallel_indicators,
-            timeframe_data=timeframe_data,
+            interval_data=interval_data,
             symbol_store=master_store,
             hyperparams=None,
         )
@@ -1329,23 +1322,9 @@ class OptimizeMixin:
                 between_time=between_time,
                 days=day_ids,
             )
-            self._validate_timeframes_for_base(df, timeframe)
+            interval_data = self._build_interval_data(df, timeframe)
             has_selector = self._has_symbol_selector()
-            timeframe_data = self._compress_timeframes(
-                df,
-                set(df[DataCol.SYMBOL.value].unique())
-                if has_selector
-                else {
-                    sym
-                    for execution in self._executions
-                    for sym in _static_symbols(execution.symbols)
-                },
-            )
-            tf_seconds = (
-                int(self._base_bar_seconds)
-                if self._base_bar_seconds is not None
-                else to_seconds(timeframe)
-            )
+            tf_seconds = to_seconds(timeframe)
             cache_date_fields = CacheDateFields(
                 start_date=start_dt,
                 end_date=end_dt,
@@ -1384,7 +1363,7 @@ class OptimizeMixin:
                     lookahead=lookahead,
                     df=df,
                     master_store=master_store,
-                    timeframe_data=timeframe_data,
+                    interval_data=interval_data,
                     cache_date_fields=cache_date_fields,
                     disable_parallel_indicators=disable_parallel_indicators,
                     warmup=warmup,
@@ -1419,7 +1398,7 @@ class OptimizeMixin:
                 df=df,
                 cache_date_fields=cache_date_fields,
                 disable_parallel_indicators=disable_parallel_indicators,
-                timeframe_data=timeframe_data,
+                interval_data=interval_data,
                 master_store=master_store,
                 executions=window_executions,
             )
@@ -1428,7 +1407,7 @@ class OptimizeMixin:
                 df=df,
                 cache_date_fields=cache_date_fields,
                 disable_parallel_indicators=disable_parallel_indicators,
-                timeframe_data=timeframe_data,
+                interval_data=interval_data,
                 executions=window_executions,
                 symbol_store=master_store,
                 hyperparams=default_run_hp,
@@ -1440,7 +1419,7 @@ class OptimizeMixin:
                 window_executions=window_executions,
                 indicator_data={**invariant_data, **load_indicators},
                 master_store=master_store,
-                timeframe_data=timeframe_data,
+                interval_data=interval_data,
                 tf_seconds=tf_seconds,
                 between_time=between_time,
                 days=day_ids,
@@ -1455,7 +1434,7 @@ class OptimizeMixin:
                 invariant_indicator_data=invariant_data,
                 window_executions=window_executions,
                 master_store=master_store,
-                timeframe_data=timeframe_data,
+                interval_data=interval_data,
                 disable_parallel_indicators=disable_parallel_indicators,
                 warmup=warmup,
                 pretrained_models=pretrained_models,
@@ -1477,7 +1456,7 @@ class OptimizeMixin:
                 invariant_indicator_data=invariant_data,
                 window_executions=window_executions,
                 master_store=master_store,
-                timeframe_data=timeframe_data,
+                interval_data=interval_data,
                 cache_date_fields=cache_date_fields,
                 disable_parallel_indicators=disable_parallel_indicators,
                 warmup=warmup,
@@ -1504,7 +1483,7 @@ class OptimizeMixin:
         invariant_indicator_data: dict[IndicatorSymbol, pd.Series],
         window_executions: set[Execution],
         master_store: Any,
-        timeframe_data: Any,
+        interval_data: Any,
         cache_date_fields: CacheDateFields,
         disable_parallel_indicators: bool,
         warmup: Optional[int],
@@ -1521,7 +1500,7 @@ class OptimizeMixin:
             df=df,
             cache_date_fields=cache_date_fields,
             disable_parallel_indicators=disable_parallel_indicators,
-            timeframe_data=timeframe_data,
+            interval_data=interval_data,
             executions=window_executions,
             symbol_store=master_store,
             hyperparams=run_hyperparams,
@@ -1564,10 +1543,9 @@ class OptimizeMixin:
             sessions=sessions,
             models=pretrained_models,
             indicator_data=indicator_data,
-            timeframe_data=timeframe_data.slice_for_test(
+            interval_data=interval_data.slice_for_test(
                 symbol_dates_from_frame(test_data)
             ),
-            declared_timeframes=self._timeframes,
             test_data=test_data,
             portfolio=portfolio,
             exit_dates={},
@@ -1603,7 +1581,7 @@ class OptimizeMixin:
         lookahead: int,
         df: pd.DataFrame,
         master_store: Any,
-        timeframe_data: Any,
+        interval_data: Any,
         cache_date_fields: CacheDateFields,
         disable_parallel_indicators: bool,
         warmup: Optional[int],
@@ -1652,7 +1630,7 @@ class OptimizeMixin:
                 df=df,
                 cache_date_fields=cache_date_fields,
                 disable_parallel_indicators=disable_parallel_indicators,
-                timeframe_data=timeframe_data,
+                interval_data=interval_data,
                 master_store=master_store,
                 executions=window_executions,
             )
@@ -1661,7 +1639,7 @@ class OptimizeMixin:
                 df=df,
                 cache_date_fields=cache_date_fields,
                 disable_parallel_indicators=disable_parallel_indicators,
-                timeframe_data=timeframe_data,
+                interval_data=interval_data,
                 executions=window_executions,
                 symbol_store=master_store,
                 hyperparams=default_run_hp,
@@ -1673,7 +1651,7 @@ class OptimizeMixin:
                 window_executions=window_executions,
                 indicator_data={**invariant_data, **load_indicators},
                 master_store=master_store,
-                timeframe_data=timeframe_data,
+                interval_data=interval_data,
                 tf_seconds=cache_date_fields.tf_seconds,
                 between_time=cache_date_fields.between_time,
                 days=cache_date_fields.days,
@@ -1688,7 +1666,7 @@ class OptimizeMixin:
                 invariant_indicator_data=invariant_data,
                 window_executions=window_executions,
                 master_store=master_store,
-                timeframe_data=timeframe_data,
+                interval_data=interval_data,
                 disable_parallel_indicators=disable_parallel_indicators,
                 warmup=warmup,
                 pretrained_models=pretrained_models,
@@ -1707,7 +1685,7 @@ class OptimizeMixin:
                 invariant_indicator_data=invariant_data,
                 window_executions=window_executions,
                 master_store=master_store,
-                timeframe_data=timeframe_data,
+                interval_data=interval_data,
                 disable_parallel_indicators=disable_parallel_indicators,
                 warmup=warmup,
                 pretrained_models=pretrained_models,
@@ -1719,7 +1697,7 @@ class OptimizeMixin:
                 invariant_indicator_data=invariant_data,
                 window_executions=window_executions,
                 master_store=master_store,
-                timeframe_data=timeframe_data,
+                interval_data=interval_data,
                 cache_date_fields=cache_date_fields,
                 disable_parallel_indicators=disable_parallel_indicators,
                 warmup=warmup,
@@ -1780,7 +1758,7 @@ class OptimizeMixin:
                 df=df,
                 cache_date_fields=cache_date_fields,
                 disable_parallel_indicators=disable_parallel_indicators,
-                timeframe_data=timeframe_data,
+                interval_data=interval_data,
                 master_store=master_store,
                 executions=window_executions,
             )
@@ -1788,7 +1766,7 @@ class OptimizeMixin:
                 df=df,
                 cache_date_fields=cache_date_fields,
                 disable_parallel_indicators=disable_parallel_indicators,
-                timeframe_data=timeframe_data,
+                interval_data=interval_data,
                 executions=window_executions,
                 symbol_store=master_store,
                 hyperparams=wr.params,
@@ -1801,7 +1779,7 @@ class OptimizeMixin:
                 window_executions=window_executions,
                 indicator_data=indicator_data,
                 master_store=master_store,
-                timeframe_data=timeframe_data,
+                interval_data=interval_data,
                 tf_seconds=cache_date_fields.tf_seconds,
                 between_time=cache_date_fields.between_time,
                 days=cache_date_fields.days,
@@ -1844,10 +1822,9 @@ class OptimizeMixin:
                 sessions=sessions,
                 models=pretrained_models,
                 indicator_data=indicator_data,
-                timeframe_data=timeframe_data.slice_for_test(
+                interval_data=interval_data.slice_for_test(
                     symbol_dates_from_frame(test_data)
                 ),
-                declared_timeframes=self._timeframes,
                 test_data=test_data,
                 portfolio=portfolio,
                 exit_dates={},

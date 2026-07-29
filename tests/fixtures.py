@@ -33,9 +33,9 @@ from pybroker.scope import (
     PendingOrderScope,
     PredictionScope,
     StaticScope,
-    TimeframeScope,
+    IntervalScope,
 )
-from pybroker.timeframe import TimeframeData
+from pybroker.interval import IntervalData
 from pybroker.vect import highv, lowv, sumv
 from typing import NamedTuple
 
@@ -232,13 +232,13 @@ def ind_scope(ind_data, dates):
 
 
 @pytest.fixture()
-def declared_timeframes():
+def declared_intervals():
     return frozenset()
 
 
 @pytest.fixture()
-def timeframe_scope(ind_scope, declared_timeframes):
-    return TimeframeScope(TimeframeData(), ind_scope, declared_timeframes)
+def interval_scope(ind_scope):
+    return IntervalScope(IntervalData(), ind_scope)
 
 
 @pytest.fixture()

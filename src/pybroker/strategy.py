@@ -68,27 +68,26 @@ from pybroker.scope import (
     PriceScope,
     StaticScope,
     SymbolArrayStore,
-    TimeframeScope,
+    IntervalScope,
     column_scope_from_frame,
     get_signals,
     slice_symbol_array_store_by_dates,
     sym_exec_dates_from_store,
     symbol_array_store_from_frame,
 )
-from pybroker.timeframe import (
-    TimeframeData,
+from pybroker.interval import (
+    IntervalData,
     TimeframeInterval,
     _iter_symbol_date_groups,
-    compress_timeframes_from_frame,
-    indicator_timeframe_name,
-    model_timeframe_name,
-    normalize_timeframe_interval,
-    parse_indicator_timeframe_name,
-    parse_model_timeframe_name,
-    resolve_base_bar_seconds,
+    base_timeframe_to_seconds,
+    compress_intervals_from_frame,
+    indicator_interval_name,
+    model_interval_name,
+    normalize_interval,
+    parse_indicator_interval_name,
+    parse_model_interval_name,
     symbol_dates_from_frame,
-    validate_base_timeframe_data,
-    validate_timeframe_interval,
+    validate_interval,
 )
 from pybroker.slippage import (
     FillSlippageContext,
@@ -383,6 +382,8 @@ class Execution(NamedTuple):
             execution of ``fn``.
         indicator_names: Names of :class:`pybroker.indicator.Indicator`\ s
             used for execution of ``fn``.
+        intervals: Compression intervals available to ``fn`` through
+            :meth:`pybroker.context.ExecContext.interval`.
         args: Additional positional arguments for ``fn``.
         kwargs: Additional keyword arguments for ``fn``.
     """
@@ -392,6 +393,9 @@ class Execution(NamedTuple):
     fn: Optional[Callable[[ExecContext], None]]
     model_names: frozenset[str]
     indicator_names: frozenset[str]
+    # Construct with keyword arguments only: inserting a field here shifts the
+    # positional index of every field below it.
+    intervals: frozenset[TimeframeInterval] = frozenset()
     hyperparam_names: frozenset[str] = frozenset()
     args: tuple[Any, ...] = tuple()
     kwargs: tuple[tuple[str, Any], ...] = tuple()
@@ -420,6 +424,45 @@ def _static_symbols(
     if _is_symbol_selector(symbols):
         return frozenset()
     return cast(frozenset[str], symbols)
+
+
+def _all_intervals(
+    executions: Iterable[Execution],
+) -> frozenset[TimeframeInterval]:
+    """Returns the union of intervals declared across ``executions``."""
+    intervals: set[TimeframeInterval] = set()
+    for execution in executions:
+        intervals.update(execution.intervals)
+    return frozenset(intervals)
+
+
+def _symbol_intervals(
+    executions: Iterable[Execution],
+    df: pd.DataFrame,
+) -> dict[str, frozenset[TimeframeInterval]]:
+    r"""Maps each symbol to the intervals that must be compressed for it.
+
+    A :class:`pybroker.common.SymbolSelector` execution does not resolve its
+    symbols until a walkforward window is split, but compression runs once up
+    front over the whole frame. A selector may return any symbol the frame
+    holds, so its intervals are attached to every symbol in ``df``: narrowing
+    would leave a later window without compressed data for a symbol the
+    selector picked.
+    """
+    result: dict[str, set[TimeframeInterval]] = defaultdict(set)
+    selector_intervals: set[TimeframeInterval] = set()
+    for execution in executions:
+        if not execution.intervals:
+            continue
+        if _is_symbol_selector(execution.symbols):
+            selector_intervals.update(execution.intervals)
+        else:
+            for sym in _static_symbols(execution.symbols):
+                result[sym].update(execution.intervals)
+    if selector_intervals:
+        for sym in df[DataCol.SYMBOL.value].unique():
+            result[str(sym)].update(selector_intervals)
+    return {sym: frozenset(intervals) for sym, intervals in result.items()}
 
 
 def _resolve_execution_symbols(
@@ -509,8 +552,7 @@ class BacktestMixin:
         enable_fractional_shares: bool = False,
         round_fill_price: bool = True,
         warmup: Optional[int] = None,
-        timeframe_data: TimeframeData = TimeframeData(),
-        declared_timeframes: frozenset[TimeframeInterval] = frozenset(),
+        interval_data: IntervalData = IntervalData(),
         history_col_scope: Optional[ColumnScope] = None,
         test_col_scope: Optional[ColumnScope] = None,
         run_hyperparams: Optional[dict[str, Any]] = None,
@@ -573,10 +615,9 @@ class BacktestMixin:
             history_col_scope,
             test_dates,
         )
-        timeframe_scope = TimeframeScope(
-            timeframe_data,
+        interval_scope = IntervalScope(
+            interval_data,
             ind_scope,
-            declared_timeframes,
             models,
             test_dates,
         )
@@ -603,8 +644,8 @@ class BacktestMixin:
                     portfolio=portfolio,
                     col_scope=col_scope,
                     ind_scope=ind_scope,
-                    timeframe_scope=timeframe_scope,
-                    declared_timeframes=declared_timeframes,
+                    interval_scope=interval_scope,
+                    declared_intervals=exec.intervals,
                     input_scope=input_scope,
                     pred_scope=pred_scope,
                     pending_order_scope=pending_order_scope,
@@ -619,6 +660,10 @@ class BacktestMixin:
                 exec_kwargs[sym] = dict(exec.kwargs)
                 if exec.fn is not None:
                     exec_fns[sym] = exec.fn
+                # Executions hold disjoint symbols, so the first match owns
+                # this symbol. Stopping here keeps a latent overlap from
+                # silently swapping the context's declared intervals.
+                break
         sym_exec_dates = {
             sym: dates
             for sym, dates in sym_exec_dates_from_store(
@@ -1573,9 +1618,6 @@ class Strategy(
             None
         )
         self._slippage_model: Optional[SlippageModel] = None
-        self._timeframes: frozenset[TimeframeInterval] = frozenset()
-        self._base_timeframe: Optional[str] = None
-        self._base_bar_seconds: Optional[float] = None
         self._scope = StaticScope.instance()
         self._logger = self._scope.logger
 
@@ -1767,20 +1809,66 @@ class Strategy(
         """Sets :class:`pybroker.slippage.SlippageModel`."""
         self._slippage_model = slippage_model
 
-    def enable_timeframes(
+    def _supports_interval_training(self, base_model_name: str) -> bool:
+        """Returns whether a model source can be trained per interval.
+
+        Pretrained models (:class:`pybroker.model.ModelLoader`) are loaded
+        rather than trained, so they stay bound to the base timeframe and are
+        accessed with :meth:`pybroker.context.ExecContext.preds` instead of
+        ``ctx.interval(interval).preds()``.
+        """
+        return isinstance(
+            self._scope.get_model_source(base_model_name), ModelTrainer
+        )
+
+    def _build_interval_data(
+        self, df: pd.DataFrame, timeframe: str
+    ) -> IntervalData:
+        r"""Validates and compresses the intervals declared by executions.
+
+        Compression narrows to the ``(symbol, interval)`` pairs some execution
+        actually declared, so an execution that asks for no intervals costs
+        nothing and one that asks for ``'weekly'`` does not force ``'weekly'``
+        onto every other symbol in the frame.
+        """
+        intervals = _all_intervals(self._executions)
+        if not intervals:
+            return IntervalData()
+        if not timeframe.strip():
+            raise ValueError(
+                "add_execution(intervals=...) needs the base bar spacing of "
+                "the data: pass timeframe= to backtest() or walkforward() "
+                "(e.g. walkforward(windows=1, timeframe='1d'))."
+            )
+        base_bar_seconds = base_timeframe_to_seconds(timeframe)
+        # Validate the union rather than the per-symbol map so an interval
+        # declared by an execution whose symbols have no rows still raises.
+        for interval in intervals:
+            validate_interval(interval, base_bar_seconds)
+        return compress_intervals_from_frame(
+            df,
+            _symbol_intervals(self._executions, df),
+            sorted(self._scope.custom_data_cols),
+            base_bar_seconds,
+        )
+
+    def add_execution(
         self,
-        *timeframes: TimeframeInterval,
-        base_timeframe: Optional[str] = None,
-    ) -> None:
-        r"""Enables compression timeframes for multi-timeframe strategies.
+        fn: Optional[Callable[Concatenate[ExecContext, P], None]],
+        symbols: Union[str, Iterable[str], SymbolSelector],
+        models: Optional[Union[ModelSource, Iterable[ModelSource]]] = None,
+        indicators: Optional[Union[Indicator, Iterable[Indicator]]] = None,
+        hyperparams: Optional[Iterable[Hyperparam]] = None,
+        intervals: Optional[
+            Union[TimeframeInterval, Iterable[TimeframeInterval]]
+        ] = None,
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ):
+        r"""Adds an execution to backtest.
 
-        Each timeframe must be strictly coarser than the base bar feed; invalid
-        combinations raise ``ValueError`` when :meth:`.backtest` or
-        :meth:`.walkforward` runs. Declared timeframes can be accessed in
-        execution functions with
-        :meth:`pybroker.context.ExecContext.timeframe`.
-
-        A :class:`~pybroker.TimeframeInterval` is one of the following:
+        A :class:`~pybroker.TimeframeInterval` passed to ``intervals`` is one
+        of the following:
 
         - **Every-n-bars** (``int``): Compress every ``n`` base bars into one
           bar, where ``n > 1``. On 1-minute data, ``5`` yields 5-bar bins
@@ -1796,97 +1884,13 @@ class Strategy(
         For example, to use weekly bars, 5-bar bins, and 1-hour duration bars
         on a 1-minute feed::
 
-            strategy.enable_timeframes("weekly", 5, "1h", base_timeframe="1m")
             strategy.add_execution(
                 fn,
                 "SPY",
                 indicators=[sma],
+                intervals=["weekly", 5, "1h"],
             )
-
-        Args:
-            *timeframes: One or more compression timeframes to make available
-                for the strategy.
-            base_timeframe: Optional base bar spacing (e.g. ``"1m"``, ``"1d"``).
-                Required at backtest time unless ``timeframe`` is passed to
-                :meth:`.backtest` or :meth:`.walkforward`.
-        """
-        if not timeframes:
-            raise ValueError(
-                "enable_timeframes() requires at least one timeframe."
-            )
-        normalized = []
-        seen = set()
-        for interval in timeframes:
-            norm = normalize_timeframe_interval(interval)
-            if norm in seen:
-                raise ValueError(
-                    f"Duplicate timeframe interval: {interval!r}."
-                )
-            seen.add(norm)
-            normalized.append(norm)
-        self._timeframes = frozenset(normalized)
-        self._base_timeframe = (
-            base_timeframe.strip() if base_timeframe else None
-        )
-        if self._base_timeframe:
-            base_seconds = resolve_base_bar_seconds(self._base_timeframe, "")
-            for interval in self._timeframes:
-                validate_timeframe_interval(interval, base_seconds)
-
-    def _supports_timeframe_training(self, base_model_name: str) -> bool:
-        """Returns whether a model source can be trained per timeframe.
-
-        Pretrained models (:class:`pybroker.model.ModelLoader`) are loaded
-        rather than trained, so they stay bound to the base timeframe and are
-        accessed with :meth:`pybroker.context.ExecContext.preds` instead of
-        ``ctx.timeframe(interval).preds()``.
-        """
-        return isinstance(
-            self._scope.get_model_source(base_model_name), ModelTrainer
-        )
-
-    def _validate_timeframes_for_base(
-        self, df: pd.DataFrame, timeframe: str
-    ) -> None:
-        if not self._timeframes:
-            self._base_bar_seconds = None
-            return
-        base_bar_seconds = resolve_base_bar_seconds(
-            self._base_timeframe, timeframe
-        )
-        validate_base_timeframe_data(df, base_bar_seconds)
-        for interval in self._timeframes:
-            validate_timeframe_interval(interval, base_bar_seconds)
-        self._base_bar_seconds = base_bar_seconds
-
-    def _compress_timeframes(
-        self, df: pd.DataFrame, symbols: Iterable[str]
-    ) -> TimeframeData:
-        if not self._timeframes:
-            return TimeframeData()
-        if self._base_bar_seconds is None:
-            raise ValueError(
-                "Base timeframe must be resolved before compressing timeframes."
-            )
-        return compress_timeframes_from_frame(
-            df,
-            symbols,
-            self._timeframes,
-            sorted(self._scope.custom_data_cols),
-            self._base_bar_seconds,
-        )
-
-    def add_execution(
-        self,
-        fn: Optional[Callable[Concatenate[ExecContext, P], None]],
-        symbols: Union[str, Iterable[str], SymbolSelector],
-        models: Optional[Union[ModelSource, Iterable[ModelSource]]] = None,
-        indicators: Optional[Union[Indicator, Iterable[Indicator]]] = None,
-        hyperparams: Optional[Iterable[Hyperparam]] = None,
-        *args: P.args,
-        **kwargs: P.kwargs,
-    ):
-        r"""Adds an execution to backtest.
+            strategy.walkforward(windows=1, timeframe="1m")
 
         Args:
             fn: :class:`Callable` invoked on every bar of data during the
@@ -1901,6 +1905,19 @@ class Strategy(
             indicators: :class:`Iterable` of
                 :class:`pybroker.indicator.Indicator`\ s to compute for
                 backtesting.
+            hyperparams: :class:`Iterable` of
+                :class:`pybroker.scope.Hyperparam`\ s that ``fn`` can read with
+                :meth:`pybroker.context.ExecContext.hyperparam`.
+            intervals: One or more compression intervals made available to
+                ``fn`` through :meth:`pybroker.context.ExecContext.interval`.
+                Each must be strictly coarser than the base bar spacing passed
+                as ``timeframe`` to :meth:`.backtest` or :meth:`.walkforward`;
+                invalid combinations raise ``ValueError`` when the backtest
+                runs. Intervals are scoped to this execution, so another
+                execution's :class:`pybroker.context.ExecContext` cannot read
+                them — including inside a :meth:`.set_before_exec` or
+                :meth:`.set_after_exec` callback, which receives contexts from
+                every execution.
             args: Positional arguments passed to ``fn``.
             kwargs: Keyword arguments passed to ``fn``.
         """
@@ -1979,6 +1996,24 @@ class Strategy(
                         "Hyperparam."
                     )
                 hyperparam_name_set.add(hp.name)
+        if intervals is None:
+            interval_set: frozenset[TimeframeInterval] = frozenset()
+        else:
+            # str is Iterable, so 'weekly' must not split into characters.
+            declared = (
+                (intervals,)
+                if isinstance(intervals, (int, str))
+                else tuple(intervals)
+            )
+            if not declared:
+                raise ValueError("intervals cannot be empty.")
+            seen_intervals: set[TimeframeInterval] = set()
+            for interval in declared:
+                norm = normalize_interval(interval)
+                if norm in seen_intervals:
+                    raise ValueError(f"Duplicate interval: {interval!r}.")
+                seen_intervals.add(norm)
+            interval_set = frozenset(seen_intervals)
         self._execution_id += 1
         self._executions.add(
             Execution(
@@ -1987,6 +2022,7 @@ class Strategy(
                 fn=fn,
                 model_names=model_names,
                 indicator_names=ind_names,
+                intervals=interval_set,
                 hyperparam_names=frozenset(hyperparam_name_set),
                 args=args,
                 kwargs=tuple(sorted(kwargs.items())),
@@ -2060,7 +2096,10 @@ class Strategy(
                 - ``"d"``/``"day"``: days
                 - ``"w"``/``"week"``: weeks
 
-                An example timeframe string is ``1h 30m``.
+                An example timeframe string is ``1h 30m``. Required when any
+                execution declares ``intervals``, since it defines the base
+                bar spacing that compression intervals are validated and
+                aligned against.
             between_time: ``tuple[str, str]`` of times of day e.g.
                 ('9:30', '16:00') used to filter the backtesting data
                 (inclusive).
@@ -2166,7 +2205,10 @@ class Strategy(
                 - ``"d"``/``"day"``: days
                 - ``"w"``/``"week"``: weeks
 
-                An example timeframe string is ``1h 30m``.
+                An example timeframe string is ``1h 30m``. Required when any
+                execution declares ``intervals``, since it defines the base
+                bar spacing that compression intervals are validated and
+                aligned against.
             between_time: ``tuple[str, str]`` of times of day e.g.
                 ('9:30', '16:00') used to filter the backtesting data
                 (inclusive).
@@ -2251,22 +2293,9 @@ class Strategy(
                 between_time=between_time,
                 days=day_ids,
             )
-            self._validate_timeframes_for_base(df, timeframe)
+            interval_data = self._build_interval_data(df, timeframe)
             has_selector = self._has_symbol_selector()
-            if has_selector:
-                unique_syms = set(df[DataCol.SYMBOL.value].unique())
-            else:
-                unique_syms = {
-                    sym
-                    for execution in self._executions
-                    for sym in _static_symbols(execution.symbols)
-                }
-            timeframe_data = self._compress_timeframes(df, unique_syms)
-            tf_seconds = (
-                int(self._base_bar_seconds)
-                if self._base_bar_seconds is not None
-                else to_seconds(timeframe)
-            )
+            tf_seconds = to_seconds(timeframe)
             cache_date_fields = CacheDateFields(
                 start_date=start_dt,
                 end_date=end_dt,
@@ -2288,7 +2317,7 @@ class Strategy(
                     df=df,
                     cache_date_fields=cache_date_fields,
                     disable_parallel_indicators=disable_parallel_indicators,
-                    timeframe_data=timeframe_data,
+                    interval_data=interval_data,
                     symbol_store=master_store,
                     hyperparams=run_hyperparams or None,
                 )
@@ -2321,8 +2350,7 @@ class Strategy(
                 master_store=master_store,
                 master_dates_arr=master_dates_arr,
                 indicator_data=indicator_data,
-                timeframe_data=timeframe_data,
-                declared_timeframes=self._timeframes,
+                interval_data=interval_data,
                 tf_seconds=tf_seconds,
                 between_time=between_time,
                 days=day_ids,
@@ -2417,8 +2445,7 @@ class Strategy(
         master_store: SymbolArrayStore,
         master_dates_arr: NDArray[np.datetime64],
         indicator_data: dict[IndicatorSymbol, pd.Series],
-        timeframe_data: TimeframeData,
-        declared_timeframes: frozenset[TimeframeInterval],
+        interval_data: IntervalData,
         tf_seconds: int,
         between_time: Optional[tuple[str, str]],
         days: Optional[tuple[int]],
@@ -2489,7 +2516,7 @@ class Strategy(
                     df=df,
                     cache_date_fields=global_cache_date_fields,
                     disable_parallel_indicators=disable_parallel_indicators,
-                    timeframe_data=timeframe_data,
+                    interval_data=interval_data,
                     executions=window_executions,
                     symbol_store=master_store,
                     hyperparams=run_hyperparams,
@@ -2543,21 +2570,19 @@ class Strategy(
                         if sym not in _static_symbols(execution.symbols):
                             continue
                         for model_name in execution.model_names:
-                            base_name, token = parse_model_timeframe_name(
+                            base_name, token = parse_model_interval_name(
                                 model_name
                             )
                             if token is not None:
                                 model_syms.add(ModelSymbol(model_name, sym))
                                 continue
                             model_syms.add(ModelSymbol(model_name, sym))
-                            if not self._supports_timeframe_training(
-                                base_name
-                            ):
+                            if not self._supports_interval_training(base_name):
                                 continue
-                            for tf in self._timeframes:
+                            for tf in execution.intervals:
                                 model_syms.add(
                                     ModelSymbol(
-                                        model_timeframe_name(base_name, tf),
+                                        model_interval_name(base_name, tf),
                                         sym,
                                     )
                                 )
@@ -2571,7 +2596,7 @@ class Strategy(
                     if not exec_syms:
                         continue
                     for model_name in execution.model_names:
-                        base_name, token = parse_model_timeframe_name(
+                        base_name, token = parse_model_interval_name(
                             model_name
                         )
                         if token is not None:
@@ -2581,10 +2606,10 @@ class Strategy(
                             pooled_model_groups[(model_name, execution.id)] = (
                                 exec_syms
                             )
-                            for tf in self._timeframes:
+                            for tf in execution.intervals:
                                 pooled_model_groups[
                                     (
-                                        model_timeframe_name(base_name, tf),
+                                        model_interval_name(base_name, tf),
                                         execution.id,
                                     )
                                 ] = exec_syms
@@ -2603,7 +2628,7 @@ class Strategy(
                     ),
                     enable_parallel_models=enable_parallel_models,
                     pooled_model_groups=pooled_model_groups,
-                    timeframe_data=timeframe_data,
+                    interval_data=interval_data,
                     history_store=history_store,
                     train_store=train_store,
                     test_store=test_store,
@@ -2622,10 +2647,9 @@ class Strategy(
                 sessions=sessions,
                 models=models,
                 indicator_data=indicator_data,
-                timeframe_data=timeframe_data.slice_for_test(
+                interval_data=interval_data.slice_for_test(
                     symbol_dates_from_frame(test_data)
                 ),
-                declared_timeframes=declared_timeframes,
                 test_data=test_data,
                 portfolio=portfolio,
                 exit_dates=exit_dates,
@@ -2688,7 +2712,7 @@ class Strategy(
         df: pd.DataFrame,
         cache_date_fields: CacheDateFields,
         disable_parallel_indicators: bool,
-        timeframe_data: Optional[TimeframeData] = None,
+        interval_data: Optional[IntervalData] = None,
         executions: Optional[set[Execution]] = None,
         symbol_store: Optional[SymbolArrayStore] = None,
         hyperparams: Optional[dict[str, Any]] = None,
@@ -2698,35 +2722,35 @@ class Strategy(
         for execution in exec_set:
             for sym in _static_symbols(execution.symbols):
                 for model_name in execution.model_names:
-                    base_name, token = parse_model_timeframe_name(model_name)
+                    base_name, token = parse_model_interval_name(model_name)
                     ind_names = self._scope.get_indicator_names(base_name)
                     for ind_name in ind_names:
                         indicator_syms.add(IndicatorSymbol(ind_name, sym))
                         if token is not None:
                             indicator_syms.add(
                                 IndicatorSymbol(
-                                    indicator_timeframe_name(ind_name, token),
+                                    indicator_interval_name(ind_name, token),
                                     sym,
                                 )
                             )
-                        elif self._timeframes and (
-                            self._supports_timeframe_training(base_name)
+                        elif execution.intervals and (
+                            self._supports_interval_training(base_name)
                         ):
-                            for tf in self._timeframes:
+                            for tf in execution.intervals:
                                 indicator_syms.add(
                                     IndicatorSymbol(
-                                        indicator_timeframe_name(ind_name, tf),
+                                        indicator_interval_name(ind_name, tf),
                                         sym,
                                     )
                                 )
                 for ind_name in execution.indicator_names:
-                    base_name, token = parse_indicator_timeframe_name(ind_name)
+                    base_name, token = parse_indicator_interval_name(ind_name)
                     indicator_syms.add(IndicatorSymbol(ind_name, sym))
-                    if token is None and self._timeframes:
-                        for tf in self._timeframes:
+                    if token is None and execution.intervals:
+                        for tf in execution.intervals:
                             indicator_syms.add(
                                 IndicatorSymbol(
-                                    indicator_timeframe_name(base_name, tf),
+                                    indicator_interval_name(base_name, tf),
                                     sym,
                                 )
                             )
@@ -2735,7 +2759,7 @@ class Strategy(
             indicator_syms=indicator_syms,
             cache_date_fields=cache_date_fields,
             disable_parallel_indicators=disable_parallel_indicators,
-            timeframe_data=timeframe_data,
+            interval_data=interval_data,
             symbol_store=symbol_store,
             hyperparams=hyperparams,
         )

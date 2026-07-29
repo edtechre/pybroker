@@ -1,4 +1,4 @@
-"""Micro-benchmark for timeframe compression hot path."""
+"""Micro-benchmark for interval compression hot path."""
 
 from __future__ import annotations
 
@@ -12,10 +12,10 @@ import numpy as np
 import pandas as pd
 
 from pybroker.common import DataCol
-from pybroker.timeframe import (
+from pybroker.interval import (
     compress,
     compress_symbol_df,
-    compress_timeframes_from_frame,
+    compress_intervals_from_frame,
 )
 
 DAILY_SECONDS = 86400.0
@@ -128,12 +128,12 @@ def _run_benchmarks() -> dict[str, float]:
     multi_df = _multi_symbol_daily_df()
     symbols = set(multi_df[DataCol.SYMBOL.value].unique())
     intervals = frozenset({"weekly", 5, "monthly"})
+    symbol_intervals = {sym: intervals for sym in symbols}
     custom_cols: frozenset[str] = frozenset()
-    results["compress_timeframes_multi"] = _time_case(
-        lambda: compress_timeframes_from_frame(
+    results["compress_intervals_multi"] = _time_case(
+        lambda: compress_intervals_from_frame(
             multi_df,
-            symbols,
-            intervals,
+            symbol_intervals,
             custom_cols,
             DAILY_SECONDS,
         ),

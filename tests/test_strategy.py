@@ -2751,14 +2751,14 @@ class TestStrategy:
         )
         assert not result.portfolio.empty
 
-    def test_walkforward_pooled_model_on_weekly_timeframe(
+    def test_walkforward_pooled_model_on_weekly_interval(
         self, data_source_df, exec_pooled_model_source, scope, indicators
     ):
         _pooled_train_calls.clear()
         saw_weekly_preds = []
 
         def exec_fn(ctx):
-            weekly = ctx.timeframe("weekly")
+            weekly = ctx.interval("weekly")
             preds = weekly.preds(POOLED_MODEL_NAME)
             if len(preds) > 0:
                 saw_weekly_preds.append(len(preds))
@@ -2769,12 +2769,12 @@ class TestStrategy:
 
         config = StrategyConfig()
         strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
-        strategy.enable_timeframes("weekly", base_timeframe="1d")
         strategy.add_execution(
             exec_fn,
             ["AAPL", "MSFT"],
             models=[exec_pooled_model_source],
             indicators=indicators,
+            intervals=["weekly"],
         )
         result = strategy.walkforward(
             windows=1,
@@ -4781,9 +4781,9 @@ def _sma(bar_data, period):
     return out
 
 
-class TestStrategyTimeframes:
+class TestStrategyIntervals:
     @pytest.mark.parametrize("disable_parallel_indicators", [True, False])
-    def test_weekly_timeframe_backtest(
+    def test_weekly_interval_backtest(
         self, data_source_df, disable_parallel_indicators, scope
     ):
         def sma(bar_data, period):
@@ -4797,52 +4797,55 @@ class TestStrategyTimeframes:
         seen = []
 
         def exec_fn(ctx):
-            wk = ctx.timeframe("weekly")
+            wk = ctx.interval("weekly")
             if len(wk.close) > 0:
                 seen.append(
                     (len(wk.close), wk.close[-1], len(wk.indicator("sma20")))
                 )
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.enable_timeframes("weekly", base_timeframe="1d")
         strategy.add_execution(
             exec_fn,
             "SPY",
             indicators=[sma_ind],
+            intervals=["weekly"],
         )
         strategy.walkforward(
             windows=1,
             disable_parallel_indicators=disable_parallel_indicators,
+            timeframe="1d",
         )
         assert seen
         for n_bars, _close, n_ind in seen:
             assert n_ind == n_bars
 
-    def test_undeclared_timeframe_then_error(self, data_source_df, scope):
+    def test_undeclared_interval_then_error(self, data_source_df, scope):
         def exec_fn(ctx):
-            ctx.timeframe("weekly")
+            ctx.interval("weekly")
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
         strategy.add_execution(exec_fn, "SPY")
-        with pytest.raises(ValueError, match=re.escape("enable_timeframes()")):
-            strategy.walkforward(windows=1)
+        with pytest.raises(
+            ValueError,
+            match=re.escape("add_execution(..., intervals=[...])"),
+        ):
+            strategy.walkforward(windows=1, timeframe="1d")
 
-    def test_timeframe_indicator_not_scheduled_then_error(
+    def test_interval_indicator_not_scheduled_then_error(
         self, data_source_df, scope
     ):
         def exec_fn(ctx):
-            ctx.timeframe("weekly").indicator("sma20")
+            ctx.interval("weekly").indicator("sma20")
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.enable_timeframes("weekly", base_timeframe="1d")
-        strategy.add_execution(exec_fn, "SPY")
+        strategy.add_execution(exec_fn, "SPY", intervals=["weekly"])
         with pytest.raises(
             ValueError, match="Indicator 'sma20@weekly' not found"
         ):
-            strategy.walkforward(windows=1)
+            strategy.walkforward(windows=1, timeframe="1d")
 
     @pytest.mark.parametrize("enable_parallel_models", [True, False])
-    def test_weekly_timeframe_model_walkforward(
+    def test_weekly_interval_model_walkforward(
         self, data_source_df, scope, enable_parallel_models
     ):
         def sma(bar_data, period):
@@ -4866,7 +4869,7 @@ class TestStrategyTimeframes:
         seen = []
 
         def exec_fn(ctx):
-            wk = ctx.timeframe("weekly")
+            wk = ctx.interval("weekly")
             preds = wk.preds("wk_model")
             if len(preds) > 0:
                 seen.append(
@@ -4874,25 +4877,29 @@ class TestStrategyTimeframes:
                 )
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.enable_timeframes("weekly", base_timeframe="1d")
         strategy.add_execution(
             exec_fn,
             "SPY",
             models=[wk_model],
+            intervals=["weekly"],
         )
         strategy.walkforward(
             windows=1,
             enable_parallel_models=enable_parallel_models,
+            timeframe="1d",
         )
         assert seen
         for n_bars, n_preds, n_ind in seen:
             assert n_preds == n_bars
             assert n_ind == n_bars
 
-    def test_invalid_timeframe_granularity_raises(self, data_source_df, scope):
+    def test_invalid_interval_granularity_raises(self, data_source_df, scope):
+        # The base spacing is only known once the backtest runs, so
+        # granularity is validated there rather than at declaration.
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(lambda ctx: None, "SPY", intervals=["daily"])
         with pytest.raises(ValueError, match="Cannot compress daily bars"):
-            strategy.enable_timeframes("daily", base_timeframe="1d")
+            strategy.walkforward(windows=1, timeframe="1d")
 
     @pytest.mark.parametrize(
         "interval,match",
@@ -4902,23 +4909,23 @@ class TestStrategyTimeframes:
             ("1h", "Cannot compress daily bars"),
         ],
     )
-    def test_invalid_timeframe_granularity_parametrize(
+    def test_invalid_interval_granularity_parametrize(
         self, data_source_df, scope, interval, match
     ):
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(lambda ctx: None, "SPY", intervals=[interval])
         with pytest.raises(ValueError, match=match):
-            strategy.enable_timeframes(interval, base_timeframe="1d")
+            strategy.walkforward(windows=1, timeframe="1d")
 
     @pytest.mark.parametrize("interval", ["weekly", 5])
-    def test_valid_timeframe_granularity_walkforward(
+    def test_valid_interval_granularity_walkforward(
         self, data_source_df, scope, interval
     ):
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.enable_timeframes(interval, base_timeframe="1d")
-        strategy.add_execution(lambda ctx: None, "SPY")
-        strategy.walkforward(windows=1)
+        strategy.add_execution(lambda ctx: None, "SPY", intervals=[interval])
+        strategy.walkforward(windows=1, timeframe="1d")
 
-    def test_valid_subdaily_timeframe_walkforward(self, minute_bars_df, scope):
+    def test_valid_subdaily_interval_walkforward(self, minute_bars_df, scope):
         def sma(bar_data, period):
             close = bar_data.close
             out = np.full(len(close), np.nan)
@@ -4930,7 +4937,7 @@ class TestStrategyTimeframes:
         seen = []
 
         def exec_fn(ctx):
-            tf_ctx = ctx.timeframe("5m")
+            tf_ctx = ctx.interval("5m")
             if len(tf_ctx.close) > 0:
                 seen.append(len(tf_ctx.close))
 
@@ -4939,11 +4946,11 @@ class TestStrategyTimeframes:
             minute_bars_df["date"].min(),
             minute_bars_df["date"].max(),
         )
-        strategy.enable_timeframes("5m", base_timeframe="1m")
         strategy.add_execution(
             exec_fn,
             "SPY",
             indicators=[sma_ind],
+            intervals=["5m"],
         )
         strategy.walkforward(windows=1, timeframe="1m")
         assert seen
@@ -4960,37 +4967,37 @@ class TestStrategyTimeframes:
         return indicator("sma20", sma, period=5)
 
     @pytest.mark.parametrize("interval", ["weekly", "monthly", 5])
-    def test_timeframe_indicator_walkforward(
+    def test_interval_indicator_walkforward(
         self, data_source_df, scope, interval
     ):
         sma_ind = self._sma_indicator()
         seen = []
 
         def exec_fn(ctx):
-            timeframe_ctx = ctx.timeframe(interval)
-            if len(timeframe_ctx.close) > 0:
+            interval_ctx = ctx.interval(interval)
+            if len(interval_ctx.close) > 0:
                 seen.append(
                     (
-                        len(timeframe_ctx.close),
-                        len(timeframe_ctx.indicator("sma20")),
+                        len(interval_ctx.close),
+                        len(interval_ctx.indicator("sma20")),
                     )
                 )
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.enable_timeframes(interval, base_timeframe="1d")
         strategy.add_execution(
             exec_fn,
             "SPY",
             indicators=[sma_ind],
+            intervals=[interval],
         )
-        strategy.walkforward(windows=1)
+        strategy.walkforward(windows=1, timeframe="1d")
         assert seen
         for n_bars, n_ind in seen:
             assert n_ind == n_bars
 
     @pytest.mark.parametrize("interval", ["weekly", 5])
     @pytest.mark.parametrize("enable_parallel_models", [True, False])
-    def test_timeframe_model_walkforward(
+    def test_interval_model_walkforward(
         self, data_source_df, scope, interval, enable_parallel_models
     ):
         sma_ind = self._sma_indicator()
@@ -5007,27 +5014,28 @@ class TestStrategyTimeframes:
         seen = []
 
         def exec_fn(ctx):
-            timeframe_ctx = ctx.timeframe(interval)
-            preds = timeframe_ctx.preds("wk_model")
+            interval_ctx = ctx.interval(interval)
+            preds = interval_ctx.preds("wk_model")
             if len(preds) > 0:
-                seen.append((len(timeframe_ctx.close), len(preds)))
+                seen.append((len(interval_ctx.close), len(preds)))
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.enable_timeframes(interval, base_timeframe="1d")
         strategy.add_execution(
             exec_fn,
             "SPY",
             models=[wk_model],
+            intervals=[interval],
         )
         strategy.walkforward(
             windows=1,
             enable_parallel_models=enable_parallel_models,
+            timeframe="1d",
         )
         assert seen
         for n_bars, n_preds in seen:
             assert n_preds == n_bars
 
-    def test_timeframe_indicator_and_model_same_token(
+    def test_interval_indicator_and_model_same_token(
         self, data_source_df, scope
     ):
         sma_ind = self._sma_indicator()
@@ -5044,44 +5052,43 @@ class TestStrategyTimeframes:
         seen = []
 
         def exec_fn(ctx):
-            timeframe_ctx = ctx.timeframe("weekly")
-            preds = timeframe_ctx.preds("wk_model")
+            interval_ctx = ctx.interval("weekly")
+            preds = interval_ctx.preds("wk_model")
             if len(preds) > 0:
                 seen.append(
                     (
-                        len(timeframe_ctx.close),
+                        len(interval_ctx.close),
                         len(preds),
-                        len(timeframe_ctx.indicator("sma20")),
+                        len(interval_ctx.indicator("sma20")),
                     )
                 )
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.enable_timeframes("weekly", base_timeframe="1d")
         strategy.add_execution(
             exec_fn,
             "SPY",
             indicators=[sma_ind],
             models=[wk_model],
+            intervals=["weekly"],
         )
-        strategy.walkforward(windows=1)
+        strategy.walkforward(windows=1, timeframe="1d")
         assert seen
         for n_bars, n_preds, n_ind in seen:
             assert n_preds == n_bars
             assert n_ind == n_bars
 
-    def test_multiple_declared_timeframes(self, data_source_df, scope):
+    def test_multiple_declared_intervals(self, data_source_df, scope):
         seen = []
 
         def exec_fn(ctx):
-            weekly = ctx.timeframe("weekly")
-            every5 = ctx.timeframe(5)
+            weekly = ctx.interval("weekly")
+            every5 = ctx.interval(5)
             if len(weekly.close) > 0 and len(every5.close) > 0:
                 seen.append((len(weekly.close), len(every5.close)))
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.enable_timeframes("weekly", 5, base_timeframe="1d")
-        strategy.add_execution(exec_fn, "SPY")
-        strategy.walkforward(windows=1)
+        strategy.add_execution(exec_fn, "SPY", intervals=["weekly", 5])
+        strategy.walkforward(windows=1, timeframe="1d")
         assert seen
         for n_weekly, n_every5 in seen:
             assert n_weekly > 0
@@ -5109,19 +5116,23 @@ class TestStrategyTimeframes:
         seen = []
 
         def exec_fn(ctx):
-            preds = ctx.timeframe("weekly").preds("per_bar_m")
+            preds = ctx.interval("weekly").preds("per_bar_m")
             if len(preds):
                 seen.append(list(preds))
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.enable_timeframes("weekly", base_timeframe="1d")
-        strategy.add_execution(exec_fn, "SPY", models=[per_bar_model])
-        strategy.walkforward(windows=1, train_size=0.9)
+        strategy.add_execution(
+            exec_fn,
+            "SPY",
+            models=[per_bar_model],
+            intervals=["weekly"],
+        )
+        strategy.walkforward(windows=1, train_size=0.9, timeframe="1d")
         assert seen
         last = seen[-1]
         assert last == [float(i + 1) for i in range(len(last))]
 
-    def test_timeframe_preds_do_not_see_future_windows(
+    def test_interval_preds_do_not_see_future_windows(
         self, data_source_df, scope
     ):
         # A cross-row transform must not reach compressed bars belonging to a
@@ -5144,24 +5155,28 @@ class TestStrategyTimeframes:
         seen = []
 
         def exec_fn(ctx):
-            tf_preds = ctx.timeframe("weekly").preds("tf_max")
+            tf_preds = ctx.interval("weekly").preds("tf_max")
             base_preds = ctx.preds("base_max")
             if len(tf_preds) and len(base_preds):
                 seen.append((tf_preds[-1], base_preds[-1]))
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.enable_timeframes("weekly", base_timeframe="1d")
-        strategy.add_execution(exec_fn, "SPY", models=[tf_model, base_model])
-        strategy.walkforward(windows=3, train_size=0.5)
+        strategy.add_execution(
+            exec_fn,
+            "SPY",
+            models=[tf_model, base_model],
+            intervals=["weekly"],
+        )
+        strategy.walkforward(windows=3, train_size=0.5, timeframe="1d")
         assert seen
         for tf_max, base_max in seen:
             assert tf_max <= base_max
 
-    def test_pretrained_model_allowed_with_timeframes(
+    def test_pretrained_model_allowed_with_intervals(
         self, data_source_df, scope
     ):
-        # Pretrained models stay bound to the base timeframe; declaring a
-        # timeframe must not try to train them per interval.
+        # Pretrained models stay bound to the base timeframe; declaring an
+        # interval must not try to train them per interval.
         sma_ind = indicator("sma2", _sma, period=2)
 
         class _Zeros:
@@ -5181,13 +5196,17 @@ class TestStrategyTimeframes:
             seen.append(len(ctx.preds("pre")))
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.enable_timeframes("weekly", base_timeframe="1d")
-        strategy.add_execution(exec_fn, "SPY", models=[pretrained])
-        strategy.walkforward(windows=1)
+        strategy.add_execution(
+            exec_fn,
+            "SPY",
+            models=[pretrained],
+            intervals=["weekly"],
+        )
+        strategy.walkforward(windows=1, timeframe="1d")
         assert seen
         assert all(n > 0 for n in seen)
 
-    def test_pretrained_model_on_timeframe_then_error(
+    def test_pretrained_model_on_interval_then_error(
         self, data_source_df, scope
     ):
         sma_ind = indicator("sma2", _sma, period=2)
@@ -5207,18 +5226,22 @@ class TestStrategyTimeframes:
 
         def exec_fn(ctx):
             try:
-                ctx.timeframe("weekly").preds("pre")
+                ctx.interval("weekly").preds("pre")
             except ValueError as e:
                 errors.append(str(e))
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.enable_timeframes("weekly", base_timeframe="1d")
-        strategy.add_execution(exec_fn, "SPY", models=[pretrained])
-        strategy.walkforward(windows=1)
+        strategy.add_execution(
+            exec_fn,
+            "SPY",
+            models=[pretrained],
+            intervals=["weekly"],
+        )
+        strategy.walkforward(windows=1, timeframe="1d")
         assert errors
-        assert "not trained per timeframe" in errors[0]
+        assert "not trained per interval" in errors[0]
 
-    def test_timeframe_indicator_not_readable_from_base_ctx(
+    def test_interval_indicator_not_readable_from_base_ctx(
         self, data_source_df, scope
     ):
         sma_ind = indicator("sma2", _sma, period=2)
@@ -5231,13 +5254,17 @@ class TestStrategyTimeframes:
                 errors.append(str(e))
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.enable_timeframes("weekly", base_timeframe="1d")
-        strategy.add_execution(exec_fn, "SPY", indicators=[sma_ind])
-        strategy.walkforward(windows=1)
+        strategy.add_execution(
+            exec_fn,
+            "SPY",
+            indicators=[sma_ind],
+            intervals=["weekly"],
+        )
+        strategy.walkforward(windows=1, timeframe="1d")
         assert errors
-        assert "ctx.timeframe('weekly').indicator('sma2')" in errors[0]
+        assert "ctx.interval('weekly').indicator('sma2')" in errors[0]
 
-    def test_timeframe_model_predicts_once_per_window(
+    def test_interval_model_predicts_once_per_window(
         self, data_source_df, scope
     ):
         # Compressed data is immutable per window, so predictions are computed
@@ -5258,32 +5285,40 @@ class TestStrategyTimeframes:
         )
 
         def exec_fn(ctx):
-            ctx.timeframe("weekly").preds("counted")
+            ctx.interval("weekly").preds("counted")
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.enable_timeframes("weekly", base_timeframe="1d")
-        strategy.add_execution(exec_fn, "SPY", models=[counted])
-        strategy.walkforward(windows=1)
+        strategy.add_execution(
+            exec_fn,
+            "SPY",
+            models=[counted],
+            intervals=["weekly"],
+        )
+        strategy.walkforward(windows=1, timeframe="1d")
         assert len(calls) == 1
 
-    def test_vwap_indicator_with_declared_timeframe(
+    def test_vwap_indicator_with_declared_interval(
         self, data_source_df, scope
     ):
-        # Declaring a timeframe must not strip vwap from compressed bars.
+        # Declaring an interval must not strip vwap from compressed bars.
         df = data_source_df.copy()
         df["vwap"] = df["close"] + 0.5
         vwap_ind = indicator("vwap2", lambda bar_data: bar_data.vwap * 2.0)
         seen = []
 
         def exec_fn(ctx):
-            values = ctx.timeframe("weekly").indicator("vwap2")
+            values = ctx.interval("weekly").indicator("vwap2")
             if len(values):
                 seen.append(values[-1])
 
         strategy = Strategy(df, START_DATE, END_DATE)
-        strategy.enable_timeframes("weekly", base_timeframe="1d")
-        strategy.add_execution(exec_fn, "SPY", indicators=[vwap_ind])
-        strategy.walkforward(windows=1)
+        strategy.add_execution(
+            exec_fn,
+            "SPY",
+            indicators=[vwap_ind],
+            intervals=["weekly"],
+        )
+        strategy.walkforward(windows=1, timeframe="1d")
         assert seen
         assert all(np.isfinite(v) for v in seen)
 
@@ -5312,12 +5347,11 @@ class TestStrategyTimeframes:
             seen.add(ctx.symbol)
 
         strategy = Strategy(df, dates[0], dates[-1])
-        strategy.enable_timeframes("weekly", base_timeframe="1d")
-        strategy.add_execution(exec_fn, ["AAA", "BBB"])
-        strategy.walkforward(windows=1)
+        strategy.add_execution(exec_fn, ["AAA", "BBB"], intervals=["weekly"])
+        strategy.walkforward(windows=1, timeframe="1d")
         assert "AAA" in seen
 
-    def test_days_filter_with_declared_timeframe(self, scope):
+    def test_days_filter_with_declared_interval(self, scope):
         # `days=` thins the frame on purpose; the resulting weekly gaps are
         # multiples of the base spacing and must still validate.
         dates = pd.date_range(START_DATE, periods=60, freq="B")
@@ -5339,7 +5373,145 @@ class TestStrategyTimeframes:
             seen.append(ctx.dt)
 
         strategy = Strategy(df, dates[0], dates[-1])
-        strategy.enable_timeframes("monthly", base_timeframe="1d")
-        strategy.add_execution(exec_fn, "AAA")
-        strategy.walkforward(windows=1, days="mon")
+        strategy.add_execution(exec_fn, "AAA", intervals=["monthly"])
+        strategy.walkforward(windows=1, days="mon", timeframe="1d")
         assert seen
+
+    def test_intervals_without_base_timeframe_then_error(
+        self, data_source_df, scope
+    ):
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(lambda ctx: None, "SPY", intervals=["weekly"])
+        with pytest.raises(ValueError, match="pass timeframe="):
+            strategy.walkforward(windows=1)
+
+    def test_interval_scoped_to_declaring_execution(
+        self, data_source_df, scope
+    ):
+        # Intervals belong to the execution that declared them, so a sibling
+        # execution cannot read them.
+        declared, errors = [], []
+
+        def spy_fn(ctx):
+            declared.append(len(ctx.interval("weekly").close))
+
+        def aapl_fn(ctx):
+            try:
+                ctx.interval("weekly")
+            except ValueError as e:
+                errors.append(str(e))
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(spy_fn, "SPY", intervals=["weekly"])
+        strategy.add_execution(aapl_fn, "AAPL")
+        strategy.walkforward(windows=1, timeframe="1d")
+        assert declared
+        assert errors
+        assert "was not declared for this execution" in errors[0]
+
+    def test_intervals_not_shared_across_executions(
+        self, data_source_df, scope
+    ):
+        # Two executions declaring different intervals each see only their own.
+        errors = []
+
+        def spy_fn(ctx):
+            ctx.interval("weekly")
+            try:
+                ctx.interval(5)
+            except ValueError as e:
+                errors.append(("SPY", str(e)))
+
+        def aapl_fn(ctx):
+            ctx.interval(5)
+            try:
+                ctx.interval("weekly")
+            except ValueError as e:
+                errors.append(("AAPL", str(e)))
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(spy_fn, "SPY", intervals=["weekly"])
+        strategy.add_execution(aapl_fn, "AAPL", intervals=[5])
+        strategy.walkforward(windows=1, timeframe="1d")
+        assert {sym for sym, _ in errors} == {"SPY", "AAPL"}
+
+    def test_only_declaring_symbols_are_compressed(
+        self, data_source_df, scope
+    ):
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(lambda ctx: None, "SPY", intervals=["weekly"])
+        strategy.add_execution(lambda ctx: None, "AAPL")
+        df = strategy._fetch_data("1d", None)
+        interval_data = strategy._build_interval_data(df, "1d")
+        assert set(interval_data.compressed) == {("SPY", "weekly")}
+
+    def test_no_intervals_declared_compresses_nothing(
+        self, data_source_df, scope
+    ):
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(lambda ctx: None, "SPY")
+        df = strategy._fetch_data("1d", None)
+        # No intervals means no base spacing is needed at all.
+        assert not strategy._build_interval_data(df, "").compressed
+
+    def test_selector_execution_compresses_whole_frame(
+        self, data_source_df, scope
+    ):
+        # A selector resolves its symbols per window, after compression has
+        # already run, so every candidate symbol must be compressed.
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(
+            lambda ctx: None,
+            lambda df: ["SPY"],
+            intervals=["weekly"],
+        )
+        df = strategy._fetch_data("1d", None)
+        interval_data = strategy._build_interval_data(df, "1d")
+        assert set(interval_data.compressed) == {
+            (sym, "weekly") for sym in df["symbol"].unique()
+        }
+
+    def test_selector_execution_reads_declared_interval(
+        self, data_source_df, scope
+    ):
+        seen = []
+
+        def exec_fn(ctx):
+            seen.append(len(ctx.interval("weekly").close))
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(
+            exec_fn, lambda df: ["SPY"], intervals=["weekly"]
+        )
+        strategy.walkforward(windows=2, train_size=0.5, timeframe="1d")
+        assert seen
+
+    def test_duplicate_intervals_then_error(self, data_source_df, scope):
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        with pytest.raises(ValueError, match="Duplicate interval"):
+            strategy.add_execution(
+                lambda ctx: None, "SPY", intervals=["weekly", "weekly"]
+            )
+
+    def test_empty_intervals_then_error(self, data_source_df, scope):
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        with pytest.raises(ValueError, match="intervals cannot be empty"):
+            strategy.add_execution(lambda ctx: None, "SPY", intervals=[])
+
+    @pytest.mark.parametrize(
+        "intervals,expected",
+        [
+            ("weekly", frozenset({"weekly"})),
+            (5, frozenset({5})),
+            (["weekly", 5], frozenset({"weekly", 5})),
+            (None, frozenset()),
+        ],
+    )
+    def test_scalar_intervals_are_not_iterated(
+        self, data_source_df, scope, intervals, expected
+    ):
+        # str is Iterable, so 'weekly' must not split into characters.
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(lambda ctx: None, "SPY", intervals=intervals)
+        execution = next(iter(strategy._executions))
+        assert execution.intervals == expected

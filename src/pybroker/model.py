@@ -23,12 +23,12 @@ from pybroker.common import (
 )
 from pybroker.indicator import Indicator
 from pybroker.parallel import _effective_n_jobs, parallel
-from pybroker.timeframe import (
-    TimeframeData,
+from pybroker.interval import (
+    IntervalData,
     TimeframeInterval,
     build_compressed_symbol_arrays,
-    parse_model_timeframe_name,
-    format_timeframe_interval,
+    parse_model_interval_name,
+    format_interval,
     slice_arrays_by_dates,
     validate_source_name,
 )
@@ -425,7 +425,7 @@ def merge_lag_series_cache_from_arrays(
         _store_stacked_lags_in_cache(cache, symbol, col, lags, stacked)
 
 
-def merge_timeframe_lag_series_cache(
+def merge_interval_lag_series_cache(
     cache: LagSeriesCache,
     symbols: Iterable[str],
     columns: tuple[str, ...],
@@ -433,7 +433,7 @@ def merge_timeframe_lag_series_cache(
     interval: str,
     bars_by_symbol,
 ) -> LagSeriesCache:
-    """Adds full-history timeframe lag arrays into ``cache``."""
+    """Adds full-history interval lag arrays into ``cache``."""
     for sym in symbols:
         bars = bars_by_symbol(sym)
         if bars is None:
@@ -1669,7 +1669,7 @@ class ModelsMixin:
         pooled_model_groups: Optional[
             Mapping[tuple[str, int], frozenset[str]]
         ] = None,
-        timeframe_data: Optional[TimeframeData] = None,
+        interval_data: Optional[IntervalData] = None,
         *,
         history_store: Optional[SymbolArrayStore] = None,
         train_store: Optional[SymbolArrayStore] = None,
@@ -1759,26 +1759,26 @@ class ModelsMixin:
                 continue
             if not group_model_syms & uncached_model_sym_set:
                 continue
-            base_name, token = parse_model_timeframe_name(model_name)
+            base_name, interval = parse_model_interval_name(model_name)
             source = scope.get_model_source(base_name)
             if not isinstance(source, ModelTrainer) or not source.pooled:
                 raise TypeError(
                     f"ModelSource {model_name!r} is not a pooled ModelTrainer."
                 )
-            if token is not None:
-                if timeframe_data is None:
+            if interval is not None:
+                if interval_data is None:
                     raise ValueError(
                         f"Timeframe data required to train model {model_name!r}."
                     )
                 pooled_train_data, pooled_test_data = (
-                    self._prepare_pooled_timeframe_data(
+                    self._prepare_pooled_interval_data(
                         symbols,
-                        token,
+                        interval,
                         train_dates,
                         test_dates,
                         indicator_data,
                         source,
-                        timeframe_data,
+                        interval_data,
                         lag_series_cache,
                     )
                 )
@@ -1816,27 +1816,27 @@ class ModelsMixin:
             if model_sym in models or model_sym in covered_pooled_model_syms:
                 continue
             model_name, sym = model_sym
-            base_name, token = parse_model_timeframe_name(model_name)
+            base_name, interval = parse_model_interval_name(model_name)
             source = scope.get_model_source(base_name)
-            if token is not None:
+            if interval is not None:
                 if isinstance(source, ModelLoader):
                     raise ValueError(
                         f"Pretrained model {base_name!r} does not support "
-                        f"multi-timeframe training on {token!r}."
+                        f"multi-interval training on {interval!r}."
                     )
-                if timeframe_data is None:
+                if interval_data is None:
                     raise ValueError(
                         f"Timeframe data required to train model {model_name!r}."
                     )
                 sym_train_data, sym_test_data = (
-                    self._prepare_timeframe_symbol_data(
+                    self._prepare_interval_symbol_data(
                         sym,
-                        token,
+                        interval,
                         train_dates,
                         test_dates,
                         indicator_data,
                         source,
-                        timeframe_data,
+                        interval_data,
                         lag_series_cache,
                     )
                 )
@@ -1911,10 +1911,10 @@ class ModelsMixin:
                     )
                 )
             elif isinstance(source, ModelLoader):
-                if token is not None:
+                if interval is not None:
                     raise ValueError(
                         f"Pretrained model {base_name!r} does not support "
-                        f"multi-timeframe training on {token!r}."
+                        f"multi-interval training on {interval!r}."
                     )
                 loader_syms.append((source, model_sym))
             else:
@@ -2097,15 +2097,15 @@ class ModelsMixin:
             pooled_train_input = pooled_train_input.drop_lag_warmup()
         return pooled_train_input, pooled_test_input
 
-    def _prepare_pooled_timeframe_data(
+    def _prepare_pooled_interval_data(
         self,
         symbols: frozenset[str],
-        token: TimeframeInterval,
+        interval: TimeframeInterval,
         train_dates: Collection,
         test_dates: Collection,
         indicator_data: Mapping[IndicatorSymbol, pd.Series],
         source: ModelTrainer,
-        timeframe_data: TimeframeData,
+        interval_data: IntervalData,
         lag_series_cache: LagSeriesCache,
     ) -> tuple[ModelInput, ModelInput]:
         sym_col = DataCol.SYMBOL.value
@@ -2115,15 +2115,15 @@ class ModelsMixin:
         columns: tuple[str, ...] = ()
         history_dates: dict[str, np.ndarray] = {}
         for sym in symbols:
-            key = (sym, token)
-            if key not in timeframe_data.compressed:
+            key = (sym, interval)
+            if key not in interval_data.compressed:
                 raise ValueError(
-                    f"Timeframe {token!r} data not found for {sym!r}."
+                    f"Interval {interval!r} data not found for {sym!r}."
                 )
-            compressed = timeframe_data.compressed[key]
+            compressed = interval_data.compressed[key]
             sym_columns, arrays, bar_dates = build_compressed_symbol_arrays(
                 sym,
-                token,
+                interval,
                 compressed,
                 indicator_data,
                 source.indicators,
@@ -2179,20 +2179,20 @@ class ModelsMixin:
                 indicators=source.indicators,
                 lag_cols=source.lag_cols,
             )
-            interval = format_timeframe_interval(token)
+            interval_str = format_interval(interval)
 
-            def bars_by_symbol(sym, token=token):
-                key = (sym, token)
-                if key not in timeframe_data.compressed:
+            def bars_by_symbol(sym, interval=interval):
+                key = (sym, interval)
+                if key not in interval_data.compressed:
                     return None
-                return timeframe_data.compressed[key].bars
+                return interval_data.compressed[key].bars
 
-            merge_timeframe_lag_series_cache(
+            merge_interval_lag_series_cache(
                 lag_series_cache,
                 tuple(symbols),
                 lag_cols,
                 source.lags,
-                interval,
+                interval_str,
                 bars_by_symbol,
             )
             apply_lags_to_model_input_pooled(
@@ -2202,7 +2202,7 @@ class ModelsMixin:
                 lag_series_cache,
                 history_dates,
                 symbols,
-                interval=interval,
+                interval=interval_str,
             )
             apply_lags_to_model_input_pooled(
                 pooled_test_input,
@@ -2211,32 +2211,32 @@ class ModelsMixin:
                 lag_series_cache,
                 history_dates,
                 symbols,
-                interval=interval,
+                interval=interval_str,
             )
             pooled_train_input = pooled_train_input.drop_lag_warmup()
         return pooled_train_input, pooled_test_input
 
-    def _prepare_timeframe_symbol_data(
+    def _prepare_interval_symbol_data(
         self,
         symbol: str,
-        token: TimeframeInterval,
+        interval: TimeframeInterval,
         train_dates: Collection,
         test_dates: Collection,
         indicator_data: Mapping[IndicatorSymbol, pd.Series],
         source: ModelSource,
-        timeframe_data: TimeframeData,
+        interval_data: IntervalData,
         lag_series_cache: LagSeriesCache,
     ) -> tuple[ModelInput, ModelInput]:
         scope = StaticScope.instance()
-        key = (symbol, token)
-        if key not in timeframe_data.compressed:
+        key = (symbol, interval)
+        if key not in interval_data.compressed:
             raise ValueError(
-                f"Timeframe {token!r} data not found for {symbol!r}."
+                f"Interval {interval!r} data not found for {symbol!r}."
             )
-        compressed = timeframe_data.compressed[key]
+        compressed = interval_data.compressed[key]
         columns, arrays, bar_dates = build_compressed_symbol_arrays(
             symbol,
-            token,
+            interval,
             compressed,
             indicator_data,
             source.indicators,
@@ -2267,20 +2267,20 @@ class ModelsMixin:
                 indicators=source.indicators,
                 lag_cols=source.lag_cols,
             )
-            interval = format_timeframe_interval(token)
+            interval_str = format_interval(interval)
 
-            def bars_by_symbol(sym, interval=interval, token=token):
-                key = (sym, token)
-                if key not in timeframe_data.compressed:
+            def bars_by_symbol(sym, interval=interval):
+                key = (sym, interval)
+                if key not in interval_data.compressed:
                     return None
-                return timeframe_data.compressed[key].bars
+                return interval_data.compressed[key].bars
 
-            merge_timeframe_lag_series_cache(
+            merge_interval_lag_series_cache(
                 lag_series_cache,
                 (symbol,),
                 lag_cols,
                 source.lags,
-                interval,
+                interval_str,
                 bars_by_symbol,
             )
             history_dates = np.asarray(compressed.bars.dates)
@@ -2291,7 +2291,7 @@ class ModelsMixin:
                 lag_series_cache,
                 symbol,
                 history_dates,
-                interval,
+                interval_str,
             )
             apply_lags_to_model_input(
                 sym_test_data,
@@ -2300,7 +2300,7 @@ class ModelsMixin:
                 lag_series_cache,
                 symbol,
                 history_dates,
-                interval,
+                interval_str,
             )
             sym_train_data = sym_train_data.drop_lag_warmup()
         return sym_train_data, sym_test_data

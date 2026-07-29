@@ -20,6 +20,7 @@ Submodules
    pybroker.eval
    pybroker.ext.data
    pybroker.indicator
+   pybroker.interval
    pybroker.log
    pybroker.model
    pybroker.optimize
@@ -28,5 +29,4 @@ Submodules
    pybroker.scope
    pybroker.slippage
    pybroker.strategy
-   pybroker.timeframe
    pybroker.vect

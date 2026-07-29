@@ -107,7 +107,7 @@ def _run_macro() -> dict[str, float]:
         WalkforwardLarge,
         WalkforwardModels,
         WalkforwardModelsPerSymbol,
-        WalkforwardTimeframes,
+        WalkforwardIntervals,
     )
 
     specs = [
@@ -118,8 +118,8 @@ def _run_macro() -> dict[str, float]:
         ),
         ("WalkforwardLarge.time_walkforward_large", WalkforwardLarge),
         (
-            "WalkforwardTimeframes.time_walkforward_timeframes",
-            WalkforwardTimeframes,
+            "WalkforwardIntervals.time_walkforward_intervals",
+            WalkforwardIntervals,
         ),
         ("WalkforwardModels.time_walkforward_models", WalkforwardModels),
         (

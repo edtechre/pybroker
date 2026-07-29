@@ -31,7 +31,7 @@ def _median_ms(
 
 
 def _run_bottleneck() -> dict[str, float]:
-    from benchmarks.bench_common import ResultQuantize, TimeframeCompression
+    from benchmarks.bench_common import ResultQuantize, IntervalCompression
 
     out: dict[str, float] = {}
 
@@ -41,13 +41,13 @@ def _run_bottleneck() -> dict[str, float]:
         quantize_bench.time_result_quantize
     )
 
-    tf_bench = TimeframeCompression()
-    tf_bench.setup()
-    out["TimeframeCompression.time_compress_5m_large"] = _median_ms(
-        tf_bench.time_compress_5m_large
+    interval_bench = IntervalCompression()
+    interval_bench.setup()
+    out["IntervalCompression.time_compress_5m_large"] = _median_ms(
+        interval_bench.time_compress_5m_large
     )
-    out["TimeframeCompression.time_compress_timeframes_multi"] = _median_ms(
-        tf_bench.time_compress_timeframes_multi
+    out["IntervalCompression.time_compress_intervals_multi"] = _median_ms(
+        interval_bench.time_compress_intervals_multi
     )
 
     return out
@@ -57,7 +57,7 @@ def _run_macro() -> dict[str, float]:
     from benchmarks.bench_backtest import (
         StoreSliceKernels,
         WalkforwardLarge,
-        WalkforwardTimeframes,
+        WalkforwardIntervals,
     )
 
     out: dict[str, float] = {}
@@ -71,10 +71,10 @@ def _run_macro() -> dict[str, float]:
         lambda: store.time_slice_symbol_array_store_by_dates(10, 252 * 5)
     )
 
-    wf_tf = WalkforwardTimeframes()
-    wf_tf.setup()
-    out["WalkforwardTimeframes.time_walkforward_timeframes"] = _median_ms(
-        wf_tf.time_walkforward_timeframes
+    wf_interval = WalkforwardIntervals()
+    wf_interval.setup()
+    out["WalkforwardIntervals.time_walkforward_intervals"] = _median_ms(
+        wf_interval.time_walkforward_intervals
     )
 
     wf_large = WalkforwardLarge()

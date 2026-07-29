@@ -1139,8 +1139,8 @@ class Determinism:
 # ---------------------------------------------------------------------------
 
 
-class WalkforwardTimeframes:
-    """End-to-end walkforward with multi-timeframe compression enabled."""
+class WalkforwardIntervals:
+    """End-to-end walkforward with multi-interval compression enabled."""
 
     timeout = 600
 
@@ -1152,14 +1152,16 @@ class WalkforwardTimeframes:
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
             disable_parallel_indicators=True,
+            timeframe="1d",
         )
 
-    def time_walkforward_timeframes(self) -> None:
+    def time_walkforward_intervals(self) -> None:
         self._build_strategy().walkforward(
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
             disable_parallel_indicators=True,
+            timeframe="1d",
         )
 
     def _build_strategy(self) -> Strategy:
@@ -1168,16 +1170,17 @@ class WalkforwardTimeframes:
         pybroker.disable_progress_bar()
 
         def exec_fn(ctx: ExecContext) -> None:
-            weekly = ctx.timeframe("weekly")
+            weekly = ctx.interval("weekly")
             if len(weekly.close) > 0 and ctx.close[-1] > weekly.close[-1]:
                 ctx.buy_shares = 10
 
         start = self.df["date"].min().strftime("%Y-%m-%d")
         end = self.df["date"].max().strftime("%Y-%m-%d")
         strategy = Strategy(self.df, start, end, StrategyConfig())
-        strategy.enable_timeframes("weekly", base_timeframe="1d")
         strategy.add_execution(
-            exec_fn, symbols=sorted(self.df["symbol"].unique().tolist())
+            exec_fn,
+            symbols=sorted(self.df["symbol"].unique().tolist()),
+            intervals=["weekly"],
         )
         return strategy
 

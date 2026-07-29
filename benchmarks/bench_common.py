@@ -9,7 +9,7 @@ import pandas as pd
 
 from pybroker.common import DataCol, quantize
 from pybroker.portfolio import Order, PortfolioBar, Trade
-from pybroker.timeframe import compress, compress_timeframes_from_frame
+from pybroker.interval import compress, compress_intervals_from_frame
 
 DAILY_SECONDS = 86400.0
 LARGE_MINUTE_BARS = 252 * 390
@@ -138,8 +138,8 @@ class ResultQuantize:
             trades_df[col] = quantize(trades_df, col, True)
 
 
-class TimeframeCompression:
-    """Large timeframe compression stressing to_seconds / parse_timeframe."""
+class IntervalCompression:
+    """Large interval compression stressing to_seconds / parse_timeframe."""
 
     timeout = 120
 
@@ -150,11 +150,16 @@ class TimeframeCompression:
         self._symbols = set(self._multi_df[DataCol.SYMBOL.value].unique())
         self._intervals = frozenset({"weekly", 5, "monthly"})
         self._custom_cols: frozenset[str] = frozenset()
+        # Precomputed so the timed call measures compression, not the dict
+        # build. The full cross product keeps results comparable with the
+        # historical asv series.
+        self._symbol_intervals = {
+            sym: self._intervals for sym in self._symbols
+        }
         compress(dates, o, h, low, c, v, "5m")
-        compress_timeframes_from_frame(
+        compress_intervals_from_frame(
             self._multi_df,
-            self._symbols,
-            self._intervals,
+            self._symbol_intervals,
             self._custom_cols,
             DAILY_SECONDS,
         )
@@ -163,11 +168,10 @@ class TimeframeCompression:
         dates, o, h, low, c, v = self._minute
         compress(dates, o, h, low, c, v, "5m")
 
-    def time_compress_timeframes_multi(self) -> None:
-        compress_timeframes_from_frame(
+    def time_compress_intervals_multi(self) -> None:
+        compress_intervals_from_frame(
             self._multi_df,
-            self._symbols,
-            self._intervals,
+            self._symbol_intervals,
             self._custom_cols,
             DAILY_SECONDS,
         )

@@ -27,11 +27,11 @@ from pybroker.scope import (
     sym_data_from_store,
     symbol_array_store_from_frame,
 )
-from pybroker.timeframe import (
-    TimeframeData,
+from pybroker.interval import (
+    IntervalData,
     CompressedBars,
     compressed_bars_to_bar_data,
-    parse_indicator_timeframe_name,
+    parse_indicator_interval_name,
     validate_source_name,
 )
 from pybroker.vect import highv, lowv, returnv
@@ -179,23 +179,23 @@ def _indicator_args(
     ind_name: str,
     sym: str,
     sym_cols: Mapping[str, Optional[NDArray]],
-    sym_timeframes: Optional[TimeframeData],
+    sym_interval_data: Optional[IntervalData],
     custom_data_cols: Iterable[str],
     default_data_cols: frozenset[str],
 ) -> dict[str, Any]:
-    _, token = parse_indicator_timeframe_name(ind_name)
+    _, token = parse_indicator_interval_name(ind_name)
     if token is not None:
-        if sym_timeframes is None:
+        if sym_interval_data is None or (sym, token) not in (
+            sym_interval_data.compressed
+        ):
             raise ValueError(
-                f"Timeframe indicator {ind_name!r} requires compressed "
-                "data. Call Strategy.enable_timeframes() first."
+                f"Timeframe indicator {ind_name!r} requires compressed data "
+                f"for {sym!r} on interval {token!r}. Declare it with "
+                "add_execution(..., intervals=[...]) on the execution that "
+                f"owns {sym!r}."
             )
         key = (sym, token)
-        if key not in sym_timeframes.compressed:
-            raise ValueError(
-                f"Missing compressed data for {sym!r} and timeframe {token!r}."
-            )
-        bars = sym_timeframes.compressed[key].bars
+        bars = sym_interval_data.compressed[key].bars
         return {
             "symbol": sym,
             "ind_name": ind_name,
@@ -216,19 +216,19 @@ def _indicator_args(
     }
 
 
-def _timeframe_data_by_symbol(
-    timeframe_data: Optional[TimeframeData],
-) -> dict[str, TimeframeData]:
-    """Groups ``timeframe_data`` by symbol so workers only receive their own
+def _interval_data_by_symbol(
+    interval_data: Optional[IntervalData],
+) -> dict[str, IntervalData]:
+    """Groups ``interval_data`` by symbol so workers only receive their own
     compressed data. ``CompressedSymbolData`` values are shared by reference.
     """
-    if timeframe_data is None:
+    if interval_data is None:
         return {}
     grouped: dict[str, dict] = defaultdict(dict)
-    for key, data in timeframe_data.compressed.items():
+    for key, data in interval_data.compressed.items():
         grouped[key[0]][key] = data
     return {
-        sym: TimeframeData(compressed=compressed)
+        sym: IntervalData(compressed=compressed)
         for sym, compressed in grouped.items()
     }
 
@@ -237,7 +237,7 @@ def _run_indicators_for_symbol(
     sym: str,
     ind_names: tuple[str, ...],
     sym_cols: Mapping[str, Optional[NDArray]],
-    sym_timeframes: Optional[TimeframeData],
+    sym_interval_data: Optional[IntervalData],
     fns: Mapping[str, Callable[..., tuple[IndicatorSymbol, pd.Series]]],
     custom_data_cols: tuple[str, ...],
     default_data_cols: frozenset[str],
@@ -248,7 +248,7 @@ def _run_indicators_for_symbol(
                 ind_name,
                 sym,
                 sym_cols,
-                sym_timeframes,
+                sym_interval_data,
                 custom_data_cols,
                 default_data_cols,
             )
@@ -260,7 +260,7 @@ def _run_indicators_for_symbol(
 def _decorate_indicator_fn(
     ind_name: str, hyperparams: Optional[dict[str, Any]] = None
 ):
-    base_name, _ = parse_indicator_timeframe_name(ind_name)
+    base_name, _ = parse_indicator_interval_name(ind_name)
     fn = StaticScope.instance().get_indicator(base_name).__call__
 
     def decorated_indicator_fn(
@@ -331,7 +331,7 @@ class IndicatorsMixin:
         symbol: str,
         hyperparams: Optional[dict[str, Any]],
     ) -> Optional[tuple[str, str, tuple[tuple[str, Any], ...]]]:
-        base_name, _ = parse_indicator_timeframe_name(ind_name)
+        base_name, _ = parse_indicator_interval_name(ind_name)
         ind = StaticScope.instance().get_indicator(base_name)
         if not ind.hyperparam_names:
             return None
@@ -386,7 +386,7 @@ class IndicatorsMixin:
         indicator_syms: Iterable[IndicatorSymbol],
         cache_date_fields: Optional[CacheDateFields],
         disable_parallel_indicators: bool,
-        timeframe_data: Optional[TimeframeData] = None,
+        interval_data: Optional[IntervalData] = None,
         symbol_store: Optional[SymbolArrayStore] = None,
         hyperparams: Optional[dict[str, Any]] = None,
     ) -> dict[IndicatorSymbol, pd.Series]:
@@ -405,7 +405,7 @@ class IndicatorsMixin:
                 :class:`pybroker.common.IndicatorSymbol` pairs. If ``False``,
                 indicator data is computed in parallel using multiple
                 processes.
-            timeframe_data: Optional compressed timeframe data.
+            interval_data: Optional compressed interval data.
             symbol_store: Optional pre-built :class:`SymbolArrayStore` to
                 avoid rebuilding per-symbol arrays from ``df``.
             hyperparams: Optional hyperparameter overrides for indicators
@@ -452,7 +452,7 @@ class IndicatorsMixin:
                 sym_data,
                 uncached_ind_syms,
                 disable_parallel_indicators,
-                timeframe_data,
+                interval_data,
                 hyperparams,
             )
         ):
@@ -479,7 +479,7 @@ class IndicatorsMixin:
             return indicator_data, list(indicator_syms)
         uncached_ind_syms = []
         for ind_sym in indicator_syms:
-            base_name, _ = parse_indicator_timeframe_name(ind_sym.ind_name)
+            base_name, _ = parse_indicator_interval_name(ind_sym.ind_name)
             if scope.get_indicator(base_name).hyperparam_names:
                 uncached_ind_syms.append(ind_sym)
                 continue
@@ -508,7 +508,7 @@ class IndicatorsMixin:
         scope = StaticScope.instance()
         if scope.indicator_cache is None:
             return
-        base_name, _ = parse_indicator_timeframe_name(ind_sym.ind_name)
+        base_name, _ = parse_indicator_interval_name(ind_sym.ind_name)
         if scope.get_indicator(base_name).hyperparam_names:
             return
         cache_key = IndicatorCacheKey.from_date_fields(
@@ -524,7 +524,7 @@ class IndicatorsMixin:
         sym_data: Mapping[str, Mapping[str, Optional[NDArray]]],
         ind_syms: Collection[IndicatorSymbol],
         disable_parallel_indicators: bool,
-        timeframe_data: Optional[TimeframeData] = None,
+        interval_data: Optional[IntervalData] = None,
         hyperparams: Optional[dict[str, Any]] = None,
     ) -> Iterable[tuple[IndicatorSymbol, pd.Series]]:
         fns: dict[str, Callable[..., tuple[IndicatorSymbol, pd.Series]]] = {}
@@ -539,7 +539,7 @@ class IndicatorsMixin:
         for ind_name, sym in ind_syms:
             ind_names_by_sym[sym].append(ind_name)
         symbols_with_work = tuple(ind_names_by_sym.keys())
-        tf_by_sym = _timeframe_data_by_symbol(timeframe_data)
+        tf_by_sym = _interval_data_by_symbol(interval_data)
 
         def args_for(sym: str) -> tuple:
             ind_names = tuple(ind_names_by_sym[sym])

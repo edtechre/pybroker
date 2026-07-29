@@ -16,7 +16,7 @@ from pybroker.common import PriceType, StopType, to_datetime
 from pybroker.config import StrategyConfig
 from pybroker.context import (
     ExecContext,
-    TimeframeContext,
+    IntervalContext,
     set_exec_ctx_data,
 )
 from pybroker.portfolio import Order, Portfolio, Position, Trade
@@ -110,8 +110,8 @@ def trades(dates, symbols):
 def ctx(
     col_scope,
     ind_scope,
-    timeframe_scope,
-    declared_timeframes,
+    interval_scope,
+    declared_intervals,
     input_scope,
     pred_scope,
     pending_order_scope,
@@ -128,8 +128,8 @@ def ctx(
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
-        timeframe_scope=timeframe_scope,
-        declared_timeframes=declared_timeframes,
+        interval_scope=interval_scope,
+        declared_intervals=declared_intervals,
         input_scope=input_scope,
         pred_scope=pred_scope,
         pending_order_scope=pending_order_scope,
@@ -145,8 +145,8 @@ def ctx(
 def ctx_with_pos(
     col_scope,
     ind_scope,
-    timeframe_scope,
-    declared_timeframes,
+    interval_scope,
+    declared_intervals,
     input_scope,
     pred_scope,
     pending_order_scope,
@@ -170,8 +170,8 @@ def ctx_with_pos(
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
-        timeframe_scope=timeframe_scope,
-        declared_timeframes=declared_timeframes,
+        interval_scope=interval_scope,
+        declared_intervals=declared_intervals,
         input_scope=input_scope,
         pred_scope=pred_scope,
         pending_order_scope=pending_order_scope,
@@ -187,8 +187,8 @@ def ctx_with_pos(
 def ctx_with_orders(
     col_scope,
     ind_scope,
-    timeframe_scope,
-    declared_timeframes,
+    interval_scope,
+    declared_intervals,
     input_scope,
     pred_scope,
     pending_order_scope,
@@ -210,8 +210,8 @@ def ctx_with_orders(
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
-        timeframe_scope=timeframe_scope,
-        declared_timeframes=declared_timeframes,
+        interval_scope=interval_scope,
+        declared_intervals=declared_intervals,
         input_scope=input_scope,
         pred_scope=pred_scope,
         pending_order_scope=pending_order_scope,
@@ -321,19 +321,21 @@ def test_indicator(ctx, end_index):
     assert len(ctx.indicator("hhv")) == end_index
 
 
-def test_timeframe_when_not_declared_then_error(ctx):
-    with pytest.raises(ValueError, match=re.escape("enable_timeframes()")):
-        ctx.timeframe("weekly")
+def test_interval_when_not_declared_then_error(ctx):
+    with pytest.raises(
+        ValueError, match=re.escape("add_execution(..., intervals=[...])")
+    ):
+        ctx.interval("weekly")
 
 
-def test_timeframe_context_read_only(
-    timeframe_scope, trained_models, sym_end_index
+def test_interval_context_read_only(
+    interval_scope, trained_models, sym_end_index
 ):
-    timeframe_ctx = TimeframeContext(
-        "SPY", "weekly", timeframe_scope, sym_end_index, trained_models
+    interval_ctx = IntervalContext(
+        "SPY", "weekly", interval_scope, sym_end_index, trained_models
     )
     with pytest.raises(AttributeError, match="read-only"):
-        timeframe_ctx.buy_shares = 100
+        interval_ctx.buy_shares = 100
 
 
 def test_indicator_when_not_found_then_error(ctx, symbol):
@@ -525,8 +527,8 @@ def test_calc_target_shares(ctx):
 def test_calc_target_shares_when_enable_fractional_shares(
     col_scope,
     ind_scope,
-    timeframe_scope,
-    declared_timeframes,
+    interval_scope,
+    declared_intervals,
     input_scope,
     pred_scope,
     pending_order_scope,
@@ -542,8 +544,8 @@ def test_calc_target_shares_when_enable_fractional_shares(
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
-        timeframe_scope=timeframe_scope,
-        declared_timeframes=declared_timeframes,
+        interval_scope=interval_scope,
+        declared_intervals=declared_intervals,
         input_scope=input_scope,
         pred_scope=pred_scope,
         pending_order_scope=pending_order_scope,
@@ -567,8 +569,8 @@ def test_calc_target_shares_when_negative_then_zero(ctx):
 def test_calc_target_shares_when_leverage_2(
     col_scope,
     ind_scope,
-    timeframe_scope,
-    declared_timeframes,
+    interval_scope,
+    declared_intervals,
     input_scope,
     pred_scope,
     pending_order_scope,
@@ -585,8 +587,8 @@ def test_calc_target_shares_when_leverage_2(
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
-        timeframe_scope=timeframe_scope,
-        declared_timeframes=declared_timeframes,
+        interval_scope=interval_scope,
+        declared_intervals=declared_intervals,
         input_scope=input_scope,
         pred_scope=pred_scope,
         pending_order_scope=pending_order_scope,
@@ -601,8 +603,8 @@ def test_calc_target_shares_when_leverage_2(
         portfolio=Portfolio(100_000),
         col_scope=col_scope,
         ind_scope=ind_scope,
-        timeframe_scope=timeframe_scope,
-        declared_timeframes=declared_timeframes,
+        interval_scope=interval_scope,
+        declared_intervals=declared_intervals,
         input_scope=input_scope,
         pred_scope=pred_scope,
         pending_order_scope=pending_order_scope,
@@ -624,8 +626,8 @@ def test_calc_target_shares_when_leverage_1_unchanged(ctx):
 def test_set_target_shares_when_short_leverage_2(
     col_scope,
     ind_scope,
-    timeframe_scope,
-    declared_timeframes,
+    interval_scope,
+    declared_intervals,
     input_scope,
     pred_scope,
     pending_order_scope,
@@ -642,8 +644,8 @@ def test_set_target_shares_when_short_leverage_2(
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
-        timeframe_scope=timeframe_scope,
-        declared_timeframes=declared_timeframes,
+        interval_scope=interval_scope,
+        declared_intervals=declared_intervals,
         input_scope=input_scope,
         pred_scope=pred_scope,
         pending_order_scope=pending_order_scope,

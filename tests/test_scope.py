@@ -698,7 +698,7 @@ def _symbol_array_store_from_flat_frame_reference(
 ):
     """Pre-optimization flat-frame store build for regression tests."""
     from pybroker.scope import SymbolArrayStore
-    from pybroker.timeframe import _find_bin_starts_ends
+    from pybroker.interval import _find_bin_starts_ends
 
     if df.empty:
         return SymbolArrayStore(frozenset(), {})

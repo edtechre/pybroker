@@ -18,7 +18,7 @@ from pybroker.indicator import indicator
 from pybroker.model import ModelLoader, model
 from pybroker.scope import StaticScope
 from pybroker.strategy import Strategy
-from pybroker.timeframe import compress_symbol_df
+from pybroker.interval import compress_symbol_df
 from pybroker.vect import highv
 from .fixtures import *  # noqa: F401,F403
 
@@ -372,10 +372,10 @@ def test_optimize_indicator_memo_max_validation(data_source_df):
         )
 
 
-def test_optimize_trial_timeframe_alignment_matches_walkforward(
+def test_optimize_trial_interval_alignment_matches_walkforward(
     data_source_df,
 ):
-    # Trials run over the train window, so their timeframe data must be
+    # Trials run over the train window, so their interval data must be
     # realigned to it -- otherwise `completed` still indexes from the very
     # first bar of history and every window after the first is shifted.
     hyperparam("lookback", default=10, low=5, high=10, step=5)
@@ -390,19 +390,22 @@ def test_optimize_trial_timeframe_alignment_matches_walkforward(
     seen: list[tuple[np.datetime64, int]] = []
 
     def exec_fn(ctx):
-        seen.append(
-            (np.datetime64(ctx.dt), len(ctx.timeframe("weekly").close))
-        )
+        seen.append((np.datetime64(ctx.dt), len(ctx.interval("weekly").close)))
 
     strategy = _make_strategy(data_source_df)
-    strategy.enable_timeframes("weekly", base_timeframe="1d")
-    strategy.add_execution(exec_fn, "AAPL", models=[pretrained])
+    strategy.add_execution(
+        exec_fn,
+        "AAPL",
+        models=[pretrained],
+        intervals=["weekly"],
+    )
     strategy.optimize(
         lambda r: r.metrics.total_pnl,
         sampler="grid",
         windows=2,
         train_size=0.5,
         disable_parallel_indicators=True,
+        timeframe="1d",
     )
     assert seen
 

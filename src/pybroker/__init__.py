@@ -36,7 +36,7 @@ from pybroker.context import (
     ExecContext as ExecContext,
     RotationContext as RotationContext,
     StopContext as StopContext,
-    TimeframeContext as TimeframeContext,
+    IntervalContext as IntervalContext,
 )
 from pybroker.config import StrategyConfig as StrategyConfig
 from pybroker.data import (
@@ -96,7 +96,7 @@ from pybroker.slippage import (
     VolumeSlippageModel as VolumeSlippageModel,
 )
 from pybroker.strategy import Strategy as Strategy, TestResult as TestResult
-from pybroker.timeframe import (
+from pybroker.interval import (
     TimeframeInterval as TimeframeInterval,
     compress_bars as compress_bars,
 )

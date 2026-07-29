@@ -18,7 +18,7 @@ MIGRATION_BENCH_RE = re.compile(
     r"Walkforward|WalkforwardLarge|WalkforwardScaled|PortfolioHeldStops|"
     r"WalkforwardMultiWindow|BacktestBarLoop|WalkforwardPerBar|"
     r"StoreSliceKernels|"
-    r"WalkforwardTimeframes|WalkforwardModels|WalkforwardModelsPerSymbol|Determinism"
+    r"WalkforwardIntervals|WalkforwardModels|WalkforwardModelsPerSymbol|Determinism"
     r")\."
 )
 
@@ -140,7 +140,7 @@ def print_diff(
         print(
             "No current asv results found. Run:\n"
             "  asv run --bench "
-            "'^(Walkforward|WalkforwardLarge|WalkforwardTimeframes|"
+            "'^(Walkforward|WalkforwardLarge|WalkforwardIntervals|"
             "WalkforwardModels|Determinism)$'",
             file=sys.stderr,
         )

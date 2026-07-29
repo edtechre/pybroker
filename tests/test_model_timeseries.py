@@ -302,8 +302,8 @@ class TestLagColumnContract:
             strategy.walkforward(windows=1, train_size=0.5)
 
 
-class TestTimeframePerBar:
-    """Per-bar predictions on a compressed timeframe must not look ahead."""
+class TestIntervalPerBar:
+    """Per-bar predictions on a compressed interval must not look ahead."""
 
     @pytest.fixture()
     def df(self):
@@ -331,17 +331,21 @@ class TestTimeframePerBar:
             per_bar=True,
         )
         strategy = Strategy(df, df["date"].iloc[0], df["date"].iloc[-1])
-        strategy.enable_timeframes("weekly", base_timeframe="1d")
         seen = []
 
         def exec_fn(ctx):
-            tf = ctx.timeframe("weekly")
+            tf = ctx.interval("weekly")
             preds = tf.preds("tf_pb")
             if len(preds):
                 seen.append((preds.copy(), tf.close.copy()))
 
-        strategy.add_execution(exec_fn, ["SPY"], models=m)
-        strategy.walkforward(windows=1, train_size=0.5)
+        strategy.add_execution(
+            exec_fn,
+            ["SPY"],
+            models=m,
+            intervals=["weekly"],
+        )
+        strategy.walkforward(windows=1, train_size=0.5, timeframe="1d")
         assert seen
         for preds, closes in seen:
             np.testing.assert_array_equal(preds, closes)
@@ -363,19 +367,57 @@ class TestTimeframePerBar:
             per_bar=True,
         )
         strategy = Strategy(df, df["date"].iloc[0], df["date"].iloc[-1])
-        strategy.enable_timeframes("weekly", base_timeframe="1d")
         final = []
 
         def exec_fn(ctx):
-            preds = ctx.timeframe("weekly").preds("tf_pb_state")
+            preds = ctx.interval("weekly").preds("tf_pb_state")
             if len(preds):
                 final.append(preds.copy())
 
-        strategy.add_execution(exec_fn, ["SPY"], models=m)
-        strategy.walkforward(windows=1, train_size=0.5)
+        strategy.add_execution(
+            exec_fn,
+            ["SPY"],
+            models=m,
+            intervals=["weekly"],
+        )
+        strategy.walkforward(windows=1, train_size=0.5, timeframe="1d")
         assert calls
         assert calls == list(range(1, len(calls) + 1))
         assert final
         np.testing.assert_array_equal(
             final[-1], np.arange(1.0, len(final[-1]) + 1)
         )
+
+    @pytest.mark.parametrize("interval", ["weekly", 5])
+    def test_lagged_model_on_interval(self, df, interval):
+        # The interval lag cache is keyed by the *string* form of the
+        # interval. Writing it under one key type and reading it under
+        # another silently misses, surfacing as "Lag history missing".
+        lags_seen = []
+
+        def predict_fn(_m, data):
+            lags_seen.append(model_input_lags(data))
+            return np.zeros(len(data))
+
+        m = model(
+            "tf_lag",
+            lambda s, t, u: object(),
+            predict_fn=predict_fn,
+            lags=2,
+            lag_cols=["close"],
+        )
+        strategy = Strategy(df, df["date"].iloc[0], df["date"].iloc[-1])
+        seen = []
+
+        def exec_fn(ctx):
+            preds = ctx.interval(interval).preds("tf_lag")
+            if len(preds):
+                seen.append(len(preds))
+
+        strategy.add_execution(
+            exec_fn, ["SPY"], models=m, intervals=[interval]
+        )
+        strategy.walkforward(windows=1, train_size=0.5, timeframe="1d")
+        assert seen
+        assert lags_seen
+        assert all(n == 2 for n in lags_seen)

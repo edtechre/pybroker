@@ -23,11 +23,11 @@ from pybroker.common import (
 from pybroker.indicator import IndicatorsMixin, indicator
 from pybroker.model import ModelLoader, ModelsMixin, ModelTrainer, model
 from pybroker.parallel import set_parallel
-from pybroker.timeframe import (
-    TimeframeData,
+from pybroker.interval import (
+    IntervalData,
     compress_symbol_df,
-    indicator_timeframe_name,
-    model_timeframe_name,
+    indicator_interval_name,
+    model_interval_name,
 )
 from pybroker.scope import ModelInputScope, param, register_columns
 
@@ -974,11 +974,11 @@ class TestPooledModelsMixin:
                 )
 
 
-class TestTimeframeModels:
-    def test_model_timeframe_name_helper(self):
-        assert model_timeframe_name("tf_model", "weekly") == "tf_model@weekly"
+class TestIntervalModels:
+    def test_model_interval_name_helper(self):
+        assert model_interval_name("tf_model", "weekly") == "tf_model@weekly"
 
-    def test_train_models_timeframe(self, scope, cache_date_fields):
+    def test_train_models_interval(self, scope, cache_date_fields):
         sym = "SPY"
         dates = np.array(
             ["2020-01-06", "2020-01-07", "2020-01-08", "2020-01-09"],
@@ -997,8 +997,8 @@ class TestTimeframeModels:
                 DataCol.VOLUME.value: np.ones(n),
             }
         )
-        timeframe_data = TimeframeData()
-        timeframe_data.compressed[(sym, 2)] = compress_symbol_df(
+        interval_data = IntervalData()
+        interval_data.compressed[(sym, 2)] = compress_symbol_df(
             df, 2, frozenset(), 86400.0
         )
 
@@ -1007,13 +1007,13 @@ class TestTimeframeModels:
             lambda bar_data, period: bar_data.close,
             period=2,
         )
-        tf_ind_name = indicator_timeframe_name(sma_ind.name, 2)
+        tf_ind_name = indicator_interval_name(sma_ind.name, 2)
         ind_data = IndicatorsMixin().compute_indicators(
             df=df,
             indicator_syms=[IndicatorSymbol(tf_ind_name, sym)],
             cache_date_fields=cache_date_fields,
             disable_parallel_indicators=True,
-            timeframe_data=timeframe_data,
+            interval_data=interval_data,
         )
         m = model(
             "tf_model",
@@ -1023,20 +1023,20 @@ class TestTimeframeModels:
         mixin = ModelsMixin()
         train_dates = dates[:2]
         test_dates = dates[2:]
-        tf_model_name = model_timeframe_name(m.name, 2)
+        tf_model_name = model_interval_name(m.name, 2)
         models = mixin.train_models(
             model_syms=[ModelSymbol(tf_model_name, sym)],
             train_data=df[df[DataCol.DATE.value].isin(train_dates)],
             test_data=df[df[DataCol.DATE.value].isin(test_dates)],
             indicator_data=ind_data,
             cache_date_fields=cache_date_fields,
-            timeframe_data=timeframe_data,
+            interval_data=interval_data,
         )
         model_sym = ModelSymbol(tf_model_name, sym)
         assert model_sym in models
         assert models[model_sym].name == tf_model_name
 
-    def test_train_models_pooled_timeframe(self, scope, cache_date_fields):
+    def test_train_models_pooled_interval(self, scope, cache_date_fields):
         sma_ind = indicator(
             "sma2",
             lambda bar_data, period: bar_data.close,
@@ -1065,17 +1065,17 @@ class TestTimeframeModels:
                 )
             )
         df = pd.concat(frames, ignore_index=True)
-        timeframe_data = TimeframeData()
+        interval_data = IntervalData()
         for sym in symbols:
             sym_df = df[df[DataCol.SYMBOL.value] == sym].reset_index(drop=True)
-            timeframe_data.compressed[(sym, "weekly")] = compress_symbol_df(
+            interval_data.compressed[(sym, "weekly")] = compress_symbol_df(
                 sym_df, "weekly", frozenset(), 86400.0
             )
         ind_syms = []
         for sym in symbols:
             ind_syms.append(
                 IndicatorSymbol(
-                    indicator_timeframe_name(sma_ind.name, "weekly"), sym
+                    indicator_interval_name(sma_ind.name, "weekly"), sym
                 )
             )
         ind_data = IndicatorsMixin().compute_indicators(
@@ -1083,7 +1083,7 @@ class TestTimeframeModels:
             indicator_syms=ind_syms,
             cache_date_fields=cache_date_fields,
             disable_parallel_indicators=True,
-            timeframe_data=timeframe_data,
+            interval_data=interval_data,
         )
         train_fn = Mock(return_value=FakeModel("pooled", np.array([1.0])))
         model(
@@ -1092,13 +1092,13 @@ class TestTimeframeModels:
             [sma_ind],
             pooled=True,
         )
-        tf_model_name = model_timeframe_name("pooled_model", "weekly")
+        tf_model_name = model_interval_name("pooled_model", "weekly")
         pooled_syms = frozenset(symbols)
         pooled_model_syms = [
             ModelSymbol(tf_model_name, sym) for sym in sorted(pooled_syms)
         ]
         pooled_model_groups = {(tf_model_name, 1): pooled_syms}
-        weekly_dates = timeframe_data.compressed[
+        weekly_dates = interval_data.compressed[
             (symbols[0], "weekly")
         ].bars.dates
         split = max(len(weekly_dates) // 2, 1)
@@ -1113,7 +1113,7 @@ class TestTimeframeModels:
             test_data=test_data,
             indicator_data=ind_data,
             cache_date_fields=cache_date_fields,
-            timeframe_data=timeframe_data,
+            interval_data=interval_data,
             pooled_model_groups=pooled_model_groups,
         )
         train_fn.assert_called_once()

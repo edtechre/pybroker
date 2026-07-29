@@ -1,4 +1,4 @@
-"""Tests for multi-timeframe compression."""
+"""Tests for multi-interval compression."""
 
 import numpy as np
 import pandas as pd
@@ -9,8 +9,8 @@ from pybroker.common import DataCol, IndicatorSymbol
 from pybroker.indicator import IndicatorsMixin, indicator
 from pybroker.model import model
 from pybroker.scope import StaticScope
-from pybroker.timeframe import (
-    TimeframeData,
+from pybroker.interval import (
+    IntervalData,
     _validate_symbol_dates_for_base,
     build_compressed_symbol_df,
     compress,
@@ -18,19 +18,18 @@ from pybroker.timeframe import (
     compress_symbol_df,
     compress_symbol_from_frame,
     compress_symbol_intervals_from_frame,
-    compress_timeframes_from_frame,
+    compress_intervals_from_frame,
     compressed_bars_to_bar_data,
-    format_timeframe_interval,
-    indicator_timeframe_name,
-    is_valid_timeframe_interval,
-    model_timeframe_name,
-    normalize_timeframe_interval,
-    parse_indicator_timeframe_name,
-    parse_model_timeframe_name,
-    resolve_base_bar_seconds,
+    format_interval,
+    indicator_interval_name,
+    is_valid_interval,
+    model_interval_name,
+    normalize_interval,
+    parse_indicator_interval_name,
+    parse_model_interval_name,
     slice_compressed_df_by_dates,
     validate_base_timeframe_data,
-    validate_timeframe_interval,
+    validate_interval,
 )
 
 
@@ -89,14 +88,14 @@ CALENDAR_INTERVALS = ("daily", "weekly", "monthly", "quarterly", "yearly")
 DURATION_UNIT_LETTERS = ("s", "m", "h", "d", "w")
 
 
-class TestTimeframeIntervals:
+class TestIntervals:
     @pytest.mark.parametrize("interval", [2, 5, 10])
     def test_normalize_every_n_bars(self, interval):
-        assert normalize_timeframe_interval(interval) == interval
+        assert normalize_interval(interval) == interval
 
     @pytest.mark.parametrize("interval", CALENDAR_INTERVALS)
     def test_normalize_calendar(self, interval):
-        assert normalize_timeframe_interval(interval) == interval
+        assert normalize_interval(interval) == interval
 
     @pytest.mark.parametrize(
         "raw,expected",
@@ -111,26 +110,26 @@ class TestTimeframeIntervals:
         ],
     )
     def test_normalize_duration(self, raw, expected):
-        assert normalize_timeframe_interval(raw) == expected  # type: ignore[arg-type]
+        assert normalize_interval(raw) == expected  # type: ignore[arg-type]
 
     @pytest.mark.parametrize("letter", DURATION_UNIT_LETTERS)
     def test_normalize_duration_unit_letters(self, letter):
         interval = f"1{letter}"
-        assert normalize_timeframe_interval(interval) == interval  # type: ignore[arg-type]
+        assert normalize_interval(interval) == interval  # type: ignore[arg-type]
 
     def test_reject_one(self):
         with pytest.raises(ValueError, match="n > 1"):
-            normalize_timeframe_interval(1)
+            normalize_interval(1)
 
     def test_reject_multi_unit_duration(self):
-        with pytest.raises(ValueError, match="Invalid timeframe interval"):
-            normalize_timeframe_interval("1h 30m")  # type: ignore[arg-type]
+        with pytest.raises(ValueError, match="Invalid interval"):
+            normalize_interval("1h 30m")  # type: ignore[arg-type]
 
     def test_reject_long_unit_names(self):
-        with pytest.raises(ValueError, match="Invalid timeframe interval"):
-            normalize_timeframe_interval("5min")  # type: ignore[arg-type]
-        with pytest.raises(ValueError, match="Invalid timeframe interval"):
-            normalize_timeframe_interval("1hour")  # type: ignore[arg-type]
+        with pytest.raises(ValueError, match="Invalid interval"):
+            normalize_interval("5min")  # type: ignore[arg-type]
+        with pytest.raises(ValueError, match="Invalid interval"):
+            normalize_interval("1hour")  # type: ignore[arg-type]
 
     @pytest.mark.parametrize(
         "interval,expected",
@@ -143,7 +142,7 @@ class TestTimeframeIntervals:
         ],
     )
     def test_format_interval(self, interval, expected):
-        assert format_timeframe_interval(interval) == expected
+        assert format_interval(interval) == expected
 
     @pytest.mark.parametrize(
         "interval,suffix",
@@ -156,12 +155,12 @@ class TestTimeframeIntervals:
         ],
     )
     def test_indicator_and_parse_names(self, interval, suffix):
-        assert indicator_timeframe_name("sma20", interval) == f"sma20@{suffix}"
-        assert parse_indicator_timeframe_name(f"sma20@{suffix}") == (
+        assert indicator_interval_name("sma20", interval) == f"sma20@{suffix}"
+        assert parse_indicator_interval_name(f"sma20@{suffix}") == (
             "sma20",
             interval,
         )
-        assert parse_model_timeframe_name(f"m@{suffix}") == ("m", interval)
+        assert parse_model_interval_name(f"m@{suffix}") == ("m", interval)
 
 
 class TestIntervalHierarchyOnOneMinute:
@@ -173,7 +172,7 @@ class TestIntervalHierarchyOnOneMinute:
         ids=["weekly", "every_5_bars", "1h"],
     )
     def test_declared_combo_valid_on_one_minute(self, interval):
-        validate_timeframe_interval(interval, ONE_MINUTE_BASE_SECONDS)
+        validate_interval(interval, ONE_MINUTE_BASE_SECONDS)
         data = compress_symbol_df(
             _minute_sym_df(), interval, frozenset(), ONE_MINUTE_BASE_SECONDS
         )
@@ -194,8 +193,8 @@ class TestIntervalHierarchyOnOneMinute:
         ],
     )
     def test_coarser_intervals_accepted_on_one_minute(self, interval):
-        validate_timeframe_interval(interval, ONE_MINUTE_BASE_SECONDS)
-        assert is_valid_timeframe_interval(interval, ONE_MINUTE_BASE_SECONDS)
+        validate_interval(interval, ONE_MINUTE_BASE_SECONDS)
+        assert is_valid_interval(interval, ONE_MINUTE_BASE_SECONDS)
 
     @pytest.mark.parametrize(
         "interval",
@@ -204,7 +203,7 @@ class TestIntervalHierarchyOnOneMinute:
     )
     def test_finer_intervals_rejected_on_one_minute(self, interval):
         with pytest.raises(ValueError, match="Cannot compress"):
-            validate_timeframe_interval(interval, ONE_MINUTE_BASE_SECONDS)
+            validate_interval(interval, ONE_MINUTE_BASE_SECONDS)
 
     def test_coarser_intervals_yield_fewer_or_equal_bars(self):
         sym_df = _minute_sym_df(periods=390)
@@ -283,7 +282,7 @@ class TestCompressAllDurationIntervals:
         assert len(bars.close) == 3
 
 
-class TestValidateTimeframeGranularity:
+class TestValidateIntervalGranularity:
     @pytest.mark.parametrize(
         "base_bar_seconds,interval",
         [
@@ -305,11 +304,9 @@ class TestValidateTimeframeGranularity:
             "daily_to_monthly",
         ],
     )
-    def test_validate_timeframe_interval_accepts_valid(
-        self, base_bar_seconds, interval
-    ):
-        validate_timeframe_interval(interval, base_bar_seconds)
-        assert is_valid_timeframe_interval(interval, base_bar_seconds)
+    def test_validate_interval_accepts_valid(self, base_bar_seconds, interval):
+        validate_interval(interval, base_bar_seconds)
+        assert is_valid_interval(interval, base_bar_seconds)
 
     @pytest.mark.parametrize(
         "base_bar_seconds,interval",
@@ -332,30 +329,30 @@ class TestValidateTimeframeGranularity:
             "5m_to_1m",
         ],
     )
-    def test_validate_timeframe_interval_rejects_invalid(
+    def test_validate_interval_rejects_invalid(
         self, base_bar_seconds, interval
     ):
         with pytest.raises(ValueError, match="Cannot compress"):
-            validate_timeframe_interval(interval, base_bar_seconds)
+            validate_interval(interval, base_bar_seconds)
 
     def test_validate_weekly_on_daily(self):
-        validate_timeframe_interval("weekly", 86400)
+        validate_interval("weekly", 86400)
 
     def test_reject_daily_on_daily(self):
         with pytest.raises(ValueError, match="Cannot compress daily bars"):
-            validate_timeframe_interval("daily", 86400)
+            validate_interval("daily", 86400)
 
     def test_reject_weekly_on_weekly(self):
         with pytest.raises(ValueError, match="Cannot compress weekly bars"):
-            validate_timeframe_interval("weekly", 604800)
+            validate_interval("weekly", 604800)
 
     def test_reject_weekly_on_monthly(self):
         with pytest.raises(ValueError, match="Cannot compress monthly bars"):
-            validate_timeframe_interval("weekly", 28 * 86400)
+            validate_interval("weekly", 28 * 86400)
 
     def test_reject_daily_on_weekly(self):
         with pytest.raises(ValueError, match="Cannot compress weekly bars"):
-            validate_timeframe_interval("daily", 604800)
+            validate_interval("daily", 604800)
 
 
 class TestCompressEveryN:
@@ -588,22 +585,6 @@ class TestCompressWeekly:
         )
 
 
-class TestResolveBaseBarSeconds:
-    def test_from_enable_timeframe(self):
-        assert resolve_base_bar_seconds("1d", "") == DAILY_BASE_SECONDS
-
-    def test_from_backtest_timeframe(self):
-        assert resolve_base_bar_seconds(None, "1h") == 3600.0
-
-    def test_both_must_match(self):
-        with pytest.raises(ValueError, match="does not match"):
-            resolve_base_bar_seconds("1d", "1h")
-
-    def test_neither_raises(self):
-        with pytest.raises(ValueError, match="require base_timeframe"):
-            resolve_base_bar_seconds(None, "")
-
-
 class TestValidateBaseTimeframeData:
     def test_accepts_matching_daily_spacing(self):
         df = pd.DataFrame(
@@ -757,15 +738,18 @@ class TestBatchCompressionFromFrame:
                 expected.base_dates, single.base_dates
             )
 
-    def test_timeframes_from_frame_matches_per_symbol_calls(self):
+    def test_intervals_from_frame_matches_per_symbol_calls(self):
         df = self._multi_symbol_df()
         symbols = {"SPY", "QQQ"}
         intervals = frozenset({"weekly", 2})
         custom_cols: frozenset[str] = frozenset()
-        batch = compress_timeframes_from_frame(
-            df, symbols, intervals, custom_cols, DAILY_BASE_SECONDS
+        batch = compress_intervals_from_frame(
+            df,
+            {sym: intervals for sym in symbols},
+            custom_cols,
+            DAILY_BASE_SECONDS,
         )
-        expected = TimeframeData()
+        expected = IntervalData()
         for sym in symbols:
             for interval in intervals:
                 expected.compressed[(sym, interval)] = (
@@ -779,14 +763,62 @@ class TestBatchCompressionFromFrame:
             np.testing.assert_array_equal(data.bars.close, ref.bars.close)
             np.testing.assert_array_equal(data.completed, ref.completed)
 
+    def test_intervals_from_frame_narrows_per_symbol(self):
+        df = self._multi_symbol_df()
+        batch = compress_intervals_from_frame(
+            df,
+            {"SPY": frozenset({"weekly"}), "QQQ": frozenset({2})},
+            frozenset(),
+            DAILY_BASE_SECONDS,
+        )
+        assert set(batch.compressed) == {("SPY", "weekly"), ("QQQ", 2)}
 
-class TestModelTimeframeNaming:
-    def test_model_timeframe_name(self):
-        assert model_timeframe_name("m", "weekly") == "m@weekly"
+    def test_intervals_from_frame_skips_undeclared_symbols(self):
+        df = self._multi_symbol_df()
+        batch = compress_intervals_from_frame(
+            df, {"SPY": frozenset({"weekly"})}, frozenset(), DAILY_BASE_SECONDS
+        )
+        assert set(batch.compressed) == {("SPY", "weekly")}
 
-    def test_parse_model_timeframe_name(self):
-        assert parse_model_timeframe_name("m@weekly") == ("m", "weekly")
-        assert parse_model_timeframe_name("m") == ("m", None)
+    def test_intervals_from_frame_empty_mapping(self):
+        df = self._multi_symbol_df()
+        batch = compress_intervals_from_frame(
+            df, {}, frozenset(), DAILY_BASE_SECONDS
+        )
+        assert not batch.compressed
+
+    def test_intervals_from_frame_validates_bar_spacing(self):
+        # Daily bars cannot come from a two-day base feed: the gaps are finer
+        # than the declared spacing.
+        df = self._multi_symbol_df()
+        with pytest.raises(ValueError, match="inconsistent with base"):
+            compress_intervals_from_frame(
+                df,
+                {"SPY": frozenset({"weekly"})},
+                frozenset(),
+                2 * DAILY_BASE_SECONDS,
+            )
+
+    def test_intervals_from_frame_skips_spacing_of_undeclared_symbols(self):
+        # QQQ is not compressed, so its spacing is never validated.
+        df = self._multi_symbol_df()
+        df = df[
+            (df[DataCol.SYMBOL.value] == "SPY")
+            | (df[DataCol.DATE.value] != df[DataCol.DATE.value].iloc[1])
+        ].reset_index(drop=True)
+        batch = compress_intervals_from_frame(
+            df, {"SPY": frozenset({"weekly"})}, frozenset(), DAILY_BASE_SECONDS
+        )
+        assert set(batch.compressed) == {("SPY", "weekly")}
+
+
+class TestModelIntervalNaming:
+    def test_model_interval_name(self):
+        assert model_interval_name("m", "weekly") == "m@weekly"
+
+    def test_parse_model_interval_name(self):
+        assert parse_model_interval_name("m@weekly") == ("m", "weekly")
+        assert parse_model_interval_name("m") == ("m", None)
 
 
 class TestBuildCompressedSymbolDf:
@@ -834,8 +866,8 @@ class TestBuildCompressedSymbolDf:
         assert len(sliced) == 1
 
 
-class TestTimeframeIndicatorCompute:
-    def test_ind_timeframe_matches_hand_compressed(self):
+class TestIntervalIndicatorCompute:
+    def test_ind_interval_matches_hand_compressed(self):
         def sma(bar_data, period):
             close = bar_data.close
             out = np.full(len(close), np.nan)
@@ -869,10 +901,10 @@ class TestTimeframeIndicatorCompute:
                 DataCol.VOLUME.value: np.ones(n),
             }
         )
-        timeframe_data = TimeframeData()
+        interval_data = IntervalData()
         sym_df = df.reset_index(drop=True)
-        weekly_name = indicator_timeframe_name("sma20", "weekly")
-        timeframe_data.compressed[(sym, "weekly")] = compress_symbol_df(
+        weekly_name = indicator_interval_name("sma20", "weekly")
+        interval_data.compressed[(sym, "weekly")] = compress_symbol_df(
             sym_df, "weekly", frozenset(), DAILY_BASE_SECONDS
         )
         mixin = IndicatorsMixin()
@@ -881,11 +913,11 @@ class TestTimeframeIndicatorCompute:
             indicator_syms=[IndicatorSymbol(weekly_name, sym)],
             cache_date_fields=None,
             disable_parallel_indicators=True,
-            timeframe_data=timeframe_data,
+            interval_data=interval_data,
         )
         hand = sma_ind(
             compressed_bars_to_bar_data(
-                timeframe_data.compressed[(sym, "weekly")].bars
+                interval_data.compressed[(sym, "weekly")].bars
             )
         )
         key = IndicatorSymbol(weekly_name, sym)
@@ -899,11 +931,11 @@ class TestReservedNameSeparator:
         "name", ["vol@30", "sma@2", "close@1h", "spread@weekly", "a@b"]
     )
     def test_indicator_rejects_at_sign(self, name, scope):
-        with pytest.raises(ValueError, match="reserved for timeframe"):
+        with pytest.raises(ValueError, match="reserved for interval"):
             indicator(name, lambda bar_data: bar_data.close)
 
     def test_model_rejects_at_sign(self, scope):
-        with pytest.raises(ValueError, match="reserved for timeframe"):
+        with pytest.raises(ValueError, match="reserved for interval"):
             model("m@5", lambda sym, train_data, test_data: None)
 
     def test_plain_names_still_accepted(self, scope):
