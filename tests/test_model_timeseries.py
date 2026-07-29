@@ -4,7 +4,7 @@ import arch
 import numpy as np
 import pandas as pd
 import pytest
-from pybroker import Strategy, model
+from pybroker import Strategy, indicator, model
 from pybroker.common import DataCol
 from pybroker.config import StrategyConfig
 from pybroker.model import (
@@ -421,3 +421,181 @@ class TestIntervalPerBar:
         assert seen
         assert lags_seen
         assert all(n == 2 for n in lags_seen)
+
+
+def _sma(bar_data, period):
+    close = bar_data.close
+    out = np.full(len(close), np.nan)
+    for i in range(period - 1, len(close)):
+        out[i] = np.mean(close[i - period + 1 : i + 1])
+    return out
+
+
+class TestIndicatorLagColumns:
+    """``lags=`` must compose with ``indicators=`` on every path.
+
+    Lag caches are built from raw data sources that hold no indicator values,
+    so an indicator lag column used to fail with a bare ``KeyError`` during
+    training and ``History column not found`` at prediction.
+    """
+
+    @pytest.fixture()
+    def spy_df(self, data_source_df):
+        return data_source_df[data_source_df[DataCol.SYMBOL.value] == "SPY"]
+
+    @staticmethod
+    def _walkforward(m, ds, syms, intervals=None):
+        strategy = Strategy(ds, START_DATE, END_DATE)
+        if intervals:
+            strategy.add_execution(
+                lambda ctx: ctx.interval(intervals[0]).preds(m.name),
+                syms,
+                models=m,
+                intervals=intervals,
+            )
+            strategy.walkforward(windows=1, train_size=0.5, timeframe="1d")
+        else:
+            strategy.add_execution(
+                lambda ctx: ctx.preds(m.name), syms, models=m
+            )
+            strategy.walkforward(windows=1, train_size=0.5)
+
+    def test_filed_repro_indicators_with_lags(self, spy_df):
+        # indicators= plus lags= and no lag_cols raised KeyError('sma5').
+        ind = indicator("sma5", _sma, period=5)
+        m = model(
+            "ind_lags",
+            lambda s, t, u: object(),
+            [ind],
+            predict_fn=lambda _m, d: np.zeros(len(d)),
+            lags=2,
+        )
+        self._walkforward(m, spy_df, ["SPY"])
+
+    def test_inferred_lag_cols_exclude_indicators(self, spy_df):
+        ind = indicator("sma5", _sma, period=5)
+        seen = {}
+
+        def train_fn(symbol, train_data, test_data):
+            seen["cols"] = model_input_lag_columns(train_data)
+            return object()
+
+        m = model(
+            "inferred_lags",
+            train_fn,
+            [ind],
+            predict_fn=lambda _m, d: np.zeros(len(d)),
+            lags=2,
+        )
+        self._walkforward(m, spy_df, ["SPY"])
+        assert seen["cols"]
+        assert "sma5" not in seen["cols"]
+
+    @pytest.mark.parametrize("intervals", [None, ["weekly"]])
+    @pytest.mark.parametrize("pooled", [False, True])
+    def test_indicator_lag_cols_all_paths(
+        self, data_source_df, pooled, intervals
+    ):
+        ind = indicator("sma5", _sma, period=5)
+        widths = {}
+
+        def capture(train_data):
+            widths["train"] = feature_matrix_from_model_input(
+                train_data
+            ).shape[1]
+            widths["train_cols"] = model_input_lag_columns(train_data)
+
+        def train_fn(symbol, train_data, test_data):
+            capture(train_data)
+            return object(), ("close",)
+
+        def pooled_train_fn(train_data, test_data):
+            capture(train_data)
+            return object(), ("close",)
+
+        def predict_fn(_m, data):
+            widths.setdefault(
+                "predict", feature_matrix_from_model_input(data).shape[1]
+            )
+            widths.setdefault("predict_cols", model_input_lag_columns(data))
+            return np.zeros(len(data))
+
+        m = model(
+            "ind_lag_cols",
+            pooled_train_fn if pooled else train_fn,
+            [ind],
+            predict_fn=predict_fn,
+            lags=2,
+            lag_cols=(ind,),
+            pooled=pooled,
+        )
+        syms = ["SPY", "AAPL"] if pooled else ["SPY"]
+        ds = data_source_df[data_source_df[DataCol.SYMBOL.value].isin(syms)]
+        self._walkforward(m, ds, syms, intervals)
+        assert widths["train_cols"] == ("sma5",)
+        assert widths["predict_cols"] == ("sma5",)
+        # Training and prediction must build the same shape, or the model is
+        # fed a matrix it was never fit on.
+        assert widths["train"] == widths["predict"] == 2
+
+    def test_test_bar_zero_uses_train_window_indicator_history(self, spy_df):
+        # The lag cache must reach back past the test window. Sourcing from
+        # IndicatorScope.fetch would mask to the test window and leave bar 0
+        # as NaN instead of carrying the train window's values.
+        ind = indicator("sma5", _sma, period=5)
+        seen = {}
+
+        def train_fn(symbol, train_data, test_data):
+            # The split boundary comes from the data the model actually sees.
+            seen["train_tail"] = train_data[DataCol.DATE.value].to_numpy()[-2:]
+            return object(), ("close",)
+
+        def predict_fn(_m, data):
+            seen.setdefault(
+                "row0", feature_matrix_from_model_input(data)[0].copy()
+            )
+            return np.zeros(len(data))
+
+        m = model(
+            "ind_history",
+            train_fn,
+            [ind],
+            predict_fn=predict_fn,
+            lags=2,
+            lag_cols=(ind,),
+        )
+        self._walkforward(m, spy_df, ["SPY"])
+        close = spy_df[DataCol.CLOSE.value].to_numpy(dtype=float)
+        full = pd.Series(
+            _sma(type("B", (), {"close": close})(), 5),
+            index=spy_df[DataCol.DATE.value].to_numpy(),
+        )
+        prev, last = seen["train_tail"]
+        assert not np.isnan(seen["row0"]).any()
+        np.testing.assert_allclose(
+            seen["row0"], [full.loc[last], full.loc[prev]]
+        )
+
+    def test_unknown_lag_col_raises_clear_error(self, spy_df):
+        m = model(
+            "bad_lag_col",
+            lambda s, t, u: object(),
+            predict_fn=lambda _m, d: np.zeros(len(d)),
+            lags=2,
+            lag_cols=("not_a_column",),
+        )
+        with pytest.raises(ValueError, match="lag_cols not found"):
+            self._walkforward(m, spy_df, ["SPY"])
+
+    def test_vwap_lag_col_on_interval(self, spy_df):
+        ds = spy_df.assign(
+            vwap=spy_df[DataCol.CLOSE.value].to_numpy(dtype=float) * 1.01
+        )
+        m = model(
+            "vwap_lags",
+            lambda s, t, u: (object(), ("close",)),
+            predict_fn=lambda _m, d: np.zeros(len(d)),
+            lags=2,
+            lag_cols=("vwap",),
+        )
+        self._walkforward(m, ds, ["SPY"], ["weekly"])

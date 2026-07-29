@@ -491,6 +491,9 @@ def build_compressed_symbol_arrays(
         DataCol.CLOSE.value: bars.close,
         DataCol.VOLUME.value: bars.volume,
     }
+    if bars.vwap is not None:
+        columns.append(DataCol.VWAP.value)
+        arrays[DataCol.VWAP.value] = bars.vwap
     for col in custom_cols:
         if col in bars.custom:
             columns.append(col)

@@ -277,6 +277,8 @@ def _bars_column_array(bars, col: str):
         return bars.close
     if col == DataCol.VOLUME.value:
         return bars.volume
+    if col == DataCol.VWAP.value:
+        return bars.vwap
     if col in bars.custom:
         return bars.custom[col]
     return None
@@ -364,11 +366,20 @@ def merge_lag_series_cache_from_store(
     columns: tuple[str, ...],
     lags: int,
     history_dates: Optional[dict[str, np.ndarray]] = None,
+    indicators: tuple[str, ...] = (),
+    indicator_data: Optional[Mapping[IndicatorSymbol, pd.Series]] = None,
 ) -> LagSeriesCache:
-    """Adds full-history lag arrays from a :class:`SymbolArrayStore`."""
+    """Adds full-history lag arrays from a :class:`SymbolArrayStore`.
+
+    A :class:`SymbolArrayStore` holds data columns only, so indicator values
+    are aligned onto the store's dates from ``indicator_data``, which covers
+    each symbol's full history. Lagging an indicator would otherwise fail even
+    though it is a column of the model input.
+    """
     if history_dates is None:
         history_dates = {}
     date_col = DataCol.DATE.value
+    indicator_set = frozenset(indicators)
     for sym in symbols:
         if sym not in store.symbols:
             continue
@@ -376,8 +387,18 @@ def merge_lag_series_cache_from_store(
         dates = sym_data.get(date_col)
         if dates is None or len(dates) == 0:
             continue
-        history_dates[sym] = np.asarray(dates, dtype="datetime64[ns]")
-        col_arrays = {col: sym_data[col] for col in columns if col in sym_data}
+        sym_dates = np.asarray(dates, dtype="datetime64[ns]")
+        history_dates[sym] = sym_dates
+        col_arrays: dict[str, np.ndarray] = {}
+        for col in columns:
+            if col in sym_data:
+                col_arrays[col] = sym_data[col]
+            elif col in indicator_set and indicator_data is not None:
+                ind_sym = IndicatorSymbol(col, sym)
+                if ind_sym in indicator_data:
+                    col_arrays[col] = _indicator_values_for_dates(
+                        indicator_data[ind_sym], sym_dates
+                    )
         merge_lag_series_cache_from_arrays(
             cache, sym, columns, lags, history_dates[sym], col_arrays
         )
@@ -417,9 +438,14 @@ def merge_lag_series_cache_from_arrays(
     """Adds full-history lag arrays built from numpy column data."""
     del history_dates
     for col in columns:
-        values = column_arrays[col]
+        # Use get() so a column the caller could not resolve reports the
+        # cause instead of raising a bare KeyError.
+        values = column_arrays.get(col)
         if values is None:
-            raise ValueError(f"Column {col!r} not found for {symbol!r}.")
+            raise ValueError(
+                f"Column {col!r} not found for {symbol!r}. lag_cols must "
+                "name a data column or an Indicator registered on the model."
+            )
         values = _as_float64_contiguous(values)
         stacked = _build_stacked_lags(values, lags)
         _store_stacked_lags_in_cache(cache, symbol, col, lags, stacked)
@@ -432,18 +458,35 @@ def merge_interval_lag_series_cache(
     lags: int,
     interval: str,
     bars_by_symbol,
+    arrays_by_symbol=None,
 ) -> LagSeriesCache:
-    """Adds full-history interval lag arrays into ``cache``."""
+    """Adds full-history interval lag arrays into ``cache``.
+
+    :class:`pybroker.interval.CompressedBars` holds data columns only, so
+    ``arrays_by_symbol`` supplies columns the bars cannot -- indicator values
+    in particular -- and is consulted first when given.
+    """
     for sym in symbols:
         bars = bars_by_symbol(sym)
-        if bars is None:
+        sym_arrays = (
+            None if arrays_by_symbol is None else arrays_by_symbol(sym)
+        )
+        if bars is None and sym_arrays is None:
             continue
         for col in columns:
             if col == DataCol.DATE.value:
                 continue
-            col_data = _bars_column_array(bars, col)
+            col_data = None
+            if sym_arrays is not None:
+                col_data = sym_arrays.get(col)
+            if col_data is None and bars is not None:
+                col_data = _bars_column_array(bars, col)
             if col_data is None:
-                continue
+                raise ValueError(
+                    f"Column {col!r} not found for {sym!r} on interval "
+                    f"{interval!r}. lag_cols must name a data column or an "
+                    "Indicator registered on the model."
+                )
             values = _as_float64_contiguous(np.asarray(col_data))
             stacked = _build_stacked_lags(values, lags)
             _store_stacked_lags_in_cache(
@@ -1098,8 +1141,9 @@ class ModelSource:
             ``lag_cols``, producing a ``(n_rows, len(lag_cols) * lags)``
             feature matrix attached to model input rather than added as
             columns. See :func:`pybroker.model.model`.
-        lag_cols: Columns to compute lagged values for. Defaults to every
-            column of the training data, excluding ``date`` and ``symbol``.
+        lag_cols: Columns to compute lagged values for. Defaults to the data
+            columns of the training data, excluding ``date`` and ``symbol``;
+            indicators are lagged only when named here.
         per_bar: If ``True``, ``predict_fn`` is called once per bar with input
             truncated to rows up to and including the current bar.
         pooled: If ``True``, the model is trained once per execution using
@@ -1405,8 +1449,9 @@ def model(
             :class:`pybroker.indicator.Indicator`\ s to compute lagged values
             for. :class:`pybroker.indicator.Indicator`\ s passed here are added
             to ``indicators``. Declaration order sets the order of the feature
-            blocks. Defaults to every column of the training data, excluding
-            ``date`` and ``symbol``.
+            blocks. Defaults to the data columns of the training data,
+            excluding ``date`` and ``symbol``; indicators are lagged only when
+            named here.
         per_bar: If ``True``, ``predict_fn`` is called once per bar with input
             truncated to rows up to and including the current bar, and must
             return a scalar prediction for that bar. Use for models that are
@@ -1555,6 +1600,11 @@ def _lag_feature_cols(
     This is the authoritative resolver: the result is recorded on
     :attr:`pybroker.common.TrainedModel.lag_columns` and reused when making
     predictions, so that lag features are built the same way at both ends.
+
+    Without ``lag_cols`` this infers data columns only. Indicators are
+    typically engineered features that a model does not want lagged, and
+    including them by default makes the feature matrix grow with every
+    registered indicator. Name an indicator in ``lag_cols`` to lag it.
     """
     if lag_cols:
         missing = tuple(col for col in lag_cols if col not in train_data)
@@ -1566,10 +1616,11 @@ def _lag_feature_cols(
             )
         return lag_cols
     date_col = DataCol.DATE.value
+    indicator_set = frozenset(indicators)
     return tuple(
         col
         for col in _infer_input_cols(train_data, pooled, indicators)
-        if col != date_col
+        if col != date_col and col not in indicator_set
     )
 
 
@@ -1873,6 +1924,8 @@ class ModelsMixin:
                         lag_cols,
                         source.lags,
                         history_dates,
+                        source.indicators,
+                        indicator_data,
                     )
                     apply_lags_to_model_input(
                         sym_train_data,
@@ -2077,6 +2130,8 @@ class ModelsMixin:
                 lag_cols,
                 source.lags,
                 history_dates,
+                source.indicators,
+                indicator_data,
             )
             apply_lags_to_model_input_pooled(
                 pooled_train_input,
@@ -2114,6 +2169,7 @@ class ModelsMixin:
         test_parts: dict[str, list[NDArray]] = {}
         columns: tuple[str, ...] = ()
         history_dates: dict[str, np.ndarray] = {}
+        full_arrays: dict[str, ArrayDict] = {}
         for sym in symbols:
             key = (sym, interval)
             if key not in interval_data.compressed:
@@ -2131,6 +2187,9 @@ class ModelsMixin:
             )
             columns = sym_columns + (sym_col,)
             history_dates[sym] = np.asarray(bar_dates, dtype="datetime64[ns]")
+            # Retained for the lag cache: these hold full-history indicator
+            # values, which compressed bars do not carry.
+            full_arrays[sym] = arrays
             _, train_arrays, train_dates_arr = slice_arrays_by_dates(
                 sym_columns,
                 arrays,
@@ -2194,6 +2253,7 @@ class ModelsMixin:
                 source.lags,
                 interval_str,
                 bars_by_symbol,
+                full_arrays.get,
             )
             apply_lags_to_model_input_pooled(
                 pooled_train_input,
@@ -2282,6 +2342,9 @@ class ModelsMixin:
                 source.lags,
                 interval_str,
                 bars_by_symbol,
+                # Full-history arrays include indicators, which compressed
+                # bars do not carry.
+                lambda sym, arrays=arrays: arrays if sym == symbol else None,
             )
             history_dates = np.asarray(compressed.bars.dates)
             apply_lags_to_model_input(

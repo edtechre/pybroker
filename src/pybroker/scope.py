@@ -69,6 +69,7 @@ class _ModelImports:
     merge_interval_lag_series_cache: Callable[..., LagSeriesCache]
     model_input_to_dataframe: Callable[..., pd.DataFrame]
     model_trainer_cls: type
+    _indicator_values_for_dates: Callable[..., NDArray[np.float64]]
 
 
 _model_imports: _ModelImports | None = None
@@ -91,6 +92,9 @@ def _model() -> _ModelImports:
             ),
             model_input_to_dataframe=model_mod.model_input_to_dataframe,
             model_trainer_cls=model_mod.ModelTrainer,
+            _indicator_values_for_dates=(
+                model_mod._indicator_values_for_dates
+            ),
         )
     return _model_imports
 
@@ -1087,6 +1091,34 @@ class IndicatorScope:
         """Fetches the full indicator array without truncation."""
         return self.fetch(symbol, name, end_index=None)
 
+    def has_indicator(self, symbol: str, name: str) -> bool:
+        """Whether :class:`pybroker.indicator.Indicator` data is registered
+        for ``symbol``.
+        """
+        return IndicatorSymbol(name, symbol) in self._indicator_data
+
+    def fetch_history(
+        self, symbol: str, name: str, dates: NDArray[Any]
+    ) -> Optional[NDArray[np.float64]]:
+        """Aligns full-history indicator values to ``dates``.
+
+        :meth:`fetch` masks base timeframe indicators to ``filter_dates``, so
+        it cannot serve data from before the current window. Lag features need
+        history that reaches back into the train window, which this reads from
+        the unfiltered series.
+
+        Returns:
+            :class:`numpy.ndarray` of values aligned to ``dates``, or ``None``
+            when the indicator is not registered for ``symbol``.
+        """
+        ind_sym = IndicatorSymbol(name, symbol)
+        if ind_sym not in self._indicator_data:
+            return None
+        raw = self._indicator_data[ind_sym]
+        if not isinstance(raw, pd.Series):
+            return None
+        return _model()._indicator_values_for_dates(raw, dates)
+
     def fetch_value(self, symbol: str, name: str, end_index: int) -> float:
         """Returns the scalar value at ``end_index - 1`` without slicing."""
         array = self.fetch_full(symbol, name)
@@ -1159,13 +1191,23 @@ class IntervalScope:
         memo_key = (symbol, interval_str, lag_cols, lags)
         if memo_key in self._lag_cache_keys:
             return
-        self._lag_cache_keys.add(memo_key)
 
         def bars_by_symbol(sym, interval_str=interval_str, interval=interval):
             key = (sym, interval)
             if key not in self._interval_data.compressed:
                 return None
             return self._interval_data.compressed[key].bars
+
+        def arrays_by_symbol(sym, interval=interval):
+            # Compressed bars carry no indicator values. Interval indicators
+            # are not masked to the test window, so fetch_full is already the
+            # full compressed history the lag cache needs.
+            arrays: dict[str, NDArray[Any]] = {}
+            for col in lag_cols:
+                name = indicator_interval_name(col, interval)
+                if self._ind_scope.has_indicator(sym, name):
+                    arrays[col] = self._ind_scope.fetch_full(sym, name)
+            return arrays or None
 
         model.merge_interval_lag_series_cache(
             self._lag_series_cache,
@@ -1174,7 +1216,10 @@ class IntervalScope:
             lags,
             interval_str,
             bars_by_symbol,
+            arrays_by_symbol,
         )
+        # Memoized only after a successful build so a failure is retried.
+        self._lag_cache_keys.add(memo_key)
 
     def window_len(self, symbol: str, interval: TimeframeInterval) -> int:
         """Returns the compressed bar count visible in the current window.
@@ -1487,6 +1532,8 @@ class IntervalScope:
             DataCol.CLOSE.value: bars.close[:cap],
             DataCol.VOLUME.value: bars.volume[:cap],
         }
+        if bars.vwap is not None:
+            arrays[DataCol.VWAP.value] = bars.vwap[:cap]
         for col in sorted(self._scope.custom_data_cols):
             if col in bars.custom:
                 arrays[col] = bars.custom[col][:cap]
@@ -1584,8 +1631,16 @@ class ModelInputScope:
         for col in lag_cols:
             col_data = self._history_col_scope.fetch(symbol, col)
             if col_data is None:
+                # A ColumnScope serves data columns only, so an indicator lag
+                # column is read from full indicator history instead. Using
+                # IndicatorScope.fetch here would mask to the test window and
+                # leave test bar 0 without the train window's lag values.
+                col_data = self._ind_scope.fetch_history(symbol, col, dates)
+            if col_data is None:
                 raise ValueError(
-                    f"History column {col!r} not found for {symbol!r}."
+                    f"History column {col!r} not found for {symbol!r}. "
+                    "lag_cols must name a data column or an Indicator "
+                    "registered on the model."
                 )
             column_arrays[col] = col_data
         model.merge_lag_series_cache_from_arrays(
