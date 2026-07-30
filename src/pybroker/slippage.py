@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import TYPE_CHECKING, Literal, Mapping, Optional
 
-from pybroker.common import DataCol, to_decimal
+from pybroker.common import DataCol, _static_symbols, to_decimal
 from pybroker.context import ExecContext
 from pybroker.scope import ColumnScope, IndicatorScope
 
@@ -245,20 +245,51 @@ class VolatilitySlippageModel(SlippageModel):
         self.scale = scale
         self._scale = Decimal(str(scale))
         self._clamped_symbols: set[str] = set()
+        self._missing_symbols: set[str] = set()
 
     @property
     def is_fill_noop(self) -> bool:
         return self.scale == 0
 
     def validate(self, strategy: "Strategy") -> None:
-        ind_names: set[str] = set()
-        for execution in strategy._executions:
-            ind_names.update(execution.indicator_names)
-        if self.atr_indicator not in ind_names:
-            raise ValueError(
-                f"Indicator {self.atr_indicator!r} must be attached to an "
-                "execution via add_execution(..., indicators=[...])."
-            )
+        # Every execution that can trade, not their union: this model prices
+        # the fills of each one, so an execution without the indicator would
+        # pass a union check and then raise "Indicator not found" mid-backtest
+        # at its first fill.
+        #
+        # An execution with no function of its own can still trade: a strategy
+        # builds an ExecContext for every symbol regardless, and hands them all
+        # to before_exec/after_exec, the rotation ranker and the rotation
+        # sizer, any of which may set buy_shares/sell_shares. The documented
+        # rebalancing recipe is exactly that -- add_execution(None, [...]) plus
+        # set_after_exec(...) -- so such an execution is only exempt when no
+        # global order-placing hook exists at all.
+        places_orders_globally = (
+            strategy._before_exec_fn is not None
+            or strategy._after_exec_fn is not None
+            or strategy._rotation_sizer is not None
+        )
+        incomplete = [
+            execution
+            for execution in strategy._executions
+            if (execution.fn is not None or places_orders_globally)
+            and self.atr_indicator not in execution.indicator_names
+        ]
+        if not incomplete:
+            return
+        message = (
+            f"Indicator {self.atr_indicator!r} must be attached to every "
+            "execution that places orders, via "
+            "add_execution(..., indicators=[...])."
+        )
+        missing = sorted(
+            symbol
+            for execution in incomplete
+            for symbol in _static_symbols(execution.symbols)
+        )
+        if missing:
+            message += f" Missing for: {missing}."
+        raise ValueError(message)
 
     def apply_at_fill(
         self, fill_ctx: FillSlippageContext
@@ -268,9 +299,17 @@ class VolatilitySlippageModel(SlippageModel):
         if fill_ctx.ind_scope is None or fill_ctx.sym_end_index is None:
             return fill_ctx.shares, fill_ctx.fill_price
         end_index = fill_ctx.sym_end_index[fill_ctx.symbol]
-        atr_value = fill_ctx.ind_scope.fetch_value(
-            fill_ctx.symbol, self.atr_indicator, end_index
-        )
+        try:
+            atr_value = fill_ctx.ind_scope.fetch_value(
+                fill_ctx.symbol, self.atr_indicator, end_index
+            )
+        except ValueError:
+            # No indicator for this symbol here. validate() rejects that up
+            # front, but a fill can still be priced outside a test window --
+            # a boundary liquidation, say -- and aborting the whole backtest
+            # at a fill is worse than leaving it unadjusted.
+            self._warn_missing_indicator(fill_ctx.symbol)
+            return fill_ctx.shares, fill_ctx.fill_price
         if atr_value is None or math.isnan(atr_value):
             return fill_ctx.shares, fill_ctx.fill_price
         adjustment = self._scale * to_decimal(atr_value)
@@ -280,6 +319,16 @@ class VolatilitySlippageModel(SlippageModel):
             self._warn_clamped(fill_ctx.symbol)
             price = floor
         return fill_ctx.shares, price
+
+    def _warn_missing_indicator(self, symbol: str):
+        if symbol in self._missing_symbols:
+            return
+        self._missing_symbols.add(symbol)
+        warnings.warn(
+            f"{type(self).__name__}: {self.atr_indicator!r} not found for "
+            f"{symbol!r}; leaving that fill unadjusted.",
+            stacklevel=2,
+        )
 
     def _warn_clamped(self, symbol: str):
         if symbol in self._clamped_symbols:
@@ -327,6 +376,7 @@ class VolumeSlippageModel(SlippageModel):
             Decimal(str(volume_limit)) if self._cap_enabled else None
         )
         self._warned_symbols: set[str] = set()
+        self._clamped_symbols: set[str] = set()
 
     @property
     def is_fill_noop(self) -> bool:
@@ -400,5 +450,23 @@ class VolumeSlippageModel(SlippageModel):
                 price = fill_ctx.fill_price * (_DECIMAL_ONE + impact_dec)
             else:
                 price = fill_ctx.fill_price * (_DECIMAL_ONE - impact_dec)
+                # Impact is unbounded above, so an order large relative to bar
+                # volume drives the sell price to zero and past it. Clamp as
+                # VolatilitySlippageModel does rather than pay negative cash.
+                floor = fill_ctx.fill_price * _MIN_PRICE_FACTOR
+                if price < floor:
+                    self._warn_clamped(fill_ctx.symbol)
+                    price = floor
 
         return shares, price
+
+    def _warn_clamped(self, symbol: str):
+        if symbol in self._clamped_symbols:
+            return
+        self._clamped_symbols.add(symbol)
+        warnings.warn(
+            f"{type(self).__name__}: price impact for {symbol!r} exceeded the "
+            f"fill price and was clamped to {_MIN_PRICE_FACTOR:%} of it. "
+            "Consider lowering price_impact or setting volume_limit.",
+            stacklevel=2,
+        )

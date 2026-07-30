@@ -1383,3 +1383,44 @@ def test_get_cached_models_pooled_single_pass(
     assert len(models) == 2
     assert uncached == []
     assert len(get_calls) == 2
+
+
+def test_uses_hyperparams_when_indicator_has_hyperparam(scope):
+    """A model trained on a tuned indicator must bypass the model cache.
+
+    ModelCacheKey carries no hyperparameter values, so caching such a model
+    would serve a fit made under a different value on the next run.
+    """
+    from pybroker.optimize import hyperparam
+
+    tuned_ind = indicator(
+        "tuned_ind",
+        lambda data, period: data.close,
+        period=hyperparam("period", default=5, low=5, high=20, step=5),
+    )
+    plain_ind = indicator("plain_ind", lambda data: data.close)
+    model("tuned_model", lambda *a, **k: None, indicators=[tuned_ind])
+    model("plain_model", lambda *a, **k: None, indicators=[plain_ind])
+    mixin = ModelsMixin()
+    assert mixin._uses_hyperparams("tuned_model")
+    assert not mixin._uses_hyperparams("plain_model")
+    # Interval-suffixed names resolve to the same source.
+    assert mixin._uses_hyperparams("tuned_model@weekly")
+    assert not mixin._uses_hyperparams("unregistered_model")
+
+
+def test_logger_getstate_drops_progress_bar(scope):
+    """The scope is pickled to workers, and a live progress bar is not
+    picklable because it holds the caller's output stream."""
+    import pickle
+
+    from pybroker.scope import StaticScope
+
+    static_scope = StaticScope.instance()
+    static_scope.logger._start_progress_bar("test", 10)
+    assert static_scope.logger._progress_bar is not None
+    try:
+        restored = pickle.loads(pickle.dumps(static_scope))
+    finally:
+        static_scope.logger._progress_bar = None
+    assert restored.logger._progress_bar is None

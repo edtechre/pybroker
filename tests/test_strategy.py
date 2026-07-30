@@ -4874,6 +4874,12 @@ class TestStrategy:
         )
 
     def test_backtest_when_slippage_and_sell_all_shares(self, data_source_df):
+        """Signal-time slippage must not shrink a full exit.
+
+        ``sell_all_shares`` exits the whole position and disarms its stops, so
+        a shrunk order would strand the remainder with no stops on it.
+        """
+
         class FakeSlippageModel(SlippageModel):
             def apply_slippage(
                 self, ctx: ExecContext, buy_shares, sell_shares
@@ -4894,9 +4900,11 @@ class TestStrategy:
         orders = result.orders
         sell_orders = orders[orders["type"] == "sell"]
         assert len(sell_orders) == 1
-        assert sell_orders.iloc[0]["shares"] == 90
+        assert sell_orders.iloc[0]["shares"] == 100
 
     def test_backtest_when_slippage_and_cover_all_shares(self, data_source_df):
+        """See :meth:`.test_backtest_when_slippage_and_sell_all_shares`."""
+
         class FakeSlippageModel(SlippageModel):
             def apply_slippage(
                 self, ctx: ExecContext, buy_shares, sell_shares
@@ -4917,7 +4925,39 @@ class TestStrategy:
         orders = result.orders
         buy_orders = orders[orders["type"] == "buy"]
         assert len(buy_orders) == 1
-        assert buy_orders.iloc[0]["shares"] == 90
+        assert buy_orders.iloc[0]["shares"] == 100
+
+    @pytest.mark.parametrize("type", ["long", "short"])
+    def test_backtest_when_slippage_and_partial_order_then_adjusted(
+        self, data_source_df, type
+    ):
+        """Signal-time slippage still adjusts ordinary, non-exit orders."""
+
+        class FakeSlippageModel(SlippageModel):
+            def apply_slippage(
+                self, ctx: ExecContext, buy_shares, sell_shares
+            ):
+                if buy_shares:
+                    ctx.buy_shares = 90
+                if sell_shares:
+                    ctx.sell_shares = 90
+
+        def exec_fn(ctx):
+            pos = ctx.long_pos() if type == "long" else ctx.short_pos()
+            if pos is None:
+                if type == "long":
+                    ctx.buy_shares = 100
+                else:
+                    ctx.sell_shares = 100
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.set_slippage_model(FakeSlippageModel())
+        strategy.add_execution(exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        entry_type = "buy" if type == "long" else "sell"
+        entries = result.orders[result.orders["type"] == entry_type]
+        assert len(entries) == 1
+        assert entries.iloc[0]["shares"] == 90
 
     def test_backtest_when_volume_slippage_and_nan_volume(
         self, data_source_df
@@ -6166,3 +6206,220 @@ class TestStrategyIntervals:
         strategy.add_execution(lambda ctx: None, "SPY", intervals=intervals)
         execution = next(iter(strategy._executions))
         assert execution.intervals == expected
+
+
+def test_backtest_when_target_shares_exit_then_stops_disarmed(data_source_df):
+    """A target of zero must close the position, not flip it.
+
+    set_target_shares schedules a plain market order. If the position's stops
+    stay armed, a stop firing on the fill bar closes the position first and
+    the scheduled order opens one in the opposite direction.
+    """
+    df = data_source_df[data_source_df["symbol"] == "SPY"].copy()
+
+    def exec_fn(ctx):
+        if not ctx.long_pos():
+            ctx.buy_shares = 100
+            ctx.stop_loss_pct = 1
+        else:
+            ctx.set_target_shares(0, dir="long")
+
+    strategy = Strategy(df, START_DATE, END_DATE)
+    strategy.add_execution(exec_fn, "SPY")
+    result = strategy.backtest(calc_bootstrap=False)
+    assert not (result.orders["intent"] == "sell_to_open").any()
+
+
+def test_backtest_when_rotation_discards_exit_then_stops_kept(data_source_df):
+    """Rotation ignores orders from executions, so it must ignore their stop
+    removal too. Otherwise calling sell_all_shares leaves the position running
+    with its stops silently disarmed.
+    """
+    df = data_source_df[data_source_df["symbol"].isin(["SPY", "AAPL"])].copy()
+
+    def make(call_exit):
+        def exec_fn(ctx):
+            ctx.long_score = 100 if ctx.symbol == "SPY" else 1
+            ctx.stop_loss_pct = 1
+            if call_exit and ctx.long_pos():
+                ctx.sell_all_shares()
+
+        return exec_fn
+
+    results = []
+    for call_exit in (False, True):
+        strategy = Strategy(df, START_DATE, END_DATE)
+        strategy.add_execution(make(call_exit), ["SPY", "AAPL"])
+        strategy.set_max_long_positions(1)
+        strategy.enable_rotation(worst_rank_held=1)
+        result = strategy.backtest(calc_bootstrap=False)
+        results.append(result.orders["order_type"].tolist())
+    assert "stop_loss" in results[0]
+    assert results[0] == results[1]
+
+
+def _ragged_frame():
+    """Two symbols, one of which trades only every other bar."""
+    dates = pd.date_range("2021-01-04", periods=10, freq="B")
+    rows = []
+    for i, date in enumerate(dates):
+        rows.append(
+            dict(
+                symbol="A",
+                date=date,
+                open=50.0,
+                high=50.0,
+                low=50.0,
+                close=50.0,
+                volume=1e6,
+            )
+        )
+        if i % 2 == 0:
+            price = [10.0, 20.0, 300.0, 400.0, 500.0][i // 2]
+            rows.append(
+                dict(
+                    symbol="B",
+                    date=date,
+                    open=price,
+                    high=price,
+                    low=price,
+                    close=price,
+                    volume=1e6,
+                )
+            )
+    return pd.DataFrame(rows)
+
+
+def test_persistent_order_when_symbol_has_no_bar_then_not_filled():
+    """A retry on a date the symbol does not trade would fill at a stale
+    price from an earlier bar, recorded against the current date."""
+    df = _ragged_frame()
+
+    def exec_fn(ctx):
+        if ctx.symbol == "B" and ctx.bars == 1 and not ctx.long_pos():
+            ctx.buy_shares = 10
+            ctx.buy_limit_price = 10_000
+            ctx.buy_timeout_bars = -1
+
+    strategy = Strategy(
+        df, "2021-01-04", "2021-01-20", StrategyConfig(initial_cash=100_000)
+    )
+    strategy.add_execution(exec_fn, ["A", "B"])
+    result = strategy.backtest(calc_bootstrap=False)
+    b_dates = set(df[df["symbol"] == "B"]["date"])
+    b_orders = result.orders[result.orders["symbol"] == "B"]
+    assert len(b_orders)
+    assert set(b_orders["date"]) <= b_dates
+
+
+def test_persistent_order_when_window_boundary_then_kept():
+    """``timeout_bars=-1`` persists indefinitely, including across windows."""
+    dates = pd.date_range("2021-01-22", periods=40, freq="B")
+    prices = [100.0] * 15 + [50.0] * 25
+    df = pd.DataFrame(
+        [
+            dict(
+                symbol="A",
+                date=date,
+                open=price,
+                high=price,
+                low=price,
+                close=price,
+                volume=1e6,
+            )
+            for date, price in zip(dates, prices)
+        ]
+    )
+
+    def exec_fn(ctx):
+        if ctx.bars == 9 and not ctx.long_pos():
+            ctx.buy_shares = 10
+            ctx.buy_limit_price = 60
+            ctx.buy_timeout_bars = -1
+
+    fills = []
+    for windows, train_size in ((1, 0.0), (2, 0.5)):
+        strategy = Strategy(
+            df,
+            str(dates[0].date()),
+            str(dates[-1].date()),
+            StrategyConfig(initial_cash=100_000),
+        )
+        strategy.add_execution(exec_fn, "A")
+        result = strategy.walkforward(
+            windows=windows, train_size=train_size, calc_bootstrap=False
+        )
+        fills.append(len(result.orders))
+    assert fills == [1, 1]
+
+
+def test_persistent_order_timeout_is_window_count_independent():
+    """The retry age must not be derived from a per-window bar counter.
+
+    PendingOrderScope is owned by the walkforward and outlives a window, while
+    sym_end_index restarts at each one, so a derived age goes negative at a
+    boundary and the order never times out.
+    """
+    dates = pd.date_range("2021-01-04", periods=400, freq="B")
+    prices = [100.0] * 300 + [50.0] * 100
+    df = pd.DataFrame(
+        [
+            dict(
+                symbol="A",
+                date=date,
+                open=price,
+                high=price,
+                low=price,
+                close=price,
+                volume=1e6,
+            )
+            for date, price in zip(dates, prices)
+        ]
+    )
+
+    def exec_fn(ctx):
+        if ctx.bars == 199 and not ctx.long_pos():
+            ctx.buy_shares = 10
+            ctx.buy_limit_price = 60
+            ctx.buy_timeout_bars = 1
+
+    for windows, train_size in ((1, 0.0), (2, 0.5), (4, 0.5)):
+        strategy = Strategy(
+            df,
+            str(dates[0].date()),
+            str(dates[-1].date()),
+            StrategyConfig(initial_cash=100_000),
+        )
+        strategy.add_execution(exec_fn, "A")
+        result = strategy.walkforward(
+            windows=windows, train_size=train_size, calc_bootstrap=False
+        )
+        assert result.orders.empty, f"order should have expired ({windows=})"
+
+
+@pytest.mark.parametrize("record_position_bars", [True, False])
+def test_test_result_positions_shape_is_stable(
+    data_source_df, record_position_bars
+):
+    """`positions` must carry the same index and dtypes either way.
+
+    record_position_bars is off by default, so guarding the set_index on a
+    non-empty frame gave the common case a plain RangeIndex.
+    """
+    df = data_source_df[data_source_df["symbol"] == "SPY"]
+
+    def exec_fn(ctx):
+        if not ctx.long_pos():
+            ctx.buy_shares = 10
+
+    strategy = Strategy(
+        df,
+        START_DATE,
+        END_DATE,
+        StrategyConfig(record_position_bars=record_position_bars),
+    )
+    strategy.add_execution(exec_fn, "SPY")
+    positions = strategy.backtest(calc_bootstrap=False).positions
+    assert list(positions.index.names) == ["symbol", "date"]
+    for col in ("close", "equity", "market_value", "margin", "unrealized_pnl"):
+        assert positions[col].dtype == np.float64

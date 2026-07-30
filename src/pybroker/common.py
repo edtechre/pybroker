@@ -410,7 +410,10 @@ def quantize(df: pd.DataFrame, col: str, round: bool) -> pd.Series:
         return values.astype(float)
     raw = values.to_numpy(dtype=object, copy=False)
     out = [float(val.quantize(_CENTS, ROUND_HALF_UP)) for val in raw]
-    return pd.Series(out, index=values.index)
+    # dtype is explicit: pandas infers ``object`` from an empty list, which
+    # would leave an all-null column (an unused limit_price, say) typed
+    # ``object`` in TestResult while a populated one is ``float64``.
+    return pd.Series(out, index=values.index, dtype=float)
 
 
 def verify_data_source_columns(df: pd.DataFrame):
@@ -478,6 +481,10 @@ def _json_safe(value: Any) -> Any:
         return value
     if isinstance(value, Decimal):
         return float(value)
+    if value is pd.NaT:
+        # NaTType subclasses datetime, so it would otherwise reach the branch
+        # below and serialize as the string "NaT" rather than as null.
+        return None
     if isinstance(value, datetime):
         return value.isoformat()
     if isinstance(value, pd.Timestamp):

@@ -36,6 +36,15 @@ class Logger:
         self._progress_bar_disabled = False
         self._disabled = False
 
+    def __getstate__(self) -> dict:
+        """Returns picklable state, for shipping the scope to a worker.
+
+        A live :class:`ProgressBar` holds the caller's output stream, which is
+        not picklable, and a worker has no business advancing the caller's
+        progress bar in any case.
+        """
+        return {**self.__dict__, "_progress_bar": None}
+
     def _start_progress_bar(self, message: str, total_count: int):
         if self._disabled:
             return

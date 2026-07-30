@@ -829,14 +829,22 @@ def _aggregate_bins(
         e = ends[i]
         o[i] = open_[s]
         c[i] = close[e]
-        hi = high[s]
-        lo = low[s]
-        vol_sum = volume[s]
-        for j in range(s + 1, e + 1):
-            if high[j] > hi:
-                hi = high[j]
-            if low[j] < lo:
-                lo = low[j]
+        # Seeded from the first finite value rather than from the bin's first
+        # bar. Seeding with high[s] makes a NaN there swallow the whole bin,
+        # because every later ``>`` against NaN is False, while a NaN anywhere
+        # else in the bin is skipped by that same comparison. Skip it
+        # everywhere instead, so the result does not depend on where in the
+        # bin the gap happens to fall.
+        hi = np.nan
+        lo = np.nan
+        vol_sum = 0.0
+        for j in range(s, e + 1):
+            high_j = high[j]
+            if not np.isnan(high_j) and (np.isnan(hi) or high_j > hi):
+                hi = high_j
+            low_j = low[j]
+            if not np.isnan(low_j) and (np.isnan(lo) or low_j < lo):
+                lo = low_j
             vol_sum += volume[j]
         h[i] = hi
         lows[i] = lo

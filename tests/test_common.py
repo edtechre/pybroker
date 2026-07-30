@@ -225,3 +225,13 @@ def test_verify_data_source_columns_when_missing_then_error():
         match=re.escape("DataFrame is missing required columns: ['close']"),
     ):
         verify_data_source_columns(df)
+
+
+def test_json_safe_when_nat_then_null():
+    """NaTType subclasses datetime, so it would otherwise be serialized by the
+    datetime branch as the string "NaT" rather than as null."""
+    from pybroker.common import _json_safe
+
+    assert _json_safe(pd.NaT) is None
+    assert _json_safe(np.datetime64("NaT")) is None
+    assert _json_safe(pd.Timestamp("2021-01-04")) == "2021-01-04T00:00:00"

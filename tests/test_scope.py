@@ -31,6 +31,7 @@ from pybroker.scope import (
     symbol_array_store_from_frame,
     symbol_array_store_from_flat_frame,
     symbol_array_store_from_indexed_df,
+    sym_exec_dates_from_store,
     unregister_columns,
 )
 from pybroker.common import DataCol
@@ -603,6 +604,18 @@ def test_symbol_array_store_from_frame_matches_indexed(
             assert np.array_equal(built_cols[col], ref_cols[col])
 
 
+def test_sym_exec_dates_from_store_is_sorted(data_source_df):
+    """Symbol order must not depend on frozenset (string hash) iteration.
+
+    This mapping's insertion order decides which symbol trades first on each
+    bar when calendars are ragged, so an unsorted walk makes a
+    capital-constrained backtest depend on PYTHONHASHSEED.
+    """
+    store = symbol_array_store_from_frame(data_source_df)
+    result = sym_exec_dates_from_store(store)
+    assert list(result) == sorted(store.symbols)
+
+
 def test_column_scope_from_frame_fetch_parity(data_source_df, symbols):
     """column_scope_from_frame fetch matches indexed ColumnScope."""
     from pybroker.scope import ColumnScope
@@ -893,3 +906,50 @@ class TestSliceStoreNumba:
         sliced = slice_symbol_array_store_by_dates(store, selected)
         _assert_stores_equal(reference, sliced)
         assert len(sliced.sym_arrays["SYM00"]["close"]) == 1
+
+
+def test_resolve_lag_cols_when_loader_has_no_recorded_columns(scope):
+    """A pretrained loader has no training pass to record lag columns, so its
+    default must be resolved the way a trainer's is -- data columns only --
+    rather than from whatever load_fn happened to return."""
+    from pybroker.common import TrainedModel
+    from pybroker.model import _lag_feature_cols
+    from pybroker.scope import _resolve_lag_cols
+
+    class _Source:
+        lags = 2
+        pooled = False
+        indicators = ("myind",)
+        lag_cols = ()
+
+    class _Input(dict):
+        @property
+        def columns(self):
+            return tuple(self.keys())
+
+    model_input = _Input(
+        {
+            "date": None,
+            "open": None,
+            "high": None,
+            "low": None,
+            "close": None,
+            "volume": None,
+            "myind": None,
+        }
+    )
+    trained = TrainedModel(
+        name="pre",
+        instance=None,
+        predict_fn=None,
+        input_cols=None,
+        per_bar=False,
+        lag_columns=None,
+    )
+    expected = _lag_feature_cols(
+        model_input, pooled=False, indicators=("myind",)
+    )
+    assert (
+        _resolve_lag_cols(_Source(), trained, "pre", model_input) == expected
+    )
+    assert "myind" not in expected

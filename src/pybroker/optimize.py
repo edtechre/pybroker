@@ -19,8 +19,10 @@ This code is licensed under Apache 2.0 with Commons Clause license
 """
 
 import json
+import math
 import warnings
 from collections import defaultdict
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -839,6 +841,21 @@ def _run_study(
     results), which matters for :class:`optuna.samplers.TPESampler` but not for
     :class:`optuna.samplers.RandomSampler`.
     """
+    if isinstance(sampler, GridSampler):
+        # A supplied sampler may cover only some of the declared hyperparams.
+        # Sequentially that raises when the objective asks for a missing name;
+        # in parallel the point simply lacks it and the default is silently
+        # used, so the two paths would search different spaces. Reject it up
+        # front on both.
+        missing = sorted(
+            set(bundle.search_space.hyperparams) - set(sampler._param_names)
+        )
+        if missing:
+            raise ValueError(
+                "GridSampler search space is missing declared "
+                f"hyperparameter(s): {missing}. Include them in the grid "
+                "passed to GridSampler, or let optimize() build the sampler."
+            )
     workers = _effective_n_jobs()
     if workers <= 1:
         study.optimize(bundle.objective, n_trials=n_trials)
@@ -860,6 +877,18 @@ def _run_study(
                 for params in combos
             )
         for params, score in zip(combos, scores):
+            if _is_failed_score(score):
+                # create_trial rejects NaN just as study.tell does. Record the
+                # trial as failed, matching what study.optimize does on the
+                # sequential path, instead of aborting the whole study.
+                study.add_trial(
+                    optuna.trial.create_trial(
+                        params=params,
+                        distributions=dists,
+                        state=optuna.trial.TrialState.FAIL,
+                    )
+                )
+                continue
             study.add_trial(
                 optuna.trial.create_trial(
                     params=params, distributions=dists, value=score
@@ -867,7 +896,8 @@ def _run_study(
             )
         return
     remaining = n_trials
-    while remaining > 0:
+    stopped = False
+    while remaining > 0 and not stopped:
         size = min(workers, remaining)
         trials = [study.ask() for _ in range(size)]
         overrides = [
@@ -880,9 +910,63 @@ def _run_study(
                 )
                 for params in overrides
             )
-        for trial, score in zip(trials, scores):
-            study.tell(trial, score)
+        # A sampler may call Study.stop() from after_trial (BruteForceSampler
+        # does once the space is exhausted). Outside Study.optimize that
+        # raises instead of setting the stop flag, so declare the loop: this
+        # batch is an optimize loop, just not optuna's own.
+        with _optimize_loop(study):
+            for trial, score in zip(trials, scores):
+                if _is_failed_score(score):
+                    # study.tell rejects NaN, while study.optimize records the
+                    # trial as failed and carries on. Match the sequential
+                    # path rather than abort the study on one bad trial.
+                    study.tell(trial, state=optuna.trial.TrialState.FAIL)
+                    continue
+                # Every score in this batch has already been paid for, so all
+                # of them are recorded even once a stop is requested. Breaking
+                # here would abandon them in RUNNING and report a best trial
+                # that ignores results already in hand.
+                study.tell(trial, score)
+            stopped = bool(study._stop_flag)
         remaining -= size
+
+
+@contextmanager
+def _optimize_loop(study: optuna.Study) -> Iterator[None]:
+    """Marks ``study`` as being inside an optimization loop.
+
+    :meth:`optuna.Study.stop` raises unless it is called from within
+    ``Study.optimize``; a sampler that stops from ``after_trial`` therefore
+    blows up when trials are driven by ``ask``/``tell`` instead. Declaring the
+    loop lets ``stop`` set its flag as it normally would, which is then read
+    back to end the batch loop.
+    """
+    thread_local = getattr(study, "_thread_local", None)
+    if thread_local is None:  # pragma: no cover - optuna internals changed
+        yield
+        return
+    previous = getattr(thread_local, "in_optimize_loop", False)
+    thread_local.in_optimize_loop = True
+    try:
+        yield
+    finally:
+        thread_local.in_optimize_loop = previous
+
+
+def _is_failed_score(score: Any) -> bool:
+    """Whether ``score`` must be recorded as a failed trial.
+
+    Optuna rejects a non-numeric or NaN objective value outright, both in
+    ``Study.tell`` and in ``create_trial``, while ``Study.optimize`` marks the
+    trial failed and continues. Covers ``numpy`` floats, which are not
+    ``float`` instances.
+    """
+    if score is None:
+        return True
+    try:
+        return math.isnan(float(score))
+    except (TypeError, ValueError):
+        return True
 
 
 def _run_scoped_task(scope: StaticScope, fn: Callable[..., Any], *args) -> Any:

@@ -301,6 +301,9 @@ def _reset_rotation_orders(active_ctxs: Mapping[str, ExecContext]) -> None:
         ctx.hold_bars = None
         ctx._cover = False
         ctx._exiting_pos = False
+        # The discarded order never reaches to_result, so the stop removal it
+        # asked for must be dropped with it.
+        ctx._exit_stop_pos = None
 
 
 def _clear_unused_rotation_signals(
@@ -424,13 +427,18 @@ def _rotation_candidates(
     for sym, ctx in active_ctxs.items():
         if sym in portfolio.long_positions or sym in portfolio.short_positions:
             continue
-        rank = ranks.get(sym)
-        if rank is None or rank > worst_rank_held:
-            continue
         if _has_pending_order(ctx, entry_order_type):
             # The entry is already in flight and holds its slot. Re-issuing it
             # would stack a second order and overshoot the target allocation.
+            #
+            # Checked before the rank filter: an in-flight entry still fills
+            # even if its rank has since dropped out of the hold band, so
+            # skipping it here would hand its slot to another symbol and let
+            # the position limit silently discard one of the two.
             pending += 1
+            continue
+        rank = ranks.get(sym)
+        if rank is None or rank > worst_rank_held:
             continue
         eligible.append(sym)
     free = max_positions - (len(held) - exiting) - pending
@@ -611,6 +619,7 @@ class BacktestMixin:
         history_col_scope: Optional[ColumnScope] = None,
         test_col_scope: Optional[ColumnScope] = None,
         run_hyperparams: Optional[dict[str, Any]] = None,
+        pending_order_scope: Optional[PendingOrderScope] = None,
     ) -> dict[str, pd.DataFrame]:
         r"""Backtests a ``set`` of :class:`.Execution`\ s that implement
         trading logic.
@@ -694,7 +703,11 @@ class BacktestMixin:
             return {}
         sym_end_index: dict[str, int] = defaultdict(int)
         price_scope = PriceScope(col_scope, sym_end_index, round_fill_price)
-        pending_order_scope = PendingOrderScope()
+        # Owned by the walkforward when one is running, so an order still
+        # pending at a window boundary carries into the next window instead of
+        # being dropped with the scope.
+        if pending_order_scope is None:
+            pending_order_scope = PendingOrderScope()
         exec_ctxs: dict[str, ExecContext] = {}
         exec_fns: dict[str, Callable[[ExecContext], None]] = {}
         exec_args: dict[str, tuple[Any, ...]] = {}
@@ -882,6 +895,10 @@ class BacktestMixin:
                 if (
                     slippage_model
                     and slippage_model.uses_signal_slippage
+                    # An exit is for the whole position, so shrinking it would
+                    # leave an unintended remainder behind -- and one whose
+                    # stops sell_all_shares() has already removed.
+                    and not ctx._exiting_pos
                     and (ctx.buy_shares or ctx.sell_shares)
                 ):
                     self._apply_slippage(slippage_model, ctx)
@@ -1178,9 +1195,18 @@ class BacktestMixin:
                 continue
             if pending.timeout_bars is None:
                 continue
-            bars_since_attempt = (
-                sym_end_index[pending.symbol] - pending.exec_bar
-            )
+            if not price_scope.has_bar_on(pending.symbol, date):
+                # The symbol has no bar on this date, so there is no price to
+                # fill against. Retrying here would fill at the symbol's last
+                # bar, which is an earlier date than the fill is recorded on.
+                continue
+            # Counted on the scope, not derived from sym_end_index: the scope
+            # is owned by the walkforward and outlives a window, while
+            # sym_end_index restarts at each one. Counted before the check,
+            # because this loop first sees an order on the bar *after* the
+            # scheduled path made its initial attempt at exec_bar.
+            pending_order_scope.advance_retry_bars(pending.id)
+            bars_since_attempt = pending_order_scope.retry_bars(pending.id)
             if (
                 pending.timeout_bars >= 0
                 and bars_since_attempt > pending.timeout_bars
@@ -2494,21 +2520,25 @@ class Strategy(
         test_data: pd.DataFrame,
         master_store: Optional[SymbolArrayStore] = None,
         slippage_model: Optional[SlippageModel] = None,
+        indicator_data: Optional[Mapping[IndicatorSymbol, pd.Series]] = None,
     ) -> None:
         """Closes positions in symbols the new window no longer selects.
 
         A dropped symbol exits on the first bar of the new test window. One with
-        no bars left there -- delisted, or simply absent from the window -- exits
-        at its final bar in ``master_store`` instead: leaving it open would
-        strand the capital for the rest of the run and record no
-        :class:`pybroker.portfolio.Trade`.
+        no bars left there -- delisted, or simply absent from the window --
+        exits at its last bar at or before this window's start: leaving it open
+        would strand the capital for the rest of the run and record no
+        :class:`pybroker.portfolio.Trade`, while exiting at its last bar in the
+        whole dataset would price the exit off a future bar.
         """
         held = set(portfolio.long_positions) | set(portfolio.short_positions)
         dropped = frozenset(held - selected_syms)
         if not dropped:
             return
         exited: set[str] = set()
+        boundary_date: Optional[np.datetime64] = None
         if not test_data.empty:
+            boundary_date = test_data[DataCol.DATE.value].min()
             exited = self._exit_dropped_at_bar(
                 portfolio=portfolio,
                 store=symbol_array_store_from_frame(
@@ -2517,6 +2547,7 @@ class Strategy(
                 symbols=dropped,
                 first_bar=True,
                 slippage_model=slippage_model,
+                indicator_data=indicator_data,
             )
         remaining = dropped - exited
         if remaining and master_store is not None:
@@ -2526,6 +2557,8 @@ class Strategy(
                 symbols=remaining,
                 first_bar=False,
                 slippage_model=slippage_model,
+                indicator_data=indicator_data,
+                not_after=boundary_date,
             )
 
     def _exit_dropped_at_bar(
@@ -2535,8 +2568,14 @@ class Strategy(
         symbols: Iterable[str],
         first_bar: bool,
         slippage_model: Optional[SlippageModel],
+        indicator_data: Optional[Mapping[IndicatorSymbol, pd.Series]] = None,
+        not_after: Optional[np.datetime64] = None,
     ) -> set[str]:
         """Exits ``symbols`` at their first or last bar in ``store``.
+
+        When ``not_after`` is set, the last bar is chosen from those at or
+        before it, so the exit is never priced off a bar the strategy has not
+        reached yet.
 
         Returns the symbols that had a bar to exit on.
         """
@@ -2552,9 +2591,18 @@ class Strategy(
                 continue
             # Locate the bar rather than indexing the ends, since a store is
             # only as ordered as the frame it was built from.
-            loc = int(
-                np.argmin(date_arr) if first_bar else np.argmax(date_arr)
-            )
+            if first_bar:
+                loc = int(np.argmin(date_arr))
+            elif not_after is None:
+                loc = int(np.argmax(date_arr))
+            else:
+                eligible = np.flatnonzero(date_arr <= not_after)
+                if not len(eligible):
+                    # Every bar this symbol has left is in the future. Hold
+                    # the position rather than exit at a price the strategy
+                    # cannot have seen.
+                    continue
+                loc = int(eligible[np.argmax(date_arr[eligible])])
             sym_end_index[sym] = loc + 1
             exit_dates[sym] = date_arr[loc]
         if not sym_end_index:
@@ -2563,7 +2611,12 @@ class Strategy(
         price_scope = PriceScope(
             col_scope, sym_end_index, self._config.round_fill_price
         )
-        ind_scope = IndicatorScope({}, sorted(set(exit_dates.values())))
+        # Pass the window's real indicator data: a slippage model that reads
+        # an indicator raises "Indicator not found" against an empty scope.
+        ind_scope = IndicatorScope(
+            dict(indicator_data) if indicator_data else {},
+            sorted(set(exit_dates.values())),
+        )
         for sym, date in exit_dates.items():
             portfolio.exit_position(
                 date,
@@ -2626,6 +2679,11 @@ class Strategy(
         exit_dates = self._build_exit_dates(df, has_selector)
         signals: dict[str, pd.DataFrame] = {}
         signal_frames: dict[str, list[pd.DataFrame]] = defaultdict(list)
+        # Owned here, like sessions and the portfolio, so a persistent order
+        # outlives the window it was placed in. A per-window scope silently
+        # dropped every order still pending at the boundary, including the
+        # timeout_bars=-1 orders documented to persist indefinitely.
+        pending_order_scope = PendingOrderScope()
         for train_rows, test_rows in self.walkforward_split(
             df=df,
             windows=windows,
@@ -2668,6 +2726,7 @@ class Strategy(
                 test_data,
                 master_store=master_store,
                 slippage_model=self._slippage_model,
+                indicator_data=indicator_data,
             )
             train_store, test_store, history_store = self._build_window_stores(
                 master_store=master_store,
@@ -2778,6 +2837,7 @@ class Strategy(
                 history_col_scope=history_col_scope,
                 test_col_scope=test_col_scope,
                 run_hyperparams=run_hyperparams,
+                pending_order_scope=pending_order_scope,
             )
             for sym, signals_df in split_signals.items():
                 signal_frames[sym].append(signals_df)
@@ -3038,6 +3098,10 @@ class Strategy(
         pos_df = pd.DataFrame.from_records(
             portfolio.position_bars, columns=PositionBar._fields
         )
+        # Applied whether or not there are rows, so that `positions` has the
+        # same index and dtypes either way. `record_position_bars` is off by
+        # default, so guarding on non-empty gave the common case a plain
+        # RangeIndex and object columns.
         for col in (
             "close",
             "equity",
@@ -3045,12 +3109,8 @@ class Strategy(
             "margin",
             "unrealized_pnl",
         ):
-            if not pos_df.empty:
-                pos_df[col] = quantize(
-                    pos_df, col, self._config.round_test_result
-                )
-        if not pos_df.empty:
-            pos_df.set_index(["symbol", "date"], inplace=True)
+            pos_df[col] = quantize(pos_df, col, self._config.round_test_result)
+        pos_df.set_index(["symbol", "date"], inplace=True)
         bar_records = (
             portfolio.bars if portfolio.bars else portfolio._metrics_bars
         )

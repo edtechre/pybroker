@@ -477,7 +477,9 @@ def test_optimize_when_slippage_indicator_missing_then_error(data_source_df):
     strategy.set_slippage_model(
         VolatilitySlippageModel(atr_indicator="atr_not_attached")
     )
-    with pytest.raises(ValueError, match="must be attached to an execution"):
+    with pytest.raises(
+        ValueError, match="must be attached to every execution"
+    ):
         strategy.optimize(
             lambda r: 0.0,
             sampler="grid",
@@ -936,3 +938,179 @@ def test_optimize_when_no_train_or_test_window_then_error(
             train_size=train_size,
             disable_parallel_indicators=True,
         )
+
+
+def test_run_study_when_grid_sampler_missing_hyperparam_then_error():
+    """A supplied GridSampler covering part of the space must be rejected on
+    both paths: sequentially the objective raises for the missing name, while
+    in parallel the point simply lacks it and the default is used silently."""
+    import optuna
+    from optuna.samplers import GridSampler
+    from pybroker.optimize import Hyperparam, SearchSpace, _run_study
+    from pybroker.parallel import get_parallel_config, set_parallel
+
+    space = SearchSpace(
+        hyperparams=frozenset({"x", "y"}),
+        specs={
+            "x": Hyperparam("x", default=1, low=1, high=2, step=1),
+            "y": Hyperparam("y", default=1, low=1, high=2, step=1),
+        },
+    )
+
+    class _Bundle:
+        search_space = space
+        score_overrides = staticmethod(lambda params: 1.0)
+        objective = staticmethod(lambda trial: 1.0)
+
+    sampler = GridSampler({"x": [1, 2]}, seed=1)
+    prior = get_parallel_config()
+    try:
+        for n_jobs in (1, 2):
+            set_parallel(n_jobs=n_jobs, backend="threading")
+            study = optuna.create_study(direction="maximize", sampler=sampler)
+            with pytest.raises(ValueError, match="missing declared"):
+                _run_study(study, _Bundle(), 2, sampler)
+    finally:
+        set_parallel(n_jobs=prior.n_jobs, backend=prior.backend)
+
+
+def test_run_study_when_nan_score_in_parallel_then_trial_fails():
+    """study.tell rejects NaN while study.optimize records a failed trial and
+    carries on, so one bad trial must not abort a parallel study."""
+    import optuna
+    from optuna.samplers import RandomSampler
+    from pybroker.optimize import Hyperparam, SearchSpace, _run_study
+    from pybroker.parallel import get_parallel_config, set_parallel
+
+    space = SearchSpace(
+        hyperparams=frozenset({"x"}),
+        specs={"x": Hyperparam("x", default=1, low=1, high=3, step=1)},
+    )
+
+    def score(params):
+        return float("nan") if params.get("x") == 2 else float(params["x"])
+
+    class _Bundle:
+        search_space = space
+        score_overrides = staticmethod(score)
+        objective = staticmethod(
+            lambda trial: score({"x": trial.suggest_int("x", 1, 3)})
+        )
+
+    prior = get_parallel_config()
+    try:
+        set_parallel(n_jobs=2, backend="threading")
+        sampler = RandomSampler(seed=1)
+        study = optuna.create_study(direction="maximize", sampler=sampler)
+        _run_study(study, _Bundle(), 6, sampler)
+    finally:
+        set_parallel(n_jobs=prior.n_jobs, backend=prior.backend)
+    assert len(study.trials) == 6
+    assert study.best_value == 3.0
+
+
+def test_run_study_when_grid_sampler_and_nan_score_then_trial_fails():
+    """The parallel grid path must tolerate a NaN score as the sequential one
+    does: create_trial rejects NaN exactly as study.tell does."""
+    import optuna
+    from optuna.samplers import GridSampler
+    from pybroker.optimize import Hyperparam, SearchSpace, _run_study
+    from pybroker.parallel import get_parallel_config, set_parallel
+
+    space = SearchSpace(
+        hyperparams=frozenset({"x"}),
+        specs={"x": Hyperparam("x", default=1, low=1, high=3, step=1)},
+    )
+
+    def score(params):
+        return float("nan") if params["x"] == 2 else float(params["x"])
+
+    class _Bundle:
+        search_space = space
+        score_overrides = staticmethod(score)
+        objective = staticmethod(
+            lambda trial: score({"x": trial.suggest_int("x", 1, 3)})
+        )
+
+    prior = get_parallel_config()
+    results = {}
+    try:
+        for label, n_jobs in (("sequential", 1), ("parallel", 2)):
+            set_parallel(n_jobs=n_jobs, backend="threading")
+            sampler = GridSampler({"x": [1, 2, 3]}, seed=1)
+            study = optuna.create_study(direction="maximize", sampler=sampler)
+            _run_study(study, _Bundle(), 3, sampler)
+            results[label] = (len(study.trials), study.best_value)
+    finally:
+        set_parallel(n_jobs=prior.n_jobs, backend=prior.backend)
+    assert results["parallel"] == results["sequential"] == (3, 3.0)
+
+
+def test_run_study_when_sampler_stops_then_batch_still_recorded():
+    """A sampler stopping mid-batch must not strand already-scored trials.
+
+    BruteForceSampler calls Study.stop() from after_trial once the space is
+    exhausted; every score in the batch has already been paid for, so all of
+    them must be told before the loop exits.
+    """
+    import optuna
+    from optuna.samplers import BruteForceSampler
+    from pybroker.optimize import Hyperparam, SearchSpace, _run_study
+    from pybroker.parallel import get_parallel_config, set_parallel
+
+    space = SearchSpace(
+        hyperparams=frozenset({"x"}),
+        specs={"x": Hyperparam("x", default=1, low=1, high=3, step=1)},
+    )
+
+    class _Bundle:
+        search_space = space
+        score_overrides = staticmethod(lambda params: float(params["x"]))
+        objective = staticmethod(
+            lambda trial: float(trial.suggest_int("x", 1, 3))
+        )
+
+    prior = get_parallel_config()
+    try:
+        set_parallel(n_jobs=4, backend="threading")
+        sampler = BruteForceSampler(seed=1)
+        study = optuna.create_study(direction="maximize", sampler=sampler)
+        _run_study(study, _Bundle(), 12, sampler)
+    finally:
+        set_parallel(n_jobs=prior.n_jobs, backend=prior.backend)
+    states = [trial.state for trial in study.trials]
+    assert states
+    assert all(state == optuna.trial.TrialState.COMPLETE for state in states)
+
+
+def test_run_study_reraises_unrelated_runtime_error():
+    """The stop-signal catch must not swallow a genuine RuntimeError."""
+    import optuna
+    from optuna.samplers import RandomSampler
+    from pybroker.optimize import Hyperparam, SearchSpace, _run_study
+    from pybroker.parallel import get_parallel_config, set_parallel
+
+    space = SearchSpace(
+        hyperparams=frozenset({"x"}),
+        specs={"x": Hyperparam("x", default=1, low=1, high=3, step=1)},
+    )
+
+    class _Bundle:
+        search_space = space
+        score_overrides = staticmethod(lambda params: float(params["x"]))
+        objective = staticmethod(
+            lambda trial: float(trial.suggest_int("x", 1, 3))
+        )
+
+    prior = get_parallel_config()
+    try:
+        set_parallel(n_jobs=2, backend="threading")
+        sampler = RandomSampler(seed=1)
+        study = optuna.create_study(direction="maximize", sampler=sampler)
+        with patch.object(
+            study, "tell", side_effect=RuntimeError("storage exploded")
+        ):
+            with pytest.raises(RuntimeError, match="storage exploded"):
+                _run_study(study, _Bundle(), 2, sampler)
+    finally:
+        set_parallel(n_jobs=prior.n_jobs, backend=prior.backend)

@@ -94,6 +94,11 @@ from pybroker.slippage import (
     VolatilitySlippageModel as VolatilitySlippageModel,
     VolumeSlippageModel as VolumeSlippageModel,
 )
+from pybroker.parallel import (
+    ParallelConfig as ParallelConfig,
+    get_parallel_config as get_parallel_config,
+    set_parallel as set_parallel,
+)
 from pybroker.strategy import Strategy as Strategy, TestResult as TestResult
 from pybroker.interval import (
     TimeframeInterval as TimeframeInterval,

@@ -868,10 +868,18 @@ def column_scope_from_frame(
 def sym_exec_dates_from_store(
     store: SymbolArrayStore,
 ) -> dict[str, frozenset[np.datetime64]]:
-    """Returns per-symbol test dates from a column store."""
+    """Returns per-symbol test dates from a column store.
+
+    Symbols are walked in sorted order. :attr:`SymbolArrayStore.symbols` is a
+    ``frozenset[str]``, so iterating it directly would seed this mapping in
+    string-hash order, and that order decides which symbol is served first on
+    each bar when calendars are ragged -- making a capital-constrained backtest
+    depend on ``PYTHONHASHSEED``. Sorting also matches the ``sorted(test_syms)``
+    order the aligned-calendar path already uses.
+    """
     date_col = DataCol.DATE.value
     result: dict[str, frozenset[np.datetime64]] = {}
-    for sym in store.symbols:
+    for sym in sorted(store.symbols):
         dates = store.sym_arrays[sym].get(date_col)
         if dates is not None:
             result[sym] = frozenset(np.asarray(dates, dtype="datetime64[ns]"))
@@ -1130,20 +1138,37 @@ class IndicatorScope:
 
 
 def _resolve_lag_cols(
-    model_source, trained_model: TrainedModel, model_name: str
+    model_source,
+    trained_model: TrainedModel,
+    model_name: str,
+    model_input: Optional[ModelInput] = None,
 ) -> Optional[tuple[str, ...]]:
     """Returns the columns to build lag features from, or ``None``.
 
     Lag features must be built from the same columns at prediction time as at
     training time, otherwise the model is handed a feature matrix of a
     different width than it was fit on. The training-time columns are recorded
-    on :attr:`pybroker.common.TrainedModel.lag_columns`; the fallback to
-    ``input_cols`` only applies to models cached before that field existed.
+    on :attr:`pybroker.common.TrainedModel.lag_columns`.
+
+    A pretrained :class:`pybroker.model.ModelLoader` has no training pass to
+    record them, so its default is resolved here from ``model_input`` the same
+    way :func:`pybroker.model._lag_feature_cols` resolves a trainer's: data
+    columns only, excluding indicators and the date. Falling back to whatever
+    ``load_fn`` happened to return would lag the indicators too, and would
+    raise outright when it returned no columns at all.
     """
     if model_source.lags is None:
         return None
     if trained_model.lag_columns is not None:
         return trained_model.lag_columns
+    if model_input is not None:
+        from pybroker.model import _lag_feature_cols
+
+        return _lag_feature_cols(
+            model_input,
+            pooled=bool(getattr(model_source, "pooled", False)),
+            indicators=tuple(getattr(model_source, "indicators", ())),
+        )
     if trained_model.input_cols is None:
         raise ValueError(
             f"Model {model_name!r} requires input columns from training "
@@ -1464,7 +1489,7 @@ class IntervalScope:
             )
         trained_model = self._models[model_sym]
         lag_cols = _resolve_lag_cols(
-            source, trained_model, model_sym.model_name
+            source, trained_model, model_sym.model_name, model_input
         )
         # Lag features are attached before narrowing to input_cols so that they
         # can be built from columns the model does not take as input.
@@ -1718,7 +1743,20 @@ class ModelInputScope:
         trained_model = self._models[model_sym]
         date_col = DataCol.DATE.value
         ind_names = self._scope.get_indicator_names(name)
-        lag_cols = _resolve_lag_cols(model_source, trained_model, name)
+        # A pretrained loader that recorded neither lag_columns nor input_cols
+        # can only resolve its lag columns from the input frame, which is not
+        # built yet. That case also skips the branch below, which is the only
+        # thing needing lag_cols this early, so defer it.
+        defer_lag_cols = (
+            model_source.lags is not None
+            and trained_model.lag_columns is None
+            and trained_model.input_cols is None
+        )
+        lag_cols = (
+            None
+            if defer_lag_cols
+            else _resolve_lag_cols(model_source, trained_model, name)
+        )
         if (
             trained_model.input_cols is not None
             and not model_source._input_data_fn
@@ -1753,6 +1791,10 @@ class ModelInputScope:
         assert row_dates is not None
         columns = tuple(input_.keys())
         model_input = model.model_input_cls(columns, input_, row_dates)
+        if defer_lag_cols:
+            lag_cols = _resolve_lag_cols(
+                model_source, trained_model, name, model_input
+            )
         # Lag features are attached before narrowing to input_cols so that
         # they can be built from columns the model does not take as input.
         if lag_cols is not None:
@@ -1964,6 +2006,24 @@ class PriceScope:
         """
         return self._sym_end_index.get(symbol, 0) > 0
 
+    def has_bar_on(self, symbol: str, date: np.datetime64) -> bool:
+        """Returns whether ``symbol``'s current bar falls on ``date``.
+
+        Stricter than :meth:`.has_bar`, which only reports that the symbol has
+        traded at some point. When calendars are ragged, a symbol's index is
+        not advanced on a date it has no bar, so its "current" bar is an
+        earlier one and pricing against it would use a stale price.
+        """
+        end_index = self._sym_end_index.get(symbol, 0)
+        if end_index <= 0:
+            return False
+        date_arr = self._col_scope.fetch(symbol, DataCol.DATE.value)
+        if date_arr is None or not len(date_arr):
+            return False
+        if end_index > len(date_arr):
+            end_index = len(date_arr)
+        return bool(date_arr[end_index - 1] == date)
+
     def _column_value(self, symbol: str, col: str) -> float:
         end_index = self._sym_end_index[symbol]
         if end_index <= 0:
@@ -2129,6 +2189,11 @@ class PendingOrderScope:
     def __init__(self):
         self._orders: dict[int, PendingOrder] = {}
         self._sym_orders: dict[str, set[PendingOrder]] = defaultdict(set)
+        # Bars an order has been retried for, counted here rather than derived
+        # from PendingOrder.exec_bar. This scope outlives a walkforward window
+        # while ``sym_end_index`` restarts at each one, so a derived age goes
+        # negative at a window boundary and the order never times out.
+        self._retry_bars: dict[int, int] = {}
 
     def contains(self, order_id: int) -> bool:
         """Returns whether a :class:`.PendingOrder` exists with
@@ -2197,13 +2262,27 @@ class PendingOrderScope:
         )
         self._orders[self._order_id] = order
         self._sym_orders[symbol].add(order)
+        self._retry_bars[self._order_id] = 0
         return order.id
+
+    def retry_bars(self, order_id: int) -> int:
+        """Returns how many bars ``order_id`` has been retried for.
+
+        ``0`` on the bar of its first attempt.
+        """
+        return self._retry_bars.get(order_id, 0)
+
+    def advance_retry_bars(self, order_id: int) -> None:
+        """Records that ``order_id`` was attempted on a bar."""
+        if order_id in self._orders:
+            self._retry_bars[order_id] = self._retry_bars.get(order_id, 0) + 1
 
     def remove(self, order_id: int) -> bool:
         """Removes a :class:`.PendingOrder` with ``order_id```."""
         if order_id in self._orders:
             order = self._orders[order_id]
             del self._orders[order_id]
+            self._retry_bars.pop(order_id, None)
             if (
                 order.symbol in self._sym_orders
                 and order in self._sym_orders[order.symbol]

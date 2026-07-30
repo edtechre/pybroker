@@ -132,14 +132,30 @@ class TestVolatilitySlippageModel:
         strategy = MagicMock()
         execution = MagicMock()
         execution.indicator_names = frozenset({"sma_20"})
+        execution.symbols = frozenset({"SPY"})
         strategy._executions = {execution}
         model = VolatilitySlippageModel(atr_indicator="atr_14")
         with pytest.raises(
             ValueError,
             match=re.escape(
-                "Indicator 'atr_14' must be attached to an execution"
+                "Indicator 'atr_14' must be attached to every execution"
             ),
         ):
+            model.validate(strategy)
+
+    def test_validate_when_indicator_missing_from_one_execution(self):
+        """The union is not enough: this model prices fills for every
+        execution, so one without the indicator raises at its first fill."""
+        strategy = MagicMock()
+        with_ind = MagicMock()
+        with_ind.indicator_names = frozenset({"atr_14"})
+        with_ind.symbols = frozenset({"SPY"})
+        without_ind = MagicMock()
+        without_ind.indicator_names = frozenset()
+        without_ind.symbols = frozenset({"AAPL"})
+        strategy._executions = {with_ind, without_ind}
+        model = VolatilitySlippageModel(atr_indicator="atr_14")
+        with pytest.raises(ValueError, match=re.escape("['AAPL']")):
             model.validate(strategy)
 
     def test_validate_when_indicator_attached(self):
@@ -221,6 +237,26 @@ class TestVolumeSlippageModel:
     def test_missing_volume_warns_once_per_symbol(self):
         model = VolumeSlippageModel()
         ctx = _fill_ctx("buy", volume=NAN)
+        with pytest.warns(UserWarning):
+            model.apply_at_fill(ctx)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            model.apply_at_fill(ctx)
+
+    def test_when_impact_exceeds_price_then_clamped_and_warns(self):
+        # Square-law impact is unbounded above, so an order large relative to
+        # bar volume drives the sell price through zero and pays the account
+        # to sell. Slippage may only ever worsen a fill.
+        model = VolumeSlippageModel(price_impact=0.1, volume_limit=None)
+        ctx = _fill_ctx("sell", shares=Decimal(1000), volume=100.0)
+        with pytest.warns(UserWarning, match="exceeded the fill price"):
+            _, price = model.apply_at_fill(ctx)
+        assert price > 0
+        assert price == ctx.fill_price * Decimal("0.01")
+
+    def test_impact_clamp_warns_once_per_symbol(self):
+        model = VolumeSlippageModel(price_impact=0.1, volume_limit=None)
+        ctx = _fill_ctx("sell", shares=Decimal(1000), volume=100.0)
         with pytest.warns(UserWarning):
             model.apply_at_fill(ctx)
         with warnings.catch_warnings():
@@ -414,3 +450,39 @@ class TestSlippageModel:
                 shares=Decimal(100),
                 fill_price=Decimal(100),
             ) == (Decimal(100), Decimal(100))
+
+
+def test_volatility_validate_ignores_executions_without_a_function():
+    """An execution with no function places no orders, so it never reaches
+    apply_at_fill and must not be required to attach the ATR indicator."""
+    strategy = MagicMock()
+    trading = MagicMock()
+    trading.fn = lambda ctx: None
+    trading.indicator_names = frozenset({"atr_14"})
+    trading.symbols = frozenset({"SPY"})
+    data_only = MagicMock()
+    data_only.fn = None
+    data_only.indicator_names = frozenset({"regime"})
+    data_only.symbols = frozenset({"AAPL"})
+    strategy._executions = {trading, data_only}
+    strategy._before_exec_fn = None
+    strategy._after_exec_fn = None
+    strategy._rotation_sizer = None
+    model = VolatilitySlippageModel(atr_indicator="atr_14")
+    model.validate(strategy)
+
+
+def test_volatility_validate_still_rejects_trading_execution_without_atr():
+    strategy = MagicMock()
+    trading = MagicMock()
+    trading.fn = lambda ctx: None
+    trading.indicator_names = frozenset({"atr_14"})
+    trading.symbols = frozenset({"SPY"})
+    other = MagicMock()
+    other.fn = lambda ctx: None
+    other.indicator_names = frozenset()
+    other.symbols = frozenset({"AAPL"})
+    strategy._executions = {trading, other}
+    model = VolatilitySlippageModel(atr_indicator="atr_14")
+    with pytest.raises(ValueError, match=re.escape("['AAPL']")):
+        model.validate(strategy)

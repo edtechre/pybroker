@@ -1071,3 +1071,30 @@ class TestCompressVwap:
     def test_missing_vwap_column_stays_none(self):
         df = self._df(np.ones(10)).drop(columns=["vwap"])
         assert compress_bars(df, "weekly", base_timeframe="1d").vwap is None
+
+
+@pytest.mark.parametrize("nan_at", [0, 1, 2])
+def test_compress_bars_skips_nan_high_low_wherever_it_falls(nan_at):
+    """A NaN high/low must be skipped consistently within a bin.
+
+    Seeding the running extremes from the bin's first bar makes a NaN there
+    swallow the whole bin, because every later ``>``/``<`` against NaN is
+    False, while a NaN anywhere else is skipped by that same comparison.
+    """
+    dates = pd.date_range("2021-01-04", periods=6, freq="D")
+    rows = []
+    for i, date in enumerate(dates):
+        rows.append(
+            dict(
+                symbol="A",
+                date=date,
+                open=5.0,
+                high=np.nan if i == nan_at else 10.0 + i,
+                low=np.nan if i == nan_at else 1.0 + i,
+                close=5.0,
+                volume=100.0,
+            )
+        )
+    bars = compress_bars(pd.DataFrame(rows), "3d", base_timeframe="1d")
+    assert not np.isnan(bars.high).any()
+    assert not np.isnan(bars.low).any()

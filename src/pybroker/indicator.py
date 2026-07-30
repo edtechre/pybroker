@@ -24,6 +24,7 @@ from pybroker.eval import iqr, relative_entropy
 from pybroker.scope import (
     StaticScope,
     SymbolArrayStore,
+    run_with_scope,
     sym_data_from_store,
     symbol_array_store_from_frame,
 )
@@ -562,8 +563,14 @@ class IndicatorsMixin:
             )
         scope.logger.debug_compute_indicators(is_parallel=True)
         with parallel() as pool:
+            # Ship the caller's StaticScope, as the model trainers do. A
+            # worker process starts with an empty one, so an indicator calling
+            # pybroker.param() would read None there and silently compute
+            # different values than the same run does sequentially.
             batches = pool(
-                delayed(_run_indicators_for_symbol)(*args_for(sym))
+                delayed(run_with_scope)(
+                    scope, _run_indicators_for_symbol, *args_for(sym)
+                )
                 for sym in symbols_with_work
             )
         return tuple(result for batch in batches for result in batch)
@@ -618,7 +625,10 @@ class IndicatorSet(IndicatorsMixin):
                 columns=[DataCol.DATE.value, DataCol.SYMBOL.value]
                 + list(self._ind_names)
             )
-        syms = df[DataCol.SYMBOL.value].unique()
+        # The store normalizes its keys with astype(str), so read the symbols
+        # the same way: a categorical or numeric symbol column would otherwise
+        # produce keys that do not exist in the store.
+        syms = df[DataCol.SYMBOL.value].astype(str).unique()
         ind_syms = tuple(
             itertools.starmap(
                 IndicatorSymbol, itertools.product(self._ind_names, syms)
@@ -1228,7 +1238,7 @@ def money_flow(name: str, lookback: int, smoothing: float = 0.0) -> Indicator:
 
 
 def reactivity(
-    name: str, lookback: int, smoothing: float = 0.0, scale: float = 0.6
+    name: str, lookback: int, smoothing: float = 1.0, scale: float = 0.6
 ) -> Indicator:
     """Reactivity.
 

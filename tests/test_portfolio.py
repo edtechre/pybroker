@@ -4303,3 +4303,150 @@ def test_entry_notional_totals_track_positions(leverage, fractional):
                     (pos.entry_notional for pos in positions.values()),
                     Decimal(),
                 )
+
+
+@pytest.mark.parametrize("type", ["long", "short"])
+def test_buying_power_when_add_on_before_mark_charges_fill_price(type):
+    """An add-on must consume its own notional of buying power.
+
+    Valuing the whole position at the previous mark prices the new shares at
+    a price they were not bought at, so the fill can cost less buying power
+    than it consumes -- or none at all, letting exposure compound without
+    bound across same-bar add-ons.
+    """
+    portfolio = Portfolio(CASH, leverage=2.0)
+    fill = Decimal(100)
+    if type == "long":
+        portfolio.buy(DATE_1, SYMBOL_1, Decimal(500), fill)
+    else:
+        portfolio.sell(DATE_1, SYMBOL_1, Decimal(500), fill)
+    _mark(portfolio, DATE_1, {SYMBOL_1: 100})
+    # Add on at half the mark, on the next bar but before it is marked.
+    add_price = Decimal(50)
+    before = portfolio._available_buying_power()
+    if type == "long":
+        portfolio.buy(DATE_2, SYMBOL_1, Decimal(100), add_price)
+    else:
+        portfolio.sell(DATE_2, SYMBOL_1, Decimal(100), add_price)
+    after = portfolio._available_buying_power()
+    assert before - after == Decimal(100) * add_price
+
+
+@pytest.mark.parametrize("type", ["long", "short"])
+def test_buying_power_when_repeated_add_ons_then_exhausted(type):
+    """Repeated same-bar add-ons must drain buying power, not regenerate it."""
+    portfolio = Portfolio(CASH, leverage=2.0)
+    order_fn = portfolio.buy if type == "long" else portfolio.sell
+    order_fn(DATE_1, SYMBOL_1, Decimal(500), Decimal(100))
+    _mark(portfolio, DATE_1, {SYMBOL_1: 100})
+    filled = [
+        Decimal() if order is None else order.shares
+        for order in (
+            order_fn(DATE_2, SYMBOL_1, Decimal(10_000), Decimal(50))
+            for _ in range(8)
+        )
+    ]
+    assert portfolio._available_buying_power() == 0
+    assert sum(filled[1:]) == 0
+
+
+@pytest.mark.parametrize("type", ["long", "short"])
+def test_exit_when_shares_match_entry_prefix_then_no_empty_trade(type):
+    """An exit consuming whole entries must not book a zero-share trade."""
+    portfolio = Portfolio(CASH)
+    open_fn = portfolio.buy if type == "long" else portfolio.sell
+    close_fn = portfolio.sell if type == "long" else portfolio.buy
+    open_fn(DATE_1, SYMBOL_1, Decimal(100), Decimal(100))
+    open_fn(DATE_2, SYMBOL_1, Decimal(100), Decimal(100))
+    close_fn(DATE_3, SYMBOL_1, Decimal(100), Decimal(110))
+    assert len(portfolio.trades) == 1
+    assert all(trade.shares > 0 for trade in portfolio.trades)
+
+
+def test_clamp_shares_when_leveraged_per_share_fee_then_order_fills():
+    """The fee reserve must be sized to the order, not to the largest one.
+
+    A per-share fee grows with the share count, so reserving for the biggest
+    order buying power could support drops an order costing a few dollars.
+    """
+    portfolio = Portfolio(
+        10_000, fee_mode=FeeMode.PER_SHARE, fee_amount=0.01, leverage=2.0
+    )
+    order = portfolio.buy(DATE_1, SYMBOL_1, Decimal(100), Decimal("0.01"))
+    assert order is not None
+    assert order.shares == Decimal(100)
+
+
+@pytest.mark.parametrize("type", ["long", "short"])
+def test_position_cap_when_lowered_below_held_count_then_still_binds(type):
+    """The cap is retuned per window by walkforward optimization, so it can
+    drop below the number of positions already held. An equality test would
+    stop binding entirely and let the book keep growing."""
+    if type == "long":
+        portfolio = Portfolio(1_000_000, max_long_positions=3)
+        order_fn = portfolio.buy
+        positions = portfolio.long_positions
+    else:
+        portfolio = Portfolio(1_000_000, max_short_positions=3)
+        order_fn = portfolio.sell
+        positions = portfolio.short_positions
+    for symbol in ("A", "B", "C"):
+        order_fn(DATE_1, symbol, Decimal(10), Decimal(100))
+    assert len(positions) == 3
+    if type == "long":
+        portfolio._max_long_positions = 1
+    else:
+        portfolio._max_short_positions = 1
+    assert order_fn(DATE_2, "D", Decimal(10), Decimal(100)) is None
+    assert len(positions) == 3
+
+
+@pytest.mark.parametrize(
+    "fee_mode, fee_amount, price",
+    [
+        (FeeMode.PER_SHARE, 0.05, Decimal(1)),
+        (FeeMode.PER_SHARE, 0.005, Decimal(5)),
+        (FeeMode.ORDER_PERCENT, 0.5, Decimal(100)),
+        (FeeMode.PER_ORDER, 5.0, Decimal(10)),
+    ],
+)
+@pytest.mark.parametrize("leverage", [1.5, 2.0, 4.0])
+def test_clamp_shares_fee_reserve_never_exceeds_buying_power(
+    fee_mode, fee_amount, price, leverage
+):
+    """The fill plus the leverage cost of its fees must fit the budget.
+
+    Re-deriving the reserve at a reduced share count yields a *smaller* fee
+    and so a larger budget, which undoes the reservation and lets the fill
+    spill past the configured leverage.
+    """
+    portfolio = Portfolio(
+        100_000, fee_mode=fee_mode, fee_amount=fee_amount, leverage=leverage
+    )
+    budget = portfolio._available_buying_power()
+    order = portfolio.buy(DATE_1, SYMBOL_1, Decimal(500_000), price)
+    if order is None:
+        return
+    used = order.shares * price + portfolio.fees * to_decimal(leverage)
+    assert used <= budget
+
+
+def test_clamp_unmarked_uses_fifo_cost_of_surviving_entries():
+    """Exits are FIFO, so the unmarked survivors are the newest entries.
+
+    Rescaling the notional proportionally prices them at the average cost of
+    every unmarked fill, which is not what FIFO actually left behind when
+    those fills had different prices.
+    """
+    portfolio = Portfolio(1_000_000)
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(100), Decimal(10))
+    _mark(portfolio, DATE_1, {SYMBOL_1: 10})
+    portfolio.buy(DATE_2, SYMBOL_1, Decimal(50), Decimal(12))
+    portfolio.buy(DATE_2, SYMBOL_1, Decimal(50), Decimal(14))
+    portfolio.sell(DATE_2, SYMBOL_1, Decimal(150), Decimal(20))
+    pos = portfolio.long_positions[SYMBOL_1]
+    expected = sum(
+        (entry.shares * entry.price for entry in pos.entries), Decimal()
+    )
+    assert pos.unmarked_shares == pos.shares
+    assert pos.unmarked_notional == expected

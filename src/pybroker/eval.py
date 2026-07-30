@@ -41,8 +41,17 @@ class BootConfIntervals(NamedTuple):
 
 
 @njit(cache=True)
-def _bootstrap_indices(n: int, n_boot: int) -> NDArray[np.int64]:
-    return np.random.randint(0, n, size=(n_boot, n))
+def _fill_bootstrap_row(idx: NDArray[np.int64], n: int) -> None:
+    """Draws one bootstrap replicate's indices into ``idx``.
+
+    Materializing the whole ``(n_boot, n)`` matrix costs ``8 * n_boot * n``
+    bytes -- 8 GB for a year of minute bars at the default sample count --
+    while the resampling loops only ever read one row at a time. Drawing row
+    by row consumes the RNG in exactly the same order, so every seeded result
+    is unchanged.
+    """
+    for j in range(n):
+        idx[j] = np.random.randint(0, n)
 
 
 @njit(cache=True)
@@ -51,7 +60,7 @@ def _seed_bootstrap(seed: int) -> None:
 
     Numba keeps a random state that is separate from NumPy's, so calling
     :func:`numpy.random.seed` from Python has no effect on the resampling done
-    by :func:`._bootstrap_indices`. Seeding must happen from within compiled
+    by :func:`._fill_bootstrap_row`. Seeding must happen from within compiled
     code to be effective.
     """
     np.random.seed(seed)
@@ -199,14 +208,15 @@ def _bca_boot_conf_pf(
     n = len(x)
     if not n:
         return BootConfIntervals(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    indices = _bootstrap_indices(n, n_boot)
+    idx = np.zeros(n, dtype=np.int64)
     x_buff = np.zeros(n)
     boot = np.zeros(n_boot)
     theta_hat = profit_factor(x, use_log)
     z0_count = 0
     for i in range(n_boot):
+        _fill_bootstrap_row(idx, n)
         for j in range(n):
-            x_buff[j] = x[indices[i, j]]
+            x_buff[j] = x[idx[j]]
         param = profit_factor(x_buff, use_log)
         boot[i] = param
         if param < theta_hat:
@@ -224,14 +234,15 @@ def _bca_boot_conf_sharpe(
     n = len(x)
     if not n:
         return BootConfIntervals(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    indices = _bootstrap_indices(n, n_boot)
+    idx = np.zeros(n, dtype=np.int64)
     x_buff = np.zeros(n)
     boot = np.zeros(n_boot)
     theta_hat = sharpe_ratio(x, None)
     z0_count = 0
     for i in range(n_boot):
+        _fill_bootstrap_row(idx, n)
         for j in range(n):
-            x_buff[j] = x[indices[i, j]]
+            x_buff[j] = x[idx[j]]
         param = sharpe_ratio(x_buff, None)
         boot[i] = param
         if param < theta_hat:
@@ -251,14 +262,15 @@ def _bca_boot_conf_generic(
     n = len(x)
     if not n:
         return BootConfIntervals(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    indices = _bootstrap_indices(n, n_boot)
+    idx = np.zeros(n, dtype=np.int64)
     x_buff = np.zeros(n)
     boot = np.zeros(n_boot)
     theta_hat = fn(x)
     z0_count = 0
     for i in range(n_boot):
+        _fill_bootstrap_row(idx, n)
         for j in range(n):
-            x_buff[j] = x[indices[i, j]]
+            x_buff[j] = x[idx[j]]
         param = fn(x_buff)
         boot[i] = param
         if param < theta_hat:
@@ -609,14 +621,15 @@ def drawdown_conf(
         empty = DrawdownConfs(0.0, 0.0, 0.0, 0.0)
         return DrawdownMetrics(empty, empty)
     n_trades = n_changes
-    indices = _bootstrap_indices(n_trades, n_boot)
+    idx = np.zeros(n_trades, dtype=np.int64)
     changes_sample = np.zeros(n_trades)
     returns_sample = np.zeros(n_trades)
     boot_dd = np.zeros(n_boot)
     boot_dd_pct = np.zeros(n_boot)
     for i in range(n_boot):
+        _fill_bootstrap_row(idx, n_trades)
         for j in range(n_trades):
-            k = indices[i, j]
+            k = idx[j]
             changes_sample[j] = changes[k]
             returns_sample[j] = returns[k]
         boot_dd[i] = max_drawdown(changes_sample)
@@ -641,7 +654,7 @@ def bootstrap_eval_all(
         empty_ci = BootConfIntervals(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
         empty_dd = DrawdownConfs(0.0, 0.0, 0.0, 0.0)
         return empty_ci, empty_ci, DrawdownMetrics(empty_dd, empty_dd)
-    indices = _bootstrap_indices(n, n_boot)
+    idx = np.zeros(n, dtype=np.int64)
     changes_sample = np.zeros(n)
     returns_sample = np.zeros(n)
     boot_log_pf = np.zeros(n_boot)
@@ -653,8 +666,9 @@ def bootstrap_eval_all(
     z0_log_pf = 0
     z0_sharpe = 0
     for i in range(n_boot):
+        _fill_bootstrap_row(idx, n)
         for j in range(n):
-            k = indices[i, j]
+            k = idx[j]
             changes_sample[j] = changes[k]
             returns_sample[j] = returns[k]
         boot_log_pf[i] = log_profit_factor(changes_sample)

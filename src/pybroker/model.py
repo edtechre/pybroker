@@ -27,6 +27,7 @@ from pybroker.interval import (
     IntervalData,
     TimeframeInterval,
     build_compressed_symbol_arrays,
+    parse_indicator_interval_name,
     parse_model_interval_name,
     format_interval,
     slice_arrays_by_dates,
@@ -2034,15 +2035,29 @@ class ModelsMixin:
                 input_cols = tuple(model_result[1])  # type: ignore[assignment]
             else:
                 model = model_result
+            # A loader declaring lag_cols must lag exactly those columns. Left
+            # unset, the lag matrix is built from whatever columns load_fn
+            # returned -- every OHLCV column, say -- so predict_fn receives a
+            # differently shaped matrix than the model was fitted on.
+            lag_columns = (
+                tuple(source.lag_cols)
+                if source.lags is not None and source.lag_cols
+                else None
+            )
             models[model_sym] = TrainedModel(
                 name=model_name,
                 instance=model,
                 predict_fn=source._predict_fn,
                 input_cols=input_cols,
                 per_bar=source.per_bar,
+                lag_columns=lag_columns,
             )
             self._set_cached_model(
-                model, input_cols, model_sym, cache_date_fields
+                model,
+                input_cols,
+                model_sym,
+                cache_date_fields,
+                lag_columns=lag_columns,
             )
         scope.logger.train_split_completed()
         return models
@@ -2403,7 +2418,12 @@ class ModelsMixin:
                 lag_columns = getattr(cached_data, "lag_columns", None)
             else:
                 model = cached_data
-            source = scope.get_model_source(group_model_sym.model_name)
+            # Interval-bound models are keyed by a suffixed name, which is not
+            # a registered source. Strip it as the training paths do.
+            base_name, _ = parse_model_interval_name(
+                group_model_sym.model_name
+            )
+            source = scope.get_model_source(base_name)
             loaded[group_model_sym] = TrainedModel(
                 name=group_model_sym.model_name,
                 instance=model,
@@ -2413,6 +2433,31 @@ class ModelsMixin:
                 lag_columns=lag_columns,
             )
         return True, loaded
+
+    @staticmethod
+    def _uses_hyperparams(model_name: str) -> bool:
+        """Whether ``model_name`` is trained on a hyperparameterized indicator.
+
+        :class:`ModelCacheKey` carries no hyperparameter values, so a model
+        trained under one value would be served for another. The indicator
+        disk cache is skipped for the same reason; mirror it here rather than
+        return a model fitted on different features.
+        """
+        scope = StaticScope.instance()
+        base_name, _ = parse_model_interval_name(model_name)
+        try:
+            source = scope.get_model_source(base_name)
+        except ValueError:
+            return False
+        for ind_name in getattr(source, "indicators", ()):
+            ind_base, _ = parse_indicator_interval_name(ind_name)
+            try:
+                indicator = scope.get_indicator(ind_base)
+            except ValueError:
+                continue
+            if indicator.hyperparam_names:
+                return True
+        return False
 
     def _get_cached_models(
         self,
@@ -2425,6 +2470,20 @@ class ModelsMixin:
         scope = StaticScope.instance()
         if scope.model_cache is None:
             return models, model_syms
+        # Trained under a hyperparameter the key does not carry, so the cache
+        # cannot tell two fits apart. Treat them as uncached throughout.
+        hyperparam_syms = [
+            model_sym
+            for model_sym in model_syms
+            if self._uses_hyperparams(model_sym.model_name)
+        ]
+        if hyperparam_syms:
+            skipped = set(hyperparam_syms)
+            model_syms = [
+                model_sym
+                for model_sym in model_syms
+                if model_sym not in skipped
+            ]
         uncached_model_syms: list[ModelSymbol] = []
         pooled_groups_by_model_sym: dict[ModelSymbol, frozenset[str]] = {}
         for (model_name, _), symbols in pooled_model_groups.items():
@@ -2465,7 +2524,9 @@ class ModelsMixin:
                     lag_columns = getattr(cached_data, "lag_columns", None)
                 else:
                     model = cached_data
-                source = scope.get_model_source(model_sym.model_name)
+                # See _load_pooled_group_cache: strip the interval suffix.
+                base_name, _ = parse_model_interval_name(model_sym.model_name)
+                source = scope.get_model_source(base_name)
                 models[model_sym] = TrainedModel(
                     name=model_sym.model_name,
                     instance=model,
@@ -2476,6 +2537,8 @@ class ModelsMixin:
                 )
             else:
                 uncached_model_syms.append(model_sym)
+        if hyperparam_syms:
+            uncached_model_syms = sorted(uncached_model_syms + hyperparam_syms)
         return models, uncached_model_syms
 
     def _set_cached_model(
@@ -2488,6 +2551,10 @@ class ModelsMixin:
     ):
         scope = StaticScope.instance()
         if scope.model_cache is None:
+            return
+        if self._uses_hyperparams(model_sym.model_name):
+            # See _uses_hyperparams: writing this would make the next run with
+            # a different hyperparameter value read back the wrong fit.
             return
         cache_key = ModelCacheKey.from_date_fields(
             symbol=model_sym.symbol,

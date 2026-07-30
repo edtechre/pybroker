@@ -203,6 +203,11 @@ class Position:
         entries: ``deque`` of position :class:`.Entry`\ s sorted in ascending
             chronological order.
         bars: Current number of bars since entry.
+        entry_notional: Total cost basis of the position's open entries.
+        unmarked_shares: Shares acquired since the last mark. Valuing these at
+            :attr:`.close` would price them at a mark taken before they were
+            bought, so they are held at cost until the next mark.
+        unmarked_notional: Cost of :attr:`.unmarked_shares`, at fill price.
     """
 
     symbol: str
@@ -216,6 +221,57 @@ class Position:
     entries: deque[Entry] = field(default_factory=deque)
     bars: int = field(default=0)
     entry_notional: Decimal = field(default_factory=Decimal)
+    unmarked_shares: Decimal = field(default_factory=Decimal)
+    unmarked_notional: Decimal = field(default_factory=Decimal)
+
+    def _marked_value(self) -> Decimal:
+        """Returns the position's value at the last mark.
+
+        Shares bought since that mark are held at cost, so a fill moves this
+        by its own notional. Valuing them at :attr:`.close` instead would move
+        it by the stale mark, which is what buying power is charged against.
+        """
+        if self.close <= 0:
+            return self.entry_notional
+        marked_shares = self.shares - self.unmarked_shares
+        if marked_shares <= 0:
+            return self.unmarked_notional
+        return marked_shares * self.close + self.unmarked_notional
+
+    def _add_unmarked(self, shares: Decimal, fill_price: Decimal):
+        self.unmarked_shares += shares
+        self.unmarked_notional += shares * fill_price
+
+    def _clamp_unmarked(self):
+        """Drops unmarked shares that have since been exited.
+
+        Entries exit oldest-first, and the unmarked ones are the newest, so
+        they only shrink once every marked share is gone. The surviving
+        notional is then read back off the newest entries rather than scaled
+        proportionally: a proportional rescale prices the survivors at the
+        average cost of every unmarked fill, which is not what FIFO left
+        behind when those fills had different prices.
+        """
+        if self.unmarked_shares <= 0:
+            return
+        if self.shares <= 0:
+            self.unmarked_shares = Decimal()
+            self.unmarked_notional = Decimal()
+        elif self.unmarked_shares > self.shares:
+            self.unmarked_shares = self.shares
+            remaining = self.shares
+            notional = Decimal()
+            for entry in reversed(self.entries):
+                if remaining <= 0:
+                    break
+                taken = min(remaining, entry.shares)
+                notional += taken * entry.price
+                remaining -= taken
+            self.unmarked_notional = notional
+
+    def _clear_unmarked(self):
+        self.unmarked_shares = Decimal()
+        self.unmarked_notional = Decimal()
 
 
 class Trade(NamedTuple):
@@ -748,10 +804,7 @@ class Portfolio:
             return self._cached_long_mv
         total = Decimal()
         for pos in self.long_positions.values():
-            if pos.close > 0:
-                total += pos.shares * pos.close
-            else:
-                total += pos.entry_notional
+            total += pos._marked_value()
         self._cached_long_mv = total
         return total
 
@@ -760,10 +813,7 @@ class Portfolio:
             return self._cached_short_mv
         total = Decimal()
         for pos in self.short_positions.values():
-            if pos.close > 0:
-                total += pos.shares * pos.close
-            else:
-                total += pos.entry_notional
+            total += pos._marked_value()
         self._cached_short_mv = total
         return total
 
@@ -869,13 +919,25 @@ class Portfolio:
             # Fees are paid out of cash, so they reduce equity and therefore
             # cost ``leverage`` times their amount in buying power. Reserving
             # that here keeps the filled order inside the configured leverage.
-            # Fees are non-decreasing in shares, so reserving the fee for the
-            # unreduced share count is always affordable, if conservative.
+            #
+            # Reserve for the order actually being placed, not for the largest
+            # order buying power could support. Under a per-share fee the
+            # latter grows with the share count, so a cheap symbol makes the
+            # reservation exceed buying power outright and drops an order that
+            # costs a few dollars. Fees are non-decreasing in shares, so a
+            # reservation taken at the requested count still covers the fill.
+            #
+            # The reservation is taken once and never re-derived. Recomputing
+            # it at the reduced count would yield a *smaller* fee, and so a
+            # larger budget, undoing the reservation and letting the fill spill
+            # past the leverage cap.
+            leverage = to_decimal(self._leverage)
+            affordable = min(shares, buying_power / fill_price)
             fees = self._calculate_fees(
-                symbol, fill_price, buying_power / fill_price, order_type
+                symbol, fill_price, affordable, order_type
             )
             if fees > 0:
-                buying_power -= fees * to_decimal(self._leverage)
+                buying_power -= fees * leverage
                 if buying_power <= 0:
                     return Decimal()
         max_shares = (
@@ -962,7 +1024,8 @@ class Portfolio:
         if rem_shares <= 0:
             return _OrderResult(Decimal(), shares)
         pos = self.short_positions[symbol]
-        while pos.entries:
+        # See _sell_existing: stop at zero so no phantom Trade is booked.
+        while pos.entries and rem_shares > 0:
             entry = pos.entries[0]
             if rem_shares >= entry.shares:
                 rem_shares -= entry.shares
@@ -998,6 +1061,7 @@ class Portfolio:
         entry.shares -= shares
         pos.entry_notional -= entry_amount
         self._short_entry_notional -= entry_amount
+        pos._clamp_unmarked()
         pnl_per_bar = entry_pnl if not entry.bars else entry_pnl / entry.bars
         return_pct = ((entry.price / fill_price) - 1) * 100
         pnl = entry.price - fill_price
@@ -1050,7 +1114,10 @@ class Portfolio:
         if (
             self._max_long_positions is not None
             and symbol not in self.long_positions
-            and len(self.long_positions) == self._max_long_positions
+            # Not ``==``: the cap can be lowered mid-run (a walkforward
+            # optimization retunes it per window) while more positions are
+            # already held, and an equality test would stop binding entirely.
+            and len(self.long_positions) >= self._max_long_positions
         ):
             return Decimal()
         order_amount = shares * fill_price
@@ -1062,6 +1129,7 @@ class Portfolio:
         else:
             pos = self.long_positions[symbol]
             pos.shares += shares
+        pos._add_unmarked(shares, fill_price)
         entry = self._add_entry(
             date=date,
             symbol=symbol,
@@ -1150,7 +1218,10 @@ class Portfolio:
             return _OrderResult(Decimal(), shares)
         rem_shares = shares
         pos = self.long_positions[symbol]
-        while pos.entries:
+        # Stop once the order is filled. Re-entering with rem_shares == 0 would
+        # book a zero-share Trade against the next entry, inflating trade_count
+        # and skewing avg_pnl.
+        while pos.entries and rem_shares > 0:
             entry = pos.entries[0]
             if rem_shares >= entry.shares:
                 rem_shares -= entry.shares
@@ -1186,6 +1257,7 @@ class Portfolio:
         entry.shares -= shares
         pos.entry_notional -= entry_amount
         self._long_entry_notional -= entry_amount
+        pos._clamp_unmarked()
         pnl_per_bar = entry_pnl if not entry.bars else entry_pnl / entry.bars
         return_pct = ((fill_price / entry.price) - 1) * 100
         pnl = fill_price - entry.price
@@ -1239,7 +1311,8 @@ class Portfolio:
         if (
             self._max_short_positions is not None
             and symbol not in self.short_positions
-            and len(self.short_positions) == self._max_short_positions
+            # See _long: the cap can be lowered while positions are held.
+            and len(self.short_positions) >= self._max_short_positions
         ):
             return Decimal()
         if self._position_mode == PositionMode.LONG_ONLY:
@@ -1267,6 +1340,7 @@ class Portfolio:
         else:
             pos = self.short_positions[symbol]
             pos.shares += shares
+        pos._add_unmarked(shares, fill_price)
         entry = self._add_entry(
             date=date,
             symbol=symbol,
@@ -1391,6 +1465,8 @@ class Portfolio:
                     pos.equity = pos.shares * close
                     pos.market_value = pos.equity
                     pos.close = close
+                    # Every share is now marked at this close.
+                    pos._clear_unmarked()
                     pos_long_shares += pos.shares
                     pos_equity += pos.equity
                     pos_market_value += pos.market_value
@@ -1403,11 +1479,7 @@ class Portfolio:
                     # it has never been marked. This matches
                     # _long_market_value, so the snapshot taken here and
                     # _live_market_value agree by construction.
-                    held = (
-                        pos.shares * pos.close
-                        if pos.close > 0
-                        else pos.entry_notional
-                    )
+                    held = pos._marked_value()
                     total_equity += float(held)
                     total_market_value += float(held)
             if sym in self.short_positions:
@@ -1425,6 +1497,8 @@ class Portfolio:
                     pos.close = close
                     pos.margin = close * pos.shares
                     pos.market_value = pos.margin + pos.pnl
+                    # Every share is now marked at this close.
+                    pos._clear_unmarked()
                     pos_margin += pos.margin
                     pos_short_shares += pos.shares
                     pos_equity += entry_notional + pos.pnl
@@ -1435,11 +1509,7 @@ class Portfolio:
                     # As above: hold at the last known mark. A short's value
                     # is ``entry_notional + pnl``, which equals
                     # ``2 * entry_notional - marked``.
-                    marked = (
-                        pos.shares * pos.close
-                        if pos.close > 0
-                        else entry_notional
-                    )
+                    marked = pos._marked_value()
                     total_market_value += float(2 * entry_notional - marked)
                 total_margin += float(pos.margin)
             if close_f is not None and self._record_position_bars:
@@ -1570,9 +1640,17 @@ class Portfolio:
     ):
         """Checks whether stops are triggered.
 
-        Stops on one entry are evaluated in ascending :attr:`Stop.id` order,
-        which is the order they were set in, and the first one to trigger
-        exits the entry.
+        Price stops on one entry are evaluated in ascending :attr:`Stop.id`
+        order and the first one to trigger exits the entry. Ids are assigned
+        when :meth:`pybroker.context.ExecContext.to_result` builds the stops,
+        in a fixed order -- loss, then profit, then trailing -- not in the
+        order the attributes were assigned on the context, so precedence is
+        deterministic but not caller-controlled.
+
+        :attr:`pybroker.common.StopType.BAR` stops are evaluated after the
+        price stops, whatever their id, because a bar-count exit and a price
+        exit landing on the same bar have no true ordering: the bar's price
+        path decides, and it is not modeled here.
 
         When ``slippage_model`` is set, triggered stops fill at the adjusted
         price. Slippage never affects whether a stop triggers, and share
@@ -1697,10 +1775,14 @@ class Portfolio:
         """Returns ``fill_price`` adjusted by ``slippage_model``.
 
         Share adjustments are discarded: a stop exits its entry in full.
+
+        A model that returns a non-positive price is ignored rather than
+        trusted. Slippage may only ever worsen a fill, and a price at or below
+        zero would pay the account to sell, silently corrupting cash.
         """
         if slippage_model is None or fill_price is None:
             return fill_price
-        _, fill_price = slippage_model.adjust_fill(
+        _, slipped_price = slippage_model.adjust_fill(
             side="sell" if stop.pos_type == "long" else "buy",
             symbol=stop.symbol,
             shares=entry.shares,
@@ -1709,7 +1791,9 @@ class Portfolio:
             ind_scope=ind_scope,
             sym_end_index=sym_end_index,
         )
-        return fill_price
+        if slipped_price is None or slipped_price <= 0:
+            return fill_price
+        return slipped_price
 
     def _trigger_stop(
         self,

@@ -481,6 +481,10 @@ class ExecContext:
 
         self._cover: bool = False
         self._exiting_pos: bool = False
+        # Position whose stops an exit helper asked to disarm. Held until
+        # to_result emits the order, since rotation discards orders set by an
+        # execution function and a portfolio mutation cannot be taken back.
+        self._exit_stop_pos: Optional[Position] = None
 
     @property
     def score(self) -> Optional[float]:
@@ -519,8 +523,10 @@ class ExecContext:
         """Available buying power for long and short orders given
         :attr:`pybroker.config.StrategyConfig.leverage`.
 
-        Used automatically by :meth:`.calc_target_shares` when leverage is
-        greater than ``1``. Can also be inspected directly during execution.
+        This is what the :class:`pybroker.portfolio.Portfolio` clamps orders
+        against at fill time. :meth:`.calc_target_shares` sizes off deployable
+        capital (equity multiplied by leverage) instead, so the two can differ
+        once positions are open.
         """
         return self._portfolio._available_buying_power()
 
@@ -868,7 +874,7 @@ class ExecContext:
                 f"sell_all_shares failed: No long position for {self.symbol}"
             )
         self.sell_shares = pos.shares
-        self._portfolio.remove_stops(pos)
+        self._exit_stop_pos = pos
         self._exiting_pos = True
 
     def cover_all_shares(self):
@@ -879,7 +885,7 @@ class ExecContext:
                 f"cover_all_shares failed: No short position for {self.symbol}"
             )
         self.cover_shares = pos.shares
-        self._portfolio.remove_stops(pos)
+        self._exit_stop_pos = pos
         self._exiting_pos = True
 
     def foreign(
@@ -1183,6 +1189,7 @@ class ExecContext:
                 self.buy_shares = target_shares - pos.shares
             elif pos.shares > target_shares:
                 self.sell_shares = pos.shares - target_shares
+                self._exit_target_pos(pos, target_shares)
             return
         pos = self.short_pos()
         if pos is None:
@@ -1191,6 +1198,21 @@ class ExecContext:
             self.sell_shares = target_shares - pos.shares
         elif pos.shares > target_shares:
             self.cover_shares = pos.shares - target_shares
+            self._exit_target_pos(pos, target_shares)
+
+    def _exit_target_pos(
+        self, pos: Position, target_shares: Union[Decimal, int]
+    ):
+        """Disarms ``pos``'s stops when a target of zero closes it out.
+
+        Mirrors :meth:`.sell_all_shares`. Without this, a stop firing on the
+        bar the exit order fills would close the position first, leaving the
+        scheduled order to open a position in the opposite direction.
+        """
+        if target_shares > 0:
+            return
+        self._exit_stop_pos = pos
+        self._exiting_pos = True
 
     def cancel_pending_order(self, order_id: int) -> bool:
         """Cancels a :class:`pybroker.scope.PendingOrder` with ``order_id``."""
@@ -1595,6 +1617,14 @@ class ExecContext:
             else None
         )
         long_stops, short_stops = self._get_stops()
+        if self._exit_stop_pos is not None and (
+            buy_shares is not None or sell_shares is not None
+        ):
+            # The exit order is real, so its position's stops can go now.
+            # Doing this in sell_all_shares/cover_all_shares instead would
+            # disarm them even when the order is later discarded.
+            self._portfolio.remove_stops(self._exit_stop_pos)
+            self._exit_stop_pos = None
         return ExecResult(
             symbol=self.symbol,
             date=self._curr_date,
@@ -1661,6 +1691,7 @@ def set_exec_ctx_data(ctx: ExecContext, date: np.datetime64):
     ctx._interval.clear()
     ctx._cover = False
     ctx._exiting_pos = False
+    ctx._exit_stop_pos = None
     ctx.buy_fill_price = None
     ctx.buy_shares = None
     ctx.buy_limit_price = None
