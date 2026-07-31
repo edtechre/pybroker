@@ -4,12 +4,15 @@ import json
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+import optuna
 import pandas as pd
 import pytest
 
 import pybroker
 from pybroker.config import StrategyConfig
 from pybroker.optimize import (
+    SearchSpace,
+    _build_sampler,
     collect_hyperparams,
     collect_search_space,
     hyperparam,
@@ -538,6 +541,68 @@ def test_optimize_walkforward_resolves_selector_once_per_window(
         disable_parallel_indicators=True,
     )
     assert len(calls) == 2
+
+
+def test_optimize_walkforward_keeps_persistent_orders_across_windows():
+    """The stitched replay must share one PendingOrderScope across windows.
+
+    A fresh scope per window drops every order still pending at a boundary,
+    including the ``timeout_bars=-1`` orders documented to persist
+    indefinitely. Only the stitched result is wrong -- the per-window results
+    and best_params are correct -- and the stitched result is the one a caller
+    acts on.
+    """
+    dates = pd.date_range("2021-01-04", periods=60, freq="B")
+    # Flat, then a late drop that the limit order finally fills against.
+    prices = [100.0] * 50 + [50.0] * 10
+    df = pd.DataFrame(
+        [
+            dict(
+                symbol="AAPL",
+                date=date,
+                open=price,
+                high=price,
+                low=price,
+                close=price,
+                volume=1e6,
+            )
+            for date, price in zip(dates, prices)
+        ]
+    )
+
+    def exec_fn(ctx):
+        if not ctx.session.get("placed"):
+            ctx.session["placed"] = True
+            ctx.buy_shares = 10
+            ctx.buy_limit_price = 60
+            ctx.buy_timeout_bars = -1
+
+    def make():
+        return Strategy(
+            df,
+            str(dates[0].date()),
+            str(dates[-1].date()),
+            StrategyConfig(initial_cash=100_000),
+        )
+
+    baseline = make()
+    baseline.add_execution(exec_fn, "AAPL")
+    expected = baseline.walkforward(
+        windows=3, train_size=0.5, calc_bootstrap=False
+    )
+
+    strategy = make()
+    _add_tuned_execution(strategy, exec_fn, "AAPL")
+    opt = strategy.optimize(
+        lambda r: r.metrics.total_pnl,
+        sampler="grid",
+        windows=3,
+        train_size=0.5,
+        disable_parallel_indicators=True,
+        calc_bootstrap=False,
+    )
+    assert not expected.orders.empty
+    assert len(opt.result.orders) == len(expected.orders)
 
 
 def test_optimize_with_lagged_pretrained_model(data_source_df):
@@ -1114,3 +1179,161 @@ def test_run_study_reraises_unrelated_runtime_error():
                 _run_study(study, _Bundle(), 2, sampler)
     finally:
         set_parallel(n_jobs=prior.n_jobs, backend=prior.backend)
+
+
+def test_supplied_sampler_instance_is_reseeded_per_window(data_source_df):
+    """A supplied sampler must not be shared by every walkforward window.
+
+    Returning the instance itself hands all windows one advancing RNG
+    sequentially, and one pickled copy at the same state under n_jobs > 1 --
+    where every window then explores an identical candidate set. Either way
+    the per-window seed is discarded.
+    """
+    search_space = SearchSpace(
+        hyperparams=frozenset(("lookback",)),
+        specs={"lookback": (5, 10)},
+    )
+    supplied = optuna.samplers.RandomSampler(seed=1)
+    first = _build_sampler(supplied, search_space, seed=5)
+    second = _build_sampler(supplied, search_space, seed=6)
+    third = _build_sampler(supplied, search_space, seed=5)
+    assert first is not supplied
+    assert second is not first
+    draws = [s._rng.rng.rand() for s in (first, second, third)]
+    # Same window seed reproduces; a different one does not.
+    assert draws[0] == draws[2]
+    assert draws[0] != draws[1]
+
+
+def test_run_study_parallel_grid_resumes_instead_of_repeating():
+    """A resumed grid study must continue where it left off.
+
+    The sequential path lets GridSampler.before_trial map grid_id from
+    trial.number, so slicing the sampler's grid from 0 re-evaluates the same
+    opening points and never reaches the rest of the grid. add_trial bypasses
+    before_trial, so optuna's "grid exhausted" warning never fires either.
+    """
+    from optuna.samplers import GridSampler
+    from pybroker.optimize import Hyperparam, SearchSpace, _run_study
+    from pybroker.parallel import get_parallel_config, set_parallel
+
+    space = SearchSpace(
+        hyperparams=frozenset({"x"}),
+        specs={"x": Hyperparam("x", default=5, low=5, high=25, step=5)},
+    )
+
+    class _Bundle:
+        search_space = space
+        score_overrides = staticmethod(lambda params: float(params["x"]))
+        objective = staticmethod(
+            lambda trial: float(trial.suggest_int("x", 5, 25, step=5))
+        )
+
+    prior = get_parallel_config()
+    try:
+        set_parallel(n_jobs=2, backend="threading")
+        sampler = GridSampler({"x": [5, 10, 15, 20, 25]}, seed=7)
+        study = optuna.create_study(direction="maximize", sampler=sampler)
+        _run_study(study, _Bundle(), 2, sampler)
+        _run_study(study, _Bundle(), 2, sampler)
+    finally:
+        set_parallel(n_jobs=prior.n_jobs, backend=prior.backend)
+    visited = [t.params["x"] for t in study.trials]
+    assert len(visited) == 4
+    # Four distinct grid points, not the first two evaluated twice.
+    assert len(set(visited)) == 4
+
+
+def test_optimize_returns_signals_when_configured(data_source_df):
+    """``return_signals`` must not be silently ignored.
+
+    backtest_executions computes the frames either way, so all three optimize
+    result paths were doing the work and discarding it.
+    """
+
+    def exec_fn(ctx):
+        if not ctx.long_pos():
+            ctx.buy_shares = 10
+
+    strategy = Strategy(
+        data_source_df,
+        START_DATE,
+        END_DATE,
+        StrategyConfig(initial_cash=100_000, return_signals=True),
+    )
+    _add_tuned_execution(strategy, exec_fn, "AAPL")
+    opt = strategy.optimize(
+        lambda r: r.metrics.total_pnl,
+        sampler="grid",
+        windows=2,
+        train_size=0.5,
+        disable_parallel_indicators=True,
+        calc_bootstrap=False,
+    )
+    assert opt.result.signals is not None
+    assert "AAPL" in opt.result.signals
+    assert not opt.result.signals["AAPL"].empty
+    # Per-window results carry them too.
+    assert opt.windows[0].test_result.signals is not None
+
+
+def test_optimize_and_walkforward_agree_on_order_count():
+    """Both entry points must trade identically on identical input.
+
+    They run the same bar loop through different call paths, so a fix threaded
+    into one and not the other diverges silently -- the cross-window order
+    scheduling fix reached Strategy.walkforward and missed all three
+    backtest_executions calls in optimize, costing the stitched replay roughly
+    one order per symbol per window boundary.
+    """
+    dates = pd.date_range("2021-01-04", periods=60, freq="B")
+    prices = [100.0 + (i % 5) for i in range(60)]
+    df = pd.DataFrame(
+        [
+            dict(
+                symbol="AAPL",
+                date=date,
+                open=price,
+                high=price,
+                low=price,
+                close=price,
+                volume=1e6,
+            )
+            for date, price in zip(dates, prices)
+        ]
+    )
+
+    def exec_fn(ctx):
+        # Signals on every bar, so window-boundary bars are exercised.
+        if not ctx.long_pos():
+            ctx.buy_shares = 10
+        else:
+            ctx.sell_all_shares()
+
+    def make():
+        return Strategy(
+            df,
+            str(dates[0].date()),
+            str(dates[-1].date()),
+            StrategyConfig(initial_cash=100_000),
+        )
+
+    baseline = make()
+    baseline.add_execution(exec_fn, "AAPL")
+    expected = baseline.walkforward(
+        windows=3, train_size=0.5, calc_bootstrap=False
+    )
+
+    strategy = make()
+    _add_tuned_execution(strategy, exec_fn, "AAPL")
+    opt = strategy.optimize(
+        lambda r: r.metrics.total_pnl,
+        sampler="grid",
+        windows=3,
+        train_size=0.5,
+        disable_parallel_indicators=True,
+        calc_bootstrap=False,
+    )
+    assert len(expected.orders) > 0
+    assert len(opt.result.orders) == len(expected.orders)
+    assert len(opt.result.trades) == len(expected.trades)

@@ -18,6 +18,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import copy
 import json
 import math
 import warnings
@@ -332,6 +333,7 @@ from pybroker.parallel import _effective_n_jobs, parallel
 from pybroker.portfolio import Portfolio
 from pybroker.scope import (
     ColumnScope,
+    PendingOrderScope,
     run_with_scope,
     symbol_array_store_from_frame,
 )
@@ -522,12 +524,69 @@ def _trial_params(
     }
 
 
+def _reseed_sampler(sampler: BaseSampler, seed: int, _depth: int = 0) -> None:
+    """Re-seeds ``sampler``'s RNGs in place, deterministically.
+
+    Optuna's samplers hold their generator on a private ``_rng`` wrapped in a
+    ``LazyRandomState``, and there is no public *deterministic* re-seed hook
+    (``reseed_rng`` draws fresh entropy). This reaches for the private state
+    defensively and leaves a sampler that does not expose it -- a third-party
+    subclass, say -- untouched rather than raising.
+
+    Recurses into delegated inner samplers: ``TPESampler`` draws its first
+    ``n_startup_trials`` from an inner ``RandomSampler``, so with the small
+    per-window trial counts a walkforward uses, re-seeding only the outer
+    ``_rng`` changes none of the draws that matter and every window still
+    explores one candidate set. Each level gets a distinct derived seed so
+    inner and outer streams do not mirror each other.
+    """
+    if _depth > 3:
+        return
+    rng = getattr(sampler, "_rng", None)
+    if rng is not None:
+        state = np.random.RandomState(seed)
+        try:
+            rng.rng = state
+        except AttributeError:
+            if hasattr(rng, "_rng"):
+                rng._rng = state
+    for offset, attr in enumerate(
+        ("_random_sampler", "_independent_sampler", "_base_sampler")
+    ):
+        inner = getattr(sampler, attr, None)
+        if isinstance(inner, BaseSampler):
+            _reseed_sampler(inner, seed + 1000003 * (offset + 1), _depth + 1)
+
+
 def _build_sampler(
     sampler: Union[str, BaseSampler],
     search_space: SearchSpace,
     seed: Optional[int],
 ) -> BaseSampler:
     if isinstance(sampler, BaseSampler):
+        # Copied, and re-seeded when it carries a seedable RNG. Returning the
+        # instance itself hands every walkforward window the same sampler:
+        # sequentially they share one advancing RNG, and under n_jobs > 1 each
+        # worker gets a pickled copy at the same state, so every window
+        # explores an identical candidate set. Either way the per-window seed
+        # is discarded and ``seed=`` does not make the run reproducible.
+        try:
+            sampler = copy.deepcopy(sampler)
+        except Exception:
+            # A sampler holding an unpicklable handle (a lock, a DB
+            # connection) cannot be copied. Re-seeding the instance itself
+            # still gives each sequential window distinct draws; under
+            # n_jobs > 1 the pickle to the worker fails with its own error.
+            pass
+        if seed is not None:
+            _reseed_sampler(sampler, seed)
+        else:
+            # No seed means no reproducibility contract, but a deepcopy of an
+            # already-materialized RNG replays one candidate set in every
+            # window -- worse than the shared advancing state it replaced.
+            # reseed_rng is optuna's public hook; TPESampler's implementation
+            # recurses into its startup RandomSampler itself.
+            sampler.reseed_rng()
         return sampler
     if sampler == "grid":
         grid = {
@@ -636,7 +695,14 @@ def _log_search_space(search_space: SearchSpace) -> None:
 
 def _study_summary(study: optuna.Study) -> dict[str, Any]:
     summary: dict[str, Any] = {"n_trials": len(study.trials)}
-    if study.best_trial is not None:
+    # Tested by state, not by ``study.best_trial is not None``: optuna raises
+    # "No trials are completed yet" from that property rather than returning
+    # None, so summarizing a study whose every trial failed -- a score_fn that
+    # returned NaN throughout, say -- aborted with an error about optuna
+    # internals instead of reporting an empty result.
+    if study.get_trials(
+        deepcopy=False, states=(optuna.trial.TrialState.COMPLETE,)
+    ):
         summary["best_value"] = study.best_value
         summary["best_params"] = study.best_params
     else:
@@ -868,7 +934,12 @@ def _run_study(
         # reshuffling here with a different RNG would still not agree with the
         # sequential path, where GridSampler picks the points itself.
         combos, dists = _sampler_grid(sampler)
-        combos = combos[:n_trials]
+        # Offset by the trials already in the study. The sequential path lets
+        # GridSampler.before_trial map grid_id from trial.number, so a resumed
+        # study continues where it left off; slicing from 0 re-evaluates the
+        # same opening points and never reaches the rest of the grid.
+        start = len(study.trials)
+        combos = combos[start : start + n_trials]
         with parallel() as pool:
             scores = pool(
                 delayed(_run_scoped_task)(
@@ -1280,7 +1351,7 @@ class OptimizeMixin:
             window_executions, train_data
         ):
             sessions[sym] = {}
-        self.backtest_executions(
+        signals = self.backtest_executions(
             config=effective_config,
             executions=window_executions,
             before_exec_fn=self._before_exec_fn,
@@ -1307,6 +1378,7 @@ class OptimizeMixin:
             if train_store is not None
             else None,
             run_hyperparams=run_hyperparams,
+            master_col_scope=ColumnScope(master_store),
         )
         if train_data.empty:
             start_dt = self._start_date
@@ -1321,7 +1393,7 @@ class OptimizeMixin:
             portfolio,
             calc_bootstrap=False,
             train_only=False,
-            signals=None,
+            signals=signals if self._config.return_signals else None,
             seed=None,
         )
 
@@ -1804,7 +1876,7 @@ class OptimizeMixin:
             test_empty=test_data.empty,
         )
         sessions: dict[str, dict] = defaultdict(dict)
-        self.backtest_executions(
+        signals = self.backtest_executions(
             config=effective_config,
             executions=window_executions,
             before_exec_fn=self._before_exec_fn,
@@ -1831,6 +1903,7 @@ class OptimizeMixin:
             if test_store is not None
             else None,
             run_hyperparams=run_hyperparams,
+            master_col_scope=ColumnScope(master_store),
         )
         return self._to_test_result(
             start_dt,
@@ -1838,7 +1911,7 @@ class OptimizeMixin:
             portfolio,
             calc_bootstrap=calc_bootstrap,
             train_only=False,
-            signals=None,
+            signals=signals if self._config.return_signals else None,
             seed=seed,
         )
 
@@ -2065,6 +2138,18 @@ class OptimizeMixin:
         # replay carries positions and cash across window boundaries, so
         # ctx.session has to persist across them too.
         sessions: dict[str, dict] = defaultdict(dict)
+        # Allocated once, like Strategy._run_walkforward does: a fresh scope
+        # per window drops every persistent limit order at every boundary, so
+        # the stitched result -- the one a caller acts on -- silently loses
+        # fills the per-window results kept.
+        pending_order_scope = PendingOrderScope()
+        signal_frames: dict[str, list[pd.DataFrame]] = defaultdict(list)
+        # Accumulated across windows, mirroring Strategy._run_walkforward. A
+        # dropped symbol's indicators were only ever computed for the window
+        # that still selected it, so passing this window's dict alone leaves
+        # the boundary liquidation with an empty IndicatorScope and an
+        # ATR-scaled slippage model silently skips the fill.
+        replay_indicator_data: dict[IndicatorSymbol, pd.Series] = {}
         # Computed over the whole df so only the true final bar liquidates.
         stitched_exit_dates = self._build_exit_dates(df, has_selector)
         for i, (train_rows, test_rows) in enumerate(splits):
@@ -2102,6 +2187,7 @@ class OptimizeMixin:
                 hyperparams=wr.params,
             )
             indicator_data = {**invariant_data, **trial_indicators}
+            replay_indicator_data.update(indicator_data)
             pretrained_models = self._load_pretrained_models(
                 df=df,
                 train_rows=train_rows,
@@ -2131,6 +2217,8 @@ class OptimizeMixin:
                 test_data,
                 master_store=master_store,
                 slippage_model=self._slippage_model,
+                indicator_data=replay_indicator_data,
+                pending_order_scope=pending_order_scope,
             )
             window_settings = self._resolve_backtest_settings(wr.params)
             window_config = self._effective_config(window_settings)
@@ -2141,7 +2229,7 @@ class OptimizeMixin:
             portfolio._max_short_positions = (
                 window_settings.max_short_positions
             )
-            self.backtest_executions(
+            split_signals = self.backtest_executions(
                 config=window_config,
                 executions=window_executions,
                 before_exec_fn=self._before_exec_fn,
@@ -2168,7 +2256,11 @@ class OptimizeMixin:
                 if test_store is not None
                 else None,
                 run_hyperparams=wr.params,
+                pending_order_scope=pending_order_scope,
+                master_col_scope=ColumnScope(master_store),
             )
+            for sym, signals_df in split_signals.items():
+                signal_frames[sym].append(signals_df)
 
         oos_pnl = sum(
             wr.test_result.metrics.total_pnl for wr in window_results
@@ -2178,13 +2270,23 @@ class OptimizeMixin:
         # negative denominator flips the sign, so a losing out-of-sample run
         # would report an efficiency above 1 and a winning one below 0.
         wfe = oos_pnl / is_pnl if is_pnl > 0 else None
+        stitched_signals: Optional[dict[str, pd.DataFrame]] = None
+        if self._config.return_signals:
+            stitched_signals = {
+                sym: (
+                    frames[0]
+                    if len(frames) == 1
+                    else pd.concat(frames, ignore_index=True)
+                )
+                for sym, frames in signal_frames.items()
+            }
         stitched = self._to_test_result(
             start_dt,
             end_dt,
             portfolio,
             calc_bootstrap=calc_bootstrap,
             train_only=False,
-            signals=None,
+            signals=stitched_signals,
             seed=seed,
         )
         last = window_results[-1]
