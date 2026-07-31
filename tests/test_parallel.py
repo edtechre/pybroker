@@ -110,3 +110,21 @@ def test_parallel_context_uses_configured_backend():
         with parallel() as p:
             assert type(p) is Parallel
         mock_backend.assert_called_once_with("threading", n_jobs=2)
+
+
+def test_set_parallel_rejects_unordered_return_as():
+    """Every dispatch site pairs results to inputs by position.
+
+    train_models zips tasks to results to recover predict_fn and lag_columns,
+    and optimize zips grid points to scores. An unordered return binds each
+    result to the wrong input, and the mismatched lag_columns is written to the
+    model cache where it outlives the run.
+    """
+    with pytest.raises(ValueError, match="submission order"):
+        set_parallel(
+            parallel=Parallel(n_jobs=2, return_as="generator_unordered")
+        )
+    # Ordered returns are accepted.
+    for return_as in ("list", "generator"):
+        set_parallel(parallel=Parallel(n_jobs=2, return_as=return_as))
+        assert get_parallel_config().parallel is not None

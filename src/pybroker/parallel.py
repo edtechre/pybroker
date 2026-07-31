@@ -69,13 +69,27 @@ def set_parallel(
 
     Raises:
         ValueError: If ``parallel`` is passed together with ``n_jobs`` or
-            ``backend``, or if ``backend`` is not a registered joblib backend.
+            ``backend``, if ``backend`` is not a registered joblib backend, or
+            if ``parallel`` returns results out of submission order.
     """
     global _config
     if parallel is not None:
         if n_jobs is not None or backend is not None:
             raise ValueError(
                 "parallel is mutually exclusive with n_jobs and backend"
+            )
+        return_as = getattr(parallel, "return_as", "list")
+        if return_as not in ("list", "generator"):
+            # Every dispatch site pairs results back to their inputs by
+            # position -- train_models zips tasks to models to recover
+            # predict_fn and lag_columns, and optimize zips grid points to
+            # scores. An unordered return silently binds each result to the
+            # wrong input, and for models the mismatched lag_columns is then
+            # written to the model cache and outlives the run.
+            raise ValueError(
+                f"parallel must return results in submission order; "
+                f"return_as={return_as!r} does not. Use 'list' or "
+                f"'generator'."
             )
         _config = ParallelConfig(parallel=parallel)
         return
