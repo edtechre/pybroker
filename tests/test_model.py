@@ -1012,7 +1012,7 @@ class TestIntervalModels:
             df=df,
             indicator_syms=[IndicatorSymbol(tf_ind_name, sym)],
             cache_date_fields=cache_date_fields,
-            disable_parallel_indicators=True,
+            enable_parallel_indicators=False,
             interval_data=interval_data,
         )
         m = model(
@@ -1082,7 +1082,7 @@ class TestIntervalModels:
             df=df,
             indicator_syms=ind_syms,
             cache_date_fields=cache_date_fields,
-            disable_parallel_indicators=True,
+            enable_parallel_indicators=False,
             interval_data=interval_data,
         )
         train_fn = Mock(return_value=FakeModel("pooled", np.array([1.0])))

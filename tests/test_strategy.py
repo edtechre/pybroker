@@ -2859,7 +2859,7 @@ def calc_bootstrap(request):
 
 
 @pytest.fixture(params=[True, False])
-def disable_parallel_indicators(request):
+def enable_parallel_indicators(request):
     return request.param
 
 
@@ -3184,7 +3184,7 @@ class TestStrategy:
         days,
         between_time,
         calc_bootstrap,
-        disable_parallel_indicators,
+        enable_parallel_indicators,
         request,
     ):
         data_source = get_fixture(request, data_source)
@@ -3204,7 +3204,7 @@ class TestStrategy:
             days=days,
             between_time=between_time,
             calc_bootstrap=calc_bootstrap,
-            disable_parallel_indicators=disable_parallel_indicators,
+            enable_parallel_indicators=enable_parallel_indicators,
             adjust="adjustment",
         )
         if date_range[0] is None:
@@ -3661,7 +3661,7 @@ class TestStrategy:
             lookahead=1,
             train_size=0.5,
             calc_bootstrap=False,
-            disable_parallel_indicators=True,
+            enable_parallel_indicators=False,
         )
         recorded_strategy = Strategy(
             data_source_df,
@@ -3679,7 +3679,7 @@ class TestStrategy:
             lookahead=1,
             train_size=0.5,
             calc_bootstrap=False,
-            disable_parallel_indicators=True,
+            enable_parallel_indicators=False,
         )
         pd.testing.assert_frame_equal(
             default_result.portfolio, recorded_result.portfolio
@@ -5573,9 +5573,9 @@ def _sma(bar_data, period):
 
 
 class TestStrategyIntervals:
-    @pytest.mark.parametrize("disable_parallel_indicators", [True, False])
+    @pytest.mark.parametrize("enable_parallel_indicators", [True, False])
     def test_weekly_interval_backtest(
-        self, data_source_df, disable_parallel_indicators, scope
+        self, data_source_df, enable_parallel_indicators, scope
     ):
         def sma(bar_data, period):
             close = bar_data.close
@@ -5603,7 +5603,7 @@ class TestStrategyIntervals:
         )
         strategy.walkforward(
             windows=1,
-            disable_parallel_indicators=disable_parallel_indicators,
+            enable_parallel_indicators=enable_parallel_indicators,
             timeframe="1d",
         )
         assert seen

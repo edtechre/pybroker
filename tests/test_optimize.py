@@ -150,7 +150,7 @@ def test_optimize_grid_smoke(data_source_df):
         lambda r: r.metrics.sharpe if r.metrics.sharpe is not None else 0.0,
         sampler="grid",
         train_size=0.5,
-        disable_parallel_indicators=True,
+        enable_parallel_indicators=False,
         calc_bootstrap=True,
     )
     assert opt.best_params["lookback"] in (5, 10)
@@ -161,7 +161,7 @@ def test_optimize_grid_smoke(data_source_df):
             lambda r: 0.0,
             sampler="grid",
             train_size=0.5,
-            disable_parallel_indicators=True,
+            enable_parallel_indicators=False,
         ).result.bootstrap
         is None
     )
@@ -187,7 +187,7 @@ def test_optimize_result_to_json(data_source_df):
         lambda r: r.metrics.sharpe if r.metrics.sharpe is not None else 0.0,
         sampler="grid",
         train_size=0.5,
-        disable_parallel_indicators=True,
+        enable_parallel_indicators=False,
         calc_bootstrap=True,
     )
     payload = opt.to_json()
@@ -228,7 +228,7 @@ def test_optimize_indicator_integration(data_source_df):
         lambda r: r.metrics.total_pnl,
         sampler="grid",
         train_size=0.5,
-        disable_parallel_indicators=True,
+        enable_parallel_indicators=False,
     )
     trial_lookbacks = {t.params["lookback"] for t in opt.study.trials}
 
@@ -255,7 +255,7 @@ def test_optimize_logs_trial_count(capsys, data_source_df):
         lambda r: r.metrics.total_pnl,
         sampler="grid",
         train_size=0.5,
-        disable_parallel_indicators=True,
+        enable_parallel_indicators=False,
     )
     assert "Optimizing: 2 trials (grid)" in capsys.readouterr().out
 
@@ -275,7 +275,7 @@ def test_grid_explosion_guard(data_source_df):
                     lambda r: r.metrics.total_pnl,
                     n_trials=None,
                     train_size=0.5,
-                    disable_parallel_indicators=True,
+                    enable_parallel_indicators=False,
                 )
 
 
@@ -334,7 +334,7 @@ def test_optimize_model_loader_integration(data_source_df):
         lambda r: r.metrics.total_pnl,
         sampler="grid",
         train_size=0.5,
-        disable_parallel_indicators=True,
+        enable_parallel_indicators=False,
     )
 
     assert len(opt.study.trials) == 2
@@ -378,7 +378,7 @@ def test_indicator_resolves_params(data_source_df):
         lengths.append(len(ctx.indicator(hhv.name)))
 
     strategy.add_execution(exec_fn, "AAPL", indicators=[hhv])
-    strategy.backtest(params={"lookback": 5}, disable_parallel_indicators=True)
+    strategy.backtest(params={"lookback": 5}, enable_parallel_indicators=False)
     assert lengths
 
 
@@ -404,7 +404,7 @@ def test_optimize_indicator_memo_max_validation(data_source_df):
             lambda r: r.metrics.total_pnl,
             indicator_memo_max=-1,
             n_trials=1,
-            disable_parallel_indicators=True,
+            enable_parallel_indicators=False,
         )
 
 
@@ -441,7 +441,7 @@ def test_optimize_trial_interval_alignment_matches_walkforward(
         sampler="grid",
         windows=2,
         train_size=0.5,
-        disable_parallel_indicators=True,
+        enable_parallel_indicators=False,
         timeframe="1d",
     )
     assert seen
@@ -487,7 +487,7 @@ def test_optimize_when_slippage_indicator_missing_then_error(data_source_df):
             lambda r: 0.0,
             sampler="grid",
             train_size=0.5,
-            disable_parallel_indicators=True,
+            enable_parallel_indicators=False,
         )
 
 
@@ -511,7 +511,7 @@ def test_optimize_when_volume_column_missing_then_error(data_source_df):
             lambda r: 0.0,
             sampler="grid",
             train_size=0.5,
-            disable_parallel_indicators=True,
+            enable_parallel_indicators=False,
         )
 
 
@@ -538,7 +538,7 @@ def test_optimize_walkforward_resolves_selector_once_per_window(
         sampler="grid",
         windows=2,
         train_size=0.5,
-        disable_parallel_indicators=True,
+        enable_parallel_indicators=False,
     )
     assert len(calls) == 2
 
@@ -598,7 +598,7 @@ def test_optimize_walkforward_keeps_persistent_orders_across_windows():
         sampler="grid",
         windows=3,
         train_size=0.5,
-        disable_parallel_indicators=True,
+        enable_parallel_indicators=False,
         calc_bootstrap=False,
     )
     assert not expected.orders.empty
@@ -640,7 +640,7 @@ def test_optimize_with_lagged_pretrained_model(data_source_df):
             lambda r: r.metrics.total_pnl,
             sampler="grid",
             windows=windows,
-            disable_parallel_indicators=True,
+            enable_parallel_indicators=False,
         )
         assert result.best_params["lag_lb"] in (5, 10)
 
@@ -671,7 +671,7 @@ def test_optimize_grid_parallel_matches_sequential(data_source_df):
                 sampler="grid",
                 n_trials=4,
                 seed=42,
-                disable_parallel_indicators=True,
+                enable_parallel_indicators=False,
             )
         )
 
@@ -740,7 +740,7 @@ def test_optimize_when_study_direction_conflicts_then_error(data_source_df):
             lambda r: 0.0,
             direction="maximize",
             study=optuna.create_study(),
-            disable_parallel_indicators=True,
+            enable_parallel_indicators=False,
         )
 
 
@@ -754,7 +754,7 @@ def test_optimize_when_study_and_multiple_windows_then_error(data_source_df):
             lambda r: 0.0,
             windows=2,
             study=optuna.create_study(direction="maximize"),
-            disable_parallel_indicators=True,
+            enable_parallel_indicators=False,
         )
 
 
@@ -768,7 +768,7 @@ def test_optimize_when_study_supplied_then_trials_recorded(data_source_df):
         lambda r: r.metrics.total_pnl,
         study=study,
         n_trials=2,
-        disable_parallel_indicators=True,
+        enable_parallel_indicators=False,
     )
     assert result.study is study
     assert len(study.trials) == 2
@@ -799,7 +799,7 @@ def test_optimize_when_model_indicator_has_hyperparam_then_collected(
     result = strategy.optimize(
         lambda r: r.metrics.total_pnl,
         sampler="grid",
-        disable_parallel_indicators=True,
+        enable_parallel_indicators=False,
     )
     assert result.best_params["m_period"] in (5, 10)
 
@@ -818,7 +818,7 @@ def test_optimize_when_max_long_positions_is_hyperparam_and_windows(
         lambda r: r.metrics.total_pnl,
         sampler="grid",
         windows=2,
-        disable_parallel_indicators=True,
+        enable_parallel_indicators=False,
     )
     assert result.best_params["mlp"] in (1, 2, 3)
     assert result.windows is not None and len(result.windows) == 2
@@ -849,7 +849,7 @@ def test_optimize_invariant_indicator_computed_once_per_run(data_source_df):
     result = strategy.optimize(
         lambda r: r.metrics.total_pnl,
         sampler="grid",
-        disable_parallel_indicators=True,
+        enable_parallel_indicators=False,
     )
     assert len(result.study.trials) == 5
     # One compute per distinct hyperparam value, memoized across trials.
@@ -880,7 +880,7 @@ def test_optimize_clears_indicator_memo_between_calls(data_source_df):
             sampler="grid",
             start_date="2021-01-04",
             end_date="2021-12-31",
-            disable_parallel_indicators=True,
+            enable_parallel_indicators=False,
         )
 
     reused = _make_strategy(data_source_df)
@@ -890,7 +890,7 @@ def test_optimize_clears_indicator_memo_between_calls(data_source_df):
         sampler="grid",
         start_date="2020-01-02",
         end_date="2020-06-30",
-        disable_parallel_indicators=True,
+        enable_parallel_indicators=False,
     )
     assert not reused._indicator_memo
     second = run(reused)
@@ -918,7 +918,7 @@ def test_optimize_honors_exit_on_last_bar(data_source_df):
         lambda r: r.metrics.total_pnl,
         sampler="grid",
         windows=2,
-        disable_parallel_indicators=True,
+        enable_parallel_indicators=False,
     )
 
     wf_strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
@@ -941,7 +941,7 @@ def test_optimize_sessions_persist_across_windows(data_source_df):
         lambda r: r.metrics.total_pnl,
         sampler="grid",
         windows=4,
-        disable_parallel_indicators=True,
+        enable_parallel_indicators=False,
     )
     wf_strategy = _make_strategy(data_source_df)
     counts: list[int] = []
@@ -973,7 +973,7 @@ def test_optimize_walkforward_efficiency_none_when_train_unprofitable(
         sampler="grid",
         direction="minimize",
         windows=2,
-        disable_parallel_indicators=True,
+        enable_parallel_indicators=False,
     )
     is_pnl = sum(w.train_pnl for w in result.windows)
     if is_pnl > 0:
@@ -1001,7 +1001,7 @@ def test_optimize_when_no_train_or_test_window_then_error(
             lambda r: 0.0,
             sampler="grid",
             train_size=train_size,
-            disable_parallel_indicators=True,
+            enable_parallel_indicators=False,
         )
 
 
@@ -1267,7 +1267,7 @@ def test_optimize_returns_signals_when_configured(data_source_df):
         sampler="grid",
         windows=2,
         train_size=0.5,
-        disable_parallel_indicators=True,
+        enable_parallel_indicators=False,
         calc_bootstrap=False,
     )
     assert opt.result.signals is not None
@@ -1331,7 +1331,7 @@ def test_optimize_and_walkforward_agree_on_order_count():
         sampler="grid",
         windows=3,
         train_size=0.5,
-        disable_parallel_indicators=True,
+        enable_parallel_indicators=False,
         calc_bootstrap=False,
     )
     assert len(expected.orders) > 0

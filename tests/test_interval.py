@@ -912,7 +912,7 @@ class TestIntervalIndicatorCompute:
             df=df,
             indicator_syms=[IndicatorSymbol(weekly_name, sym)],
             cache_date_fields=None,
-            disable_parallel_indicators=True,
+            enable_parallel_indicators=False,
             interval_data=interval_data,
         )
         hand = sma_ind(
