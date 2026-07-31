@@ -89,6 +89,16 @@ def truncate(value, n):
     return math.floor(value * 10**n) / 10**n
 
 
+def assert_metric(actual, expected):
+    """Compares a ratio, allowing ``inf`` (unbounded) and ``None`` (NaN)."""
+    if expected is None:
+        assert math.isnan(actual)
+    elif math.isinf(expected):
+        assert actual == expected
+    else:
+        assert truncate(actual, 6) == truncate(expected, 6)
+
+
 @pytest.mark.parametrize(
     "n_boot, expected_msg",
     [
@@ -238,20 +248,32 @@ def test_sharpe_ratio(values, obs, expected_sharpe):
             0.273861278752583 * np.sqrt(252),
         ),
         ([-0.01, -0.02], None, -0.9486832980505139),
+        # No downside and no gain: 0, not unbounded.
         ([0, 0, 0, 0], None, 0),
         ([], None, 0),
     ],
 )
 def test_sortino_ratio(values, obs, expected_sortino):
-    sortino = sortino_ratio(np.array(values), obs)
-    assert truncate(sortino, 6) == truncate(expected_sortino, 6)
+    assert_metric(sortino_ratio(np.array(values), obs), expected_sortino)
 
 
 @pytest.mark.parametrize("values", [[1, 1, 1, 1], [1], [0.01, 0.02, 0.03]])
 def test_sortino_ratio_when_no_downside_then_inf(values):
-    """A gain with zero downside is unbounded, not zero. Returning 0 here
-    would rank the best possible input alongside a flat one."""
+    """A gain with no downside is unbounded, so it ranks best.
+
+    Returning 0 ranks the best possible input alongside a flat one. NaN is
+    worse still: a NaN score marks an Optuna trial FAILED, so the winning
+    candidate is discarded rather than ranked.
+    """
     assert sortino_ratio(np.array(values, dtype=np.float64)) == np.inf
+
+
+def test_sortino_ratio_when_nan_returns_then_nan():
+    """Every ``r < 0`` test against NaN is False, so the downside deviation
+    comes out 0 and the degenerate branch reported the best possible score for
+    returns that are not computable at all."""
+    values = np.array([0.01, np.nan, 0.02], dtype=np.float64)
+    assert math.isnan(sortino_ratio(values))
 
 
 def test_sortino_ratio_matches_reference_definition():
@@ -301,14 +323,16 @@ def test_max_drawdown(values, expected_dd):
     [
         ([0.1, 0.15, -0.05, 0.1, -0.25, -0.15, 0], 252, -9),
         ([0.1, -0.4], 252, -94.5),
-        ([1, 1, 1, 1], 252, 0),
-        ([1], 252, 0),
+        # No drawdown to divide by: unbounded, not worst-possible.
+        ([1, 1, 1, 1], 252, float("inf")),
+        ([1], 252, float("inf")),
         ([], 252, 0),
     ],
 )
 def test_calmar_ratio(values, bars_per_year, expected_calmar):
-    calmar = calmar_ratio(np.array(values), bars_per_year)
-    assert truncate(calmar, 6) == expected_calmar
+    assert_metric(
+        calmar_ratio(np.array(values), bars_per_year), expected_calmar
+    )
 
 
 @pytest.mark.parametrize(
@@ -388,6 +412,8 @@ def test_ulcer_index_when_invalid_period_then_error(values, period):
     "values, period, ui, expected_upi",
     [
         ([100, 101, 102, 100, 99, 103, 103, 102], 2, None, 0.329757),
+        # Explicit ui=0 with real mid-curve drawdowns: not genuinely
+        # drawdown-free, so no inf.
         ([100, 101, 102, 100, 99, 103, 103, 102], 2, 0, 0),
         ([100, 101, 102, 100, 99, 103, 103, 102], 2, 1, 0.299834),
         ([100, 101, 102, 100, 99, 103, 103, 102], 1, None, 0),
@@ -403,14 +429,13 @@ def test_ulcer_index_when_invalid_period_then_error(values, period):
         ([100], 14, 0, 0),
         ([100], 14, 1.5, 0),
         ([100], 1, None, 0),
-        ([100, 101], 14, None, 0),
-        ([100, 101], 14, 0, 0),
-        ([100, 101, 102], 2, 0, 0),
+        ([100, 101], 14, None, float("inf")),
+        ([100, 101], 14, 0, float("inf")),
+        ([100, 101, 102], 2, 0, float("inf")),
     ],
 )
 def test_upi(values, period, ui, expected_upi):
-    upi_ = upi(np.array(values), period=period, ui=ui)
-    assert truncate(upi_, 6) == expected_upi
+    assert_metric(upi(np.array(values), period=period, ui=ui), expected_upi)
 
 
 @pytest.mark.parametrize(
@@ -884,3 +909,103 @@ def test_bootstrap_result_to_json():
     assert len(payload["conf_intervals"]) == 1
     assert payload["profit_factor"]["low_2p5"] == 0.1
     assert payload["drawdown"]["confs"]["q_001"] == 0.0
+
+
+def test_upi_when_zero_market_value_bar_then_no_zero_division():
+    """A wipeout bar must not discard a completed TestResult.
+
+    ulcer_index guards the same division, and its guard means ui is non-zero
+    in exactly the case that used to kill upi, so the ``ui == 0`` early-out
+    does not cover it.
+    """
+    values = np.array([100.0, 50.0, 0.0, 10.0, 20.0])
+    result = upi(values, period=2)
+    assert np.isfinite(result) or np.isnan(result)
+
+
+def test_relative_entropy_ignores_non_finite_values():
+    """+/-inf must not index out of bounds.
+
+    ``factor`` becomes 0.0 with an infinite value, ``0.0 * inf`` is NaN, and
+    int(NaN) in numba is INT64_MIN -- an unchecked out-of-bounds write in a
+    kernel compiled without boundscheck.
+    """
+    finite = relative_entropy(np.array([1.0, 2.0, 3.0]))
+    with_inf = relative_entropy(np.array([1.0, 2.0, 3.0, np.inf]))
+    with_neg_inf = relative_entropy(np.array([1.0, 2.0, 3.0, -np.inf]))
+    assert np.isfinite(with_inf)
+    assert np.isfinite(with_neg_inf)
+    # The infinite observation is excluded, so the result matches the finite
+    # sample rather than being computed over a partially counted one.
+    assert with_inf == pytest.approx(finite)
+    assert with_neg_inf == pytest.approx(finite)
+
+
+@pytest.mark.parametrize(
+    "returns, market_values, label",
+    [
+        (np.zeros(50), np.full(50, 100_000.0), "no-trade"),
+        (
+            np.full(50, 0.01),
+            np.cumprod(np.full(50, 1.01)) * 100_000.0,
+            "all-winning",
+        ),
+        (
+            np.full(50, -0.01),
+            np.cumprod(np.full(50, 0.99)) * 100_000.0,
+            "all-losing",
+        ),
+    ],
+)
+def test_degenerate_metrics_never_fail_an_optuna_trial(
+    returns, market_values, label
+):
+    """An undefined ratio must rank, not abort the study.
+
+    optuna rejects a NaN objective outright, so pybroker records such a trial
+    as FAILED. Returning NaN for a degenerate-but-legitimate result therefore
+    discarded it -- including an all-winning trial, the one worth keeping --
+    and a window whose every trial failed made ``study.best_trial`` raise.
+    """
+    from pybroker.optimize import _is_failed_score
+
+    for name, value in (
+        ("sortino", sortino_ratio(returns)),
+        ("calmar", calmar_ratio(returns, 252)),
+        ("upi", upi(market_values)),
+        ("sharpe", sharpe_ratio(returns)),
+    ):
+        assert not _is_failed_score(value), f"{label}: {name} = {value!r}"
+
+
+def test_calmar_ratio_nan_returns_score_nan_not_inf():
+    """NaN comparisons are all False, so without the isnan guard a
+    non-computable input fell into the drawdown-free branch and scored inf --
+    the best possible rank. sortino_ratio carries the same guard."""
+    assert math.isnan(calmar_ratio(np.array([0.01, np.nan, 0.02]), 252))
+
+
+def test_upi_warmup_drawdown_does_not_score_inf():
+    """ulcer_index skips its first ``period`` bars, so a zero ulcer does not
+    prove the curve never drew down. A 50% drawdown confined to that warmup
+    must not score inf."""
+    values = np.array([100.0, 50.0, 100.0, 200.0])
+    assert ulcer_index(values, 3) == 0
+    assert upi(values, 3) == 0
+    # A genuinely drawdown-free gain still ranks best.
+    assert upi(np.array([100.0, 110.0, 120.0, 130.0]), 2) == np.inf
+
+
+def test_upi_nan_values_score_nan_regardless_of_direction():
+    """NaN means not-computable in both directions.
+
+    Testing direction before scanning for NaN scored the same corrupt series
+    0.0 on a net loss but NaN on a net gain -- one Optuna trial COMPLETE, the
+    other FAILED, for identical data -- and diverged from sortino_ratio and
+    calmar_ratio, which return NaN for both.
+    """
+    assert math.isnan(upi(np.array([100.0, np.nan, 200.0]), 3))
+    assert math.isnan(upi(np.array([100.0, 50.0, np.nan]), 3))
+    # Net loss and flat with an interior NaN: NaN, not rankable-worst.
+    assert math.isnan(upi(np.array([100.0, np.nan, 90.0]), 3))
+    assert math.isnan(upi(np.array([100.0, np.nan, 100.0]), 3))

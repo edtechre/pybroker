@@ -419,8 +419,11 @@ def sortino_ratio(
     """Computes the
     `Sortino Ratio <https://en.wikipedia.org/wiki/Sortino_ratio>`_.
 
-    Returns ``inf`` when there is no downside and the mean return is positive,
-    and ``0`` when there is no downside and no gain either.
+    With no downside to divide by the ratio is unbounded, so a positive mean
+    returns ``inf`` -- genuinely the best score, and one Optuna accepts -- while
+    a non-positive mean returns ``0``. ``NaN`` is reserved for returns that are
+    not computable at all, because a NaN score marks an Optuna trial *failed*
+    and would discard the run rather than rank it.
 
     Args:
         returns: Array of returns centered at 0.
@@ -432,10 +435,16 @@ def sortino_ratio(
     if not n:
         return 0.0
     mean = np.mean(returns)
+    if np.isnan(mean):
+        # Every ``r < 0`` test against NaN is False, so dd comes out 0 and the
+        # degenerate branch below would report the best possible score for
+        # returns that are not computable at all.
+        return np.nan
     dd = downside_deviation(returns)
     if dd == 0:
-        # No losing bar. Falling through to 0 here would score the best
-        # possible input identically to a flat one.
+        # No losing bar, so the ratio is unbounded rather than undefined.
+        # Ranking a flawless curve best is correct; ranking it 0 put it below
+        # every curve that did lose, and NaN failed the Optuna trial outright.
         return 0.0 if mean <= 0 else np.inf
     sr = mean / dd
     if obs is not None:
@@ -508,11 +517,19 @@ def calmar_ratio(returns: NDArray[np.float64], bars_per_year: int) -> float:
         bars_per_year: Number of bars per annum.
     """
     if not len(returns):
-        return 0
+        return 0.0
+    mean = np.mean(returns)
+    if np.isnan(mean):
+        # Mirrors sortino_ratio: NaN comparisons are all False, so falling
+        # through would score a non-computable input inf -- the best rank.
+        return np.nan
     max_dd = np.abs(max_drawdown(returns))
     if max_dd == 0:
-        return 0
-    return np.mean(returns) * bars_per_year / max_dd
+        # No drawdown to divide by, so the ratio is unbounded. See
+        # sortino_ratio: inf for a gain, 0 for no gain, never NaN -- a NaN
+        # score marks an Optuna trial failed.
+        return 0.0 if mean <= 0 else np.inf
+    return mean * bars_per_year / max_dd
 
 
 @njit(cache=True)
@@ -710,7 +727,11 @@ def relative_entropy(values: NDArray[np.float64]) -> float:
     """Computes the relative `entropy
     <https://en.wikipedia.org/wiki/Entropy_(information_theory)>`_.
     """
-    x = values[~np.isnan(values)]
+    # isfinite, not just ~isnan: with an infinite value ``factor`` becomes
+    # 0.0, ``0.0 * inf`` is NaN, and int(NaN) in numba is INT64_MIN -- an
+    # unchecked out-of-bounds write into ``count`` in a kernel compiled
+    # without boundscheck.
+    x = values[np.isfinite(values)]
     n = len(x)
     if not n:
         return 0
@@ -727,6 +748,10 @@ def relative_entropy(values: NDArray[np.float64]) -> float:
     count = np.zeros(n_bins)
     for v in x:
         k = int(factor * (v - min_val))
+        if k < 0:
+            k = 0
+        elif k >= n_bins:
+            k = n_bins - 1
         count[k] += 1
     sum_ = 0
     for c in count:
@@ -794,14 +819,39 @@ def upi(
     <https://en.wikipedia.org/wiki/Ulcer_index>`_ of ``values``.
     """
     if len(values) <= 1:
-        return 0
+        return 0.0
     if ui is None:
         ui = ulcer_index(values, period)
     if ui == 0:
-        return 0
+        # ulcer_index skips its first ``period`` bars, so a zero ulcer does
+        # not prove the curve never drew down -- a drawdown confined to that
+        # warmup is invisible to it. inf is awarded only to a genuinely
+        # drawdown-free gain; a rankable curve scores 0.
+        if np.isnan(values).any():
+            # Scanned before the direction test: a NaN bar is invisible to
+            # every comparison below, and testing direction first scored the
+            # same corrupt series 0.0 on a net loss but NaN on a net gain --
+            # one Optuna trial COMPLETE, the other FAILED, for identical
+            # data. Not-computable is NaN in both directions, matching
+            # sortino_ratio and calmar_ratio.
+            return np.nan
+        if values[-1] <= values[0]:
+            return 0.0
+        peak = values[0]
+        for i in range(1, len(values)):
+            if values[i] < peak:
+                return 0.0
+            peak = values[i]
+        return np.inf
     r = np.zeros(len(values) - 1)
     for i in range(len(r)):
-        r[i] = (values[i + 1] - values[i]) / values[i] * 100
+        prev = values[i]
+        # A zero portfolio cannot produce a return. Unguarded this raises
+        # ZeroDivisionError under numba's default error model and discards a
+        # TestResult the bar loop already finished computing -- and a quantized
+        # market value of exactly 0.00 on a wipeout is an attractor, not a
+        # knife-edge. ulcer_index guards the same division.
+        r[i] = 0.0 if prev == 0 else (values[i + 1] - prev) / prev * 100
     return float(np.mean(r) / ui)
 
 
@@ -1220,12 +1270,16 @@ class EvalMetrics:
             <https://en.wikipedia.org/wiki/Sortino_ratio>`_, computed per bar.
             ``inf`` when there are no losing bars and the mean return is
             positive.
-        calmar: Calmar Ratio, computed per bar.
+        calmar: Calmar Ratio, computed per bar. ``None`` when
+            :attr:`pybroker.config.StrategyConfig.bars_per_year` is not set,
+            since the ratio annualizes; ``inf`` when there is no drawdown and
+            the mean return is positive.
         profit_factor: Ratio of gross profit to gross loss, computed per bar.
         ulcer_index: `Ulcer Index
             <https://en.wikipedia.org/wiki/Ulcer_index>`_, computed per bar.
         upi: `Ulcer Performance Index
             <https://en.wikipedia.org/wiki/Ulcer_index>`_, computed per bar.
+            ``inf`` for a genuinely drawdown-free gain.
         equity_r2: R^2 of the equity curve, computed per bar on market values
             of portfolio.
         std_error: Standard error, computed per bar on market values of
