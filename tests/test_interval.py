@@ -1098,3 +1098,41 @@ def test_compress_bars_skips_nan_high_low_wherever_it_falls(nan_at):
     bars = compress_bars(pd.DataFrame(rows), "3d", base_timeframe="1d")
     assert not np.isnan(bars.high).any()
     assert not np.isnan(bars.low).any()
+
+
+def test_compress_every_n_bars_skips_nan_like_calendar_bins():
+    """Int intervals must aggregate high/low the same way calendar bins do.
+
+    _aggregate_bins deliberately skips NaN so the result does not depend on
+    where in the bin the gap falls; the reshape fast path propagated it, so
+    one bad tick poisoned the whole compressed bar -- and NaN comparisons fail
+    closed, silently taking the wrong branch.
+    """
+    # 11 bars at interval 3: three full bins plus a ragged tail of two.
+    n = 11
+    dates = (
+        np.arange(n).astype("timedelta64[D]") + np.datetime64("2021-01-04")
+    ).astype("datetime64[ns]")
+    high = np.arange(1.0, n + 1)
+    low = -np.arange(1.0, n + 1)
+    high[1] = np.nan
+    low[1] = np.nan
+    # Also gap one bar of the ragged tail bin, which still has a finite one.
+    high[9] = np.nan
+    low[9] = np.nan
+    close = np.arange(1.0, n + 1)
+    bars, _ = compress(
+        dates,
+        np.arange(1.0, n + 1),
+        high,
+        low,
+        close,
+        np.ones(n),
+        interval=3,
+    )
+    assert not np.isnan(bars.high[0])
+    assert bars.high[0] == 3.0
+    assert bars.low[0] == -3.0
+    # The ragged tail bin holds one NaN beside one finite bar.
+    assert bars.high[-1] == 11.0
+    assert bars.low[-1] == -11.0

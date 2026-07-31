@@ -480,6 +480,11 @@ def _json_safe(value: Any) -> Any:
             return None
         return value
     if isinstance(value, Decimal):
+        # Decimal('NaN') and Decimal('Infinity') float() into raw nan/inf,
+        # which json.dumps(allow_nan=False) rejects -- so one non-finite
+        # Decimal made to_json_str() raise on an otherwise valid result.
+        if not value.is_finite():
+            return None
         return float(value)
     if value is pd.NaT:
         # NaTType subclasses datetime, so it would otherwise reach the branch

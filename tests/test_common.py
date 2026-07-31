@@ -235,3 +235,24 @@ def test_json_safe_when_nat_then_null():
     assert _json_safe(pd.NaT) is None
     assert _json_safe(np.datetime64("NaT")) is None
     assert _json_safe(pd.Timestamp("2021-01-04")) == "2021-01-04T00:00:00"
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (Decimal("NaN"), None),
+        (Decimal("Infinity"), None),
+        (Decimal("-Infinity"), None),
+        (Decimal("1.5"), 1.5),
+    ],
+)
+def test_json_safe_non_finite_decimal(value, expected):
+    """Decimal('NaN') floats into a raw nan, which
+    json.dumps(allow_nan=False) rejects -- so one non-finite Decimal made
+    to_json_str() raise on an otherwise valid result."""
+    import json
+
+    from pybroker.common import _json_safe
+
+    assert _json_safe(value) == expected
+    json.dumps({"v": _json_safe(value)}, allow_nan=False)

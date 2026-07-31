@@ -948,8 +948,12 @@ def _compress_every_n_bars(
         c_r = close[:n_full].reshape(-1, k)
         v_r = volume[:n_full].reshape(-1, k)
         o_parts.append(o_r[:, 0])
-        h_parts.append(h_r.max(axis=1))
-        l_parts.append(l_r.min(axis=1))
+        # nanmax/nanmin, matching _aggregate_bins on the calendar and
+        # duration paths: a single bad tick otherwise poisons the whole
+        # compressed bar, and int intervals disagree with calendar ones
+        # over identical bins.
+        h_parts.append(np.nanmax(h_r, axis=1))
+        l_parts.append(np.nanmin(l_r, axis=1))
         c_parts.append(c_r[:, -1])
         v_parts.append(v_r.sum(axis=1))
         full_ends = np.arange(k - 1, n_full, k, dtype=np.int64)
@@ -959,8 +963,8 @@ def _compress_every_n_bars(
     if n_full < n:
         tail = slice(n_full, n)
         o_parts.append(np.array([open_[n_full]], dtype=np.float64))
-        h_parts.append(np.array([high[tail].max()], dtype=np.float64))
-        l_parts.append(np.array([low[tail].min()], dtype=np.float64))
+        h_parts.append(np.array([np.nanmax(high[tail])], dtype=np.float64))
+        l_parts.append(np.array([np.nanmin(low[tail])], dtype=np.float64))
         c_parts.append(np.array([close[n - 1]], dtype=np.float64))
         v_parts.append(np.array([volume[tail].sum()], dtype=np.float64))
         d_parts.append(np.array([dates[n - 1]], dtype="datetime64[ns]"))
