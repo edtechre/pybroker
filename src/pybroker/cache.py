@@ -15,6 +15,7 @@ from dataclasses import dataclass, is_dataclass
 from datetime import datetime
 from diskcache import Cache
 from threading import RLock
+from collections.abc import Iterable
 from typing import Any, Final, Optional
 
 _DEFAULT_CACHE_DIRNAME: Final = ".pybrokercache"
@@ -231,6 +232,13 @@ class ModelCacheKey:
     between_time: Optional[tuple[str, str]]
     days: Optional[tuple[int]]
     model_name: str
+    # Composition of the pooled group this model was fit on, or ``None`` for a
+    # per-symbol model. A pooled model is stored under one key per member, so
+    # without this a run over {SPY, AAPL, TSLA} overwrites the entries written
+    # by a run over {SPY, AAPL}, and the smaller run is then served a model fit
+    # on a symbol set it never asked for. Two executions sharing one pooled
+    # model over overlapping symbols clobber each other the same way.
+    pooled_symbols: Optional[tuple[str, ...]] = None
 
     @classmethod
     def from_date_fields(
@@ -239,6 +247,7 @@ class ModelCacheKey:
         symbol: str,
         model_name: str,
         fields: CacheDateFields,
+        pooled_symbols: Optional[Iterable[str]] = None,
     ) -> ModelCacheKey:
         return cls(
             symbol=symbol,
@@ -248,6 +257,11 @@ class ModelCacheKey:
             between_time=fields.between_time,
             days=fields.days,
             model_name=model_name,
+            pooled_symbols=(
+                None
+                if pooled_symbols is None
+                else tuple(sorted(pooled_symbols))
+            ),
         )
 
 

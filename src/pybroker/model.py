@@ -120,6 +120,44 @@ class ModelInput:
             self.lag_columns,
         )
 
+    def slice_range(
+        self, start: int, end_index: Optional[int] = None
+    ) -> ModelInput:
+        """Returns a row range sharing backing array memory."""
+        if not start:
+            return self.slice(end_index)
+        rows = slice(start, end_index)
+        sliced_arrays = {
+            col: values[rows] for col, values in self.arrays.items()
+        }
+        lag_features = (
+            None if self.lag_features is None else self.lag_features[rows]
+        )
+        return ModelInput(
+            self.columns,
+            sliced_arrays,
+            self.dates[rows],
+            lag_features,
+            self.lags,
+            self.lag_columns,
+        )
+
+    def lag_warmup_len(self) -> int:
+        """Returns how many leading rows have undefined lag features.
+
+        These rows cannot be handed to an estimator: sklearn rejects NaN
+        outright, and a NaN-tolerant predict_fn quietly produces a prediction
+        from features that do not exist yet.
+        """
+        if self.lag_features is None or self.empty():
+            return 0
+        valid = ~np.isnan(self.lag_features).any(axis=1)
+        if valid.all():
+            return 0
+        if not valid.any():
+            return len(valid)
+        return int(np.argmax(valid))
+
     def select_columns(self, columns: tuple[str, ...]) -> ModelInput:
         """Returns a view restricted to ``columns``."""
         arrays = {
@@ -135,20 +173,89 @@ class ModelInput:
         )
 
     def drop_lag_warmup(self) -> ModelInput:
-        """Drops rows with NaN lag features."""
+        """Drops the leading rows whose lag features are not yet defined.
+
+        Only each symbol's warmup region is trimmed. Dropping every row with a
+        NaN lag feature would also remove rows from the middle of the series
+        whenever a lag column is sparse -- an event column registered with
+        :func:`pybroker.scope.register_columns` is NaN except on the bars it
+        fires, and an all-NaN ``volume`` column is routine for index, FX and
+        CFD series. Either silently shrinks the training set, or empties it.
+
+        Pooled input stacks one block per symbol, so each block carries its own
+        warmup at its own offset. Trimming only the front of the matrix would
+        leave every block after the first with its NaN rows intact, which
+        ``sklearn.fit`` rejects outright.
+        """
         if self.lag_features is None or self.empty():
             return self
         valid = ~np.isnan(self.lag_features).any(axis=1)
         if valid.all():
             return self
-        arrays = {col: values[valid] for col, values in self.arrays.items()}
+        keep = self._lag_warmup_keep_mask(valid)
+        if not keep.any():
+            offenders = self._all_nan_lag_columns()
+            detail = (
+                f" Lag columns with no finite values: {offenders}."
+                if offenders
+                else ""
+            )
+            raise ValueError(
+                "Lag features are undefined for every training row, so there "
+                f"is nothing left to train on with lags={self.lags}."
+                f"{detail}"
+            )
+        if keep.all():
+            return self
+        arrays = {col: values[keep] for col, values in self.arrays.items()}
         return ModelInput(
             self.columns,
             arrays,
-            self.dates[valid],
-            self.lag_features[valid],
+            self.dates[keep],
+            self.lag_features[keep],
             self.lags,
             self.lag_columns,
+        )
+
+    def _lag_warmup_keep_mask(
+        self, valid: NDArray[np.bool_]
+    ) -> NDArray[np.bool_]:
+        """Returns a row mask dropping each symbol block's leading warmup.
+
+        Falls back to a single block when the input is not pooled.
+        """
+        keep = np.zeros(len(valid), dtype=bool)
+        for start, stop in self._symbol_blocks():
+            block = valid[start:stop]
+            if not block.any():
+                continue
+            first_valid = int(np.argmax(block))
+            keep[start + first_valid : stop] = True
+        return keep
+
+    def _symbol_blocks(self) -> list[tuple[int, int]]:
+        """Returns ``(start, stop)`` row ranges, one per symbol block.
+
+        Pooled model input is sorted by symbol then date, so each symbol owns a
+        contiguous run of rows.
+        """
+        n_rows = len(self.dates)
+        sym_col = DataCol.SYMBOL.value
+        symbols = self.arrays.get(sym_col)
+        if symbols is None or not n_rows:
+            return [(0, n_rows)]
+        changes = np.flatnonzero(symbols[1:] != symbols[:-1]) + 1
+        bounds = [0, *changes.tolist(), n_rows]
+        return [(bounds[i], bounds[i + 1]) for i in range(len(bounds) - 1)]
+
+    def _all_nan_lag_columns(self) -> tuple[str, ...]:
+        """Returns the lag columns that hold no finite value at all."""
+        if not self.lag_columns:
+            return ()
+        return tuple(
+            col
+            for col in self.lag_columns
+            if col in self.arrays and not np.isfinite(self.arrays[col]).any()
         )
 
     def to_dataframe(self) -> pd.DataFrame:
@@ -2001,6 +2108,7 @@ class ModelsMixin:
                         model_sym,
                         cache_date_fields,
                         lag_columns,
+                        pooled_symbols=frozenset(symbols),
                     )
                     scope.logger.info_train_model_completed(model_sym)
             else:
@@ -2401,6 +2509,7 @@ class ModelsMixin:
                 symbol=group_model_sym.symbol,
                 model_name=group_model_sym.model_name,
                 fields=cache_date_fields,
+                pooled_symbols=symbols,
             )
             scope.logger.debug_get_model_cache(cache_key)
             cached_data = model_cache.get(cache_key)
@@ -2548,6 +2657,7 @@ class ModelsMixin:
         model_sym: ModelSymbol,
         cache_date_fields: CacheDateFields,
         lag_columns: Optional[tuple[str, ...]] = None,
+        pooled_symbols: Optional[frozenset[str]] = None,
     ):
         scope = StaticScope.instance()
         if scope.model_cache is None:
@@ -2560,6 +2670,7 @@ class ModelsMixin:
             symbol=model_sym.symbol,
             model_name=model_sym.model_name,
             fields=cache_date_fields,
+            pooled_symbols=pooled_symbols,
         )
         cached_model = CachedModel(model, input_cols, lag_columns)
         scope.logger.debug_set_model_cache(cache_key)

@@ -1366,6 +1366,9 @@ def test_get_cached_models_pooled_single_pass(
             symbol=sym,
             model_name="pooled_cache",
             fields=cache_date_fields,
+            # The key carries the group composition, so a run over a different
+            # symbol set cannot be served this fit.
+            pooled_symbols=pooled_symbols,
         )
         scope.model_cache.set(cache_key, CachedModel(shared, input_cols))
     get_calls: list[ModelCacheKey] = []
@@ -1424,3 +1427,40 @@ def test_logger_getstate_drops_progress_bar(scope):
     finally:
         static_scope.logger._progress_bar = None
     assert restored.logger._progress_bar is None
+
+
+def test_pooled_model_cache_key_carries_group_composition(
+    scope, setup_enabled_model_cache, cache_date_fields
+):
+    """A pooled model must not be served to a different symbol set.
+
+    The model is stored under one plain key per group member, so a run over
+    {SPY, AAPL, TSLA} overwrites the entries a run over {SPY, AAPL} wrote, and
+    the smaller run is then handed a fit it never asked for.
+    """
+    from pybroker.cache import ModelCacheKey
+
+    small = ModelCacheKey.from_date_fields(
+        symbol="SPY",
+        model_name="pooled",
+        fields=cache_date_fields,
+        pooled_symbols=frozenset({"SPY", "AAPL"}),
+    )
+    large = ModelCacheKey.from_date_fields(
+        symbol="SPY",
+        model_name="pooled",
+        fields=cache_date_fields,
+        pooled_symbols=frozenset({"SPY", "AAPL", "TSLA"}),
+    )
+    per_symbol = ModelCacheKey.from_date_fields(
+        symbol="SPY", model_name="pooled", fields=cache_date_fields
+    )
+    assert small != large
+    assert small != per_symbol
+    # Composition is order-independent.
+    assert small == ModelCacheKey.from_date_fields(
+        symbol="SPY",
+        model_name="pooled",
+        fields=cache_date_fields,
+        pooled_symbols=["AAPL", "SPY"],
+    )

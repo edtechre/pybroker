@@ -6,6 +6,7 @@ import pytest
 from pybroker.common import DataCol, ModelSymbol, TrainedModel
 from pybroker.model import (
     LagSeriesKey,
+    ModelInput,
     apply_lags_to_model_input,
     build_lag_feature_matrix,
     build_lag_feature_matrix_pooled,
@@ -610,3 +611,85 @@ class TestColumnOrderDeterminism:
             assert result.returncode == 0, result.stderr
             outs.add(result.stdout.strip())
         assert len(outs) == 1, outs
+
+
+def test_drop_lag_warmup_keeps_mid_series_nan_rows():
+    """A sparse lag column must not thin the middle of the training set."""
+    n = 12
+    dates = (
+        np.arange(n).astype("timedelta64[D]") + np.datetime64("2021-01-04")
+    ).astype("datetime64[ns]")
+    # Leading warmup NaN, then a NaN in the middle of the series.
+    lag_features = np.arange(n, dtype=float).reshape(n, 1)
+    lag_features[0] = np.nan
+    lag_features[5] = np.nan
+    model_input = ModelInput(
+        ("date", "close"),
+        {"date": dates, "close": np.arange(n, dtype=float)},
+        dates,
+        lag_features=lag_features,
+        lags=1,
+        lag_columns=("close",),
+    )
+    trimmed = model_input.drop_lag_warmup()
+    # Only the leading row goes; the mid-series NaN row stays.
+    assert len(trimmed) == n - 1
+    assert np.isnan(trimmed.lag_features[4, 0])
+
+
+def test_drop_lag_warmup_raises_when_every_row_is_nan():
+    """An all-NaN lag column must name itself rather than empty the frame."""
+    n = 6
+    dates = (
+        np.arange(n).astype("timedelta64[D]") + np.datetime64("2021-01-04")
+    ).astype("datetime64[ns]")
+    model_input = ModelInput(
+        ("date", "volume"),
+        {"date": dates, "volume": np.full(n, np.nan)},
+        dates,
+        lag_features=np.full((n, 1), np.nan),
+        lags=1,
+        lag_columns=("volume",),
+    )
+    with pytest.raises(ValueError, match="volume"):
+        model_input.drop_lag_warmup()
+
+
+def test_drop_lag_warmup_is_pooled_aware():
+    """Each symbol block carries its own warmup at its own offset.
+
+    Pooled model input stacks one contiguous block per symbol. Trimming only
+    the front of the matrix leaves every block after the first with its NaN
+    lag rows intact, which sklearn.fit rejects outright.
+    """
+    n_per, lags = 6, 2
+    rows = 2 * n_per
+    dates = np.tile(
+        (
+            np.arange(n_per).astype("timedelta64[D]")
+            + np.datetime64("2021-01-04")
+        ).astype("datetime64[ns]"),
+        2,
+    )
+    symbols = np.array(["AAA"] * n_per + ["BBB"] * n_per)
+    lag_features = np.arange(rows, dtype=float).reshape(rows, 1)
+    lag_features[0:lags] = np.nan
+    lag_features[n_per : n_per + lags] = np.nan
+    model_input = ModelInput(
+        ("date", "symbol", "close"),
+        {
+            "date": dates,
+            "symbol": symbols,
+            "close": np.arange(rows, dtype=float),
+        },
+        dates,
+        lag_features=lag_features,
+        lags=lags,
+        lag_columns=("close",),
+    )
+    trimmed = model_input.drop_lag_warmup()
+    assert not np.isnan(trimmed.lag_features).any()
+    # Both blocks keep exactly their post-warmup rows.
+    kept, counts = np.unique(trimmed.arrays["symbol"], return_counts=True)
+    assert list(kept) == ["AAA", "BBB"]
+    assert list(counts) == [n_per - lags, n_per - lags]
