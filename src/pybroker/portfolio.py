@@ -9,6 +9,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 """
 
 import itertools
+import math
 import numpy as np
 from pybroker.common import (
     BarData,
@@ -162,7 +163,16 @@ class Entry:
         shares: Number of shares.
         price: Share price of the entry.
         type: Type of  :class:`.Position`, either ``long`` or ``short``.
-        bars: Current number of bars since entry.
+        bars: Current number of bars since entry, counted on the portfolio's
+            clock: every bar of the backtest, whether or not ``symbol`` traded
+            on it. Feeds :attr:`Trade.bars` and ``pnl_per_bar``, which measure
+            elapsed holding time.
+        sym_bars: Current number of ``symbol``'s own bars since entry. Advances
+            only on dates ``symbol`` has a bar, so it matches what
+            :attr:`pybroker.context.ExecContext.bars` reports. This is what
+            :attr:`pybroker.common.StopType.BAR` stops count against: when
+            calendars are ragged, ``bars`` would expire a ``hold_bars`` stop
+            after fewer of the symbol's own bars than the caller asked for.
         stops: Stops set on the entry.
         mae: Maximum adverse excursion (MAE).
         mfe: Maximum favorable excursion (MFE).
@@ -175,6 +185,7 @@ class Entry:
     price: Decimal
     type: Literal["long", "short"]
     bars: int = field(default=0)
+    sym_bars: int = field(default=0)
     stops: list[Stop] = field(default_factory=list)
     mae: Decimal = field(default_factory=Decimal)
     mfe: Decimal = field(default_factory=Decimal)
@@ -202,7 +213,7 @@ class Position:
         pnl: Unrealized profit and loss (PnL).
         entries: ``deque`` of position :class:`.Entry`\ s sorted in ascending
             chronological order.
-        bars: Current number of bars since entry.
+        bars: Current number of bars since entry, on the portfolio's clock.
         entry_notional: Total cost basis of the position's open entries.
         unmarked_shares: Shares acquired since the last mark. Valuing these at
             :attr:`.close` would price them at a mark taken before they were
@@ -231,7 +242,11 @@ class Position:
         by its own notional. Valuing them at :attr:`.close` instead would move
         it by the stale mark, which is what buying power is charged against.
         """
-        if self.close <= 0:
+        # is_finite() first: Decimal, unlike float, raises InvalidOperation on
+        # any ordered comparison against NaN, so a single NaN close aborts the
+        # whole backtest from deep inside buying-power arithmetic, naming
+        # neither the symbol nor the column.
+        if not self.close.is_finite() or self.close <= 0:
             return self.entry_notional
         marked_shares = self.shares - self.unmarked_shares
         if marked_shares <= 0:
@@ -869,6 +884,12 @@ class Portfolio:
         )
 
     def _available_buying_power(self) -> Decimal:
+        # A cash account is deliberately capped at settled cash and is blind
+        # to the mark on open positions, matching StrategyConfig.leverage's
+        # documented "no borrowing" model: an adverse mark cannot be enforced
+        # without a margin call, which is not modeled. Note this makes the
+        # function discontinuous at leverage exactly 1 -- with a short open,
+        # leverage 1.0 and 1.0000001 can report very different numbers.
         if self._leverage <= 1:
             return max(self.cash, Decimal())
         leverage = to_decimal(self._leverage)
@@ -1119,6 +1140,14 @@ class Portfolio:
             # already held, and an equality test would stop binding entirely.
             and len(self.long_positions) >= self._max_long_positions
         ):
+            # Logged because the order simply vanishes: no Order row, no
+            # warning, and nothing in the result to show the cap bound.
+            self._logger.debug_position_limit_reached(
+                symbol,
+                "long",
+                len(self.long_positions),
+                self._max_long_positions,
+            )
             return Decimal()
         order_amount = shares * fill_price
         self._post_collateral(order_amount)
@@ -1314,6 +1343,13 @@ class Portfolio:
             # See _long: the cap can be lowered while positions are held.
             and len(self.short_positions) >= self._max_short_positions
         ):
+            # See _long: a cap-discarded order leaves no trace otherwise.
+            self._logger.debug_position_limit_reached(
+                symbol,
+                "short",
+                len(self.short_positions),
+                self._max_short_positions,
+            )
             return Decimal()
         if self._position_mode == PositionMode.LONG_ONLY:
             return Decimal()
@@ -1423,10 +1459,20 @@ class Portfolio:
         self._apply_interest()
         cash_f = float(self.cash)
         margin_loan_f = float(self.margin_loan)
-        total_equity = cash_f - margin_loan_f
-        total_market_value = total_equity
-        total_margin = 0.0
-        for sym in self.symbols:
+        net_cash = cash_f - margin_loan_f
+        # Accumulated into lists and summed with math.fsum rather than with
+        # ``+=``. Float addition is not associative, and self.symbols is a set
+        # whose iteration order varies with PYTHONHASHSEED, so a running total
+        # made equity, market_value and every metric derived from them differ
+        # between otherwise identical runs -- and ExecContext.calc_target_shares
+        # sizes orders off equity, so share counts diverged too. fsum is
+        # correctly rounded, hence identical for any permutation.
+        equity_parts = [net_cash]
+        market_value_parts = [net_cash]
+        margin_parts: list[float] = []
+        # Sorted so position_bars -- and therefore TestResult.positions row
+        # order -- does not depend on set iteration order either.
+        for sym in sorted(self.symbols):
             close_f = low_f = high_f = None
             if price_scope is not None:
                 close_f, low_f, high_f = price_scope.fetch_bar_ohlc(sym, date)
@@ -1449,6 +1495,12 @@ class Portfolio:
                             low_f = float(low_arr[idx])
                         if high_arr is not None:
                             high_f = float(high_arr[idx])
+            if close_f is not None and not math.isfinite(close_f):
+                # A halted or vendor-gapped bar. Treated as no bar at all:
+                # marking against NaN poisons this bar's equity and
+                # market_value, and every metric derived from them, while
+                # reporting a total_return of 0.
+                close_f = low_f = high_f = None
             pos_long_shares = Decimal()
             pos_short_shares = Decimal()
             pos_equity = Decimal()
@@ -1471,8 +1523,8 @@ class Portfolio:
                     pos_equity += pos.equity
                     pos_market_value += pos.market_value
                     pos_pnl += pos.pnl
-                    total_equity += float(pos.equity)
-                    total_market_value += float(pos.equity)
+                    equity_parts.append(float(pos.equity))
+                    market_value_parts.append(float(pos.equity))
                 else:
                     # No bar for this symbol on this date, so hold the
                     # position at its last known mark, falling back to cost if
@@ -1480,15 +1532,15 @@ class Portfolio:
                     # _long_market_value, so the snapshot taken here and
                     # _live_market_value agree by construction.
                     held = pos._marked_value()
-                    total_equity += float(held)
-                    total_market_value += float(held)
+                    equity_parts.append(float(held))
+                    market_value_parts.append(float(held))
             if sym in self.short_positions:
                 pos = self.short_positions[sym]
                 entry_notional = pos.entry_notional
                 # Shorting posts collateral out of cash, so the collateral is
                 # added back here. Equity holds it at cost and market value
                 # marks it to market with the position's unrealized PnL.
-                total_equity += float(entry_notional)
+                equity_parts.append(float(entry_notional))
                 if close_f is not None:
                     _calculate_pnl_mae_mfe(
                         pos, close=close_f, low=low_f, high=high_f
@@ -1504,14 +1556,16 @@ class Portfolio:
                     pos_equity += entry_notional + pos.pnl
                     pos_market_value += pos.market_value
                     pos_pnl += pos.pnl
-                    total_market_value += float(entry_notional + pos.pnl)
+                    market_value_parts.append(float(entry_notional + pos.pnl))
                 else:
                     # As above: hold at the last known mark. A short's value
                     # is ``entry_notional + pnl``, which equals
                     # ``2 * entry_notional - marked``.
                     marked = pos._marked_value()
-                    total_market_value += float(2 * entry_notional - marked)
-                total_margin += float(pos.margin)
+                    market_value_parts.append(
+                        float(2 * entry_notional - marked)
+                    )
+                margin_parts.append(float(pos.margin))
             if close_f is not None and self._record_position_bars:
                 self.position_bars.append(
                     PositionBar(
@@ -1527,9 +1581,9 @@ class Portfolio:
                     )
                 )
 
-        self.equity = to_decimal(total_equity)
-        self.market_value = to_decimal(total_market_value)
-        self.margin = to_decimal(total_margin)
+        self.equity = to_decimal(math.fsum(equity_parts))
+        self.market_value = to_decimal(math.fsum(market_value_parts))
+        self.margin = to_decimal(math.fsum(margin_parts))
         self._cached_long_mv = None
         self._cached_short_mv = None
 
@@ -1550,14 +1604,33 @@ class Portfolio:
         if self._record_portfolio_bars:
             self.bars.append(bar)
 
-    def incr_bars(self):
-        """Increments the number of bars held by every trade entry."""
+    def incr_bars(
+        self,
+        date: Optional[np.datetime64] = None,
+        price_scope: Optional[PriceScope] = None,
+    ):
+        """Increments the number of bars held by every trade entry.
+
+        :attr:`Entry.bars` advances on every bar of the backtest. When ``date``
+        and ``price_scope`` are given, :attr:`Entry.sym_bars` advances only on
+        dates the entry's symbol has a bar of its own, which is what
+        :attr:`pybroker.common.StopType.BAR` stops count against. Without them
+        both counters advance together, matching a calendar where every symbol
+        trades on every bar.
+        """
         for pos in itertools.chain(
             self.long_positions.values(), self.short_positions.values()
         ):
             pos.bars += 1
+            has_bar = (
+                True
+                if price_scope is None or date is None
+                else price_scope.has_bar_on(pos.symbol, date)
+            )
             for entry in pos.entries:
                 entry.bars += 1
+                if has_bar:
+                    entry.sym_bars += 1
 
     def remove_stop(self, stop_id: int) -> bool:
         """Removes a :class:`.Stop` with ``stop_id``."""
@@ -1659,11 +1732,25 @@ class Portfolio:
         price_scope.reset_bar()
         executed: deque[tuple[Position, Entry]] = deque()
         triggered_entry_ids: set[int] = set()
+        # One verdict per symbol per bar, shared by both loops below: the
+        # check itself is memoized reads, but the call volume -- two loops
+        # over every symbol holding a stop, every bar -- is hot-path.
+        priceable: dict[str, bool] = {}
         for sym, sym_stops in self._active_stops.items():
-            if not price_scope.has_bar(sym):
-                # The symbol has no bar to price in this window, so its stops
-                # cannot be evaluated. Skipping keeps a held position whose
-                # symbol stopped trading from raising mid-backtest.
+            can_price = priceable.get(sym)
+            if can_price is None:
+                can_price = self._can_price_stops(price_scope, sym, date)
+                priceable[sym] = can_price
+            if not can_price:
+                # The symbol has no bar on this date, so its stops cannot be
+                # evaluated. Gated on the date rather than on has_bar(): a
+                # symbol whose calendar skips this date keeps its cursor on an
+                # earlier bar, so has_bar() is True and the stop would trigger
+                # and fill against that stale bar's OHLC -- including the
+                # entry bar's own extremes, which check_stops never sees
+                # because it runs before the fill. has_bar_on() is False for
+                # end_index <= 0, so this still covers the symbol that stopped
+                # trading and would otherwise raise mid-backtest.
                 continue
             for stop_data in sym_stops:
                 stop = stop_data.stop
@@ -1696,7 +1783,13 @@ class Portfolio:
         for pos in itertools.chain(
             self.long_positions.values(), self.short_positions.values()
         ):
-            if not price_scope.has_bar(pos.symbol):
+            can_price = priceable.get(pos.symbol)
+            if can_price is None:
+                can_price = self._can_price_stops(
+                    price_scope, pos.symbol, date
+                )
+                priceable[pos.symbol] = can_price
+            if not can_price:
                 continue
             for entry in pos.entries:
                 # A preempted stop never executes, so it is not recorded --
@@ -1734,6 +1827,28 @@ class Portfolio:
             self._remove_stop_data(entry)
             self._update_position(pos)
 
+    @staticmethod
+    def _can_price_stops(
+        price_scope: PriceScope, symbol: str, date: np.datetime64
+    ) -> bool:
+        """Returns whether ``symbol``'s bar on ``date`` can price a stop.
+
+        False when the symbol has no bar on ``date`` -- a ragged calendar --
+        and also when the bar's close is not finite, mirroring how
+        :meth:`.capture_bar` treats a halted or vendor-gapped bar as no bar
+        at all. Price stops are NaN-safe by comparison semantics, but a BAR
+        stop resolves a fill price from the bar and aborted the run, and a
+        trailing stop's ratchet would poison its stop value with NaN --
+        ``max(nan, x)`` is ``nan`` -- disarming it for the rest of the run.
+        """
+        if not price_scope.has_bar_on(symbol, date):
+            return False
+        close_f, _, _ = price_scope.fetch_bar_ohlc(symbol, date)
+        # None means the frame has no close column at all -- minimal frames
+        # are legitimate here -- and only a close that exists but is not
+        # finite marks the bar unpriceable.
+        return close_f is None or math.isfinite(close_f)
+
     def _capture_stop(
         self,
         date: np.datetime64,
@@ -1752,7 +1867,9 @@ class Portfolio:
                 if stop.id in self._stop_data
                 else None
             ),
-            curr_bars=entry.bars if stop.stop_type == StopType.BAR else None,
+            curr_bars=(
+                entry.sym_bars if stop.stop_type == StopType.BAR else None
+            ),
             bars=stop.bars,
             percent=stop.percent,
             points=stop.points,
@@ -1891,7 +2008,10 @@ class Portfolio:
     ) -> Optional[Decimal]:
         if stop.bars is None:
             raise ValueError("Bars not set on bar stop.")
-        if entry.bars >= stop.bars:
+        # Counted against the symbol's own bars, not the portfolio clock: a
+        # hold_bars of 3 on a symbol that trades every third date must exit
+        # after three of its bars, not after one.
+        if entry.sym_bars >= stop.bars:
             fill_price: _BarStopFillPrice = (
                 PriceType.MIDDLE
                 if stop.fill_price is None

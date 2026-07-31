@@ -116,6 +116,13 @@ class ExecResult:
             orders.
         pending_order_id: ID of :class:`pybroker.scope.PendingOrder` that was
             created.
+        exit_pos_type: Type of the :class:`pybroker.portfolio.Position` this
+            order exits, either ``long`` or ``short``, or ``None`` when the
+            order is not an exit. Set by :meth:`.ExecContext.sell_all_shares`,
+            :meth:`.ExecContext.cover_all_shares`, and
+            :meth:`.ExecContext.set_target_shares` with a target of zero. An
+            order carrying this is clamped at fill time to the shares still
+            held, so it can only ever close a position and never flip one.
     """
 
     symbol: str
@@ -150,6 +157,7 @@ class ExecResult:
     short_stops: Optional[frozenset[Stop]]
     cover: bool = field(default=False)
     pending_order_id: Optional[int] = field(default=None)
+    exit_pos_type: Optional[Literal["long", "short"]] = field(default=None)
 
 
 class IntervalContext:
@@ -392,6 +400,12 @@ class ExecContext:
             the ``exit_price`` and exits at the ``exit_price`` when triggered.
     """
 
+    # Process-global and never reset. TestResult.stops.stop_id therefore
+    # differs by a constant offset between identical runs in one process --
+    # cosmetic, and everything else in the result is unaffected. It must stay
+    # global: Portfolio._add_stops raises on a duplicate id and sorts by id to
+    # make same-bar stop precedence deterministic, so resetting it per run
+    # would collide for anyone holding contexts across runs.
     _stop_id: int = 0
 
     def __init__(
@@ -1146,11 +1160,21 @@ class ExecContext:
             ``True``, then a Decimal is returned.
         """
         price = self.close_price if price is None else price
+        price_dec = to_decimal(price)
+        if not price_dec.is_finite() or price_dec <= 0:
+            # Raised consistently for both share modes. Integer shares used to
+            # raise "cannot convert NaN to integer" naming nothing, while
+            # fractional shares returned 0 -- which set_target_shares then read
+            # as a legitimate target and used to liquidate the whole position.
+            raise ValueError(
+                f"Cannot size an order for {self.symbol!r} on "
+                f"{self._curr_date}: price is {price!r}."
+            )
         if cash is not None:
             base = to_decimal(cash)
         else:
             base = self._portfolio.equity * to_decimal(self.config.leverage)
-        shares = base * to_decimal(target_size) / to_decimal(price)
+        shares = base * to_decimal(target_size) / price_dec
         if self.config.enable_fractional_shares:
             return shares.max(0)
         return max(int(shares), 0)
@@ -1180,6 +1204,16 @@ class ExecContext:
             raise ValueError("target cannot be negative.")
         if dir not in ("long", "short"):
             raise ValueError('dir must be "long" or "short".')
+        price = to_decimal(self.close_price)
+        if not price.is_finite() or price <= 0:
+            # An unpriceable bar -- a halt, a vendor gap -- cannot size an
+            # order. Skipping places nothing this bar and the target is simply
+            # restated on the next priceable one, mirroring how capture_bar
+            # holds a position at its last mark through such a bar. Raising
+            # here aborted the whole run mid-backtest, and the old fractional
+            # path was worse still: calc_target_shares returned 0, which was
+            # read as a legitimate target and liquidated the position.
+            return
         target_shares = self.calc_target_shares(target)
         if dir == "long":
             pos = self.long_pos()
@@ -1611,19 +1645,39 @@ class ExecContext:
             if self.sell_limit_price is not None
             else None
         )
+        for label, limit in (
+            ("buy_limit_price", buy_limit_price),
+            ("sell_limit_price", sell_limit_price),
+        ):
+            if limit is not None and not limit.is_finite():
+                # A NaN limit -- typically arithmetic on a halted bar's NaN
+                # close -- can never fill (every comparison against it is
+                # False), and Decimal raises a bare InvalidOperation the
+                # moment the portfolio's limit check touches it, aborting the
+                # run with an error naming neither the symbol nor the bar.
+                raise ValueError(
+                    f"{label} is {limit} for {self.symbol!r} on "
+                    f"{self._curr_date}. Check for NaN prices before "
+                    "computing limit prices."
+                )
         sell_shares = (
             to_decimal(self.sell_shares)
             if self.sell_shares is not None
             else None
         )
         long_stops, short_stops = self._get_stops()
+        exit_pos_type: Optional[Literal["long", "short"]] = None
         if self._exit_stop_pos is not None and (
             buy_shares is not None or sell_shares is not None
         ):
-            # The exit order is real, so its position's stops can go now.
-            # Doing this in sell_all_shares/cover_all_shares instead would
-            # disarm them even when the order is later discarded.
-            self._portfolio.remove_stops(self._exit_stop_pos)
+            # Record that this order exits a position, but leave its stops
+            # armed. Disarming here -- or in sell_all_shares/cover_all_shares
+            # -- strands the position unprotected whenever the order is later
+            # discarded, times out, or never fills against its limit. The
+            # order is instead clamped to the shares still held when it fills,
+            # so a stop firing first simply leaves nothing to sell rather than
+            # flipping the position to the opposite side.
+            exit_pos_type = self._exit_stop_pos.type
             self._exit_stop_pos = None
         return ExecResult(
             symbol=self.symbol,
@@ -1643,6 +1697,7 @@ class ExecContext:
             long_stops=long_stops,
             short_stops=short_stops,
             cover=self._cover,
+            exit_pos_type=exit_pos_type,
         )
 
     def __getattr__(self, attr):

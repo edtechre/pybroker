@@ -10,6 +10,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import math
 import numpy as np
 import pandas as pd
 from numba import njit
@@ -528,6 +529,13 @@ def _sorted_dates_indices_njit(
     n_target = len(target)
     if n_dates == 0 or n_target == 0:
         return np.empty(0, dtype=np.int64)
+    # One row per target date, which holds because duplicate (symbol, date)
+    # rows are rejected at ingest -- see Strategy._reject_duplicate_bars. The
+    # store, IndicatorScope's np.isin and IntervalScope.completed each resolve
+    # a duplicate differently, so no behavior here can reconcile them: emitting
+    # every duplicate row desynchronizes the store from sym_end_index, which
+    # advances once per date, and emitting one desynchronizes it from the
+    # indicator series. Uniqueness has to be an input invariant.
     out = np.empty(n_target, dtype=np.int64)
     n_matches = 0
     i = 0
@@ -1164,18 +1172,51 @@ def _resolve_lag_cols(
     if model_input is not None:
         from pybroker.model import _lag_feature_cols
 
-        return _lag_feature_cols(
+        resolved = _lag_feature_cols(
             model_input,
             pooled=bool(getattr(model_source, "pooled", False)),
             indicators=tuple(getattr(model_source, "indicators", ())),
         )
+        return _require_lag_cols(resolved, trained_model, model_name)
     if trained_model.input_cols is None:
         raise ValueError(
             f"Model {model_name!r} requires input columns from training "
             "before applying lags."
         )
+    # Indicators are stripped here as well as ``date``, matching
+    # _lag_feature_cols. Without it a loader that reports its indicators among
+    # its input columns lags them too, contradicting model()'s documented rule
+    # that indicators are lagged only when named in lag_cols -- and making the
+    # feature width depend on whether load_fn happened to return input_cols.
     date_col = DataCol.DATE.value
-    return tuple(col for col in trained_model.input_cols if col != date_col)
+    indicators = frozenset(getattr(model_source, "indicators", ()) or ())
+    resolved = tuple(
+        col
+        for col in trained_model.input_cols
+        if col != date_col and col not in indicators
+    )
+    return _require_lag_cols(resolved, trained_model, model_name)
+
+
+def _require_lag_cols(
+    resolved: tuple[str, ...],
+    trained_model: TrainedModel,
+    model_name: str,
+) -> tuple[str, ...]:
+    """Rejects an empty lag-column resolution.
+
+    An empty tuple is not None, so every ``if lag_cols is not None:`` consumer
+    would pass it through and build a zero-width lag feature matrix -- a
+    silently different feature width than the model was fitted on. A loader
+    whose recorded input columns are all indicators reaches exactly this.
+    """
+    if resolved:
+        return resolved
+    raise ValueError(
+        f"Model {model_name!r} uses lags but no lag columns could be "
+        f"resolved from its input columns {trained_model.input_cols!r}. "
+        "Pass lag_cols to pybroker.model() naming the columns to lag."
+    )
 
 
 class IntervalScope:
@@ -1202,6 +1243,12 @@ class IntervalScope:
         ] = {}
         self._sym_inputs: dict[ModelSymbol, ModelInput] = {}
         self._sym_preds: dict[ModelSymbol, NDArray] = {}
+        # Leading compressed bars whose lag features are still undefined.
+        # Compressed model input starts at compressed row 0 with no earlier
+        # history to draw lags from, so unlike the base timeframe -- where
+        # ModelInputScope pulls lag history out of the train window -- these
+        # rows really have nothing behind them.
+        self._sym_lag_warmup: dict[ModelSymbol, int] = {}
 
     def _ensure_lag_cache(
         self,
@@ -1413,7 +1460,37 @@ class IntervalScope:
                     "Consider passing input_data_fn to pybroker#model() if "
                     "custom columns were registered."
                 )
-            pred = self._run_predict(trained_model, input_)
+            # Predicted from the first row with defined lag features, then
+            # left-padded so the array stays indexed by compressed bar. Passing
+            # the warmup rows through instead hands NaN features to the
+            # estimator: sklearn raises, and a tolerant predict_fn returns a
+            # prediction built from lags that do not exist yet.
+            warmup = self._sym_lag_warmup.get(model_sym, 0)
+            pred: NDArray
+            if warmup >= len(input_):
+                pred = np.full(len(input_), np.nan)
+            elif warmup:
+                tail = np.asarray(
+                    self._run_predict(
+                        trained_model, input_.slice_range(warmup)
+                    )
+                )
+                if len(tail) != len(input_) - warmup:
+                    # Silently padding a wrong-length result would misalign
+                    # pred[: idx + 1] with compressed bars for the whole run.
+                    raise ValueError(
+                        f"predict for model {base_model_name!r} returned "
+                        f"{len(tail)} predictions for "
+                        f"{len(input_) - warmup} input rows."
+                    )
+                # Padded along axis 0 only, keeping the estimator's own
+                # trailing shape and dtype: a classifier's predict_proba is
+                # (n_rows, n_classes), and coercing it to a float 1-D array
+                # raised on the concatenate.
+                pad = np.full((warmup,) + tail.shape[1:], np.nan)
+                pred = np.concatenate((pad, tail))
+            else:
+                pred = self._run_predict(trained_model, input_)
             self._sym_preds[model_sym] = pred
         pred = self._sym_preds[model_sym]
         return pred[: idx + 1]
@@ -1438,12 +1515,17 @@ class IntervalScope:
         model_input = self._prepare_full_input(
             symbol, interval, base_model_name
         )
+        warmup = self._sym_lag_warmup.get(model_sym, 0)
         pred_values = pred.tolist()
         while len(pred_values) < target_len:
             # ``pred_values`` counts compressed bars, so slice the compressed
             # input directly. Routing this through ``completed_index`` would mix
             # it with the base-bar index space.
-            sliced = model_input.slice(len(pred_values) + 1)
+            if len(pred_values) < warmup:
+                # Lag features are not defined yet for this bar.
+                pred_values.append(float("nan"))
+                continue
+            sliced = model_input.slice_range(warmup, len(pred_values) + 1)
             scalar = self._run_predict_scalar(trained_model, sliced)
             pred_values.append(scalar)
         pred = np.asarray(pred_values, dtype=np.float64)
@@ -1527,6 +1609,7 @@ class IntervalScope:
             model_input = model.apply_prepare_input_data(
                 model_input, source.prepare_input_data
             )
+        self._sym_lag_warmup[model_sym] = model_input.lag_warmup_len()
         self._sym_inputs[model_sym] = model_input
         return model_input
 
@@ -1580,6 +1663,7 @@ class IntervalScope:
         self._bar_cache.clear()
         self._sym_inputs.clear()
         self._sym_preds.clear()
+        self._sym_lag_warmup.clear()
         self._lag_series_cache.clear()
         self._lag_cache_keys.clear()
 
@@ -1992,10 +2076,17 @@ class PriceScope:
         self._sym_end_index = sym_end_index
         self._round_fill_price = round_fill_price
         self._bar_cache: dict[tuple[str, PriceType], float] = {}
+        self._has_bar_on_cache: dict[tuple[str, np.datetime64], bool] = {}
+        self._ohlc_cache: dict[
+            tuple[str, np.datetime64],
+            tuple[Optional[float], Optional[float], Optional[float]],
+        ] = {}
 
     def reset_bar(self) -> None:
         """Clears the per-bar OHLC cache. Call once at the start of each bar."""
         self._bar_cache.clear()
+        self._has_bar_on_cache.clear()
+        self._ohlc_cache.clear()
 
     def has_bar(self, symbol: str) -> bool:
         """Returns whether ``symbol`` has a bar that can be priced.
@@ -2013,7 +2104,21 @@ class PriceScope:
         traded at some point. When calendars are ragged, a symbol's index is
         not advanced on a date it has no bar, so its "current" bar is an
         earlier one and pricing against it would use a stale price.
+
+        Memoized per bar: ``check_stops`` calls this once per symbol holding a
+        stop on every bar, and each miss fetches the symbol's whole date array.
+        Keyed by date as well as symbol so a caller that does not call
+        :meth:`.reset_bar` still reads a correct answer.
         """
+        cache_key = (symbol, date)
+        cached = self._has_bar_on_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        result = self._has_bar_on(symbol, date)
+        self._has_bar_on_cache[cache_key] = result
+        return result
+
+    def _has_bar_on(self, symbol: str, date: np.datetime64) -> bool:
         end_index = self._sym_end_index.get(symbol, 0)
         if end_index <= 0:
             return False
@@ -2038,6 +2143,12 @@ class PriceScope:
 
     def _round_float(self, fill_price: float) -> float:
         if not self._round_fill_price:
+            return fill_price
+        # Passed through unrounded rather than crashed on: int(NaN) raises
+        # "cannot convert float NaN to integer", so a single halted or
+        # vendor-gapped bar aborted the whole backtest from inside price
+        # rounding. Callers that consume fill prices gate on finiteness.
+        if not math.isfinite(fill_price):
             return fill_price
         if fill_price >= 0.0:
             return int(fill_price * 100.0 + 0.5) / 100.0
@@ -2102,7 +2213,26 @@ class PriceScope:
         symbol: str,
         date: np.datetime64,
     ) -> tuple[Optional[float], Optional[float], Optional[float]]:
-        """Returns ``(close, low, high)`` for ``symbol`` on ``date``, or Nones."""
+        """Returns ``(close, low, high)`` for ``symbol`` on ``date``, or Nones.
+
+        Memoized per bar: both ``check_stops`` loops and ``capture_bar`` read
+        this for every symbol on every bar, and each miss re-fetches the
+        column dict. Keyed by date as well as symbol, like
+        :meth:`.has_bar_on`, so a stale entry cannot answer for a later bar.
+        """
+        cache_key = (symbol, date)
+        cached = self._ohlc_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        result = self._fetch_bar_ohlc(symbol, date)
+        self._ohlc_cache[cache_key] = result
+        return result
+
+    def _fetch_bar_ohlc(
+        self,
+        symbol: str,
+        date: np.datetime64,
+    ) -> tuple[Optional[float], Optional[float], Optional[float]]:
         end_index = self._sym_end_index[symbol]
         if end_index <= 0:
             return None, None, None
@@ -2159,6 +2289,11 @@ class PendingOrder(NamedTuple):
             ``None`` for a single attempt, ``-1`` for indefinite persistence,
             or a positive integer for a limited number of retry bars.
         stops: Stops to attach when the order is filled.
+        exit_pos_type: Type of the :class:`pybroker.portfolio.Position` this
+            order exits, either ``long`` or ``short``, or ``None`` when the
+            order is not an exit. An exit order is clamped at fill time to the
+            shares still held, so it can only close a position, never flip one
+            to the opposite side.
     """
 
     id: int
@@ -2179,6 +2314,7 @@ class PendingOrder(NamedTuple):
     exec_bar: int
     timeout_bars: Optional[int]
     stops: Optional[frozenset["Stop"]]
+    exit_pos_type: Optional[Literal["long", "short"]] = None
 
 
 class PendingOrderScope:
@@ -2188,12 +2324,34 @@ class PendingOrderScope:
 
     def __init__(self):
         self._orders: dict[int, PendingOrder] = {}
-        self._sym_orders: dict[str, set[PendingOrder]] = defaultdict(set)
+        # Keyed by order id rather than a set: a set yields orders in
+        # hash order, which for PendingOrder varies per process even under
+        # PYTHONHASHSEED=0 -- on Python < 3.12 hash(None) is derived from an
+        # address, and limit_price/timeout_bars/stops are commonly None. A
+        # caller cancelling pending_orders(sym)[0] would cancel a different
+        # order on every run.
+        self._sym_orders: dict[str, dict[int, PendingOrder]] = defaultdict(
+            dict
+        )
         # Bars an order has been retried for, counted here rather than derived
         # from PendingOrder.exec_bar. This scope outlives a walkforward window
         # while ``sym_end_index`` restarts at each one, so a derived age goes
         # negative at a window boundary and the order never times out.
         self._retry_bars: dict[int, int] = {}
+        # Orders whose first fill attempt has been made. An order scheduled on
+        # the final bar of a walkforward window executes in the next one, where
+        # the window-local schedule that would have placed it no longer exists,
+        # so the retry loop adopts it -- and needs to tell "never attempted"
+        # apart from "attempted and unfilled" to age it correctly.
+        self._attempted: set[int] = set()
+
+    def mark_attempted(self, order_id: int) -> None:
+        """Records that ``order_id`` has had its first fill attempt."""
+        self._attempted.add(order_id)
+
+    def was_attempted(self, order_id: int) -> bool:
+        """Returns whether ``order_id`` has had its first fill attempt."""
+        return order_id in self._attempted
 
     def contains(self, order_id: int) -> bool:
         """Returns whether a :class:`.PendingOrder` exists with
@@ -2228,6 +2386,7 @@ class PendingOrderScope:
         exec_bar: int,
         timeout_bars: Optional[int],
         stops: Optional[frozenset["Stop"]] = None,
+        exit_pos_type: Optional[Literal["long", "short"]] = None,
     ) -> int:
         """Creates a :class:`.PendingOrder`.
 
@@ -2242,6 +2401,8 @@ class PendingOrderScope:
             exec_bar: Symbol bar index when the order will first be attempted.
             timeout_bars: Number of bars to retry after the first attempt.
             stops: Stops to attach when the order is filled.
+            exit_pos_type: Type of the position this order exits, or ``None``
+                when the order is not an exit.
 
         Returns:
             ID of the :class:`.PendingOrder`.
@@ -2259,9 +2420,10 @@ class PendingOrderScope:
             exec_bar=exec_bar,
             timeout_bars=timeout_bars,
             stops=stops,
+            exit_pos_type=exit_pos_type,
         )
         self._orders[self._order_id] = order
-        self._sym_orders[symbol].add(order)
+        self._sym_orders[symbol][order.id] = order
         self._retry_bars[self._order_id] = 0
         return order.id
 
@@ -2283,11 +2445,8 @@ class PendingOrderScope:
             order = self._orders[order_id]
             del self._orders[order_id]
             self._retry_bars.pop(order_id, None)
-            if (
-                order.symbol in self._sym_orders
-                and order in self._sym_orders[order.symbol]
-            ):
-                self._sym_orders[order.symbol].remove(order)
+            self._attempted.discard(order_id)
+            self._sym_orders.get(order.symbol, {}).pop(order_id, None)
             return True
         return False
 
@@ -2298,7 +2457,7 @@ class PendingOrderScope:
             for order_id in cancel_ids:
                 self.remove(order_id)
         elif symbol in self._sym_orders:
-            cancel_ids = tuple(order.id for order in self._sym_orders[symbol])
+            cancel_ids = tuple(self._sym_orders[symbol])
             for order_id in cancel_ids:
                 self.remove(order_id)
 
@@ -2326,7 +2485,7 @@ class PendingOrderScope:
         elif symbol is not None:
             if symbol not in self._sym_orders:
                 return []
-            return self._sym_orders[symbol]
+            return list(self._sym_orders[symbol].values())
         else:
             return self._orders.values()
 

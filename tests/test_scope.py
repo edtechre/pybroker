@@ -953,3 +953,32 @@ def test_resolve_lag_cols_when_loader_has_no_recorded_columns(scope):
         _resolve_lag_cols(_Source(), trained, "pre", model_input) == expected
     )
     assert "myind" not in expected
+
+
+def test_resolve_lag_cols_rejects_all_indicator_input_cols(scope):
+    """An empty resolution must raise, never build a zero-width matrix.
+
+    An empty tuple is not None, so every ``if lag_cols is not None:`` consumer
+    passes it through and hands the estimator a feature matrix of width 0 --
+    a silently different shape than the model was fitted on. A loader whose
+    recorded input columns are all indicators reaches exactly this.
+    """
+    from pybroker.common import TrainedModel
+    from pybroker.scope import _resolve_lag_cols
+
+    class _Source:
+        lags = 2
+        pooled = False
+        indicators = ("myind", "otherind")
+        lag_cols = ()
+
+    trained = TrainedModel(
+        name="pre",
+        instance=None,
+        predict_fn=None,
+        input_cols=("myind", "otherind"),
+        per_bar=False,
+        lag_columns=None,
+    )
+    with pytest.raises(ValueError, match="lag_cols"):
+        _resolve_lag_cols(_Source(), trained, "pre")

@@ -6,9 +6,12 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import dataclasses
 import json
 import numpy as np
 import os
+import subprocess
+import sys
 import pandas as pd
 import pytest
 import re
@@ -18,7 +21,7 @@ from .fixtures import *  # noqa: F401
 from collections import defaultdict, deque
 from datetime import datetime
 from decimal import Decimal
-from pybroker.common import DataCol, PriceType, to_datetime
+from pybroker.common import DataCol, FeeMode, PriceType, to_datetime
 from pybroker.config import StrategyConfig
 from pybroker.context import ExecContext, RotationContext
 from pybroker.indicator import indicator
@@ -33,7 +36,7 @@ from pybroker.portfolio import (
     PositionBar,
     Trade,
 )
-from pybroker.scope import PendingOrder
+from pybroker.scope import PendingOrder, PendingOrderScope
 from pybroker.slippage import (
     FixedSlippageModel,
     SlippageModel,
@@ -51,6 +54,7 @@ from pybroker.strategy import (
     _is_rankable,
     _rank_by_score,
     _rank_by_short_score,
+    _rotation_candidates,
 )
 from pybroker.common import (
     _resolve_execution_symbols,
@@ -161,6 +165,24 @@ def _run_rotation(
         exit_dates={},
     )
     return portfolio
+
+
+def assert_metrics_equal(left, right):
+    """Compares EvalMetrics treating NaN as equal to NaN.
+
+    A metric that is undefined -- a Sortino with no downside, a UPI with no
+    ulcer -- is reported as NaN, and ``nan != nan``, so plain dataclass
+    equality reports a difference where the two runs agree exactly.
+    """
+    left_d = dataclasses.asdict(left)
+    right_d = dataclasses.asdict(right)
+    assert left_d.keys() == right_d.keys()
+    for key, lv in left_d.items():
+        rv = right_d[key]
+        if isinstance(lv, float) and isinstance(rv, float):
+            assert lv == pytest.approx(rv, nan_ok=True), key
+        else:
+            assert lv == rv, key
 
 
 def _selector_trending_df(
@@ -576,6 +598,71 @@ class TestSymbolSelector:
         # AAA's final bar, not a bar of the window that dropped it.
         assert aaa_trades.iloc[0]["exit_date"] == pd.Timestamp("2020-01-09")
         assert float(aaa_trades.iloc[0]["exit"]) == 108.0
+
+    def test_dropped_symbol_pending_orders_are_cancelled(self):
+        """A pending order for a dropped symbol must not survive liquidation.
+
+        PendingOrderScope is owned by the walkforward and outlives a window, and
+        _process_persistent_orders iterates every order with no check that its
+        symbol is still selected. An order left behind therefore keeps being
+        retried, and fills in a window whose universe does not include it. No
+        execution function runs for a dropped symbol, so a caller cannot cancel
+        it either.
+        """
+        # AAA falls, so a buy limit set in the first window only becomes
+        # reachable later -- by which point AAA has been dropped.
+        dates = pd.date_range("2020-01-01", periods=12, freq="D")
+        rows = []
+        for i, date in enumerate(dates):
+            price = 110.0 - i
+            rows.append(
+                dict(
+                    symbol="AAA",
+                    date=date,
+                    open=price,
+                    high=price,
+                    low=price,
+                    close=price,
+                    volume=1e6,
+                )
+            )
+            rows.append(
+                dict(
+                    symbol="BBB",
+                    date=date,
+                    open=200.0,
+                    high=200.0,
+                    low=200.0,
+                    close=200.0,
+                    volume=1e6,
+                )
+            )
+        df = pd.DataFrame(rows)
+
+        def exec_fn(ctx):
+            # Placed once, in the first window only. ``session`` is owned by
+            # the walkforward, so it survives the boundaries.
+            if ctx.symbol == "AAA" and not ctx.session.get("placed"):
+                ctx.session["placed"] = True
+                ctx.buy_shares = 10
+                ctx.buy_limit_price = 101
+                ctx.buy_timeout_bars = -1
+
+        strategy = Strategy(
+            df,
+            "2020-01-01",
+            "2020-01-12",
+            StrategyConfig(initial_cash=Decimal(100_000), buy_delay=1),
+        )
+        strategy.add_execution(
+            exec_fn, _rotating_selector([["AAA"], ["BBB"], ["AAA"]])
+        )
+        result = strategy.walkforward(
+            windows=3, train_size=0.34, lookahead=1, calc_bootstrap=False
+        )
+        # The order belongs to a universe AAA was dropped from. Re-selecting
+        # AAA later must not resurrect it.
+        assert result.orders[result.orders["symbol"] == "AAA"].empty
 
     def test_dropped_symbol_with_stops_and_no_new_bars(self):
         df = _selector_trending_df({"AAA": (100.0, 9), "BBB": (200.0, 12)})
@@ -3185,7 +3272,9 @@ class TestStrategy:
             pd.testing.assert_frame_equal(
                 serial_result.portfolio, parallel_result.portfolio
             )
-            assert serial_result.metrics == parallel_result.metrics
+            assert_metrics_equal(
+                serial_result.metrics, parallel_result.metrics
+            )
             with patch("pybroker.model.parallel", wraps=parallel) as (
                 mock_parallel
             ):
@@ -3302,7 +3391,9 @@ class TestStrategy:
             pd.testing.assert_frame_equal(
                 serial_result.portfolio, parallel_result.portfolio
             )
-            assert serial_result.metrics == parallel_result.metrics
+            assert_metrics_equal(
+                serial_result.metrics, parallel_result.metrics
+            )
             assert get_parallel_config().backend == "loky"
         finally:
             _parallel_mod._config = saved
@@ -3337,7 +3428,9 @@ class TestStrategy:
             pd.testing.assert_frame_equal(
                 serial_result.portfolio, parallel_result.portfolio
             )
-            assert serial_result.metrics == parallel_result.metrics
+            assert_metrics_equal(
+                serial_result.metrics, parallel_result.metrics
+            )
             with patch("pybroker.model.parallel", wraps=parallel) as (
                 mock_parallel
             ):
@@ -3386,7 +3479,9 @@ class TestStrategy:
             pd.testing.assert_frame_equal(
                 serial_result.portfolio, parallel_result.portfolio
             )
-            assert serial_result.metrics == parallel_result.metrics
+            assert_metrics_equal(
+                serial_result.metrics, parallel_result.metrics
+            )
             with patch("pybroker.model.parallel", wraps=parallel) as (
                 mock_parallel
             ):
@@ -3434,7 +3529,9 @@ class TestStrategy:
             pd.testing.assert_frame_equal(
                 serial_result.portfolio, parallel_result.portfolio
             )
-            assert serial_result.metrics == parallel_result.metrics
+            assert_metrics_equal(
+                serial_result.metrics, parallel_result.metrics
+            )
             assert get_parallel_config().backend == "loky"
         finally:
             _parallel_mod._config = saved
@@ -3470,7 +3567,9 @@ class TestStrategy:
             pd.testing.assert_frame_equal(
                 serial_result.portfolio, parallel_result.portfolio
             )
-            assert serial_result.metrics == parallel_result.metrics
+            assert_metrics_equal(
+                serial_result.metrics, parallel_result.metrics
+            )
         finally:
             _parallel_mod._config = saved
 
@@ -4876,8 +4975,9 @@ class TestStrategy:
     def test_backtest_when_slippage_and_sell_all_shares(self, data_source_df):
         """Signal-time slippage must not shrink a full exit.
 
-        ``sell_all_shares`` exits the whole position and disarms its stops, so
-        a shrunk order would strand the remainder with no stops on it.
+        ``sell_all_shares`` exits the whole position, so a shrunk order would
+        strand an unintended remainder. The fill-time clamp cannot recover the
+        difference: it only ever reduces the order further.
         """
 
         class FakeSlippageModel(SlippageModel):
@@ -6312,6 +6412,511 @@ def test_persistent_order_when_symbol_has_no_bar_then_not_filled():
     assert set(b_orders["date"]) <= b_dates
 
 
+def test_nan_score_does_not_corrupt_position_limit_ranking():
+    """A NaN score must not change which symbol wins a scarce position slot.
+
+    Every comparison against NaN is False, so a raw NaN key makes the ordering
+    predicate non-transitive and Timsort's output is not a sorted permutation.
+    The symbol carrying the NaN need not even be in contention: it reorders the
+    ones that are. ``ctx.long_score = ctx.indicator(...)[-1]`` before the
+    indicator warms up is the everyday way to produce one.
+    """
+    dates = pd.date_range("2021-01-04", periods=6, freq="B")
+    scores = {"AAA": 5.0, "BBB": float("nan"), "CCC": 10.0}
+    rows = [
+        dict(
+            symbol=sym,
+            date=date,
+            open=100.0,
+            high=100.0,
+            low=100.0,
+            close=100.0,
+            volume=1e6,
+        )
+        for sym in scores
+        for date in dates
+    ]
+    df = pd.DataFrame(rows)
+
+    def exec_fn(ctx):
+        if ctx.bars == 1:
+            ctx.buy_shares = 10
+            ctx.long_score = scores[ctx.symbol]
+
+    def run(sym_scores):
+        strategy = Strategy(
+            df,
+            str(dates[0].date()),
+            str(dates[-1].date()),
+            StrategyConfig(initial_cash=100_000),
+        )
+        strategy.set_max_long_positions(1)
+        strategy.add_execution(exec_fn, list(sym_scores))
+        result = strategy.backtest(calc_bootstrap=False)
+        return set(result.orders["symbol"])
+
+    # CCC has the highest score, so it takes the only slot -- whether or not
+    # an unrankable score is present elsewhere in the queue.
+    assert run(scores) == {"CCC"}
+    scores["BBB"] = 1.0
+    assert run(scores) == {"CCC"}
+
+
+def test_rotation_counts_in_flight_entries_for_absent_symbols():
+    """A rotation entry in flight holds its slot even with no bar today.
+
+    Counting in-flight entries from active_ctxs alone understates the total
+    whenever calendars are ragged: the symbol has no context on a date it does
+    not trade. Rotation then issues a surplus order that Portfolio._long
+    discards at the cap, with no Order row and no warning to show for it.
+    """
+    portfolio = Portfolio(100_000)
+    pending_order_scope = PendingOrderScope()
+    # BBB's entry is in flight, and BBB has no bar today so no context.
+    pending_order_scope.add(
+        type="buy",
+        symbol="BBB",
+        created=np.datetime64("2021-01-04"),
+        exec_date=np.datetime64("2021-01-06"),
+        shares=Decimal(10),
+        limit_price=None,
+        fill_price=PriceType.MIDDLE,
+        exec_bar=1,
+        timeout_bars=None,
+    )
+    ccc = Mock(spec=ExecContext)
+    ccc.symbol = "CCC"
+    ccc.pending_orders = Mock(return_value=[])
+    ctxs = {"CCC": ccc}
+    ranks = {"BBB": 1, "CCC": 2}
+
+    def candidates(scope):
+        return _rotation_candidates(
+            ctxs,
+            portfolio,
+            ranks,
+            worst_rank_held=3,
+            max_positions=1,
+            exiting=0,
+            dir="long",
+            pending_order_scope=scope,
+        )
+
+    # The one slot belongs to BBB's in-flight entry, so CCC gets nothing.
+    assert candidates(pending_order_scope) == []
+    # Without the scope there is nothing to see the in-flight entry, which is
+    # exactly the state the bug left rotation in.
+    assert candidates(None) == ["CCC"]
+
+
+def test_rotation_keeps_hold_bars_as_a_stop():
+    """Rotation keeps stops set during an execution -- including ``hold_bars``.
+
+    enable_rotation documents that fill prices and stops survive and are
+    applied to the orders rotation places. hold_bars builds the BAR stop, so
+    nulling it unconditionally silently drops the time exit.
+    """
+    dates = pd.date_range("2021-01-04", periods=10, freq="B")
+    df = pd.DataFrame(
+        [
+            dict(
+                symbol=sym,
+                date=date,
+                open=100.0,
+                high=100.0,
+                low=100.0,
+                close=100.0,
+                volume=1e6,
+            )
+            for sym in ("AAA", "BBB")
+            for date in dates
+        ]
+    )
+
+    def exec_fn(ctx):
+        ctx.long_score = 10.0 if ctx.symbol == "AAA" else 1.0
+        ctx.hold_bars = 2
+
+    strategy = Strategy(
+        df,
+        str(dates[0].date()),
+        str(dates[-1].date()),
+        StrategyConfig(initial_cash=100_000),
+    )
+    strategy.set_max_long_positions(1)
+    strategy.enable_rotation(worst_rank_held=1)
+    strategy.add_execution(exec_fn, ["AAA", "BBB"])
+    result = strategy.backtest(calc_bootstrap=False)
+    assert "stop_bar" in set(result.orders["order_type"])
+
+
+def _flat_then_drop_frame(symbol="A", high=100.0, low=50.0, periods=12):
+    """One symbol that trades flat, then falls."""
+    dates = pd.date_range("2021-01-04", periods=periods, freq="B")
+    half = periods // 2
+    prices = [high] * half + [low] * (periods - half)
+    return (
+        pd.DataFrame(
+            [
+                dict(
+                    symbol=symbol,
+                    date=date,
+                    open=price,
+                    high=price,
+                    low=price,
+                    close=price,
+                    volume=1e6,
+                )
+                for date, price in zip(dates, prices)
+            ]
+        ),
+        dates,
+    )
+
+
+def test_stops_stay_armed_when_exit_order_never_fills():
+    """An exit that never fills must leave its position's stops armed.
+
+    Disarming at signal time strands the position unprotected for the rest of
+    the run whenever the order is discarded, times out, or misses its limit.
+    """
+    df, dates = _flat_then_drop_frame()
+
+    def exec_fn(ctx):
+        if not ctx.long_pos():
+            if ctx.bars == 1:
+                ctx.buy_shares = 10
+                ctx.buy_fill_price = PriceType.CLOSE
+                ctx.stop_loss_pct = 5
+            return
+        if ctx.bars == 3:
+            # Unfillable: the position is never actually exited here.
+            ctx.sell_all_shares()
+            ctx.sell_limit_price = 10_000
+
+    strategy = Strategy(
+        df,
+        str(dates[0].date()),
+        str(dates[-1].date()),
+        StrategyConfig(initial_cash=100_000),
+    )
+    strategy.add_execution(exec_fn, "A")
+    result = strategy.backtest(calc_bootstrap=False)
+    assert "stop_loss" in set(result.orders["order_type"])
+    assert result.positions.empty
+
+
+def test_exit_order_cannot_flip_position_when_stop_fires_first():
+    """A stop firing on the fill bar must leave nothing for the exit to sell.
+
+    check_stops runs before order placement, so a stop can close the position
+    on the very bar a scheduled exit fills. Clamping the exit to the shares
+    still held is what keeps the leftover order from opening a short.
+    """
+    df, dates = _flat_then_drop_frame()
+
+    def exec_fn(ctx):
+        if not ctx.long_pos():
+            if ctx.bars == 1:
+                ctx.buy_shares = 10
+                ctx.buy_fill_price = PriceType.CLOSE
+                ctx.stop_loss_pct = 5
+            return
+        # Signalled on the bar before the drop, so it fills on the same bar
+        # the stop triggers.
+        if ctx.bars == 6:
+            ctx.sell_all_shares()
+
+    strategy = Strategy(
+        df,
+        str(dates[0].date()),
+        str(dates[-1].date()),
+        StrategyConfig(initial_cash=100_000),
+    )
+    strategy.add_execution(exec_fn, "A")
+    result = strategy.backtest(calc_bootstrap=False)
+    assert not (result.orders["intent"] == "sell_to_open").any()
+    assert result.positions.empty
+
+
+def test_volume_slippage_partial_exit_keeps_stops_on_remainder():
+    """A participation cap that shrinks an exit must not strand the remainder.
+
+    The cap is legitimate market modeling; what is not is selling 25 of 1000
+    shares while the stops protecting the other 975 are gone.
+    """
+    df, dates = _flat_then_drop_frame(high=100.0, low=50.0)
+    # Ample volume everywhere except the bar the exit fills on, so the
+    # participation cap binds on the exit alone and not on the entry.
+    df["volume"] = 1e9
+    df.loc[3, "volume"] = 1000.0
+
+    def exec_fn(ctx):
+        if not ctx.long_pos():
+            if ctx.bars == 1:
+                ctx.buy_shares = 1000
+                ctx.buy_fill_price = PriceType.CLOSE
+                ctx.stop_loss_pct = 5
+            return
+        if ctx.bars == 3:
+            ctx.sell_all_shares()
+
+    strategy = Strategy(
+        df,
+        str(dates[0].date()),
+        str(dates[-1].date()),
+        StrategyConfig(initial_cash=1_000_000),
+    )
+    strategy.set_slippage_model(VolumeSlippageModel(volume_limit=0.025))
+    strategy.add_execution(exec_fn, "A")
+    result = strategy.backtest(calc_bootstrap=False)
+    sells = result.orders[result.orders["type"] == "sell"]
+    # The cap sold only part of the position, so a stop must still cover what
+    # was left behind.
+    assert (sells["order_type"] == "market").any()
+    assert "stop_loss" in set(sells["order_type"])
+    assert result.positions.empty
+
+
+def _sparse_frame(b_offsets, b_prices, periods=7):
+    """``A`` trades every bar; ``B`` only on ``b_offsets``."""
+    dates = pd.date_range("2021-01-04", periods=periods, freq="B")
+    rows = [
+        dict(
+            symbol="A",
+            date=date,
+            open=50.0,
+            high=50.0,
+            low=50.0,
+            close=50.0,
+            volume=1e6,
+        )
+        for date in dates
+    ]
+    for offset, price in zip(b_offsets, b_prices):
+        low = price if not isinstance(price, tuple) else price[1]
+        close = price if not isinstance(price, tuple) else price[0]
+        rows.append(
+            dict(
+                symbol="B",
+                date=dates[offset],
+                open=close,
+                high=close,
+                low=low,
+                close=close,
+                volume=1e6,
+            )
+        )
+    return pd.DataFrame(rows).sort_values(["date", "symbol"]), dates
+
+
+def test_check_stops_when_symbol_has_no_bar_then_not_triggered():
+    """A stop must not be evaluated against a bar from an earlier date.
+
+    check_stops runs before order placement, so an entry bar's own extremes are
+    never evaluated. When the next date has no bar for the symbol, its cursor
+    still points at the entry bar, so gating on has_bar() rather than
+    has_bar_on() resurrects exactly those extremes and fills against them on a
+    date the symbol did not trade.
+    """
+    # B's entry bar wicks to 80, below the 90 stop, but only after the fill.
+    df, dates = _sparse_frame([0, 1, 4], [100.0, (100.0, 80.0), 100.0])
+
+    def exec_fn(ctx):
+        if ctx.symbol == "B" and ctx.bars == 1 and not ctx.long_pos():
+            ctx.buy_shares = 10
+            ctx.buy_fill_price = PriceType.CLOSE
+            ctx.stop_loss_pct = 10
+
+    strategy = Strategy(
+        df,
+        str(dates[0].date()),
+        str(dates[-1].date()),
+        StrategyConfig(initial_cash=100_000),
+    )
+    strategy.add_execution(exec_fn, ["A", "B"])
+    result = strategy.backtest(calc_bootstrap=False)
+    b_orders = result.orders[result.orders["symbol"] == "B"]
+    b_dates = set(df[df["symbol"] == "B"]["date"])
+    assert len(b_orders) == 1
+    assert b_orders.iloc[0]["type"] == "buy"
+    assert set(b_orders["date"]) <= b_dates
+    assert "stop_loss" not in set(result.orders["order_type"])
+
+
+def test_bar_stop_counts_symbol_bars_not_calendar_bars():
+    """``hold_bars`` must count the symbol's own bars.
+
+    Entry.bars advances on every bar of the backtest because Trade.bars and
+    pnl_per_bar measure elapsed holding time. A BAR stop counting that clock
+    expires after fewer of the symbol's own bars than the caller asked for.
+    """
+    # B trades on every other date; the entry fills on B's second bar.
+    df, dates = _sparse_frame(
+        [0, 2, 4, 6], [100.0, 100.0, 110.0, 120.0], periods=7
+    )
+
+    def exec_fn(ctx):
+        if ctx.symbol == "B" and ctx.bars == 1 and not ctx.long_pos():
+            ctx.buy_shares = 10
+            ctx.buy_fill_price = PriceType.CLOSE
+            ctx.sell_fill_price = PriceType.CLOSE
+            ctx.hold_bars = 2
+
+    strategy = Strategy(
+        df,
+        str(dates[0].date()),
+        str(dates[-1].date()),
+        StrategyConfig(initial_cash=100_000),
+    )
+    strategy.add_execution(exec_fn, ["A", "B"])
+    result = strategy.backtest(calc_bootstrap=False)
+    exits = result.orders[result.orders["order_type"] == "stop_bar"]
+    assert len(exits) == 1
+    exit_order = exits.iloc[0]
+    # Two of B's own bars after the fill on dates[2] lands on dates[6],
+    # not on dates[4] where two calendar bars would have expired it.
+    assert exit_order["date"] == dates[6]
+    assert exit_order["fill_price"] == 120
+
+
+def test_order_count_is_window_count_independent():
+    """A signal on a window's final bar must still be tradeable.
+
+    _schedule_order resolves the delayed bar against the window's own test
+    dates, so on the last bar of a non-final window the delayed index runs off
+    the end and the order is discarded -- losing exactly ``windows - 1`` orders
+    per symbol. The bar it would execute on is the next window's first test
+    bar, which the run does reach.
+    """
+    dates = pd.date_range("2021-01-04", periods=20, freq="B")
+    df = pd.DataFrame(
+        [
+            dict(
+                symbol="A",
+                date=date,
+                open=100.0,
+                high=100.0,
+                low=100.0,
+                close=100.0,
+                volume=1e6,
+            )
+            for date in dates
+        ]
+    )
+
+    def exec_fn(ctx):
+        if ctx.long_pos() is None:
+            ctx.buy_shares = 10
+        else:
+            ctx.sell_all_shares()
+
+    counts = []
+    for windows in (1, 2, 4):
+        strategy = Strategy(
+            df,
+            str(dates[0].date()),
+            str(dates[-1].date()),
+            StrategyConfig(initial_cash=100_000),
+        )
+        strategy.add_execution(exec_fn, "A")
+        result = strategy.walkforward(
+            windows=windows, train_size=0.0, calc_bootstrap=False
+        )
+        counts.append(len(result.orders))
+    assert counts[0] > 0
+    assert counts == [counts[0]] * 3
+
+
+def test_walkforward_warns_when_no_window_has_test_data():
+    """A split where every test range is empty must not look like a clean run.
+
+    ``test_length`` floors to 0 when the windows are short relative to
+    train_size, and the result then reports zero PnL against a funded
+    portfolio with nothing to show that no bar was ever backtested.
+    """
+    dates = pd.date_range("2021-01-04", periods=60, freq="B")
+    df = pd.DataFrame(
+        [
+            dict(
+                symbol="A",
+                date=date,
+                open=100.0,
+                high=100.0,
+                low=100.0,
+                close=100.0,
+                volume=1e6,
+            )
+            for date in dates
+        ]
+    )
+    strategy = Strategy(
+        df,
+        str(dates[0].date()),
+        str(dates[-1].date()),
+        StrategyConfig(initial_cash=100_000),
+    )
+    strategy.add_execution(lambda ctx: None, "A")
+    with pytest.warns(UserWarning, match="No test data in any"):
+        strategy.walkforward(
+            windows=10, train_size=0.9, lookahead=1, calc_bootstrap=False
+        )
+
+
+def test_walkforward_split_raises_value_error_when_windows_exceed_dates():
+    """An unsatisfiable parameter set must name the parameters, not IndexError."""
+    mixin = WalkforwardMixin()
+    dates = pd.date_range("2021-01-04", periods=5, freq="B")
+    df = pd.DataFrame({"date": dates, "symbol": "A", "close": 1.0})
+    for train_size in (0.0, 1.0):
+        with pytest.raises(ValueError, match="Invalid params"):
+            list(
+                mixin.walkforward_split(
+                    df, windows=10, lookahead=1, train_size=train_size
+                )
+            )
+
+
+def test_persistent_order_timeout_counts_the_symbols_own_bars():
+    """``timeout_bars`` must count the symbol's bars, not calendar bars.
+
+    Counting every bar of the backtest expires a symbol that trades one date in
+    three after a third of the bars the caller asked for. A symbol a
+    SymbolSelector drops does not age forever either -- its orders are
+    cancelled at the window boundary by _liquidate_dropped_symbols.
+    """
+
+    def run(b_offsets, periods):
+        # B has four bars in both frames; only the calendar gaps differ.
+        df, dates = _sparse_frame(
+            b_offsets, [100.0, 100.0, 100.0, 1.0], periods=periods
+        )
+
+        def exec_fn(ctx):
+            if ctx.symbol == "B" and ctx.bars == 1 and not ctx.long_pos():
+                ctx.buy_shares = 10
+                ctx.buy_limit_price = 50
+                ctx.buy_timeout_bars = 2
+
+        strategy = Strategy(
+            df,
+            str(dates[0].date()),
+            str(dates[-1].date()),
+            StrategyConfig(initial_cash=100_000),
+        )
+        strategy.add_execution(exec_fn, ["A", "B"])
+        return strategy.backtest(calc_bootstrap=False).orders
+
+    dense = run([0, 1, 2, 3], 4)
+    gapped = run([0, 1, 2, 9], 10)
+    # Identical bar counts for B, so identical outcomes -- the six calendar
+    # bars B sits out in the gapped frame must not consume its timeout.
+    assert len(dense) == 1
+    assert len(gapped) == 1
+    assert float(dense.iloc[0]["fill_price"]) == 1.0
+    assert float(gapped.iloc[0]["fill_price"]) == 1.0
+
+
 def test_persistent_order_when_window_boundary_then_kept():
     """``timeout_bars=-1`` persists indefinitely, including across windows."""
     dates = pd.date_range("2021-01-22", periods=40, freq="B")
@@ -6423,3 +7028,360 @@ def test_test_result_positions_shape_is_stable(
     assert list(positions.index.names) == ["symbol", "date"]
     for col in ("close", "equity", "market_value", "margin", "unrealized_pnl"):
         assert positions[col].dtype == np.float64
+
+
+_DETERMINISM_SCRIPT = """
+import hashlib, sys
+import numpy as np, pandas as pd
+import pybroker
+from pybroker.config import StrategyConfig
+from pybroker.strategy import Strategy
+
+pybroker.disable_logging()
+rng = np.random.default_rng(7)
+dates = pd.date_range("2021-01-04", periods=40, freq="B")
+syms = [f"S{i:02d}" for i in range(12)]
+rows = []
+for s in syms:
+    p = 100 + np.cumsum(rng.normal(0, 1, len(dates)))
+    for d, px in zip(dates, p):
+        rows.append(
+            dict(symbol=s, date=d, open=px, high=px + 1, low=px - 1,
+                 close=px, volume=1e6)
+        )
+df = pd.DataFrame(rows)
+
+
+def exec_fn(ctx):
+    if not ctx.long_pos():
+        ctx.set_target_shares(0.05, dir="long")
+    elif ctx.bars % 7 == 0:
+        ctx.sell_all_shares()
+
+
+st = Strategy(
+    df, "2021-01-04", str(dates[-1].date()),
+    StrategyConfig(initial_cash=1_000_000, enable_fractional_shares=True,
+                   round_test_result=False),
+)
+st.add_execution(exec_fn, syms)
+r = st.backtest(calc_bootstrap=False)
+h = hashlib.sha256()
+h.update(r.orders.to_csv().encode())
+h.update(r.trades.to_csv().encode())
+h.update(r.metrics_df.to_csv().encode())
+sys.stdout.write(h.hexdigest())
+"""
+
+
+def test_backtest_is_reproducible_across_hash_seeds(tmp_path):
+    """Identical inputs must produce identical output in any process.
+
+    Portfolio.symbols is a set, so its iteration order varies with
+    PYTHONHASHSEED; float addition is not associative, so a running total made
+    equity -- and every metric and share count derived from it -- differ
+    between otherwise identical runs.
+    """
+    script = tmp_path / "determinism.py"
+    script.write_text(_DETERMINISM_SCRIPT)
+    digests = set()
+    for seed in ("0", "1", "12345"):
+        env = {**os.environ, "PYTHONHASHSEED": seed}
+        out = subprocess.run(
+            [sys.executable, str(script)],
+            capture_output=True,
+            text=True,
+            env=env,
+            check=True,
+        )
+        digests.add(out.stdout.strip())
+    assert len(digests) == 1
+
+
+def test_backtest_survives_non_finite_ohlc_bar():
+    """A NaN bar must not abort the run.
+
+    Decimal, unlike float, raises InvalidOperation on any ordered comparison
+    against NaN, so a single halted or vendor-gapped bar aborted from deep
+    inside buying-power arithmetic, naming neither the symbol nor the column.
+    """
+    dates = pd.date_range("2021-01-04", periods=12, freq="B")
+    df = pd.DataFrame(
+        [
+            dict(
+                symbol="A",
+                date=date,
+                open=100.0,
+                high=100.0,
+                low=100.0,
+                close=100.0,
+                volume=1e6,
+            )
+            for date in dates
+        ]
+    )
+    # One halted bar, part way through an open position.
+    for col in ("open", "high", "low", "close"):
+        df.loc[5, col] = np.nan
+
+    def exec_fn(ctx):
+        if not ctx.long_pos() and ctx.bars == 1:
+            ctx.buy_shares = 10
+
+    strategy = Strategy(
+        df,
+        str(dates[0].date()),
+        str(dates[-1].date()),
+        StrategyConfig(initial_cash=100_000, leverage=2.0),
+    )
+    strategy.add_execution(exec_fn, "A")
+    result = strategy.backtest(calc_bootstrap=False)
+    assert not result.orders.empty
+    # The NaN bar is held at its last mark rather than poisoning the curve.
+    assert np.isfinite(float(result.metrics.end_market_value))
+    assert result.portfolio["market_value"].notna().all()
+
+
+def test_set_target_shares_skips_unpriceable_bar():
+    """A NaN bar must place no order and must not abort the run.
+
+    calc_target_shares raises a clear error for a direct caller, but
+    set_target_shares restates its target every bar, so mid-run the right
+    behavior is to skip the unpriceable bar -- mirroring capture_bar holding
+    the position at its last mark. The old fractional path was worse than
+    either: calc_target_shares returned 0, which was read as a legitimate
+    target and liquidated the whole position on the NaN bar.
+    """
+    dates = pd.date_range("2021-01-04", periods=8, freq="B")
+    df = pd.DataFrame(
+        [
+            dict(
+                symbol="A",
+                date=date,
+                open=100.0,
+                high=100.0,
+                low=100.0,
+                close=100.0,
+                volume=1e6,
+            )
+            for date in dates
+        ]
+    )
+    df.loc[4, "close"] = np.nan
+
+    def exec_fn(ctx):
+        ctx.set_target_shares(0.5, dir="long")
+
+    strategy = Strategy(
+        df,
+        str(dates[0].date()),
+        str(dates[-1].date()),
+        StrategyConfig(initial_cash=100_000, enable_fractional_shares=True),
+    )
+    strategy.add_execution(exec_fn, "A")
+    result = strategy.backtest(calc_bootstrap=False)
+    # No phantom liquidation on the NaN bar, and the run completes.
+    assert not (result.orders["type"] == "sell").any()
+    assert (result.orders["type"] == "buy").any()
+
+
+def test_calc_target_shares_raises_clear_error_on_non_finite_price():
+    """A direct caller gets a clear error naming the symbol and date.
+
+    Integer shares used to raise "cannot convert NaN to integer" naming
+    nothing.
+    """
+    dates = pd.date_range("2021-01-04", periods=4, freq="B")
+    df = pd.DataFrame(
+        [
+            dict(
+                symbol="A",
+                date=date,
+                open=100.0,
+                high=100.0,
+                low=100.0,
+                close=100.0,
+                volume=1e6,
+            )
+            for date in dates
+        ]
+    )
+    errors = []
+
+    def exec_fn(ctx):
+        try:
+            ctx.calc_target_shares(0.5, price=float("nan"))
+        except ValueError as e:
+            errors.append(str(e))
+
+    strategy = Strategy(
+        df,
+        str(dates[0].date()),
+        str(dates[-1].date()),
+        StrategyConfig(initial_cash=100_000),
+    )
+    strategy.add_execution(exec_fn, "A")
+    strategy.backtest(calc_bootstrap=False)
+    assert errors
+    assert "price is" in errors[0]
+
+
+def test_duplicate_symbol_date_rows_raise():
+    """Duplicate bars put prices and indicators out of step, so reject them.
+
+    The store slices with a merge join that emits one row per date while
+    IndicatorScope masks with np.isin and keeps both, and the bar counter
+    advances once per date -- so whichever way the slice behaves, one of the
+    two ends up a bar out of step. There is no reconciling behavior to pick.
+    """
+    dates = pd.date_range("2021-01-04", periods=6, freq="B")
+    rows = [
+        dict(
+            symbol="A",
+            date=date,
+            open=100.0,
+            high=100.0,
+            low=100.0,
+            close=100.0,
+            volume=1e6,
+        )
+        for date in dates
+    ]
+    rows.append(dict(rows[2]))
+    df = pd.DataFrame(rows)
+    strategy = Strategy(
+        df,
+        str(dates[0].date()),
+        str(dates[-1].date()),
+        StrategyConfig(initial_cash=100_000),
+    )
+    strategy.add_execution(lambda ctx: None, "A")
+    with pytest.raises(ValueError, match="duplicate \\(symbol, date\\)"):
+        strategy.backtest(calc_bootstrap=False)
+
+
+def test_order_fill_on_nan_bar_does_not_abort_and_stop_fires_later():
+    """An unpriceable bar can neither fill an order nor price a stop.
+
+    PriceScope._round_float raised "cannot convert float NaN to integer" the
+    moment a fill was attempted on a halted bar, and a BAR stop resolving its
+    fill price from one aborted the run too -- while a trailing stop's ratchet
+    would poison its stop value with NaN and disarm itself. All three now
+    treat the bar as unpriceable and act on the next real bar.
+    """
+    dates = pd.date_range("2021-01-04", periods=10, freq="B")
+    df = pd.DataFrame(
+        [
+            dict(
+                symbol="A",
+                date=date,
+                open=100.0,
+                high=100.0,
+                low=100.0,
+                close=100.0,
+                volume=1e6,
+            )
+            for date in dates
+        ]
+    )
+    # The buy signalled on bar 1 (buy_delay=1) attempts to fill on bar 2,
+    # which is a NaN bar; hold_bars would expire during another NaN bar.
+    for col in ("open", "high", "low", "close"):
+        df.loc[2, col] = np.nan
+        df.loc[6, col] = np.nan
+
+    def exec_fn(ctx):
+        if (
+            ctx.bars == 2
+            and not ctx.long_pos()
+            and not list(ctx.pending_orders())
+        ):
+            ctx.buy_shares = 10
+            ctx.buy_limit_price = 150
+            ctx.buy_timeout_bars = -1
+            ctx.hold_bars = 3
+            ctx.sell_fill_price = PriceType.CLOSE
+
+    strategy = Strategy(
+        df,
+        str(dates[0].date()),
+        str(dates[-1].date()),
+        StrategyConfig(initial_cash=100_000),
+    )
+    strategy.add_execution(exec_fn, "A")
+    result = strategy.backtest(calc_bootstrap=False)
+    # The buy filled on the first priceable bar after the NaN bar, and the
+    # bar stop exited on a priceable bar -- neither aborted the run.
+    assert len(result.orders) == 2
+    assert set(result.orders["type"]) == {"buy", "sell"}
+    nan_dates = {dates[2], dates[6]}
+    assert not (set(result.orders["date"]) & nan_dates)
+
+
+def test_negative_fee_amount_rejected():
+    """A negative fee credits the account on every fill; reject it upfront."""
+    dates = pd.date_range("2021-01-04", periods=4, freq="B")
+    df = pd.DataFrame(
+        [
+            dict(
+                symbol="A",
+                date=date,
+                open=100.0,
+                high=100.0,
+                low=100.0,
+                close=100.0,
+                volume=1e6,
+            )
+            for date in dates
+        ]
+    )
+    with pytest.raises(ValueError, match="fee_amount"):
+        Strategy(
+            df,
+            str(dates[0].date()),
+            str(dates[-1].date()),
+            StrategyConfig(
+                initial_cash=100_000,
+                fee_mode=FeeMode.PER_ORDER,
+                fee_amount=-5,
+            ),
+        )
+
+
+def test_nan_limit_price_raises_clear_error():
+    """A NaN limit can never fill and used to abort with a bare
+    decimal.InvalidOperation naming neither the symbol nor the bar. The
+    validation fires at signal time, where the user's arithmetic ran."""
+    dates = pd.date_range("2021-01-04", periods=6, freq="B")
+    df = pd.DataFrame(
+        [
+            dict(
+                symbol="A",
+                date=date,
+                open=100.0,
+                high=100.0,
+                low=100.0,
+                close=100.0,
+                volume=1e6,
+            )
+            for date in dates
+        ]
+    )
+    for col in ("open", "high", "low", "close"):
+        df.loc[2, col] = np.nan
+
+    def exec_fn(ctx):
+        if ctx.bars == 3 and not ctx.long_pos():
+            # Arithmetic on the NaN bar's close -- the everyday mistake.
+            ctx.buy_shares = 10
+            ctx.buy_limit_price = float(ctx.close[-1]) * 0.99
+
+    strategy = Strategy(
+        df,
+        str(dates[0].date()),
+        str(dates[-1].date()),
+        StrategyConfig(initial_cash=100_000),
+    )
+    strategy.add_execution(exec_fn, "A")
+    with pytest.raises(ValueError, match="buy_limit_price.*'A'"):
+        strategy.backtest(calc_bootstrap=False)

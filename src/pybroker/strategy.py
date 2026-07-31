@@ -172,16 +172,35 @@ def _between(
     return df.iloc[rows]
 
 
+# Both schedules are sorted descending, so an unrankable score sorts last.
+# Returning NaN instead would make the ordering predicate non-transitive --
+# every comparison against NaN is False -- and Timsort's output would not be a
+# sorted permutation, handing the scarce position slot to an arbitrary symbol.
+_UNRANKABLE_SORT_SCORE = -math.inf
+
+
 def _sort_by_buy_score(result: ExecResult) -> float:
     if result.long_score is not None:
-        return result.long_score
-    return 0.0 if result.score is None else result.score
+        return (
+            result.long_score
+            if _is_rankable(result.long_score)
+            else _UNRANKABLE_SORT_SCORE
+        )
+    if not _is_rankable(result.score):
+        return _UNRANKABLE_SORT_SCORE if result.score is not None else 0.0
+    return result.score
 
 
 def _sort_by_sell_score(result: ExecResult) -> float:
     if result.short_score is not None:
-        return -result.short_score
-    return 0.0 if result.score is None else result.score
+        return (
+            -result.short_score
+            if _is_rankable(result.short_score)
+            else _UNRANKABLE_SORT_SCORE
+        )
+    if not _is_rankable(result.score):
+        return _UNRANKABLE_SORT_SCORE if result.score is not None else 0.0
+    return result.score
 
 
 def _is_persistent_limit(pending: PendingOrder) -> bool:
@@ -298,7 +317,6 @@ def _reset_rotation_orders(active_ctxs: Mapping[str, ExecContext]) -> None:
         ctx.sell_shares = None
         ctx.sell_limit_price = None
         ctx.sell_timeout_bars = None
-        ctx.hold_bars = None
         ctx._cover = False
         ctx._exiting_pos = False
         # The discarded order never reaches to_result, so the stop removal it
@@ -321,7 +339,19 @@ def _clear_unused_rotation_signals(
         if ctx.sell_shares is None:
             ctx.sell_fill_price = None
         if ctx.buy_shares is not None or ctx.sell_shares is not None:
+            if ctx._exiting_pos:
+                # A rotation exit sets sell_shares (long) or buy_shares
+                # (short), and _get_stops reads the position type off whichever
+                # is set, so a surviving hold_bars would arm a bar stop on the
+                # opposite side of the position being closed.
+                ctx.hold_bars = None
             continue
+        # Cleared alongside the stops rather than in _reset_rotation_orders:
+        # hold_bars is a stop, and rotation's contract is that stops set during
+        # an execution are kept and applied to the orders it goes on to place.
+        # to_result rejects hold_bars without an order, so it still has to go
+        # for a symbol rotation left untraded.
+        ctx.hold_bars = None
         ctx.stop_loss = None
         ctx.stop_loss_pct = None
         ctx.stop_loss_limit = None
@@ -352,6 +382,23 @@ def _rotation_ranks(
     if dir == "long":
         return _rank_by_score(scores)
     return _rank_by_short_score(scores)
+
+
+def _pending_order_priority(pending: PendingOrder) -> tuple[int, int]:
+    """Orders retries cover, then sell, then buy -- as the bar loop does.
+
+    The scheduled path places covers before sells before buys so that capital
+    and position slots an exit frees are available to entries on the same bar.
+    Orders filled from this loop -- persistent limit retries, and orders whose
+    execution bar fell in a later walkforward window -- have to observe the
+    same precedence or a boundary bar silently inverts it. The id breaks ties
+    so the order is stable.
+    """
+    if pending.type == "buy":
+        rank = 0 if pending.exit_pos_type == "short" else 2
+    else:
+        rank = 1
+    return rank, pending.id
 
 
 def _has_pending_order(
@@ -402,6 +449,31 @@ def _rotation_exits(
     return exiting
 
 
+def _pending_entry_symbols(
+    pending_order_scope: Optional[PendingOrderScope],
+    portfolio: Portfolio,
+    entry_order_type: Literal["buy", "sell"],
+) -> set[str]:
+    """Returns symbols with an in-flight entry order of ``entry_order_type``.
+
+    Read from the scope rather than from ``active_ctxs`` so that a symbol with
+    no bar on this date still holds its slot. Counting only symbols that
+    happen to trade today understates the in-flight total, and the surplus
+    entry rotation then issues is discarded by the position limit inside
+    :meth:`Portfolio._long` with no order recorded anywhere.
+    """
+    if pending_order_scope is None:
+        return set()
+    return {
+        order.symbol
+        for order in pending_order_scope.orders()
+        if order.type == entry_order_type
+        and order.exit_pos_type is None
+        and order.symbol not in portfolio.long_positions
+        and order.symbol not in portfolio.short_positions
+    }
+
+
 def _rotation_candidates(
     active_ctxs: Mapping[str, ExecContext],
     portfolio: Portfolio,
@@ -410,6 +482,7 @@ def _rotation_candidates(
     max_positions: int,
     exiting: int,
     dir: Literal["long", "short"],
+    pending_order_scope: Optional[PendingOrderScope] = None,
 ) -> list[str]:
     """Returns the top-ranked symbols to enter, limited to free position slots.
 
@@ -422,12 +495,14 @@ def _rotation_candidates(
     else:
         held = portfolio.short_positions
         entry_order_type = "sell"
-    pending = 0
+    pending_syms = _pending_entry_symbols(
+        pending_order_scope, portfolio, entry_order_type
+    )
     eligible: list[str] = []
     for sym, ctx in active_ctxs.items():
         if sym in portfolio.long_positions or sym in portfolio.short_positions:
             continue
-        if _has_pending_order(ctx, entry_order_type):
+        if sym in pending_syms or _has_pending_order(ctx, entry_order_type):
             # The entry is already in flight and holds its slot. Re-issuing it
             # would stack a second order and overshoot the target allocation.
             #
@@ -435,13 +510,13 @@ def _rotation_candidates(
             # even if its rank has since dropped out of the hold band, so
             # skipping it here would hand its slot to another symbol and let
             # the position limit silently discard one of the two.
-            pending += 1
+            pending_syms.add(sym)
             continue
         rank = ranks.get(sym)
         if rank is None or rank > worst_rank_held:
             continue
         eligible.append(sym)
-    free = max_positions - (len(held) - exiting) - pending
+    free = max_positions - (len(held) - exiting) - len(pending_syms)
     if free <= 0:
         return []
     eligible.sort(key=lambda sym: ranks[sym])
@@ -476,6 +551,7 @@ def _apply_worst_rank_held(
     active_ctxs: Mapping[str, ExecContext],
     portfolio: Portfolio,
     settings: BacktestSettings,
+    pending_order_scope: Optional[PendingOrderScope] = None,
 ) -> tuple[dict[str, int], dict[str, int]]:
     worst_rank_held = settings.worst_rank_held
     if worst_rank_held is None:
@@ -499,6 +575,7 @@ def _apply_worst_rank_held(
                 active_ctxs, portfolio, long_ranks, worst_rank_held, "long"
             ),
             "long",
+            pending_order_scope,
         )
     if settings.max_short_positions is not None:
         short_ranks = _rotation_ranks(active_ctxs, "short")
@@ -512,6 +589,7 @@ def _apply_worst_rank_held(
                 active_ctxs, portfolio, short_ranks, worst_rank_held, "short"
             ),
             "short",
+            pending_order_scope,
         )
     long_cands, short_cands = _resolve_rotation_overlap(
         long_cands, short_cands, long_ranks, short_ranks
@@ -620,6 +698,7 @@ class BacktestMixin:
         test_col_scope: Optional[ColumnScope] = None,
         run_hyperparams: Optional[dict[str, Any]] = None,
         pending_order_scope: Optional[PendingOrderScope] = None,
+        master_col_scope: Optional[ColumnScope] = None,
     ) -> dict[str, pd.DataFrame]:
         r"""Backtests a ``set`` of :class:`.Execution`\ s that implement
         trading logic.
@@ -878,7 +957,10 @@ class BacktestMixin:
             if backtest_settings.worst_rank_held is not None:
                 _reset_rotation_orders(active_ctxs)
                 long_ranks, short_ranks = _apply_worst_rank_held(
-                    active_ctxs, portfolio, backtest_settings
+                    active_ctxs,
+                    portfolio,
+                    backtest_settings,
+                    pending_order_scope,
                 )
                 if rotation_sizer is not None and active_ctxs:
                     rotation_sizer(
@@ -895,9 +977,10 @@ class BacktestMixin:
                 if (
                     slippage_model
                     and slippage_model.uses_signal_slippage
-                    # An exit is for the whole position, so shrinking it would
-                    # leave an unintended remainder behind -- and one whose
-                    # stops sell_all_shares() has already removed.
+                    # An exit is for the whole position, so shrinking it here
+                    # would leave an unintended remainder behind. The fill-time
+                    # clamp cannot recover the difference: it only ever reduces
+                    # the order further.
                     and not ctx._exiting_pos
                     and (ctx.buy_shares or ctx.sell_shares)
                 ):
@@ -921,6 +1004,7 @@ class BacktestMixin:
                     sched=cover_sched,
                     col_scope=col_scope,
                     pending_order_scope=pending_order_scope,
+                    master_col_scope=master_col_scope,
                 )
             while buy_results:
                 self._schedule_order(
@@ -931,6 +1015,7 @@ class BacktestMixin:
                     sched=buy_sched,
                     col_scope=col_scope,
                     pending_order_scope=pending_order_scope,
+                    master_col_scope=master_col_scope,
                 )
             while sell_results:
                 self._schedule_order(
@@ -941,6 +1026,7 @@ class BacktestMixin:
                     sched=sell_sched,
                     col_scope=col_scope,
                     pending_order_scope=pending_order_scope,
+                    master_col_scope=master_col_scope,
                 )
             while exit_ctxs:
                 self._exit_position(
@@ -955,7 +1041,7 @@ class BacktestMixin:
                     sym_end_index=sym_end_index,
                     slippage_model=slippage_model,
                 )
-            portfolio.incr_bars()
+            portfolio.incr_bars(date, price_scope)
             if i % 10 == 0 or i == len(test_dates) - 1:
                 logger.backtest_executions_loading(i + 1)
         return (
@@ -1014,14 +1100,28 @@ class BacktestMixin:
         sched: Mapping[np.datetime64, list[ExecResult]],
         col_scope: ColumnScope,
         pending_order_scope: PendingOrderScope,
+        master_col_scope: Optional[ColumnScope] = None,
     ):
         date_loc = sym_end_index[result.symbol] - 1
         dates = col_scope.fetch(result.symbol, DataCol.DATE.value)
         if dates is None:
             raise ValueError("Dates not found.")
         logger = StaticScope.instance().logger
+        date = None
+        in_window = False
         if date_loc + delay < len(dates):
             date = dates[date_loc + delay]
+            in_window = True
+        elif master_col_scope is not None:
+            # The delayed bar lies past this window's test range. Resolving it
+            # against the whole dataset is what keeps a signal on a window's
+            # final bar tradeable: the bar it would execute on is the next
+            # window's first test bar, which the run does reach. Dropping the
+            # order here loses exactly ``windows - 1`` orders per symbol.
+            date = self._next_master_date(
+                master_col_scope, result.symbol, dates[date_loc], delay
+            )
+        if date is not None:
             order_type: Literal["buy", "sell"]
             if result.buy_shares is not None:
                 order_type = "buy"
@@ -1055,11 +1155,39 @@ class BacktestMixin:
                 exec_bar=exec_bar,
                 timeout_bars=timeout_bars,
                 stops=stops,
+                exit_pos_type=result.exit_pos_type,
             )
-            sched[date].append(result)
+            if in_window:
+                sched[date].append(result)
+            # Else the order executes in a later window, whose bar loop has no
+            # entry in this window's schedule to place it from. It stays in the
+            # shared PendingOrderScope, and _process_persistent_orders adopts
+            # it on its execution date.
             logger.debug_schedule_order(date, result)
         else:
             logger.debug_unscheduled_order(result)
+
+    @staticmethod
+    def _next_master_date(
+        master_col_scope: ColumnScope,
+        symbol: str,
+        curr_date: np.datetime64,
+        delay: int,
+    ) -> Optional[np.datetime64]:
+        """Returns ``symbol``'s bar ``delay`` bars after ``curr_date``.
+
+        ``None`` when the dataset genuinely ends before then, which is the only
+        case in which an order should be discarded.
+        """
+        master_dates = master_col_scope.fetch(symbol, DataCol.DATE.value)
+        if master_dates is None or not len(master_dates):
+            return None
+        loc = int(np.searchsorted(master_dates, curr_date))
+        if loc >= len(master_dates) or master_dates[loc] != curr_date:
+            return None
+        if loc + delay >= len(master_dates):
+            return None
+        return master_dates[loc + delay]
 
     def _place_buy_orders(
         self,
@@ -1087,6 +1215,7 @@ class BacktestMixin:
             pending = pending_order_scope.get(result.pending_order_id)
             if pending is None:
                 continue
+            pending_order_scope.mark_attempted(pending.id)
             order, shares, fill_price = self._attempt_pending_order(
                 pending=pending,
                 date=date,
@@ -1144,6 +1273,7 @@ class BacktestMixin:
             pending = pending_order_scope.get(result.pending_order_id)
             if pending is None:
                 continue
+            pending_order_scope.mark_attempted(pending.id)
             order, shares, fill_price = self._attempt_pending_order(
                 pending=pending,
                 date=date,
@@ -1190,30 +1320,44 @@ class BacktestMixin:
         if not pending_order_scope.has_orders():
             return
         logger = StaticScope.instance().logger
-        for pending in list(pending_order_scope.orders()):
-            if pending.exec_date >= date:
+        for pending in sorted(
+            pending_order_scope.orders(), key=_pending_order_priority
+        ):
+            if pending.exec_date > date:
                 continue
-            if pending.timeout_bars is None:
+            first_attempt = not pending_order_scope.was_attempted(pending.id)
+            if pending.exec_date == date and not first_attempt:
+                # The scheduled path already made this bar's attempt.
                 continue
             if not price_scope.has_bar_on(pending.symbol, date):
                 # The symbol has no bar on this date, so there is no price to
-                # fill against. Retrying here would fill at the symbol's last
-                # bar, which is an earlier date than the fill is recorded on.
+                # fill against -- and no bar of its own for timeout_bars to
+                # count. Retrying here would fill at the symbol's last bar,
+                # which is an earlier date than the fill is recorded on, and
+                # ageing here would count calendar bars instead of the
+                # symbol's, expiring a 1-in-3 symbol's order three times early.
+                # A symbol a SymbolSelector drops does not age indefinitely
+                # either: _liquidate_dropped_symbols cancels its orders at the
+                # window boundary.
                 continue
-            # Counted on the scope, not derived from sym_end_index: the scope
-            # is owned by the walkforward and outlives a window, while
-            # sym_end_index restarts at each one. Counted before the check,
-            # because this loop first sees an order on the bar *after* the
-            # scheduled path made its initial attempt at exec_bar.
-            pending_order_scope.advance_retry_bars(pending.id)
-            bars_since_attempt = pending_order_scope.retry_bars(pending.id)
-            if (
-                pending.timeout_bars >= 0
-                and bars_since_attempt > pending.timeout_bars
-            ):
-                pending_order_scope.remove(pending.id)
-                logger.debug_timeout_order(date=date, pending_order=pending)
-                continue
+            if not first_attempt:
+                if pending.timeout_bars is None:
+                    continue
+                # Counted on the scope, not derived from sym_end_index: the
+                # scope is owned by the walkforward and outlives a window,
+                # while sym_end_index restarts at each one.
+                pending_order_scope.advance_retry_bars(pending.id)
+                bars_since_attempt = pending_order_scope.retry_bars(pending.id)
+                if (
+                    pending.timeout_bars >= 0
+                    and bars_since_attempt > pending.timeout_bars
+                ):
+                    pending_order_scope.remove(pending.id)
+                    logger.debug_timeout_order(
+                        date=date, pending_order=pending
+                    )
+                    continue
+            pending_order_scope.mark_attempted(pending.id)
             order, shares, fill_price = self._attempt_pending_order(
                 pending=pending,
                 date=date,
@@ -1259,7 +1403,12 @@ class BacktestMixin:
                         fill_price=fill_price,
                         limit_price=pending.limit_price,
                     )
-            if order is not None:
+            # Same rule as the two scheduled paths: only a persistent limit
+            # order survives an unfilled attempt. An adopted one-shot order
+            # left in the scope can never be retried -- the branch above needs
+            # timeout_bars -- so it would linger for the whole run and hold a
+            # rotation slot through _pending_entry_symbols.
+            if order is not None or not _is_persistent_limit(pending):
                 pending_order_scope.remove(pending.id)
 
     def _attempt_pending_order(
@@ -1276,6 +1425,35 @@ class BacktestMixin:
     ) -> tuple[Optional[Order], Decimal, Decimal]:
         shares = self._get_shares(pending.shares, enable_fractional_shares)
         fill_price = price_scope.fetch(pending.symbol, pending.fill_price)
+        try:
+            fill_price_f = float(fill_price)
+        except (TypeError, ValueError):  # pragma: no cover - defensive
+            fill_price_f = float("nan")
+        if not math.isfinite(fill_price_f):
+            # A bar that cannot be priced -- a halt, a vendor gap -- cannot
+            # fill an order. Reported as unfilled: a persistent limit order
+            # retries on the next priceable bar, a one-shot order is dropped
+            # by its caller's removal rule. Letting the NaN through instead
+            # aborted the run from Decimal comparisons deep in the portfolio.
+            return None, shares, fill_price
+        if pending.exit_pos_type is not None:
+            # An exit can only close what is still held. Clamping here is what
+            # lets the position keep its stops between the signal and the fill:
+            # if a stop fires first there is nothing left to sell, so the order
+            # cannot flip the position to the opposite side. A partial fill --
+            # a participation cap, say -- leaves the remainder held, and the
+            # entries it did not consume keep the stops protecting them.
+            positions = (
+                portfolio.long_positions
+                if pending.exit_pos_type == "long"
+                else portfolio.short_positions
+            )
+            exit_pos = positions.get(pending.symbol)
+            held = Decimal() if exit_pos is None else exit_pos.shares
+            if shares > held:
+                shares = held
+            if shares <= 0:
+                return None, Decimal(), fill_price
         if slippage_model is not None:
             # Exact type check, not isinstance: a subclass may override
             # apply_at_fill and must not be routed to the fast path.
@@ -1433,6 +1611,11 @@ class WalkforwardMixin:
         """
         if train_size == 0 or train_size == 1:
             window_length = int(len(window_dates) / windows)
+            if window_length == 0:
+                # Otherwise ``start`` reaches len(window_dates) and the date
+                # lookup below raises a bare IndexError rather than naming the
+                # parameters that cannot be satisfied.
+                raise ValueError(error_msg)
             offset = len(window_dates) - window_length * windows
             for i in range(windows):
                 start = offset + i * window_length
@@ -1499,6 +1682,11 @@ class WalkforwardMixin:
                     break
                 train_length += train_incr
                 test_length += test_incr
+            # ``and``, not ``or``: a train-only window is a supported shape --
+            # train_size=1 produces nothing else -- so test_length flooring to
+            # 0 is not on its own an invalid split. What it must not do is pass
+            # silently all the way to a zero-bar result, which _run_walkforward
+            # warns about once it knows no window had test data.
             if train_length == 0 and test_length == 0:
                 raise ValueError(error_msg)
             window_idx = []
@@ -1745,6 +1933,10 @@ class Strategy(
                 DeprecationWarning,
                 stacklevel=2,
             )
+        if config.fee_amount is not None and config.fee_amount < 0:
+            # A negative fee flows straight into the fill accounting and
+            # CREDITS the account on every order instead of debiting it.
+            raise ValueError("fee_amount cannot be negative.")
         if config.buy_delay <= 0:
             raise ValueError("buy_delay must be greater than 0.")
         if config.sell_delay <= 0:
@@ -2521,6 +2713,7 @@ class Strategy(
         master_store: Optional[SymbolArrayStore] = None,
         slippage_model: Optional[SlippageModel] = None,
         indicator_data: Optional[Mapping[IndicatorSymbol, pd.Series]] = None,
+        pending_order_scope: Optional[PendingOrderScope] = None,
     ) -> None:
         """Closes positions in symbols the new window no longer selects.
 
@@ -2530,8 +2723,24 @@ class Strategy(
         would strand the capital for the rest of the run and record no
         :class:`pybroker.portfolio.Trade`, while exiting at its last bar in the
         whole dataset would price the exit off a future bar.
+
+        Any :class:`pybroker.scope.PendingOrder`\\ s for a dropped symbol are
+        cancelled. The scope is owned by the walkforward and outlives a window,
+        so an order left behind here would keep being retried for a symbol the
+        strategy no longer selects, and would fill against a position that was
+        just liquidated -- opening one in the opposite direction. No execution
+        function runs for a dropped symbol, so there is no way for a caller to
+        cancel it either.
         """
         held = set(portfolio.long_positions) | set(portfolio.short_positions)
+        if pending_order_scope is not None:
+            stale = {
+                order.symbol
+                for order in pending_order_scope.orders()
+                if order.symbol not in selected_syms
+            }
+            for sym in sorted(stale):
+                pending_order_scope.remove_all(sym)
         dropped = frozenset(held - selected_syms)
         if not dropped:
             return
@@ -2684,6 +2893,10 @@ class Strategy(
         # dropped every order still pending at the boundary, including the
         # timeout_bars=-1 orders documented to persist indefinitely.
         pending_order_scope = PendingOrderScope()
+        # Spans the whole dataset, so an order delayed past the end of a window
+        # resolves to the bar it really executes on rather than being dropped.
+        master_col_scope = ColumnScope(master_store)
+        tested_windows = 0
         for train_rows, test_rows in self.walkforward_split(
             df=df,
             windows=windows,
@@ -2727,6 +2940,7 @@ class Strategy(
                 master_store=master_store,
                 slippage_model=self._slippage_model,
                 indicator_data=indicator_data,
+                pending_order_scope=pending_order_scope,
             )
             train_store, test_store, history_store = self._build_window_stores(
                 master_store=master_store,
@@ -2808,7 +3022,10 @@ class Strategy(
                     test_store=test_store,
                 )
             if test_data.empty:
-                return signals
+                # ``continue``, not ``return``: one window with no test bars
+                # must not truncate the windows after it.
+                continue
+            tested_windows += 1
             if history_store is None:
                 history_store = test_store
             history_col_scope = ColumnScope(history_store)
@@ -2838,9 +3055,21 @@ class Strategy(
                 test_col_scope=test_col_scope,
                 run_hyperparams=run_hyperparams,
                 pending_order_scope=pending_order_scope,
+                master_col_scope=master_col_scope,
             )
             for sym, signals_df in split_signals.items():
                 signal_frames[sym].append(signals_df)
+        if not tested_windows and not train_only:
+            # Every window split to an empty test range, so nothing was ever
+            # backtested. Without this the run reports a clean zero-PnL result
+            # -- initial_market_value of 0 against a funded portfolio -- and
+            # looks like a strategy that simply never traded.
+            warnings.warn(
+                f"No test data in any of the {windows} walkforward windows "
+                f"(train_size={train_size}, lookahead={lookahead}). Nothing "
+                "was backtested. Lower train_size or use fewer windows.",
+                UserWarning,
+            )
         for sym, frames in signal_frames.items():
             signals[sym] = (
                 frames[0]
@@ -3069,7 +3298,43 @@ class Strategy(
                 df = df[df[DataCol.SYMBOL.value].isin(unique_syms)]
         if df.empty:
             raise ValueError("DataSource is empty.")
+        self._reject_duplicate_bars(df)
         return _ensure_range_index(df)
+
+    @staticmethod
+    def _reject_duplicate_bars(df: pd.DataFrame) -> None:
+        """Raises when a symbol has more than one row on the same date.
+
+        One row per symbol per date is an input invariant, not a preference.
+        The columnar store, the indicator series and an interval's ``completed``
+        map each assume it independently and resolve a duplicate differently:
+        the store is sliced by a merge join that emits one row per date, while
+        ``IndicatorScope`` masks with ``np.isin`` and keeps both. Whichever way
+        the slice behaves, the bar counter -- which advances once per *date* --
+        ends up pointing at the wrong row in one of them from the duplicate
+        onward, so prices and indicators silently drift a bar apart.
+
+        There is no reconciling behavior to pick, so this fails loudly rather
+        than producing a result that is wrong in a way nothing downstream can
+        detect.
+        """
+        sym_col = DataCol.SYMBOL.value
+        date_col = DataCol.DATE.value
+        if sym_col not in df.columns or date_col not in df.columns:
+            return
+        dupes = df.duplicated(subset=[sym_col, date_col])
+        if not dupes.any():
+            return
+        symbols = sorted(set(df.loc[dupes, sym_col].astype(str)))
+        shown = ", ".join(symbols[:5])
+        if len(symbols) > 5:
+            shown += f", ... ({len(symbols)} symbols)"
+        raise ValueError(
+            f"Data contains {int(dupes.sum())} duplicate (symbol, date) rows "
+            f"for: {shown}. Bar data and indicators are indexed by the same "
+            "bar counter, so duplicates put them out of step. Drop them with "
+            "df.drop_duplicates(['symbol', 'date'])."
+        )
 
     def _to_test_result(
         self,

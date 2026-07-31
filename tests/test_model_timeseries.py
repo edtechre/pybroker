@@ -388,6 +388,117 @@ class TestIntervalPerBar:
             final[-1], np.arange(1.0, len(final[-1]) + 1)
         )
 
+    def test_interval_lag_warmup_preserves_prediction_shape(self, df):
+        """Warmup padding must keep the estimator's own output shape.
+
+        A classifier's predict_proba is (n_rows, n_classes). Padding with a
+        1-D float array raised on the concatenate, and coercing the dtype
+        broke non-float outputs -- so lags silently worked for regressors and
+        crashed for classifiers.
+        """
+
+        def predict_fn(_m, data):
+            # Two-column probabilities, one row per input row.
+            return np.column_stack((np.zeros(len(data)), np.ones(len(data))))
+
+        m = model(
+            "tf_proba",
+            lambda s, t, u: object(),
+            predict_fn=predict_fn,
+            lags=3,
+            lag_cols=["close"],
+        )
+        strategy = Strategy(df, df["date"].iloc[0], df["date"].iloc[-1])
+        shapes = []
+
+        def exec_fn(ctx):
+            preds = ctx.interval("weekly").preds("tf_proba")
+            if len(preds):
+                shapes.append(np.asarray(preds).shape)
+
+        strategy.add_execution(
+            exec_fn, ["SPY"], models=m, intervals=["weekly"]
+        )
+        strategy.walkforward(windows=1, train_size=0.5, timeframe="1d")
+        assert shapes
+        # Two columns survive, and the warmup rows are NaN in both.
+        longest = max(shapes, key=lambda sh: sh[0])
+        assert longest[1] == 2
+
+    def test_interval_lag_warmup_rejects_wrong_length_predictions(self, df):
+        """A wrong-length result must raise, not silently misalign.
+
+        pred[: idx + 1] indexes by compressed bar, so quietly padding a
+        short result shifts every prediction for the rest of the run.
+        """
+
+        def predict_fn(_m, data):
+            return np.zeros(max(len(data) - 1, 1))
+
+        m = model(
+            "tf_shortpred",
+            lambda s, t, u: object(),
+            predict_fn=predict_fn,
+            lags=3,
+            lag_cols=["close"],
+        )
+        strategy = Strategy(df, df["date"].iloc[0], df["date"].iloc[-1])
+
+        def exec_fn(ctx):
+            ctx.interval("weekly").preds("tf_shortpred")
+
+        strategy.add_execution(
+            exec_fn, ["SPY"], models=m, intervals=["weekly"]
+        )
+        with pytest.raises(ValueError, match="predictions for"):
+            strategy.walkforward(windows=1, train_size=0.5, timeframe="1d")
+
+    @pytest.mark.parametrize("interval", ["weekly", 5])
+    def test_interval_lag_warmup_rows_are_not_predicted(self, df, interval):
+        """Warmup rows must not reach the estimator.
+
+        Compressed model input starts at compressed row 0 with no earlier
+        history to draw lags from, so rows 0..lags-1 have all-NaN lag
+        features. Training drops them; prediction did not, and a strict
+        estimator raises on the first test bar while a NaN-tolerant one
+        quietly predicts from features that do not exist yet.
+        """
+        seen_matrices = []
+
+        def predict_fn(_m, data):
+            matrix = feature_matrix_from_model_input(data)
+            assert matrix is not None
+            seen_matrices.append(matrix)
+            if not np.isfinite(matrix).all():
+                raise ValueError("Input X contains NaN")
+            return np.zeros(len(data))
+
+        m = model(
+            "tf_lag_warmup",
+            lambda s, t, u: object(),
+            predict_fn=predict_fn,
+            lags=3,
+            lag_cols=["close"],
+        )
+        strategy = Strategy(df, df["date"].iloc[0], df["date"].iloc[-1])
+        preds_seen = []
+
+        def exec_fn(ctx):
+            preds = ctx.interval(interval).preds("tf_lag_warmup")
+            if len(preds):
+                preds_seen.append(np.asarray(preds))
+
+        strategy.add_execution(
+            exec_fn, ["SPY"], models=m, intervals=[interval]
+        )
+        strategy.walkforward(windows=1, train_size=0.5, timeframe="1d")
+        assert seen_matrices
+        assert preds_seen
+        # The warmup bars are reported as NaN rather than fabricated.
+        longest = max(preds_seen, key=len)
+        assert np.isnan(longest[:3]).all()
+        assert np.isfinite(longest[3:]).all()
+
     @pytest.mark.parametrize("interval", ["weekly", 5])
     def test_lagged_model_on_interval(self, df, interval):
         # The interval lag cache is keyed by the *string* form of the
