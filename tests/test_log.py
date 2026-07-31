@@ -122,3 +122,38 @@ class TestLogger:
         assert "2020-01-01 00:00:00 to 2020-12-31 00:00:00" in message
         assert "timeframe: 1d" in message
         assert "['AAPL', 'MSFT']" in message
+
+
+def test_info_walkforward_on_days_prints_day_names(scope, caplog):
+    """The day names, not '<map object at 0x...>'."""
+    import logging
+
+    from pybroker.common import Day
+
+    logger = scope.logger
+    with caplog.at_level(logging.INFO, logger="pybroker"):
+        logger.info_walkforward_on_days((Day.MON.value, Day.FRI.value))
+    assert any(
+        "MON" in r.message and "FRI" in r.message for r in caplog.records
+    )
+    assert not any("map object" in r.message for r in caplog.records)
+
+
+def test_disabled_info_methods_do_not_consume_iterables(scope):
+    """Formatting is gated like debug_*: sorting the whole symbol universe
+    per call is wasted work when the output is discarded -- and a consumed
+    one-shot iterable is a silent behavior change besides."""
+    logger = scope.logger
+    logger.disable()
+    try:
+        consumed = []
+
+        def gen():
+            consumed.append(True)
+            yield "SPY"
+
+        logger.info_indicator_data_start(gen())
+        logger.info_train_split_start(gen())
+        assert not consumed
+    finally:
+        logger.enable()

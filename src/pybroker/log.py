@@ -95,6 +95,11 @@ class Logger:
         end_date: datetime.datetime,
         timeframe: str,
     ):
+        if not self._info_enabled():
+            # Gated before formatting, like the debug_* methods: sorting the
+            # whole symbol universe per call is wasted work when the output
+            # is discarded.
+            return
         self._info(
             "Loading:\n"
             f"{start_date} to {end_date}\n"
@@ -112,6 +117,8 @@ class Logger:
         end_date: datetime.datetime,
         timeframe: str,
     ):
+        if not self._info_enabled():
+            return
         self._info(
             "Loaded:\n"
             f"namespace={self._scope.data_source_cache_ns}\n"
@@ -147,12 +154,16 @@ class Logger:
         self._start_progress_bar("Computing indicators...", len(ind_syms))
 
     def info_indicator_data_start(self, ind_syms: Iterable[IndicatorSymbol]):
+        if not self._info_enabled():
+            return
         self._info(f"Indicators: {sorted(ind_syms)}")
 
     def loaded_indicator_data(self):
         self._out("Loaded cached indicator data.\n")
 
     def info_loaded_indicator_data(self, ind_syms: Iterable[IndicatorSymbol]):
+        if not self._info_enabled():
+            return
         self._info(
             f"Loaded:\n"
             f"namespace={self._scope.indicator_cache_ns}\n"
@@ -182,12 +193,16 @@ class Logger:
         self._train_split_start_time = time.time()
 
     def info_train_split_start(self, model_syms: Iterable[ModelSymbol]):
+        if not self._info_enabled():
+            return
         self._info(f"Models: {sorted(model_syms)}")
 
     def loaded_models(self):
         self._out("Loaded cached models.\n")
 
     def info_loaded_models(self, model_syms: Iterable[ModelSymbol]):
+        if not self._info_enabled():
+            return
         self._info(
             f"Loaded:\n"
             f"namespace={self._scope.model_cache_ns}\n"
@@ -248,7 +263,9 @@ class Logger:
         self._info(f"Backtest between times: {between_time}")
 
     def info_walkforward_on_days(self, days: tuple[int]):
-        self._info(f"Backtest on days: {map(lambda d: Day(d).name, days)}")
+        # Materialized: interpolating the map object prints
+        # "<map object at 0x...>" instead of the day names.
+        self._info(f"Backtest on days: {[Day(d).name for d in days]}")
 
     def walkforward_completed(self):
         if self._walkforward_start_time is None:
@@ -467,6 +484,20 @@ class Logger:
         if not self._debug_enabled():
             return
         self._debug(f"Unscheduled order:\n{exec_result}")
+
+    def debug_position_limit_reached(
+        self,
+        symbol: str,
+        pos_type: str,
+        held: int,
+        max_positions: int,
+    ):
+        if not self._debug_enabled():
+            return
+        self._debug(
+            f"Discarded {pos_type} order for {symbol}: holding {held} of "
+            f"max {max_positions} {pos_type} positions."
+        )
 
     def debug_enable_data_source_cache(self, ns: str, cache_dir: str):
         self._debug(
