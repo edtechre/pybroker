@@ -237,7 +237,11 @@ class DataSource(ABC, DataSourceCacheMixin):
         ):
             self._logger.info_invalidate_data_source_cache()
             self._scope.data_source_cache.clear()
-            return self.query(symbols, start_date, end_date, timeframe)
+            # ``adjust`` rides along: dropping it here re-fetched UNADJUSTED
+            # data for a request that asked for adjusted prices, and cached
+            # it under the adjust=None key -- silently, since the frame is
+            # otherwise well-formed.
+            return self.query(symbols, start_date, end_date, timeframe, adjust)
         verify_data_source_columns(df)
         self.set_cached(timeframe, start_date, end_date, adjust, df)
         df = pd.concat((cached_df, df), ignore_index=True)

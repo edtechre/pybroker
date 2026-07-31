@@ -19,6 +19,7 @@ from pybroker.common import to_seconds
 from pybroker.data import (
     Alpaca,
     AlpacaCrypto,
+    DataSource,
     DataSourceCacheMixin,
     YFinance,
 )
@@ -722,34 +723,16 @@ class TestAKShare:
         }
 
     @pytest.mark.usefixtures("setup_ds_cache")
-    def test_query_when_unsupported_timeframe_then_empty(self):
-        symbols = ["A"]
+    def test_query_when_unsupported_timeframe_then_raises(self):
+        """An hourly backtest against a daily-only source is a
+        misconfiguration, not an empty market -- silently returning zero bars
+        produced a clean empty backtest with no diagnostic, where YQuery
+        raises for the identical condition."""
         ak = AKShare()
-        expected_df = pd.DataFrame(
-            {
-                "日期": [END_DATE],
-                "开盘": [1],
-                "收盘": [2],
-                "最高": [3],
-                "最低": [4],
-                "成交量": [5],
-                "symbol": symbols,
-            }
-        )
-        with mock.patch("akshare.stock_zh_a_hist", return_value=expected_df):
-            df = ak.query(symbols, START_DATE, END_DATE, "2d")
-        assert df.empty
-        assert set(df.columns) == set(
-            (
-                "date",
-                "open",
-                "high",
-                "low",
-                "close",
-                "volume",
-                "symbol",
-            )
-        )
+        with mock.patch("akshare.stock_zh_a_hist") as fetch:
+            with pytest.raises(ValueError, match="Unsupported timeframe"):
+                ak.query(["A"], START_DATE, END_DATE, "2d")
+        assert not fetch.called
 
     @pytest.mark.usefixtures("setup_ds_cache")
     def test_query_when_akshare_not_installed_then_raises(self):
@@ -852,3 +835,152 @@ class TestYQuery:
                 Ticker, "history", return_value=expected_df
             ):
                 yq.query(symbols, START_DATE, END_DATE, "90m")
+
+
+class TestExtDataEdgeCases:
+    """Empty results and mixed schemas from the extension data sources."""
+
+    @pytest.mark.usefixtures("setup_enabled_ds_cache")
+    def test_akshare_empty_result_keeps_canonical_columns(self):
+        """A legitimately empty response must not leak un-renamed columns.
+
+        The early empty-return fired before the rename, so an empty EM frame
+        escaped with 日期/开盘/... still attached and failed the
+        required-column check downstream.
+        """
+        empty_em = pd.DataFrame(
+            columns=["日期", "开盘", "收盘", "最高", "最低", "成交量"]
+        )
+        ak = AKShare()
+        with mock.patch("akshare.stock_zh_a_hist", return_value=empty_em):
+            df = ak.query(["A"], START_DATE, END_DATE, "1d")
+        assert df.empty
+        assert {"date", "symbol", "open", "high", "low", "close"} <= set(
+            df.columns
+        )
+
+    @pytest.mark.usefixtures("setup_enabled_ds_cache")
+    def test_akshare_mixed_em_and_tx_schemas_across_symbols(self):
+        """The EM and TX fallback schemas must mix cleanly in one query.
+
+        Renaming the concatenated union mapped 日期 and ``date`` onto the
+        same label, producing duplicate columns and "cannot assemble with
+        duplicate keys" -- on exactly the partial-outage path the TX fallback
+        exists to serve.
+        """
+        em_frame = pd.DataFrame(
+            {
+                "日期": [END_DATE],
+                "开盘": [1.0],
+                "收盘": [2.0],
+                "最高": [3.0],
+                "最低": [0.5],
+                "成交量": [100.0],
+            }
+        )
+        tx_frame = pd.DataFrame(
+            {
+                "date": [END_DATE],
+                "open": [10.0],
+                "close": [20.0],
+                "high": [30.0],
+                "low": [5.0],
+                "amount": [200.0],
+            }
+        )
+
+        def em_fetch(symbol, **_kwargs):
+            if symbol == "000002":
+                raise ConnectionError("EM down for this symbol")
+            return em_frame.copy()
+
+        ak = AKShare()
+        with mock.patch("akshare.stock_zh_a_hist", side_effect=em_fetch):
+            with mock.patch(
+                "akshare.stock_zh_a_hist_tx", return_value=tx_frame.copy()
+            ):
+                df = ak.query(["000001", "000002"], START_DATE, END_DATE)
+        assert len(df) == 2
+        assert set(df["symbol"]) == {"000001", "000002"}
+        # One column per name -- no duplicate labels from the double rename.
+        assert not df.columns.duplicated().any()
+
+    @pytest.mark.usefixtures("setup_enabled_ds_cache")
+    def test_yquery_dict_failure_raises_clear_error(self):
+        """yahooquery returns a dict of error strings when every request
+        fails; reaching for .columns on it raised a bare AttributeError."""
+        yq = YQuery()
+        failure = {"SPY": "Data doesn't exist for startDate=..."}
+        ticker = mock.MagicMock()
+        ticker.history.return_value = failure
+        with mock.patch("yahooquery.Ticker", return_value=ticker):
+            with pytest.raises(ValueError, match="yahooquery returned"):
+                yq.query(["SPY"], START_DATE, END_DATE, "1d")
+
+    @pytest.mark.usefixtures("setup_enabled_ds_cache")
+    def test_yquery_empty_result_keeps_canonical_columns(self):
+        """An empty result must not keep symbol/date as MultiIndex levels."""
+        empty = pd.DataFrame(
+            columns=["open", "high", "low", "close", "volume"],
+            index=pd.MultiIndex.from_arrays(
+                [[], []], names=["symbol", "date"]
+            ),
+        )
+        yq = YQuery()
+        ticker = mock.MagicMock()
+        ticker.history.return_value = empty
+        with mock.patch("yahooquery.Ticker", return_value=ticker):
+            df = yq.query(["SPY"], START_DATE, END_DATE, "1d")
+        assert df.empty
+        assert {"symbol", "date"} <= set(df.columns)
+
+
+@pytest.mark.usefixtures("setup_enabled_ds_cache")
+def test_cache_invalidation_retry_keeps_adjust():
+    """The clear-and-retry must re-fetch with the caller's ``adjust``.
+
+    Dropping it re-fetched UNADJUSTED data for a request that asked for
+    adjusted prices and cached it under the adjust=None key -- silently,
+    since the frame is otherwise well-formed.
+    """
+    fetch_calls = []
+
+    class StubSource(DataSource):
+        def __init__(self):
+            super().__init__()
+            self.extra_col = False
+
+        def _fetch_data(
+            self, symbols, start_date, end_date, timeframe, adjust
+        ):
+            fetch_calls.append((sorted(symbols), adjust))
+            dates = pd.date_range(start_date, periods=3)
+            frames = []
+            for sym in sorted(symbols):
+                df = pd.DataFrame(
+                    {
+                        "symbol": sym,
+                        "date": dates,
+                        "open": 1.0,
+                        "high": 2.0,
+                        "low": 0.5,
+                        # An adjust-honoring source returns different prices.
+                        "close": 100.0 if adjust is not None else 999.0,
+                        "volume": 10.0,
+                    }
+                )
+                if self.extra_col:
+                    df["vwap"] = 1.0
+                frames.append(df)
+            return pd.concat(frames, ignore_index=True)
+
+    source = StubSource()
+    df1 = source.query(["X"], START_DATE, END_DATE, "1d", adjust="all")
+    assert set(df1["close"]) == {100.0}
+    # A column-set change between cached and fresh frames triggers the
+    # clear-and-retry path.
+    source.extra_col = True
+    df2 = source.query(["X", "Z"], START_DATE, END_DATE, "1d", adjust="all")
+    # The retry re-fetched with the caller's adjust, not the default.
+    assert all(adj == "all" for _, adj in fetch_calls), fetch_calls
+    assert set(df2["close"]) == {100.0}

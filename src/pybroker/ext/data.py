@@ -16,6 +16,32 @@ from pybroker.common import DataCol, to_datetime
 from pybroker.data import DataSource
 
 
+_CANONICAL_COLUMNS = (
+    DataCol.DATE.value,
+    DataCol.SYMBOL.value,
+    DataCol.OPEN.value,
+    DataCol.HIGH.value,
+    DataCol.LOW.value,
+    DataCol.CLOSE.value,
+    DataCol.VOLUME.value,
+)
+
+_AKSHARE_COLUMN_MAP = {
+    "日期": DataCol.DATE.value,
+    "开盘": DataCol.OPEN.value,
+    "收盘": DataCol.CLOSE.value,
+    "最高": DataCol.HIGH.value,
+    "最低": DataCol.LOW.value,
+    "成交量": DataCol.VOLUME.value,
+    "date": DataCol.DATE.value,
+    "open": DataCol.OPEN.value,
+    "close": DataCol.CLOSE.value,
+    "high": DataCol.HIGH.value,
+    "low": DataCol.LOW.value,
+    "amount": DataCol.VOLUME.value,
+}
+
+
 def _to_tx_symbol(symbol: str) -> str:
     bare, _, exchange = symbol.partition(".")
     if exchange == "SH" or bare.startswith("6"):
@@ -80,66 +106,44 @@ class AKShare(DataSource):
         end_date_str = to_datetime(end_date).strftime("%Y%m%d")
         symbols_list = list(symbols)
         symbols_simple = [item.split(".")[0] for item in symbols_list]
-        result = pd.DataFrame()
         formatted_tf = self._format_timeframe(timeframe)
-        if formatted_tf in AKShare._tf_to_period:
-            period = AKShare._tf_to_period[formatted_tf]
-            for i in range(len(symbols_list)):
-                temp_df = _fetch_akshare_symbol(
-                    symbol=symbols_list[i],
-                    simple_symbol=symbols_simple[i],
-                    start_date_str=start_date_str,
-                    end_date_str=end_date_str,
-                    period=period,
-                    adjust=adjust if adjust is not None else "",
-                )
-                if not temp_df.columns.empty:
-                    temp_df["symbol"] = symbols_list[i]
-                result = pd.concat([result, temp_df], ignore_index=True)
-        if result.columns.empty:
-            return pd.DataFrame(
-                columns=[
-                    DataCol.SYMBOL.value,
-                    DataCol.DATE.value,
-                    DataCol.OPEN.value,
-                    DataCol.HIGH.value,
-                    DataCol.LOW.value,
-                    DataCol.CLOSE.value,
-                    DataCol.VOLUME.value,
-                ]
+        if formatted_tf not in AKShare._tf_to_period:
+            # Raised rather than silently returning zero bars, matching
+            # YQuery: an hourly backtest against a daily-only source is a
+            # misconfiguration, not an empty market.
+            raise ValueError(
+                f"Unsupported timeframe: '{formatted_tf}'.\n"
+                f"Supported timeframes: {list(AKShare._tf_to_period.keys())}."
             )
-        if result.empty:
-            return result
-        result.rename(
-            columns={
-                "日期": DataCol.DATE.value,
-                "开盘": DataCol.OPEN.value,
-                "收盘": DataCol.CLOSE.value,
-                "最高": DataCol.HIGH.value,
-                "最低": DataCol.LOW.value,
-                "成交量": DataCol.VOLUME.value,
-                "date": DataCol.DATE.value,
-                "open": DataCol.OPEN.value,
-                "close": DataCol.CLOSE.value,
-                "high": DataCol.HIGH.value,
-                "low": DataCol.LOW.value,
-                "amount": DataCol.VOLUME.value,
-            },
-            inplace=True,
-        )
-        result["date"] = pd.to_datetime(result["date"])
-        result = result[
-            [
-                DataCol.DATE.value,
-                DataCol.SYMBOL.value,
-                DataCol.OPEN.value,
-                DataCol.HIGH.value,
-                DataCol.LOW.value,
-                DataCol.CLOSE.value,
-                DataCol.VOLUME.value,
-            ]
-        ]
-        return result
+        period = AKShare._tf_to_period[formatted_tf]
+        frames = []
+        for i in range(len(symbols_list)):
+            temp_df = _fetch_akshare_symbol(
+                symbol=symbols_list[i],
+                simple_symbol=symbols_simple[i],
+                start_date_str=start_date_str,
+                end_date_str=end_date_str,
+                period=period,
+                adjust=adjust if adjust is not None else "",
+            )
+            if temp_df.columns.empty:
+                continue
+            # Renamed per frame, not on the concatenated union: the EM
+            # endpoint returns Chinese column names while the TX fallback
+            # returns English ones, and renaming the union maps 日期 and
+            # ``date`` onto one label -- duplicate columns that raise
+            # "cannot assemble with duplicate keys" whenever the two schemas
+            # mix across symbols in a single query. Renaming each frame also
+            # keeps a legitimately empty response in the canonical schema
+            # instead of leaking un-renamed columns to the caller.
+            temp_df = temp_df.rename(columns=_AKSHARE_COLUMN_MAP)
+            temp_df[DataCol.SYMBOL.value] = symbols_list[i]
+            frames.append(temp_df)
+        if not frames:
+            return pd.DataFrame(columns=_CANONICAL_COLUMNS)
+        result = pd.concat(frames, ignore_index=True)
+        result[DataCol.DATE.value] = pd.to_datetime(result[DataCol.DATE.value])
+        return result[list(_CANONICAL_COLUMNS)]
 
 
 class YQuery(DataSource):
@@ -198,20 +202,16 @@ class YQuery(DataSource):
             interval=self._tf_to_period[timeframe],
             adj_ohlc=adjust,
         )
-        if df.columns.empty:
-            return pd.DataFrame(
-                columns=[
-                    DataCol.SYMBOL.value,
-                    DataCol.DATE.value,
-                    DataCol.OPEN.value,
-                    DataCol.HIGH.value,
-                    DataCol.LOW.value,
-                    DataCol.CLOSE.value,
-                    DataCol.VOLUME.value,
-                ]
-            )
-        if df.empty:
-            return df
+        if not isinstance(df, pd.DataFrame):
+            # yahooquery returns a dict of per-symbol error strings when
+            # every request fails; reaching for .columns on it raised a bare
+            # AttributeError naming nothing.
+            raise ValueError(f"yahooquery returned no data: {df!r}")
+        if df.columns.empty or df.empty:
+            # Returned in the canonical schema: an empty frame that keeps
+            # symbol and date as MultiIndex levels fails the required-column
+            # check downstream.
+            return pd.DataFrame(columns=_CANONICAL_COLUMNS)
         df = df.reset_index()
         df[DataCol.DATE.value] = pd.to_datetime(df[DataCol.DATE.value])
         df = df[
