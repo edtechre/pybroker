@@ -715,61 +715,35 @@ def _study_summary(study: optuna.Study) -> dict[str, Any]:
 
 @dataclass(frozen=True)
 class WindowOptimizeResult:
-    """Per-window walk-forward optimization result."""
+    """Per-window walk-forward optimization result.
+
+    Holds the values a window was tuned to, not a backtest of its own: the
+    single out-of-sample :class:`pybroker.strategy.TestResult` lives on
+    :attr:`OptimizeResult.result`, stitched across every window.
+    """
 
     params: dict[str, Any]
     study: optuna.Study
-    test_result: TestResult
     train_score: float
-    train_pnl: float
     # Symbols each execution id resolved to for this window. Carried back from
     # the study so the final replay reuses the study's selection instead of
     # running the SymbolSelector a second time, which a stateful selector would
     # answer differently. ``None`` when no execution uses a selector.
     execution_symbols: Optional[dict[int, frozenset[str]]] = None
 
-    def to_json(
-        self,
-        *,
-        include: Optional[frozenset[str]] = None,
-        max_rows: Optional[int] = 100,
-        symbols: Optional[frozenset[str]] = None,
-    ) -> dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         """Returns JSON-serializable walk-forward optimization window results."""
-        from pybroker.strategy import _DEFAULT_JSON_INCLUDE
-
-        if include is None:
-            include = _DEFAULT_JSON_INCLUDE
         return _json_safe(
             {
                 "params": self.params,
                 "train_score": self.train_score,
-                "train_pnl": self.train_pnl,
                 "study": _study_summary(self.study),
-                "test_result": self.test_result.to_json(
-                    include=include,
-                    max_rows=max_rows,
-                    symbols=symbols,
-                ),
             }
         )
 
-    def to_json_str(
-        self,
-        *,
-        include: Optional[frozenset[str]] = None,
-        max_rows: Optional[int] = 100,
-        symbols: Optional[frozenset[str]] = None,
-    ) -> str:
+    def to_json_str(self) -> str:
         """Returns strict JSON text from :meth:`to_json`."""
-        return json.dumps(
-            self.to_json(
-                include=include,
-                max_rows=max_rows,
-                symbols=symbols,
-            ),
-            allow_nan=False,
-        )
+        return json.dumps(self.to_json(), allow_nan=False)
 
 
 @dataclass(frozen=True)
@@ -785,15 +759,11 @@ class OptimizeResult:
         result: :class:`pybroker.strategy.TestResult` for the test window. When
             ``windows`` is set, this is a single continuous result stitched from
             every window's test data, with positions and cash carried across
-            window boundaries -- so it is *not* the same as
-            ``windows[-1].test_result``.
+            window boundaries.
         study: :class:`optuna.Study` holding the trials. When ``windows`` is set,
             this is the last window's study; see ``windows`` for the rest.
-        windows: Per-window results, or ``None`` for a single train/test split.
-        walkforward_efficiency: Sum of the windows' out-of-sample profit divided
-            by the sum of their in-sample profit. Above ``1`` means the tuned
-            values held up out of sample. ``None`` for a single split, or when
-            in-sample profit was not positive, which leaves the ratio undefined.
+        windows: Per-window tuning results, or ``None`` for a single train/test
+            split.
     """
 
     best_params: dict[str, Any]
@@ -801,7 +771,6 @@ class OptimizeResult:
     result: TestResult
     study: optuna.Study
     windows: Optional[tuple[WindowOptimizeResult, ...]] = None
-    walkforward_efficiency: Optional[float] = None
 
     def to_json(
         self,
@@ -818,7 +787,6 @@ class OptimizeResult:
         payload: dict[str, Any] = {
             "best_params": self.best_params,
             "best_score": self.best_score,
-            "walkforward_efficiency": self.walkforward_efficiency,
             "study": _study_summary(self.study),
             "result": self.result.to_json(
                 include=include,
@@ -827,14 +795,7 @@ class OptimizeResult:
             ),
         }
         if self.windows is not None:
-            payload["windows"] = [
-                window.to_json(
-                    include=include,
-                    max_rows=max_rows,
-                    symbols=symbols,
-                )
-                for window in self.windows
-            ]
+            payload["windows"] = [window.to_json() for window in self.windows]
         return _json_safe(payload)
 
     def to_json_str(
@@ -2109,44 +2070,10 @@ class OptimizeMixin:
                 best_params = build_run_hyperparams(
                     hyperparams, window_study.best_params
                 )
-                is_result = self._run_optimize_trial(
-                    df=df,
-                    train_rows=train_rows,
-                    run_hyperparams=best_params,
-                    invariant_indicator_data=invariant_data,
-                    window_executions=window_executions,
-                    master_store=master_store,
-                    interval_data=interval_data,
-                    enable_parallel_indicators=enable_parallel_indicators,
-                    warmup=warmup,
-                    pretrained_models=pretrained_models,
-                    exit_dates=train_exit_dates,
-                )
-                test_result = self._run_optimize_test(
-                    df=df,
-                    test_rows=test_rows,
-                    train_rows=train_rows,
-                    run_hyperparams=best_params,
-                    invariant_indicator_data=invariant_data,
-                    window_executions=window_executions,
-                    master_store=master_store,
-                    interval_data=interval_data,
-                    cache_date_fields=cache_date_fields,
-                    enable_parallel_indicators=enable_parallel_indicators,
-                    warmup=warmup,
-                    start_dt=start_dt,
-                    end_dt=end_dt,
-                    exit_dates=self._build_exit_dates(test_data, has_selector),
-                    seed=this_seed,
-                    calc_bootstrap=calc_bootstrap,
-                    pretrained_models=pretrained_models,
-                )
                 return WindowOptimizeResult(
                     params=best_params,
                     study=window_study,
-                    test_result=test_result,
                     train_score=window_study.best_value,
-                    train_pnl=is_result.metrics.total_pnl,
                     execution_symbols=(
                         {
                             e.id: _static_symbols(e.symbols)
@@ -2320,14 +2247,6 @@ class OptimizeMixin:
             for sym, signals_df in split_signals.items():
                 signal_frames[sym].append(signals_df)
 
-        oos_pnl = sum(
-            wr.test_result.metrics.total_pnl for wr in window_results
-        )
-        is_pnl = sum(wr.train_pnl for wr in window_results)
-        # Only defined against a profitable in-sample leg: dividing by a
-        # negative denominator flips the sign, so a losing out-of-sample run
-        # would report an efficiency above 1 and a winning one below 0.
-        wfe = oos_pnl / is_pnl if is_pnl > 0 else None
         stitched_signals: Optional[dict[str, pd.DataFrame]] = None
         if self._config.return_signals:
             stitched_signals = {
@@ -2354,7 +2273,6 @@ class OptimizeMixin:
             result=stitched,
             study=last.study,
             windows=tuple(window_results),
-            walkforward_efficiency=wfe,
         )
 
 

@@ -1004,9 +1004,12 @@ def test_optimize_sessions_persist_across_windows(data_source_df):
     assert max(counts) > len(counts) // 4
 
 
-def test_optimize_walkforward_efficiency_none_when_train_unprofitable(
-    data_source_df,
-):
+def test_optimize_windows_hold_tuning_results_only(data_source_df):
+    """A window holds what it was tuned to, not a backtest of its own: the
+    single out-of-sample TestResult is the stitched ``result``, matching the
+    one-TestResult shape of ``Strategy.walkforward``.
+    """
+
     def exec_fn(ctx):
         if not ctx.long_pos():
             ctx.buy_shares = 10
@@ -1014,23 +1017,22 @@ def test_optimize_walkforward_efficiency_none_when_train_unprofitable(
     strategy = _make_strategy(data_source_df)
     _add_tuned_execution(strategy, exec_fn)
     result = strategy.optimize(
-        # Minimizing profit drives in-sample PnL to zero or below, which leaves
-        # the efficiency ratio undefined rather than negative.
         lambda r: r.metrics.total_pnl,
         sampler="grid",
-        direction="minimize",
         windows=2,
         enable_parallel_indicators=False,
     )
-    is_pnl = sum(w.train_pnl for w in result.windows)
-    if is_pnl > 0:
-        assert result.walkforward_efficiency is not None
-    else:
-        assert result.walkforward_efficiency is None
-    # to_json_str uses allow_nan=False, so a NaN efficiency would raise.
-    result.to_json_str()
+    assert len(result.windows) == 2
     for window in result.windows:
+        assert window.params["lookback"] in (5, 10)
+        assert isinstance(window.train_score, float)
+        assert not hasattr(window, "test_result")
+        payload = window.to_json()
+        assert set(payload.keys()) == {"params", "train_score", "study"}
         window.to_json_str()
+    assert not hasattr(result, "walkforward_efficiency")
+    # to_json_str uses allow_nan=False, so any NaN in the payload would raise.
+    result.to_json_str()
 
 
 @pytest.mark.parametrize("train_size", [0, 1, -0.5, 1.5])
@@ -1430,8 +1432,6 @@ def test_optimize_returns_signals_when_configured(data_source_df):
     assert opt.result.signals is not None
     assert "AAPL" in opt.result.signals
     assert not opt.result.signals["AAPL"].empty
-    # Per-window results carry them too.
-    assert opt.windows[0].test_result.signals is not None
 
 
 def test_optimize_and_walkforward_agree_on_order_count():
