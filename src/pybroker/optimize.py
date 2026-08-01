@@ -1464,7 +1464,6 @@ class OptimizeMixin:
         enable_parallel_indicators: bool = False,
         adjust: Optional[Any] = None,
         calc_bootstrap: bool = False,
-        indicator_memo_max: int = _DEFAULT_INDICATOR_MEMO_MAX,
     ) -> OptimizeResult:
         r"""Searches :func:`pybroker.optimize.hyperparam` values on a training
         window, then evaluates the best values on the held out test window.
@@ -1529,14 +1528,6 @@ class OptimizeMixin:
                 :class:`pybroker.data.DataSource`.
             calc_bootstrap: Whether to compute randomized bootstrap evaluation
                 metrics for the test result. Defaults to ``False``.
-            indicator_memo_max: Maximum in-memory hyperparameter indicator
-                results to retain while optimizing. Hyperparameterized
-                indicators bypass the disk cache; this memo avoids recomputing
-                identical ``(indicator, symbol, hyperparams)`` combinations
-                across trials. When full, the oldest entry is evicted. Set to
-                ``0`` to disable. Defaults to
-                :data:`pybroker.indicator.DEFAULT_INDICATOR_MEMO_MAX`. The memo
-                is discarded when ``optimize`` returns.
 
         Returns:
             :class:`.OptimizeResult` with the winning hyperparameter values, the
@@ -1556,10 +1547,6 @@ class OptimizeMixin:
                 direction, or if the dates fall outside the range passed to
                 :meth:`.__init__`.
         """
-        if indicator_memo_max < 0:
-            raise ValueError(
-                "indicator_memo_max must be greater than or equal to 0."
-            )
         if not 0 < train_size < 1:
             raise ValueError(
                 f"optimize requires 0 < train_size < 1, got {train_size}. "
@@ -1589,7 +1576,7 @@ class OptimizeMixin:
 
         scope = StaticScope.instance()
         scope.freeze_data_cols()
-        self._indicator_memo_max = indicator_memo_max
+        self._indicator_memo_max = _DEFAULT_INDICATOR_MEMO_MAX
         try:
             start_dt = (
                 self._start_date

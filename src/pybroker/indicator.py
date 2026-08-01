@@ -50,17 +50,6 @@ from typing import (
 )
 
 
-DEFAULT_INDICATOR_MEMO_MAX = 256
-"""Default ``indicator_memo_max`` for :meth:`pybroker.optimize.OptimizeMixin.optimize`.
-
-During optimization, hyperparameterized indicators bypass the disk cache.
-``optimize`` memoizes computed ``(indicator, symbol, hyperparams)`` results
-in memory to avoid recomputing identical combinations across trials. When the
-memo is full, the oldest entry is evicted. Pass ``indicator_memo_max=0`` to
-``optimize`` to disable memoization.
-"""
-
-
 def _to_bar_data(df: pd.DataFrame) -> BarData:
     required_cols = (
         DataCol.DATE,
@@ -411,7 +400,7 @@ class IndicatorsMixin:
             hyperparams: Optional hyperparameter overrides for indicators
                 that declare hyperparameters. During
                 :meth:`pybroker.optimize.OptimizeMixin.optimize`, results are
-                memoized in memory up to ``indicator_memo_max``.
+                memoized in memory.
 
         Returns:
             ``dict`` mapping each :class:`pybroker.common.IndicatorSymbol` pair

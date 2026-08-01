@@ -386,28 +386,6 @@ def test_make_objective_exports():
     assert callable(pybroker.make_objective)
 
 
-def test_optimize_indicator_memo_max_validation(data_source_df):
-    lookback = hyperparam("lookback", default=10, low=5, high=10, step=5)
-    hhv = indicator(
-        "hhv_lb",
-        lambda data, period: highv(data.high, period),
-        period=lookback,
-    )
-    strategy = _make_strategy(data_source_df)
-
-    def exec_fn(ctx):
-        _ = ctx.indicator(hhv.name)
-
-    strategy.add_execution(exec_fn, "AAPL", indicators=[hhv])
-    with pytest.raises(ValueError, match="indicator_memo_max"):
-        strategy.optimize(
-            lambda r: r.metrics.total_pnl,
-            indicator_memo_max=-1,
-            n_trials=1,
-            enable_parallel_indicators=False,
-        )
-
-
 def test_optimize_trial_interval_alignment_matches_walkforward(
     data_source_df,
 ):
