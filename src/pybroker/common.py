@@ -269,7 +269,7 @@ class BarData:
 def to_datetime(
     date: Union[str, datetime, np.datetime64, pd.Timestamp],
 ) -> datetime:
-    """Converts ``date`` to :class:`datetime`."""
+    """Converts ``date`` to :class:`datetime.datetime`."""
     if isinstance(date, pd.Timestamp):
         return date.to_pydatetime()
     elif isinstance(date, datetime):
@@ -283,7 +283,7 @@ def to_datetime(
 
 
 def to_decimal(value: Union[int, float, Decimal]) -> Decimal:
-    """Converts ``value`` to :class:`Decimal`."""
+    """Converts ``value`` to :class:`decimal.Decimal`."""
     value_type = type(value)
     if value_type == Decimal:
         return value  # type: ignore[return-value]

@@ -1033,24 +1033,24 @@ class Strategy(
     def set_before_exec(
         self, fn: Optional[Callable[[Mapping[str, ExecContext]], None]]
     ):
-        r""":class:`Callable[[Mapping[str, ExecContext]]` that runs before all
-        execution functions.
+        r"""``Callable[[Mapping[str, ExecContext]], None]`` that runs before
+        all execution functions.
 
         Args:
             fn: :class:`Callable` that takes a :class:`Mapping` of all ticker
-                symbols to :class:`ExecContext`\ s.
+                symbols to :class:`~pybroker.context.ExecContext`\ s.
         """
         self._before_exec_fn = fn
 
     def set_after_exec(
         self, fn: Optional[Callable[[Mapping[str, ExecContext]], None]]
     ):
-        r""":class:`Callable[[Mapping[str, ExecContext]]` that runs after all
-        execution functions.
+        r"""``Callable[[Mapping[str, ExecContext]], None]`` that runs after
+        all execution functions.
 
         Args:
             fn: :class:`Callable` that takes a :class:`Mapping` of all ticker
-                symbols to :class:`ExecContext`\ s.
+                symbols to :class:`~pybroker.context.ExecContext`\ s.
         """
         self._after_exec_fn = fn
 
@@ -1094,10 +1094,10 @@ class Strategy(
         Args:
             start_date: Starting date of the backtest (inclusive). Must be
                 within ``start_date`` and ``end_date`` range that was passed to
-                :meth:`.__init__`.
+                :class:`.Strategy`.
             end_date: Ending date of the backtest (inclusive). Must be
                 within ``start_date`` and ``end_date`` range that was passed to
-                :meth:`.__init__`.
+                :class:`.Strategy`.
             timeframe: Formatted string that specifies the timeframe
                 resolution of the backtesting data. The timeframe string
                 supports the following units:
@@ -1193,10 +1193,10 @@ class Strategy(
             windows: Number of walkforward time windows.
             start_date: Starting date of the Walkforward Analysis (inclusive).
                 Must be within ``start_date`` and ``end_date`` range that was
-                passed to :meth:`.__init__`.
+                passed to :class:`.Strategy`.
             end_date: Ending date of the Walkforward Analysis (inclusive). Must
                 be within ``start_date`` and ``end_date`` range that was passed
-                to :meth:`.__init__`.
+                to :class:`.Strategy`.
             timeframe: Formatted string that specifies the timeframe
                 resolution of the backtesting data. The timeframe string
                 supports the following units:

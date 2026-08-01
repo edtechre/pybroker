@@ -5,3 +5,4 @@ pybroker.data module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: ADJ_CLOSE

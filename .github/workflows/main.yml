@@ -52,6 +52,22 @@ jobs:
       - name: Run mypy
         run: python -m tox -e typecheck
 
+  docs:
+    name: Build docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: python -m pip install --no-cache-dir tox
+
+      - name: Run sphinx-build
+        run: tox -e docs
+
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -106,6 +122,7 @@ jobs:
       - format
       - lint
       - typecheck
+      - docs
       - test
       - build_source_dist
     runs-on: ubuntu-latest

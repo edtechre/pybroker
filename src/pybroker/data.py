@@ -257,6 +257,7 @@ class DataSource(ABC, DataSourceCacheMixin):
         adjust: Optional[Any],
     ) -> pd.DataFrame:
         """:meta public:
+
         Override this method to return data from a custom
         source. The returned :class:`pandas.DataFrame` must contain the
         following columns: ``symbol``, ``date``, ``open``, ``high``, ``low``,

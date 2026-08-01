@@ -4,7 +4,12 @@ import sys
 sys.path.insert(0, os.path.abspath("../../src/"))
 sys.path.insert(0, os.path.abspath("notebooks/"))
 
-nitpick_ignore = [("py:class", "type")]
+nitpick_ignore = [
+    ("py:class", "type"),
+    ("py:class", "numpy.float64"),
+    ("py:class", "numpy.int64"),
+    ("py:class", "numpy._typing._array_like._ScalarT"),
+]
 
 project = "PyBroker"
 copyright = "2026, Edward West"
@@ -18,7 +23,6 @@ extensions = [
     "nbsphinx",
     "IPython.sphinxext.ipython_console_highlighting",
     "sphinx.ext.autodoc",
-    "sphinx.ext.autodoc.typehints",
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
@@ -44,6 +48,7 @@ intersphinx_mapping = {
     "numpy": ("https://numpy.org/doc/stable/", None),
     "pandas": ("https://pandas.pydata.org/docs/", None),
     "diskcache": ("https://grantjenks.com/docs/diskcache/", None),
+    "joblib": ("https://joblib.readthedocs.io/en/latest/", None),
 }
 
 # -- Options for HTML output -------------------------------------------------

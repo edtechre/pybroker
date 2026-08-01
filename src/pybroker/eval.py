@@ -221,7 +221,7 @@ def sortino_ratio(
 def conf_profit_factor(
     x: NDArray[np.float64], n: int, n_boot: int
 ) -> BootConfIntervals:
-    """Computes confidence intervals for :func:`.profit_factor`."""
+    """Computes confidence intervals for ``profit_factor``."""
     intervals = bca_boot_conf(x, n, n_boot, log_profit_factor)
     return BootConfIntervals(
         low_2p5=np.exp(intervals.low_2p5),

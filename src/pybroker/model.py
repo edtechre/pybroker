@@ -42,11 +42,11 @@ class ModelSource:
         indicator_names: :class:`Iterable` of names of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
-        input_data_fn: :class:`Callable[[DataFrame], DataFrame]` for
+        input_data_fn: ``Callable[[DataFrame], DataFrame]`` for
             preprocessing input data passed to the model when making
             predictions. If set, ``input_data_fn`` will be called with a
             :class:`pandas.DataFrame` containing all test data.
-        predict_fn: :class:`Callable[[Model, DataFrame], ndarray]` that
+        predict_fn: ``Callable[[Model, DataFrame], ndarray]`` that
             overrides calling the model's default ``predict`` function. If set,
             ``predict_fn`` will be called with the trained model and a
             :class:`pandas.DataFrame` containing all test data.
@@ -100,11 +100,11 @@ class ModelLoader(ModelSource):
         indicator_names: :class:`Iterable` of names of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
-        input_data_fn: :class:`Callable[[DataFrame], DataFrame]` for
+        input_data_fn: ``Callable[[DataFrame], DataFrame]`` for
             preprocessing input data passed to the model when making
             predictions. If set, ``input_data_fn`` will be called with a
             :class:`pandas.DataFrame` containing all test data.
-        predict_fn: :class:`Callable[[Model, DataFrame], ndarray]` that
+        predict_fn: ``Callable[[Model, DataFrame], ndarray]`` that
             overrides calling the model's default ``predict`` function. If set,
             ``predict_fn`` will be called with the trained model and a
             :class:`pandas.DataFrame` containing all test data.
@@ -161,11 +161,11 @@ class ModelTrainer(ModelSource):
         indicator_names: :class:`Iterable` of names of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
-        input_data_fn: :class:`Callable[[DataFrame], DataFrame]` for
+        input_data_fn: ``Callable[[DataFrame], DataFrame]`` for
             preprocessing input data passed to the model when making
             predictions. If set, ``input_data_fn`` will be called with a
             :class:`pandas.DataFrame` containing all test data.
-        predict_fn: :class:`Callable[[Model, DataFrame], ndarray]` that
+        predict_fn: ``Callable[[Model, DataFrame], ndarray]`` that
             overrides calling the model's default ``predict`` function. If set,
             ``predict_fn`` will be called with the trained model and a
             :class:`pandas.DataFrame` containing all test data.
@@ -234,11 +234,11 @@ def model(
         indicators: :class:`Iterable` of
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
-        input_data_fn: :class:`Callable[[DataFrame], DataFrame]` for
+        input_data_fn: ``Callable[[DataFrame], DataFrame]`` for
             preprocessing input data passed to the model when making
             predictions. If set, ``input_data_fn`` will be called with a
             :class:`pandas.DataFrame` containing all test data.
-        predict_fn: :class:`Callable[[Model, DataFrame], ndarray]` that
+        predict_fn: ``Callable[[Model, DataFrame], ndarray]`` that
             overrides calling the model's default ``predict`` function. If set,
             ``predict_fn`` will be called with the trained model and a
             :class:`pandas.DataFrame` containing all test data.
@@ -281,16 +281,14 @@ def model(
 
 
 class CachedModel(NamedTuple):
-    """Stores cached model data.
-
-    Attributes:
-        model: Trained model instance.
-        input_cols: Names of the columns to be used as input for the model when
-            making predictions.
-    """
+    """Stores cached model data."""
 
     model: Any
+    """Trained model instance."""
+
     input_cols: Optional[tuple[str]]
+    """Names of the columns to be used as input for the model when making
+    predictions."""
 
 
 class ModelsMixin:
