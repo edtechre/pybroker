@@ -6,17 +6,22 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import numpy as np
+import pandas as pd
 import pytest
 import re
 from importlib import import_module
 from joblib import Parallel
 from unittest.mock import patch
 
+from pybroker.indicator import IndicatorSet, indicator
 from pybroker.parallel import (
     get_parallel_config,
     parallel,
     set_parallel,
 )
+from pybroker.scope import StaticScope
+from pybroker.vect import highv
 
 _parallel_mod = import_module("pybroker.parallel")
 
@@ -88,6 +93,55 @@ def test_set_parallel_ray_backend_when_registered(ray_backend):
     config = get_parallel_config()
     assert config.backend == "ray"
     assert config.n_jobs == 2
+
+
+@pytest.fixture()
+def scope():
+    yield StaticScope.instance()
+    StaticScope.set_instance(None)
+
+
+@pytest.mark.xdist_group(name="ray")
+def test_ray_backend_dispatches_parallel_indicators(ray_backend, scope):
+    """Runs indicator dispatch end-to-end through the Ray backend.
+
+    Dispatch ships _decorate_indicator_fn's closure plus a lambda indicator
+    to workers, so this locks in the cloudpickle serialization that loky and
+    Ray provide and the rejected multiprocessing backend does not.
+    """
+    ind = indicator(
+        "ray_hhv", lambda bar_data, n: highv(bar_data.high, n), n=3
+    )
+    rng = np.random.default_rng(42)
+    dates = pd.date_range("2023-01-02", periods=20)
+    df = pd.concat(
+        [
+            pd.DataFrame(
+                {
+                    "symbol": sym,
+                    "date": dates,
+                    "open": close,
+                    "high": close + 1,
+                    "low": close - 1,
+                    "close": close,
+                }
+            )
+            for sym, close in (
+                (sym, rng.uniform(10, 20, len(dates))) for sym in ("A", "B")
+            )
+        ],
+        ignore_index=True,
+    )
+    ind_set = IndicatorSet()
+    ind_set.add(ind)
+    expected = ind_set(df)
+    set_parallel(n_jobs=2, backend="ray")
+    result = ind_set(df, enable_parallel_indicators=True)
+    sort_cols = ["symbol", "date"]
+    pd.testing.assert_frame_equal(
+        result.sort_values(sort_cols).reset_index(drop=True),
+        expected.sort_values(sort_cols).reset_index(drop=True),
+    )
 
 
 def test_set_parallel_parallel_mutually_exclusive_with_n_jobs():
