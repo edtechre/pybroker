@@ -166,9 +166,7 @@ def test_ray_backend_dispatches_parallel_indicators(ray_backend, scope):
     finally:
         pool_logger.removeHandler(handler)
     assert not [
-        r
-        for r in handler.records
-        if "'context' argument" in r.getMessage()
+        r for r in handler.records if "'context' argument" in r.getMessage()
     ]
     sort_cols = ["symbol", "date"]
     pd.testing.assert_frame_equal(
