@@ -658,9 +658,12 @@ def test_optimize_grid_parallel_matches_sequential(data_source_df):
             (t.params["aa"], t.params["bb"]) for t in result.study.trials
         )
 
-    sequential = run()
     prior = get_parallel_config()
     try:
+        # Pin the baseline explicitly rather than inheriting ambient config:
+        # the library default is n_jobs=-1, so an unpinned run is parallel.
+        set_parallel(n_jobs=1)
+        sequential = run()
         set_parallel(n_jobs=2, backend="threading")
         # Logger._start_progress_bar is not thread safe, which is a separate
         # defect from the grid subset this test covers.
@@ -1092,12 +1095,15 @@ def test_run_study_when_grid_sampler_and_nan_score_then_trial_fails():
 def test_run_study_when_sampler_stops_then_batch_still_recorded():
     """A sampler stopping mid-batch must not strand already-scored trials.
 
-    BruteForceSampler calls Study.stop() from after_trial once the space is
-    exhausted; every score in the batch has already been paid for, so all of
-    them must be told before the loop exits.
+    Only RandomSampler (and subclasses) reaches the batched path — adaptive
+    samplers are forced sequential — so the mid-batch stop is exercised with
+    a RandomSampler whose after_trial calls Study.stop(), the way
+    BruteForceSampler does once its space is exhausted. Every score in the
+    batch has already been paid for, so all of them must be told before the
+    loop exits.
     """
     import optuna
-    from optuna.samplers import BruteForceSampler
+    from optuna.samplers import RandomSampler
     from pybroker.optimize import Hyperparam, SearchSpace, _run_study
     from pybroker.parallel import get_parallel_config, set_parallel
 
@@ -1113,17 +1119,115 @@ def test_run_study_when_sampler_stops_then_batch_still_recorded():
             lambda trial: float(trial.suggest_int("x", 1, 3))
         )
 
+    class _StoppingRandomSampler(RandomSampler):
+        tells = 0
+
+        def after_trial(self, study, trial, state, values):
+            super().after_trial(study, trial, state, values)
+            type(self).tells += 1
+            if type(self).tells >= 3:
+                study.stop()
+
     prior = get_parallel_config()
     try:
         set_parallel(n_jobs=4, backend="threading")
-        sampler = BruteForceSampler(seed=1)
+        sampler = _StoppingRandomSampler(seed=1)
         study = optuna.create_study(direction="maximize", sampler=sampler)
         _run_study(study, _Bundle(), 12, sampler)
     finally:
         set_parallel(n_jobs=prior.n_jobs, backend=prior.backend)
     states = [trial.state for trial in study.trials]
-    assert states
+    # The stop fired on the third tell of a four-trial batch: the whole batch
+    # is recorded, and no further batch is drawn.
+    assert len(states) == 4
     assert all(state == optuna.trial.TrialState.COMPLETE for state in states)
+
+
+def test_run_study_adaptive_sampler_forced_sequential_with_warning():
+    """Adaptive samplers must not fan out: batching would change their
+    proposals and tie results to the worker count. They run sequentially,
+    with a warning, and produce the same trials as an n_jobs=1 run.
+    """
+    import optuna
+    from optuna.samplers import TPESampler
+    from pybroker.optimize import Hyperparam, SearchSpace, _run_study
+    from pybroker.parallel import get_parallel_config, set_parallel
+
+    space = SearchSpace(
+        hyperparams=frozenset({"x"}),
+        specs={"x": Hyperparam("x", default=1, low=1, high=3, step=1)},
+    )
+
+    class _Bundle:
+        search_space = space
+        score_overrides = staticmethod(lambda params: float(params["x"]))
+        objective = staticmethod(
+            lambda trial: float(trial.suggest_int("x", 1, 3))
+        )
+
+    def run(n_jobs):
+        prior = get_parallel_config()
+        try:
+            set_parallel(n_jobs=n_jobs, backend="threading")
+            sampler = TPESampler(seed=7)
+            study = optuna.create_study(direction="maximize", sampler=sampler)
+            _run_study(study, _Bundle(), 6, sampler)
+        finally:
+            set_parallel(n_jobs=prior.n_jobs, backend=prior.backend)
+        return [trial.params["x"] for trial in study.trials]
+
+    with pytest.warns(UserWarning, match="Parallel trial evaluation"):
+        parallel_params = run(n_jobs=4)
+    sequential_params = run(n_jobs=1)
+    assert len(parallel_params) == 6
+    # Forced-sequential evaluation is machine-independent: identical to a
+    # genuinely sequential run with the same seed.
+    assert parallel_params == sequential_params
+
+
+def test_run_study_random_parallel_matches_sequential():
+    """RandomSampler's draws ignore completed results, so the batched path
+    must propose the same points as a sequential run, in the same order,
+    without warning about disabled parallelism.
+    """
+    import optuna
+    import warnings as warnings_mod
+    from optuna.samplers import RandomSampler
+    from pybroker.optimize import Hyperparam, SearchSpace, _run_study
+    from pybroker.parallel import get_parallel_config, set_parallel
+
+    space = SearchSpace(
+        hyperparams=frozenset({"x"}),
+        specs={"x": Hyperparam("x", default=1, low=1, high=3, step=1)},
+    )
+
+    class _Bundle:
+        search_space = space
+        score_overrides = staticmethod(lambda params: float(params["x"]))
+        objective = staticmethod(
+            lambda trial: float(trial.suggest_int("x", 1, 3))
+        )
+
+    def run(n_jobs):
+        prior = get_parallel_config()
+        try:
+            set_parallel(n_jobs=n_jobs, backend="threading")
+            sampler = RandomSampler(seed=7)
+            study = optuna.create_study(direction="maximize", sampler=sampler)
+            _run_study(study, _Bundle(), 6, sampler)
+        finally:
+            set_parallel(n_jobs=prior.n_jobs, backend=prior.backend)
+        return [trial.params["x"] for trial in study.trials]
+
+    with warnings_mod.catch_warnings(record=True) as caught:
+        warnings_mod.simplefilter("always")
+        parallel_params = run(n_jobs=2)
+    assert not [
+        w for w in caught if "Parallel trial evaluation" in str(w.message)
+    ]
+    sequential_params = run(n_jobs=1)
+    assert len(parallel_params) == 6
+    assert parallel_params == sequential_params
 
 
 def test_run_study_reraises_unrelated_runtime_error():

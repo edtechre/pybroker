@@ -20,14 +20,16 @@ class ParallelConfig:
     """Configuration for parallel execution used by PyBroker.
 
     PyBroker can compute indicators, train models, and run optimizations in
-    parallel using `joblib <https://joblib.readthedocs.io/>`_. Parallel
-    execution is **opt-in**: by default everything runs sequentially in the
-    calling process. Enable it with ``set_parallel(n_jobs=-1)`` and read the
-    current configuration with :func:`get_parallel_config`.
+    parallel using `joblib <https://joblib.readthedocs.io/>`_. Optimization
+    trials run on all available cores by default; indicator computation and
+    model training additionally require their ``enable_parallel_indicators``/
+    ``enable_parallel_models`` flags. Call ``set_parallel(n_jobs=1)`` to run
+    everything sequentially, and read the current configuration with
+    :func:`get_parallel_config`.
 
     Attributes:
-        n_jobs: Number of worker jobs. ``1`` (the default) runs sequentially;
-            ``-1`` uses all available cores.
+        n_jobs: Number of worker jobs. ``-1`` (the default) uses all
+            available cores; ``1`` runs sequentially.
         backend: joblib backend name. ``'loky'`` (the default) runs work in
             separate processes. Any backend registered with joblib is also
             accepted (e.g. ``'ray'`` after ``ray.util.joblib.register_ray()``).
@@ -37,7 +39,7 @@ class ParallelConfig:
             Defaults to ``None``.
     """
 
-    n_jobs: Optional[int] = 1
+    n_jobs: Optional[int] = -1
     backend: Optional[str] = "loky"
     parallel: Optional[Parallel] = None
 
@@ -52,12 +54,12 @@ def set_parallel(
 ) -> None:
     """Configures parallel execution used by PyBroker.
 
-    PyBroker runs sequentially unless configured otherwise; call
-    ``set_parallel(n_jobs=-1)`` to use all available cores.
+    PyBroker uses all available cores by default; call
+    ``set_parallel(n_jobs=1)`` to run sequentially.
 
     Args:
-        n_jobs: Number of workers. ``1`` runs sequentially (the default);
-            ``-1`` uses all cores. Leave as ``None`` to keep the currently
+        n_jobs: Number of workers. ``-1`` uses all cores (the default);
+            ``1`` runs sequentially. Leave as ``None`` to keep the currently
             configured value.
         backend: joblib backend name: ``'loky'`` (default) or any backend
             registered via :func:`joblib.register_parallel_backend` (e.g.

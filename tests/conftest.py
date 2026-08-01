@@ -48,3 +48,21 @@ def _isolated_numba_cache():
     cache_dir = os.environ.get("NUMBA_CACHE_DIR", "")
     if cache_dir:
         os.makedirs(cache_dir, exist_ok=True)
+
+
+@pytest.fixture(autouse=True)
+def _sequential_parallel_config():
+    """Pins the parallel config to sequential for every test.
+
+    The library default is ``n_jobs=-1``; letting tests inherit it would fan
+    optimize trials out to loky workers, where in-process assertions
+    (closure counters, ``mock.patch``) cannot see them — and under
+    ``pytest -n auto`` would oversubscribe every core. Tests that exercise
+    parallel behavior call ``set_parallel`` themselves.
+    """
+    import pybroker.parallel as parallel_mod
+
+    saved = parallel_mod._config
+    parallel_mod._config = parallel_mod.ParallelConfig(n_jobs=1)
+    yield
+    parallel_mod._config = saved

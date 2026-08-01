@@ -16,6 +16,7 @@ from unittest.mock import patch
 
 from pybroker.indicator import IndicatorSet, indicator
 from pybroker.parallel import (
+    ParallelConfig,
     get_parallel_config,
     parallel,
     set_parallel,
@@ -34,8 +35,10 @@ def reset_parallel_config():
 
 
 def test_get_parallel_config_defaults():
-    config = get_parallel_config()
-    assert config.n_jobs == 1
+    # The suite-wide conftest fixture pins the global config to sequential,
+    # so assert the library default on a fresh instance.
+    config = ParallelConfig()
+    assert config.n_jobs == -1
     assert config.backend == "loky"
     assert config.parallel is None
 
@@ -67,13 +70,12 @@ def test_set_parallel_multiprocessing_backend_raises():
     """Dispatched indicator and optimize-trial work is made of closures,
     which the multiprocessing backend's standard pickle cannot serialize.
     """
+    before = get_parallel_config()
     with pytest.raises(
         ValueError, match="'multiprocessing' backend is not supported"
     ):
         set_parallel(n_jobs=2, backend="multiprocessing")
-    config = get_parallel_config()
-    assert config.n_jobs == 1
-    assert config.backend == "loky"
+    assert get_parallel_config() is before
 
 
 @pytest.fixture()

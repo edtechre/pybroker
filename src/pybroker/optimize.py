@@ -901,11 +901,16 @@ def _run_study(
     also sidesteps ``GridSampler.after_trial`` calling ``Study.stop()``, which
     raises outside of :meth:`optuna.Study.optimize`.
 
-    Other samplers are adaptive, so trials are evaluated in batches: each batch
-    is asked, scored concurrently, then told back before the next is drawn.
-    Batching costs the sampler some information (a batch cannot observe its own
-    results), which matters for :class:`optuna.samplers.TPESampler` but not for
-    :class:`optuna.samplers.RandomSampler`.
+    Random search draws each trial's values from its own RNG without looking
+    at completed results, so its trials are evaluated in worker-sized batches:
+    each batch is asked, scored concurrently, then told back before the next
+    is drawn — the same points as a sequential run, in the same order.
+
+    Any other sampler is assumed adaptive: batching would hide a batch's own
+    results from it, changing the values it proposes and tying the outcome to
+    the worker count. Those samplers run sequentially through
+    :meth:`optuna.Study.optimize`, with a warning that parallelism was
+    disabled.
     """
     if isinstance(sampler, GridSampler):
         # A supplied sampler may cover only some of the declared hyperparams.
@@ -923,6 +928,16 @@ def _run_study(
                 "passed to GridSampler, or let optimize() build the sampler."
             )
     workers = _effective_n_jobs()
+    if workers > 1 and not isinstance(sampler, (GridSampler, RandomSampler)):
+        warnings.warn(
+            f"Parallel trial evaluation is disabled for "
+            f"{type(sampler).__name__}: batched evaluation would change the "
+            "values it proposes and make results depend on the worker "
+            "count. Trials will run sequentially; the 'grid' and 'random' "
+            "samplers evaluate trials in parallel.",
+            stacklevel=2,
+        )
+        workers = 1
     if workers <= 1:
         study.optimize(bundle.objective, n_trials=n_trials)
         return
@@ -1486,7 +1501,18 @@ class OptimizeMixin:
                 exhaustively enumerates every combination, ``"tpe"`` uses
                 :class:`optuna.samplers.TPESampler`, ``"random"`` uses
                 :class:`optuna.samplers.RandomSampler`. An
-                :class:`optuna.samplers.BaseSampler` instance is also accepted.
+                :class:`optuna.samplers.BaseSampler` instance is also
+                accepted; it is deep-copied and re-seeded per window, and a
+                multi-window run ships copies to worker processes, so it
+                must be picklable. Grid and random samplers evaluate trials
+                in parallel on the configured workers. Any other sampler —
+                ``"tpe"``, or an instance that is not a
+                :class:`~optuna.samplers.GridSampler` or
+                :class:`~optuna.samplers.RandomSampler` — is adaptive, and
+                evaluating its trials in batches would change the values it
+                proposes and tie results to the worker count; its trials
+                therefore run sequentially, with a warning that parallelism
+                was disabled.
             n_trials: Number of trials to run. Required for every sampler except
                 ``"grid"``, where it defaults to the full grid size and a
                 smaller value samples that many combinations at random.
