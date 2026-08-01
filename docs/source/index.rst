@@ -162,6 +162,7 @@ To learn how to use PyBroker, see the notebooks under the *User Guide*:
    notebooks/8. Applying Stops
    notebooks/9. Rebalancing Positions
    notebooks/10. Rotational Trading
+   notebooks/11. Configuring Parallelization
    notebooks/FAQs
 
 `The notebooks above are also available on Github
