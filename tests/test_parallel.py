@@ -6,6 +6,8 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import logging
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -138,7 +140,36 @@ def test_ray_backend_dispatches_parallel_indicators(ray_backend, scope):
     ind_set.add(ind)
     expected = ind_set(df)
     set_parallel(n_jobs=2, backend="ray")
-    result = ind_set(df, enable_parallel_indicators=True)
+
+    # Ray warns once per process that joblib's 'context' argument is
+    # unsupported; parallel() filters it since the argument comes from
+    # joblib's plumbing, not the caller. Record straight off Ray's pool
+    # logger (logger-level filters gate handlers, so a broken filter shows
+    # up here regardless of Ray's propagate settings) and reset log_once so
+    # the warning would definitely fire unfiltered.
+    from ray.util.debug import reset_log_once
+
+    class _RecordingHandler(logging.Handler):
+        def __init__(self):
+            super().__init__()
+            self.records = []
+
+        def emit(self, record):
+            self.records.append(record)
+
+    handler = _RecordingHandler()
+    pool_logger = logging.getLogger("ray.util.multiprocessing.pool")
+    pool_logger.addHandler(handler)
+    reset_log_once("context_argument_warning")
+    try:
+        result = ind_set(df, enable_parallel_indicators=True)
+    finally:
+        pool_logger.removeHandler(handler)
+    assert not [
+        r
+        for r in handler.records
+        if "'context' argument" in r.getMessage()
+    ]
     sort_cols = ["symbol", "date"]
     pd.testing.assert_frame_equal(
         result.sort_values(sort_cols).reset_index(drop=True),

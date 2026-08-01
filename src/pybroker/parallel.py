@@ -6,6 +6,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import logging
 from contextlib import contextmanager
 from dataclasses import dataclass
 from joblib import Parallel
@@ -128,6 +129,30 @@ def get_parallel_config() -> ParallelConfig:
     return _config
 
 
+class _RayContextWarningFilter(logging.Filter):
+    """Drops Ray's warning that joblib's ``context`` argument is unsupported.
+
+    joblib's process-backend plumbing passes ``context`` to every pool it
+    configures; Ray's pool ignores it and warns once per process. The
+    argument comes from joblib, not the caller, so the warning is noise for
+    every Ray-backed run and actionable in none of them.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "'context' argument is not supported" not in record.getMessage()
+
+
+@contextmanager
+def _silenced_ray_pool_logger() -> Iterator[None]:
+    logger = logging.getLogger("ray.util.multiprocessing.pool")
+    log_filter = _RayContextWarningFilter()
+    logger.addFilter(log_filter)
+    try:
+        yield
+    finally:
+        logger.removeFilter(log_filter)
+
+
 @contextmanager
 def parallel() -> Iterator[Parallel]:
     if _is_nested():
@@ -141,7 +166,11 @@ def parallel() -> Iterator[Parallel]:
         yield _config.parallel
         return
     with joblib.parallel_backend(_config.backend, n_jobs=_config.n_jobs):
-        yield joblib.Parallel(n_jobs=_config.n_jobs)
+        if _config.backend == "ray":
+            with _silenced_ray_pool_logger():
+                yield joblib.Parallel(n_jobs=_config.n_jobs)
+        else:
+            yield joblib.Parallel(n_jobs=_config.n_jobs)
 
 
 def _is_nested() -> bool:
