@@ -3593,6 +3593,7 @@ def test_capture_bar_when_short_position():
     assert bar.date == DATE_1
     assert bar.cash == cash - shares * fill_price
     assert bar.equity == cash
+    assert bar.notional == close_price * shares
     assert bar.margin == close_price * shares
     assert bar.pnl == bar.equity - cash
     assert bar.unrealized_pnl == bar.market_value - bar.equity
@@ -3627,6 +3628,7 @@ def test_capture_bar_when_short_position_and_no_price_data():
     bar = portfolio.bars[0]
     assert bar.cash == cash - shares * fill_price
     assert bar.equity == cash
+    assert bar.notional == 0
     assert bar.market_value == cash
     assert bar.unrealized_pnl == 0
     assert not portfolio.position_bars
@@ -3651,6 +3653,7 @@ def test_capture_bar_when_short_position_and_leverage():
     assert bar.margin_loan == entry_notional / 2
     assert bar.net_cash_balance == CASH - entry_notional
     assert bar.equity == CASH
+    assert bar.notional == close_price * shares
     assert bar.market_value == CASH + (fill_price - close_price) * shares
 
 
@@ -3686,6 +3689,7 @@ def test_capture_bar_when_long_position():
     assert bar.date == DATE_1
     assert bar.cash == cash - shares * fill_price
     assert bar.equity == cash + bar.pnl
+    assert bar.notional == close_price * shares
     assert bar.margin == 0
     assert bar.pnl == (close_price - fill_price) * shares
     assert bar.market_value == bar.equity
@@ -3817,6 +3821,36 @@ def test_sell_when_leverage_pays_down_margin_loan():
     assert portfolio.margin_loan == 0
 
 
+def test_capture_bar_when_long_and_short_positions():
+    long_shares = 100
+    long_close = Decimal("16.7")
+    short_shares = 50
+    short_close = Decimal("33.4")
+    portfolio = Portfolio(CASH, leverage=2.0, record_portfolio_bars=True)
+    portfolio.buy(DATE_1, SYMBOL_1, long_shares, Decimal("16.72"))
+    portfolio.sell(DATE_1, SYMBOL_2, short_shares, Decimal("33.35"))
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, long_close, Decimal("15.00"), Decimal("18.00")],
+            [
+                SYMBOL_2,
+                DATE_1,
+                short_close,
+                Decimal("32.00"),
+                Decimal("34.00"),
+            ],
+        ],
+        columns=["symbol", "date", "close", "low", "high"],
+    ).set_index(["symbol", "date"])
+    portfolio.capture_bar(DATE_1, ColumnScope(df), {SYMBOL_1: 1, SYMBOL_2: 1})
+    bar = portfolio.bars[0]
+    assert bar.margin == short_close * short_shares
+    assert (
+        bar.notional == long_close * long_shares + short_close * short_shares
+    )
+    assert bar.notional == long_close * long_shares + bar.margin
+
+
 def test_capture_bar_when_leverage_includes_margin_columns():
     portfolio = Portfolio(
         CASH,
@@ -3836,6 +3870,7 @@ def test_capture_bar_when_leverage_includes_margin_columns():
     assert bar.margin_loan == CASH
     assert bar.net_cash_balance == -CASH
     assert bar.equity == CASH
+    assert bar.notional == Decimal(200_000)
 
 
 def test_apply_interest_when_net_cash_negative():
@@ -4068,6 +4103,7 @@ def test_capture_bar_when_no_data_and_never_marked_holds_at_cost():
     assert portfolio.equity == CASH
     assert portfolio.market_value == CASH
     assert portfolio._long_market_value() == Decimal(100_000)
+    assert portfolio._metrics_bars[-1].notional == Decimal(100_000)
 
 
 @pytest.mark.parametrize("type", ["long", "short"])

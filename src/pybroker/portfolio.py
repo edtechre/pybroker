@@ -385,6 +385,9 @@ class PortfolioBar(NamedTuple):
         cash: Available cash in :class:`.Portfolio`.
         equity: Amount of equity in :class:`.Portfolio`. Open short positions
             are held at cost, so their unrealized PnL is excluded.
+        notional: Notional exposure of all open positions at mark: the market
+            value of open long positions plus the ``margin`` of open short
+            positions.
         margin: Notional exposure of open short positions at mark.
         margin_loan: Borrowed funds used for leveraged long and short
             positions.
@@ -400,6 +403,7 @@ class PortfolioBar(NamedTuple):
     date: np.datetime64
     cash: Decimal
     equity: Decimal
+    notional: Decimal
     margin: Decimal
     margin_loan: Decimal
     net_cash_balance: Decimal
@@ -1470,6 +1474,7 @@ class Portfolio:
         equity_parts = [net_cash]
         market_value_parts = [net_cash]
         margin_parts: list[float] = []
+        long_value_parts: list[float] = []
         # Sorted so position_bars -- and therefore TestResult.positions row
         # order -- does not depend on set iteration order either.
         for sym in sorted(self.symbols):
@@ -1525,6 +1530,7 @@ class Portfolio:
                     pos_pnl += pos.pnl
                     equity_parts.append(float(pos.equity))
                     market_value_parts.append(float(pos.equity))
+                    long_value_parts.append(float(pos.equity))
                 else:
                     # No bar for this symbol on this date, so hold the
                     # position at its last known mark, falling back to cost if
@@ -1534,6 +1540,7 @@ class Portfolio:
                     held = pos._marked_value()
                     equity_parts.append(float(held))
                     market_value_parts.append(float(held))
+                    long_value_parts.append(float(held))
             if sym in self.short_positions:
                 pos = self.short_positions[sym]
                 entry_notional = pos.entry_notional
@@ -1584,6 +1591,7 @@ class Portfolio:
         self.equity = to_decimal(math.fsum(equity_parts))
         self.market_value = to_decimal(math.fsum(market_value_parts))
         self.margin = to_decimal(math.fsum(margin_parts))
+        notional = to_decimal(math.fsum(long_value_parts)) + self.margin
         self._cached_long_mv = None
         self._cached_short_mv = None
 
@@ -1592,6 +1600,7 @@ class Portfolio:
             date=date,
             cash=self.cash,
             equity=self.equity,
+            notional=notional,
             market_value=self.market_value,
             margin=self.margin,
             margin_loan=self.margin_loan,

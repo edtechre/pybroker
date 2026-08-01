@@ -3381,6 +3381,7 @@ class Strategy(
         for col in (
             "cash",
             "equity",
+            "notional",
             "margin",
             "margin_loan",
             "net_cash_balance",
