@@ -1,6 +1,7 @@
 """Tests for optimize module."""
 
 import json
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -1027,9 +1028,29 @@ def test_optimize_windows_hold_tuning_results_only(data_source_df):
         assert window.params["lookback"] in (5, 10)
         assert isinstance(window.train_score, float)
         assert not hasattr(window, "test_result")
+        for field in (
+            window.train_start_date,
+            window.train_end_date,
+            window.test_start_date,
+            window.test_end_date,
+        ):
+            assert isinstance(field, datetime)
+        # lookahead holds train strictly before test.
+        assert window.train_start_date <= window.train_end_date
+        assert window.train_end_date < window.test_start_date
+        assert window.test_start_date <= window.test_end_date
         payload = window.to_json()
-        assert set(payload.keys()) == {"params", "train_score", "study"}
+        assert set(payload.keys()) == {
+            "params",
+            "train_score",
+            "train_start_date",
+            "train_end_date",
+            "test_start_date",
+            "test_end_date",
+            "study",
+        }
         window.to_json_str()
+    assert result.windows[0].test_end_date < result.windows[1].test_end_date
     assert not hasattr(result, "walkforward_efficiency")
     # to_json_str uses allow_nan=False, so any NaN in the payload would raise.
     result.to_json_str()

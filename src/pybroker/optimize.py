@@ -713,6 +713,20 @@ def _study_summary(study: optuna.Study) -> dict[str, Any]:
     return _json_safe(summary)
 
 
+def _frame_date_bounds(
+    frame: pd.DataFrame,
+) -> tuple[Optional[datetime], Optional[datetime]]:
+    """Returns the first and last dates in ``frame``, or ``(None, None)`` when
+    it is empty."""
+    if frame.empty:
+        return None, None
+    dates = frame[DataCol.DATE.value]
+    return (
+        pd.Timestamp(dates.min()).to_pydatetime(),
+        pd.Timestamp(dates.max()).to_pydatetime(),
+    )
+
+
 @dataclass(frozen=True)
 class WindowOptimizeResult:
     """Per-window walk-forward optimization result.
@@ -720,11 +734,32 @@ class WindowOptimizeResult:
     Holds the values a window was tuned to, not a backtest of its own: the
     single out-of-sample :class:`pybroker.strategy.TestResult` lives on
     :attr:`OptimizeResult.result`, stitched across every window.
+
+    Attributes:
+        params: Winning hyperparameter values for this window, including the
+            ones that were fixed rather than searched.
+        study: :class:`optuna.Study` holding this window's trials.
+        train_score: ``score_fn`` value that ``params`` earned on this
+            window's train data.
+        train_start_date: First date of the window's train data, or ``None``
+            when the train split is empty.
+        train_end_date: Last date of the window's train data, or ``None``
+            when the train split is empty.
+        test_start_date: First date of the window's test data -- the span its
+            tuned ``params`` trade in the stitched
+            :attr:`OptimizeResult.result` -- or ``None`` when the test split
+            is empty.
+        test_end_date: Last date of the window's test data, or ``None`` when
+            the test split is empty.
     """
 
     params: dict[str, Any]
     study: optuna.Study
     train_score: float
+    train_start_date: Optional[datetime] = None
+    train_end_date: Optional[datetime] = None
+    test_start_date: Optional[datetime] = None
+    test_end_date: Optional[datetime] = None
     # Symbols each execution id resolved to for this window. Carried back from
     # the study so the final replay reuses the study's selection instead of
     # running the SymbolSelector a second time, which a stateful selector would
@@ -737,6 +772,10 @@ class WindowOptimizeResult:
             {
                 "params": self.params,
                 "train_score": self.train_score,
+                "train_start_date": self.train_start_date,
+                "train_end_date": self.train_end_date,
+                "test_start_date": self.test_start_date,
+                "test_end_date": self.test_end_date,
                 "study": _study_summary(self.study),
             }
         )
@@ -2070,10 +2109,16 @@ class OptimizeMixin:
                 best_params = build_run_hyperparams(
                     hyperparams, window_study.best_params
                 )
+                train_start, train_end = _frame_date_bounds(train_data)
+                test_start, test_end = _frame_date_bounds(test_data)
                 return WindowOptimizeResult(
                     params=best_params,
                     study=window_study,
                     train_score=window_study.best_value,
+                    train_start_date=train_start,
+                    train_end_date=train_end,
+                    test_start_date=test_start,
+                    test_end_date=test_end,
                     execution_symbols=(
                         {
                             e.id: _static_symbols(e.symbols)
