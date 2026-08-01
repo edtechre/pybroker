@@ -8,6 +8,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 
 import datetime
 import logging
+import threading
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -48,6 +49,40 @@ class TestLogger:
         assert captured.out
         assert captured.err == ""
         assert len(caplog.record_tuples) == 2
+
+    def test_suppress_silences_only_this_thread(scope, capsys):
+        logger = Logger(scope)
+        with logger._suppress():
+            logger.loaded_indicator_data()
+            assert logger._is_disabled()
+        assert not logger._is_disabled()
+        assert not logger._disabled
+        logger.loaded_indicator_data()
+        assert capsys.readouterr().out
+
+    def test_suppress_concurrent_threads_leave_logger_enabled(scope):
+        # A shared save/restore flag races here: with both threads inside
+        # _suppress at once, one saves the other's "disabled" as its previous
+        # state and restores it on exit, leaving the logger silenced for good.
+        logger = Logger(scope)
+        inside = threading.Barrier(3, timeout=5)
+        release = threading.Barrier(3, timeout=5)
+
+        def suppressed():
+            with logger._suppress():
+                inside.wait()
+                release.wait()
+
+        threads = [threading.Thread(target=suppressed) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        inside.wait()
+        # Both threads are suppressed; the main thread is not.
+        assert not logger._is_disabled()
+        release.wait()
+        for thread in threads:
+            thread.join(timeout=5)
+        assert not logger._is_disabled()
 
     def test_enable_and_disable_progress_bar(scope, capsys):
         logger = Logger(scope)

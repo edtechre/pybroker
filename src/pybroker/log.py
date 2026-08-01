@@ -9,11 +9,13 @@ This code is licensed under Apache 2.0 with Commons Clause license
 import datetime
 import logging
 import numpy as np
+import threading
 import time
+from contextlib import contextmanager
 from pybroker.common import Day, IndicatorSymbol, ModelSymbol, to_datetime
 from decimal import Decimal
 from progressbar import ProgressBar
-from typing import Iterable, Optional, Sequence, Sized
+from typing import Iterable, Iterator, Optional, Sequence, Sized
 
 _LOGGER = logging.getLogger("pybroker")
 
@@ -35,18 +37,29 @@ class Logger:
         self._bootstrap_start_time: Optional[float] = None
         self._progress_bar_disabled = False
         self._disabled = False
+        self._suppress_local = threading.local()
 
     def __getstate__(self) -> dict:
         """Returns picklable state, for shipping the scope to a worker.
 
         A live :class:`ProgressBar` holds the caller's output stream, which is
         not picklable, and a worker has no business advancing the caller's
-        progress bar in any case.
+        progress bar in any case. Thread-local suppression state is likewise
+        unpicklable and per-process; the worker gets a fresh one from
+        :meth:`__setstate__`.
         """
-        return {**self.__dict__, "_progress_bar": None}
+        return {
+            **self.__dict__,
+            "_progress_bar": None,
+            "_suppress_local": None,
+        }
+
+    def __setstate__(self, state: dict) -> None:
+        self.__dict__.update(state)
+        self._suppress_local = threading.local()
 
     def _start_progress_bar(self, message: str, total_count: int):
-        if self._disabled:
+        if self._is_disabled():
             return
         if self._progress_bar_disabled:
             print(message, flush=True)
@@ -58,7 +71,7 @@ class Logger:
     def _update_progress_bar(self, count: int):
         if (
             self._progress_bar is None
-            or self._disabled
+            or self._is_disabled()
             or self._progress_bar_disabled
         ):
             return
@@ -75,6 +88,27 @@ class Logger:
     def enable(self):
         """Enables logging."""
         self._disabled = False
+
+    @contextmanager
+    def _suppress(self) -> Iterator[None]:
+        """Silences this thread's output until the context exits.
+
+        Thread-local rather than a shared flag: parallel trial evaluation on
+        a threading backend suppresses several trials against one Logger at
+        once, and saving/restoring a shared flag from each thread races --
+        the last thread to finish restores a value another thread saved,
+        which can leave logging off for good. The global state set by
+        :meth:`disable` and :meth:`enable` is untouched.
+        """
+        previous = getattr(self._suppress_local, "count", 0)
+        self._suppress_local.count = previous + 1
+        try:
+            yield
+        finally:
+            self._suppress_local.count = previous
+
+    def _is_disabled(self) -> bool:
+        return self._disabled or getattr(self._suppress_local, "count", 0) > 0
 
     def disable_progress_bar(self):
         """Disables logging a progress bar."""
@@ -305,6 +339,9 @@ class Logger:
     def info_optimize_search_space(self, hyperparams: Sequence[str]):
         self._info("Searched hyperparams: %s", list(hyperparams))
 
+    def info_optimize_sequential_trials(self, sampler: str):
+        self._info(f"Running {sampler} trials sequentially.")
+
     def calc_bootstrap_metrics_start(self, samples, bars):
         self._out(
             f"Calculating bootstrap metrics: bars={bars}, samples={samples}..."
@@ -531,18 +568,20 @@ class Logger:
         self._debug(f"Cleared model cache: {cache_dir}")
 
     def _out(self, msg: str, *args):
-        if self._disabled:
+        if self._is_disabled():
             return
         print(msg, *args, flush=True)
 
     def _debug_enabled(self) -> bool:
-        return not self._disabled and _LOGGER.isEnabledFor(logging.DEBUG)
+        return not self._is_disabled() and _LOGGER.isEnabledFor(logging.DEBUG)
 
     def _info_enabled(self) -> bool:
-        return not self._disabled and _LOGGER.isEnabledFor(logging.INFO)
+        return not self._is_disabled() and _LOGGER.isEnabledFor(logging.INFO)
 
     def _warn_enabled(self) -> bool:
-        return not self._disabled and _LOGGER.isEnabledFor(logging.WARNING)
+        return not self._is_disabled() and _LOGGER.isEnabledFor(
+            logging.WARNING
+        )
 
     def _info(self, msg: str, *args):
         if not self._info_enabled():

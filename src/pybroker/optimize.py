@@ -909,8 +909,8 @@ def _run_study(
     Any other sampler is assumed adaptive: batching would hide a batch's own
     results from it, changing the values it proposes and tying the outcome to
     the worker count. Those samplers run sequentially through
-    :meth:`optuna.Study.optimize`, with a warning that parallelism was
-    disabled.
+    :meth:`optuna.Study.optimize`; an info-level log message notes that
+    parallelism was disabled.
     """
     if isinstance(sampler, GridSampler):
         # A supplied sampler may cover only some of the declared hyperparams.
@@ -929,13 +929,8 @@ def _run_study(
             )
     workers = _effective_n_jobs()
     if workers > 1 and not isinstance(sampler, (GridSampler, RandomSampler)):
-        warnings.warn(
-            f"Parallel trial evaluation is disabled for "
-            f"{type(sampler).__name__}: batched evaluation would change the "
-            "values it proposes and make results depend on the worker "
-            "count. Trials will run sequentially; the 'grid' and 'random' "
-            "samplers evaluate trials in parallel.",
-            stacklevel=2,
+        StaticScope.instance().logger.info_optimize_sequential_trials(
+            type(sampler).__name__
         )
         workers = 1
     if workers <= 1:
@@ -1055,6 +1050,25 @@ def _is_failed_score(score: Any) -> bool:
         return True
 
 
+@contextmanager
+def _quiet_logging(verbose: bool) -> Iterator[None]:
+    """Silences per-trial logging unless ``verbose``.
+
+    Applied where the trial actually runs rather than around the study: grid
+    and random trials, and whole walkforward windows, are evaluated in worker
+    processes whose freshly installed scope and optuna logging never saw the
+    caller's settings. Optuna's verbosity is process-global and stays at
+    WARNING afterward, matching :meth:`OptimizeMixin.optimize`, which sets it
+    once up front.
+    """
+    if verbose:
+        yield
+        return
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    with StaticScope.instance().logger._suppress():
+        yield
+
+
 def _run_scoped_task(scope: StaticScope, fn: Callable[..., Any], *args) -> Any:
     """Installs ``scope`` as this process' scope, then runs ``fn``.
 
@@ -1082,8 +1096,14 @@ def make_objective(
     warmup: Optional[int],
     pretrained_models: Mapping[ModelSymbol, TrainedModel],
     exit_dates: Mapping[str, np.datetime64],
+    verbose: bool = False,
 ) -> ObjectiveBundle:
-    """Builds an Optuna objective for train-window scoring."""
+    """Builds an Optuna objective for train-window scoring.
+
+    When ``verbose`` is ``False`` (the default), each trial's backtest runs
+    with logging suppressed so that per-trial progress bars do not repeat for
+    every combination searched.
+    """
 
     def score_overrides(overrides: dict[str, Any]) -> float:
         """Scores one already-resolved set of hyperparam values.
@@ -1093,19 +1113,20 @@ def make_objective(
         must not cross a process boundary, but a plain params ``dict`` can.
         """
         run_hp = build_run_hyperparams(hyperparams, overrides)
-        result = strategy._run_optimize_trial(
-            df=df,
-            train_rows=train_rows,
-            run_hyperparams=run_hp,
-            invariant_indicator_data=invariant_indicator_data,
-            window_executions=window_executions,
-            master_store=master_store,
-            interval_data=interval_data,
-            enable_parallel_indicators=enable_parallel_indicators,
-            warmup=warmup,
-            pretrained_models=pretrained_models,
-            exit_dates=exit_dates,
-        )
+        with _quiet_logging(verbose):
+            result = strategy._run_optimize_trial(
+                df=df,
+                train_rows=train_rows,
+                run_hyperparams=run_hp,
+                invariant_indicator_data=invariant_indicator_data,
+                window_executions=window_executions,
+                master_store=master_store,
+                interval_data=interval_data,
+                enable_parallel_indicators=enable_parallel_indicators,
+                warmup=warmup,
+                pretrained_models=pretrained_models,
+                exit_dates=exit_dates,
+            )
         return score_fn(result)
 
     def objective(trial: optuna.Trial) -> float:
@@ -1479,6 +1500,7 @@ class OptimizeMixin:
         enable_parallel_indicators: bool = False,
         adjust: Optional[Any] = None,
         calc_bootstrap: bool = False,
+        verbose: bool = False,
     ) -> OptimizeResult:
         r"""Searches :func:`pybroker.optimize.hyperparam` values on a training
         window, then evaluates the best values on the held out test window.
@@ -1511,8 +1533,8 @@ class OptimizeMixin:
                 :class:`~optuna.samplers.RandomSampler` — is adaptive, and
                 evaluating its trials in batches would change the values it
                 proposes and tie results to the worker count; its trials
-                therefore run sequentially, with a warning that parallelism
-                was disabled.
+                therefore run sequentially, and an info-level log message
+                notes that parallelism was disabled.
             n_trials: Number of trials to run. Required for every sampler except
                 ``"grid"``, where it defaults to the full grid size and a
                 smaller value samples that many combinations at random.
@@ -1554,6 +1576,10 @@ class OptimizeMixin:
                 :class:`pybroker.data.DataSource`.
             calc_bootstrap: Whether to compute randomized bootstrap evaluation
                 metrics for the test result. Defaults to ``False``.
+            verbose: Whether to log every trial's backtest -- indicator
+                computation, test split progress bars, and Optuna's own trial
+                logging. Defaults to ``False``, which logs the optimization
+                summary and the final test window evaluation only.
 
         Returns:
             :class:`.OptimizeResult` with the winning hyperparameter values, the
@@ -1598,7 +1624,8 @@ class OptimizeMixin:
         hyperparams = collect_hyperparams(self)
         search_space = _search_space_from_specs(hyperparams)
         _log_search_space(search_space)
-        optuna.logging.set_verbosity(optuna.logging.WARNING)
+        if not verbose:
+            optuna.logging.set_verbosity(optuna.logging.WARNING)
 
         scope = StaticScope.instance()
         scope.freeze_data_cols()
@@ -1684,6 +1711,7 @@ class OptimizeMixin:
                     start_dt=start_dt,
                     end_dt=end_dt,
                     calc_bootstrap=calc_bootstrap,
+                    verbose=verbose,
                 )
 
             splits = list(
@@ -1763,6 +1791,7 @@ class OptimizeMixin:
                 warmup=warmup,
                 pretrained_models=pretrained_models,
                 exit_dates=self._build_exit_dates(train_data, has_selector),
+                verbose=verbose,
             )
             if study is None:
                 built_sampler = _build_sampler(sampler, search_space, seed)
@@ -1952,6 +1981,7 @@ class OptimizeMixin:
         start_dt: datetime,
         end_dt: datetime,
         calc_bootstrap: bool,
+        verbose: bool,
     ) -> OptimizeResult:
         splits = list(
             self.walkforward_split(
@@ -1985,132 +2015,147 @@ class OptimizeMixin:
             train_rows: np.ndarray,
             test_rows: np.ndarray,
         ) -> WindowOptimizeResult:
-            train_data = (
-                df.iloc[train_rows] if len(train_rows) else df.iloc[:0]
-            )
-            test_data = df.iloc[test_rows] if len(test_rows) else df.iloc[:0]
-            train_exit_dates = self._build_exit_dates(train_data, has_selector)
-            selection_data = _selection_df(
-                self._executions, train_data, test_data
-            )
-            window_executions = (
-                _resolve_executions(self._executions, selection_data)
-                if has_selector
-                else self._executions
-            )
-            invariant_data = self._compute_invariant_indicators(
-                df=df,
-                cache_date_fields=cache_date_fields,
-                enable_parallel_indicators=enable_parallel_indicators,
-                interval_data=interval_data,
-                master_store=master_store,
-                executions=window_executions,
-            )
-            # Model features only: _load_pretrained_models is a no-op without
-            # models, and the invariant indicators are already computed above,
-            # so only the tuned ones are fetched here.
-            _, tuned_syms = self._partition_indicator_syms(window_executions)
-            needs_models = any(
-                execution.model_names for execution in window_executions
-            )
-            load_indicators = (
-                self._fetch_indicators(
+            # The whole window is silenced, not just its trials: it also
+            # fetches indicators, loads models, and replays its winner,
+            # and several windows may interleave from worker processes.
+            with _quiet_logging(verbose):
+                train_data = (
+                    df.iloc[train_rows] if len(train_rows) else df.iloc[:0]
+                )
+                test_data = (
+                    df.iloc[test_rows] if len(test_rows) else df.iloc[:0]
+                )
+                train_exit_dates = self._build_exit_dates(
+                    train_data, has_selector
+                )
+                selection_data = _selection_df(
+                    self._executions, train_data, test_data
+                )
+                window_executions = (
+                    _resolve_executions(self._executions, selection_data)
+                    if has_selector
+                    else self._executions
+                )
+                invariant_data = self._compute_invariant_indicators(
                     df=df,
                     cache_date_fields=cache_date_fields,
                     enable_parallel_indicators=enable_parallel_indicators,
                     interval_data=interval_data,
+                    master_store=master_store,
                     executions=window_executions,
-                    symbol_store=master_store,
-                    hyperparams=build_run_hyperparams(hyperparams),
-                    indicator_syms=tuned_syms,
                 )
-                if needs_models and tuned_syms
-                else {}
-            )
-            pretrained_models = self._load_pretrained_models(
-                df=df,
-                train_rows=train_rows,
-                test_rows=test_rows,
-                window_executions=window_executions,
-                indicator_data={**invariant_data, **load_indicators},
-                master_store=master_store,
-                interval_data=interval_data,
-                tf_seconds=cache_date_fields.tf_seconds,
-                between_time=cache_date_fields.between_time,
-                days=cache_date_fields.days,
-            )
-            bundle = make_objective(
-                self,
-                score_fn,
-                train_rows=train_rows,
-                df=df,
-                hyperparams=hyperparams,
-                search_space=search_space,
-                invariant_indicator_data=invariant_data,
-                window_executions=window_executions,
-                master_store=master_store,
-                interval_data=interval_data,
-                enable_parallel_indicators=enable_parallel_indicators,
-                warmup=warmup,
-                pretrained_models=pretrained_models,
-                exit_dates=train_exit_dates,
-            )
-            this_seed = window_seed(index)
-            window_sampler = _build_sampler(sampler, search_space, this_seed)
-            window_study = optuna.create_study(
-                direction=direction, sampler=window_sampler, pruner=pruner
-            )
-            _run_study(window_study, bundle, window_n_trials, window_sampler)
-            best_params = build_run_hyperparams(
-                hyperparams, window_study.best_params
-            )
-            is_result = self._run_optimize_trial(
-                df=df,
-                train_rows=train_rows,
-                run_hyperparams=best_params,
-                invariant_indicator_data=invariant_data,
-                window_executions=window_executions,
-                master_store=master_store,
-                interval_data=interval_data,
-                enable_parallel_indicators=enable_parallel_indicators,
-                warmup=warmup,
-                pretrained_models=pretrained_models,
-                exit_dates=train_exit_dates,
-            )
-            test_result = self._run_optimize_test(
-                df=df,
-                test_rows=test_rows,
-                train_rows=train_rows,
-                run_hyperparams=best_params,
-                invariant_indicator_data=invariant_data,
-                window_executions=window_executions,
-                master_store=master_store,
-                interval_data=interval_data,
-                cache_date_fields=cache_date_fields,
-                enable_parallel_indicators=enable_parallel_indicators,
-                warmup=warmup,
-                start_dt=start_dt,
-                end_dt=end_dt,
-                exit_dates=self._build_exit_dates(test_data, has_selector),
-                seed=this_seed,
-                calc_bootstrap=calc_bootstrap,
-                pretrained_models=pretrained_models,
-            )
-            return WindowOptimizeResult(
-                params=best_params,
-                study=window_study,
-                test_result=test_result,
-                train_score=window_study.best_value,
-                train_pnl=is_result.metrics.total_pnl,
-                execution_symbols=(
-                    {
-                        e.id: _static_symbols(e.symbols)
-                        for e in window_executions
-                    }
-                    if has_selector
-                    else None
-                ),
-            )
+                # Model features only: _load_pretrained_models is a no-op
+                # without models, and the invariant indicators are already
+                # computed above, so only the tuned ones are fetched here.
+                _, tuned_syms = self._partition_indicator_syms(
+                    window_executions
+                )
+                needs_models = any(
+                    execution.model_names for execution in window_executions
+                )
+                load_indicators = (
+                    self._fetch_indicators(
+                        df=df,
+                        cache_date_fields=cache_date_fields,
+                        enable_parallel_indicators=enable_parallel_indicators,
+                        interval_data=interval_data,
+                        executions=window_executions,
+                        symbol_store=master_store,
+                        hyperparams=build_run_hyperparams(hyperparams),
+                        indicator_syms=tuned_syms,
+                    )
+                    if needs_models and tuned_syms
+                    else {}
+                )
+                pretrained_models = self._load_pretrained_models(
+                    df=df,
+                    train_rows=train_rows,
+                    test_rows=test_rows,
+                    window_executions=window_executions,
+                    indicator_data={**invariant_data, **load_indicators},
+                    master_store=master_store,
+                    interval_data=interval_data,
+                    tf_seconds=cache_date_fields.tf_seconds,
+                    between_time=cache_date_fields.between_time,
+                    days=cache_date_fields.days,
+                )
+                bundle = make_objective(
+                    self,
+                    score_fn,
+                    train_rows=train_rows,
+                    df=df,
+                    hyperparams=hyperparams,
+                    search_space=search_space,
+                    invariant_indicator_data=invariant_data,
+                    window_executions=window_executions,
+                    master_store=master_store,
+                    interval_data=interval_data,
+                    enable_parallel_indicators=enable_parallel_indicators,
+                    warmup=warmup,
+                    pretrained_models=pretrained_models,
+                    exit_dates=train_exit_dates,
+                    verbose=verbose,
+                )
+                this_seed = window_seed(index)
+                window_sampler = _build_sampler(
+                    sampler, search_space, this_seed
+                )
+                window_study = optuna.create_study(
+                    direction=direction, sampler=window_sampler, pruner=pruner
+                )
+                _run_study(
+                    window_study, bundle, window_n_trials, window_sampler
+                )
+                best_params = build_run_hyperparams(
+                    hyperparams, window_study.best_params
+                )
+                is_result = self._run_optimize_trial(
+                    df=df,
+                    train_rows=train_rows,
+                    run_hyperparams=best_params,
+                    invariant_indicator_data=invariant_data,
+                    window_executions=window_executions,
+                    master_store=master_store,
+                    interval_data=interval_data,
+                    enable_parallel_indicators=enable_parallel_indicators,
+                    warmup=warmup,
+                    pretrained_models=pretrained_models,
+                    exit_dates=train_exit_dates,
+                )
+                test_result = self._run_optimize_test(
+                    df=df,
+                    test_rows=test_rows,
+                    train_rows=train_rows,
+                    run_hyperparams=best_params,
+                    invariant_indicator_data=invariant_data,
+                    window_executions=window_executions,
+                    master_store=master_store,
+                    interval_data=interval_data,
+                    cache_date_fields=cache_date_fields,
+                    enable_parallel_indicators=enable_parallel_indicators,
+                    warmup=warmup,
+                    start_dt=start_dt,
+                    end_dt=end_dt,
+                    exit_dates=self._build_exit_dates(test_data, has_selector),
+                    seed=this_seed,
+                    calc_bootstrap=calc_bootstrap,
+                    pretrained_models=pretrained_models,
+                )
+                return WindowOptimizeResult(
+                    params=best_params,
+                    study=window_study,
+                    test_result=test_result,
+                    train_score=window_study.best_value,
+                    train_pnl=is_result.metrics.total_pnl,
+                    execution_symbols=(
+                        {
+                            e.id: _static_symbols(e.symbols)
+                            for e in window_executions
+                        }
+                        if has_selector
+                        else None
+                    ),
+                )
 
         scope = StaticScope.instance()
         with parallel() as pool:

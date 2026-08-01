@@ -260,6 +260,72 @@ def test_optimize_logs_trial_count(capsys, data_source_df):
     assert "Optimizing: 2 trials (grid)" in capsys.readouterr().out
 
 
+def test_optimize_quiet_trials_by_default(capsys, data_source_df):
+    lookback = hyperparam("lookback", default=10, low=5, high=10, step=5)
+    hhv = indicator(
+        "hhv_quiet",
+        lambda data, period: highv(data.high, period),
+        period=lookback,
+    )
+    strategy = _make_strategy(data_source_df)
+    strategy.add_execution(None, "AAPL", indicators=[hhv])
+    strategy.optimize(
+        lambda r: r.metrics.total_pnl,
+        sampler="grid",
+        train_size=0.5,
+        enable_parallel_indicators=False,
+    )
+    out = capsys.readouterr().out
+    assert "Optimizing: 2 trials (grid)" in out
+    # Only the final test window evaluation logs; the two trials are silent.
+    assert out.count("Test split:") == 1
+    assert not StaticScope.instance().logger._disabled
+
+
+def test_optimize_verbose_logs_trials(capsys, data_source_df):
+    lookback = hyperparam("lookback", default=10, low=5, high=10, step=5)
+    hhv = indicator(
+        "hhv_verbose",
+        lambda data, period: highv(data.high, period),
+        period=lookback,
+    )
+    strategy = _make_strategy(data_source_df)
+    strategy.add_execution(None, "AAPL", indicators=[hhv])
+    strategy.optimize(
+        lambda r: r.metrics.total_pnl,
+        sampler="grid",
+        train_size=0.5,
+        enable_parallel_indicators=False,
+        verbose=True,
+    )
+    out = capsys.readouterr().out
+    # Two trial backtests plus the final test window evaluation.
+    assert out.count("Test split:") == 3
+
+
+def test_optimize_windows_quiet_trials_by_default(capsys, data_source_df):
+    lookback = hyperparam("lookback", default=10, low=5, high=10, step=5)
+    hhv = indicator(
+        "hhv_quiet_wf",
+        lambda data, period: highv(data.high, period),
+        period=lookback,
+    )
+    strategy = _make_strategy(data_source_df)
+    strategy.add_execution(None, "AAPL", indicators=[hhv])
+    strategy.optimize(
+        lambda r: r.metrics.total_pnl,
+        sampler="grid",
+        windows=2,
+        train_size=0.5,
+        enable_parallel_indicators=False,
+    )
+    out = capsys.readouterr().out
+    # Each window's trials and replays are silent; only the stitched replay
+    # logs one test split per window.
+    assert out.count("Test split:") == 2
+    assert not StaticScope.instance().logger._disabled
+
+
 def test_grid_explosion_guard(data_source_df):
     hp = hyperparam("p", default=1, low=0, high=2000, step=1)
     ind = indicator("i", lambda data, p: data.close * 0 + p, p=hp)
@@ -1143,12 +1209,15 @@ def test_run_study_when_sampler_stops_then_batch_still_recorded():
     assert all(state == optuna.trial.TrialState.COMPLETE for state in states)
 
 
-def test_run_study_adaptive_sampler_forced_sequential_with_warning():
+def test_run_study_adaptive_sampler_forced_sequential_with_info_log(caplog):
     """Adaptive samplers must not fan out: batching would change their
     proposals and tie results to the worker count. They run sequentially,
-    with a warning, and produce the same trials as an n_jobs=1 run.
+    noted by an info log rather than a warning, and produce the same trials
+    as an n_jobs=1 run.
     """
+    import logging
     import optuna
+    import warnings as warnings_mod
     from optuna.samplers import TPESampler
     from pybroker.optimize import Hyperparam, SearchSpace, _run_study
     from pybroker.parallel import get_parallel_config, set_parallel
@@ -1176,8 +1245,15 @@ def test_run_study_adaptive_sampler_forced_sequential_with_warning():
             set_parallel(n_jobs=prior.n_jobs, backend=prior.backend)
         return [trial.params["x"] for trial in study.trials]
 
-    with pytest.warns(UserWarning, match="Parallel trial evaluation"):
+    caplog.set_level(logging.INFO, logger="pybroker")
+    with warnings_mod.catch_warnings(record=True) as caught:
+        warnings_mod.simplefilter("always")
         parallel_params = run(n_jobs=4)
+    assert not [w for w in caught if issubclass(w.category, UserWarning)]
+    assert any(
+        "Running TPESampler trials sequentially" in r.getMessage()
+        for r in caplog.records
+    )
     sequential_params = run(n_jobs=1)
     assert len(parallel_params) == 6
     # Forced-sequential evaluation is machine-independent: identical to a
@@ -1185,13 +1261,13 @@ def test_run_study_adaptive_sampler_forced_sequential_with_warning():
     assert parallel_params == sequential_params
 
 
-def test_run_study_random_parallel_matches_sequential():
+def test_run_study_random_parallel_matches_sequential(caplog):
     """RandomSampler's draws ignore completed results, so the batched path
     must propose the same points as a sequential run, in the same order,
-    without warning about disabled parallelism.
+    without falling back to sequential evaluation.
     """
+    import logging
     import optuna
-    import warnings as warnings_mod
     from optuna.samplers import RandomSampler
     from pybroker.optimize import Hyperparam, SearchSpace, _run_study
     from pybroker.parallel import get_parallel_config, set_parallel
@@ -1219,11 +1295,10 @@ def test_run_study_random_parallel_matches_sequential():
             set_parallel(n_jobs=prior.n_jobs, backend=prior.backend)
         return [trial.params["x"] for trial in study.trials]
 
-    with warnings_mod.catch_warnings(record=True) as caught:
-        warnings_mod.simplefilter("always")
-        parallel_params = run(n_jobs=2)
+    caplog.set_level(logging.INFO, logger="pybroker")
+    parallel_params = run(n_jobs=2)
     assert not [
-        w for w in caught if "Parallel trial evaluation" in str(w.message)
+        r for r in caplog.records if "trials sequentially" in r.getMessage()
     ]
     sequential_params = run(n_jobs=1)
     assert len(parallel_params) == 6
