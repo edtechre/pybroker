@@ -29,9 +29,8 @@ class ParallelConfig:
         n_jobs: Number of worker jobs. ``1`` (the default) runs sequentially;
             ``-1`` uses all available cores.
         backend: joblib backend name. ``'loky'`` (the default) runs work in
-            separate processes. Other options include ``'multiprocessing'``
-            and any backend registered with joblib (e.g. ``'ray'`` after
-            ``ray.util.joblib.register_ray()``).
+            separate processes. Any backend registered with joblib is also
+            accepted (e.g. ``'ray'`` after ``ray.util.joblib.register_ray()``).
         parallel: Optional pre-constructed :class:`joblib.Parallel` instance
             that overrides ``n_jobs`` and ``backend`` entirely. When set,
             PyBroker uses it directly and the caller owns its lifecycle.
@@ -60,17 +59,19 @@ def set_parallel(
         n_jobs: Number of workers. ``1`` runs sequentially (the default);
             ``-1`` uses all cores. Leave as ``None`` to keep the currently
             configured value.
-        backend: joblib backend name: ``'loky'`` (default), ``'threading'``,
-            ``'multiprocessing'``, or any backend registered via
-            :func:`joblib.register_parallel_backend` (e.g. ``'ray'`` after
-            ``ray.util.joblib.register_ray()``).
+        backend: joblib backend name: ``'loky'`` (default) or any backend
+            registered via :func:`joblib.register_parallel_backend` (e.g.
+            ``'ray'`` after ``ray.util.joblib.register_ray()``). The
+            ``'multiprocessing'`` backend is rejected because its standard
+            pickle serialization cannot ship PyBroker's dispatch closures.
         parallel: Pre-constructed :class:`joblib.Parallel` instance. Mutually
             exclusive with ``n_jobs``/``backend``; caller owns its lifecycle.
 
     Raises:
         ValueError: If ``parallel`` is passed together with ``n_jobs`` or
-            ``backend``, if ``backend`` is not a registered joblib backend, or
-            if ``parallel`` returns results out of submission order.
+            ``backend``, if ``backend`` is not a registered joblib backend or
+            is ``'multiprocessing'``, or if ``parallel`` returns results out
+            of submission order.
     """
     global _config
     if parallel is not None:
@@ -94,6 +95,17 @@ def set_parallel(
         _config = ParallelConfig(parallel=parallel)
         return
     if backend is not None:
+        if backend == "multiprocessing":
+            # Indicator and optimize-trial work is dispatched as closures,
+            # which the standard pickle used by this backend cannot
+            # serialize -- every parallel run would fail with a pickling
+            # error. loky ships closures via cloudpickle.
+            raise ValueError(
+                "The 'multiprocessing' backend is not supported: PyBroker "
+                "dispatches work as closures, which its standard pickle "
+                "serialization cannot handle. Use 'loky' (the default) for "
+                "process-based parallelism."
+            )
         registered = set(BACKENDS) | set(EXTERNAL_BACKENDS)
         if backend not in registered:
             raise ValueError(

@@ -58,6 +58,19 @@ def test_set_parallel_unknown_backend_raises():
         set_parallel(backend="not_a_backend")
 
 
+def test_set_parallel_multiprocessing_backend_raises():
+    """Dispatched indicator and optimize-trial work is made of closures,
+    which the multiprocessing backend's standard pickle cannot serialize.
+    """
+    with pytest.raises(
+        ValueError, match="'multiprocessing' backend is not supported"
+    ):
+        set_parallel(n_jobs=2, backend="multiprocessing")
+    config = get_parallel_config()
+    assert config.n_jobs == 1
+    assert config.backend == "loky"
+
+
 @pytest.fixture()
 def ray_backend():
     import ray
