@@ -2159,8 +2159,7 @@ class Strategy(
           (approximately 5-minute bars).
 
         - **Duration** (``str``): Fixed time span as digits plus one unit
-          letter — ``"1m"``, ``"5m"``, ``"1h"``, ``"30s"``, ``"1d"``, or
-          ``"1w"``.
+          letter — ``"1m"``, ``"5m"``, ``"1h"``, ``"30s"``, or ``"1d"``.
 
         - **Calendar** (``str``): Calendar buckets — ``"daily"``,
           ``"weekly"``, ``"monthly"``, ``"quarterly"``, or ``"yearly"``.

@@ -24,7 +24,7 @@ TimeframeInterval = Union[int, CalendarInterval, str]
 
 - ``int`` (``n > 1``): every ``n`` base bars (e.g. ``5``).
 - ``str`` duration: digits plus one unit letter — ``"5m"``, ``"1h"``,
-  ``"30s"``, ``"1d"``, or ``"1w"`` (letters: ``s``, ``m``, ``h``, ``d``, ``w``).
+  ``"30s"``, or ``"1d"`` (letters: ``s``, ``m``, ``h``, ``d``).
 - ``str`` calendar: ``"daily"``, ``"weekly"``, ``"monthly"``,
   ``"quarterly"``, or ``"yearly"``.
 """
@@ -46,7 +46,9 @@ _INTERVAL_HELP = (
     "intervals (digits + unit letter), or 'weekly' for calendar weeks."
 )
 
-_DURATION_PATTERN = re.compile(r"^(\d+)([smhdw])$", re.IGNORECASE)
+_DURATION_PATTERN = re.compile(r"^(\d+)([smhd])$", re.IGNORECASE)
+
+_WEEK_DURATION_PATTERN = re.compile(r"^(\d+)w$", re.IGNORECASE)
 
 _RESERVED_OHLCV_COLS: frozenset[str] = frozenset(
     {
@@ -175,6 +177,14 @@ def _normalize_duration_string(value: str) -> str:
         raise ValueError(f"Invalid interval {value!r}. {_INTERVAL_HELP}")
     match = _DURATION_PATTERN.fullmatch(stripped)
     if not match:
+        week_match = _WEEK_DURATION_PATTERN.fullmatch(stripped)
+        if week_match and int(week_match.group(1)) > 0:
+            days = 7 * int(week_match.group(1))
+            raise ValueError(
+                f"Invalid interval {value!r}. Week durations are not "
+                f"supported: use 'weekly' for calendar weeks or "
+                f"'{days}d' for fixed {days}-day windows."
+            )
         raise ValueError(f"Invalid interval {value!r}. {_INTERVAL_HELP}")
     amount = int(match.group(1))
     if amount <= 0:

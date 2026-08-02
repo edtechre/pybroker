@@ -85,7 +85,7 @@ ONE_MINUTE_BASE_SECONDS = 60.0
 DAILY_BASE_SECONDS = 86400.0
 
 CALENDAR_INTERVALS = ("daily", "weekly", "monthly", "quarterly", "yearly")
-DURATION_UNIT_LETTERS = ("s", "m", "h", "d", "w")
+DURATION_UNIT_LETTERS = ("s", "m", "h", "d")
 
 
 class TestIntervals:
@@ -104,7 +104,7 @@ class TestIntervals:
             ("1h", "1h"),
             ("30s", "30s"),
             ("5d", "5d"),
-            ("1w", "1w"),
+            ("7d", "7d"),
             ("5M", "5m"),
             ("1H", "1h"),
         ],
@@ -128,6 +128,17 @@ class TestIntervals:
     def test_reject_long_unit_names(self):
         with pytest.raises(ValueError, match="Invalid interval"):
             normalize_interval("5min")  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize(
+        "raw,expected_days",
+        [("1w", "7d"), ("2w", "14d")],
+    )
+    def test_reject_week_duration(self, raw, expected_days):
+        with pytest.raises(
+            ValueError,
+            match=f"use 'weekly' for calendar weeks or '{expected_days}'",
+        ):
+            normalize_interval(raw)  # type: ignore[arg-type]
         with pytest.raises(ValueError, match="Invalid interval"):
             normalize_interval("1hour")  # type: ignore[arg-type]
 
@@ -275,10 +286,10 @@ class TestCompressAllDurationIntervals:
         bars, _ = compress(dates, o, h, low, c, v, "1d")
         assert len(bars.close) == 4
 
-    def test_compress_one_week_duration_on_daily_base(self):
+    def test_compress_seven_day_duration_on_daily_base(self):
         dates = pd.date_range("2020-01-06", periods=14, freq="D")
         dates_arr, o, h, low, c, v = _ohlcv_from_dates(dates)
-        bars, _ = compress(dates_arr, o, h, low, c, v, "1w")
+        bars, _ = compress(dates_arr, o, h, low, c, v, "7d")
         assert len(bars.close) == 3
 
 
