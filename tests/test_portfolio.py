@@ -22,7 +22,7 @@ from pybroker.common import (
 )
 from pybroker.portfolio import Portfolio, Stop
 from pybroker.scope import ColumnScope, PriceScope
-from pybroker.slippage import FixedSlippageModel
+from pybroker.slippage import FixedSlippageModel, SlippageModel
 
 SYMBOL_1 = "SPY"
 SYMBOL_2 = "AAPL"
@@ -1872,6 +1872,86 @@ def test_exit_position_when_slippage_then_market_price():
         fees=0,
         intent="buy_to_close",
     )
+
+
+class _RecordingSlippageModel(SlippageModel):
+    """Captures the :class:`.FillSlippageContext` of each fill adjustment."""
+
+    def __init__(self):
+        self.contexts = []
+
+    def apply_at_fill(self, fill_ctx):
+        self.contexts.append(fill_ctx)
+        return fill_ctx.shares, fill_ctx.fill_price
+
+
+def test_exit_position_passes_enable_fractional_shares():
+    # Shares returned on this path are discarded, but a model may still
+    # branch on the flag (e.g. flooring the count it computes price impact
+    # from), so it must reflect the portfolio's configuration rather than
+    # the adjust_fill signature default of True.
+    model = _RecordingSlippageModel()
+    portfolio = Portfolio(CASH, enable_fractional_shares=False)
+    portfolio.buy(DATE_1, SYMBOL_1, SHARES_1, FILL_PRICE_1, LIMIT_PRICE_1)
+    portfolio.sell(DATE_1, SYMBOL_2, SHARES_2, FILL_PRICE_3, LIMIT_PRICE_3)
+    portfolio.incr_bars()
+    portfolio.exit_position(
+        DATE_2,
+        SYMBOL_1,
+        buy_fill_price=0,
+        sell_fill_price=FILL_PRICE_2,
+        slippage_model=model,
+    )
+    portfolio.exit_position(
+        DATE_2,
+        SYMBOL_2,
+        buy_fill_price=FILL_PRICE_4,
+        sell_fill_price=0,
+        slippage_model=model,
+    )
+    assert len(model.contexts) == 2
+    assert not any(ctx.enable_fractional_shares for ctx in model.contexts)
+
+
+def test_trigger_stop_passes_enable_fractional_shares():
+    # See test_exit_position_passes_enable_fractional_shares.
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, 200, 300],
+            [SYMBOL_1, DATE_2, 100, 200],
+        ],
+        columns=["symbol", "date", "low", "high"],
+    )
+    df = df.set_index(["symbol", "date"])
+    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)}, True)
+    stops = (
+        Stop(
+            id=1,
+            symbol=SYMBOL_1,
+            stop_type=StopType.LOSS,
+            pos_type="long",
+            percent=Decimal(20),
+            points=None,
+            bars=None,
+            fill_price=None,
+            limit_price=None,
+            exit_price=None,
+        ),
+    )
+    model = _RecordingSlippageModel()
+    portfolio = Portfolio(CASH, enable_fractional_shares=False)
+    portfolio.buy(
+        DATE_1,
+        SYMBOL_1,
+        SHARES_1,
+        Decimal(200),
+        limit_price=None,
+        stops=stops,
+    )
+    portfolio.incr_bars()
+    portfolio.check_stops(DATE_2, price_scope, slippage_model=model)
+    assert len(model.contexts) == 1
+    assert not model.contexts[0].enable_fractional_shares
 
 
 def test_trigger_long_bar_stop():

@@ -703,6 +703,7 @@ class TestSymbolSelector:
                 col_scope=None,
                 ind_scope=None,
                 sym_end_index=None,
+                enable_fractional_shares=True,
             ):
                 calls.append((side, symbol))
                 return shares, fill_price / 2
@@ -5069,6 +5070,55 @@ class TestStrategy:
         entries = result.orders[result.orders["type"] == entry_type]
         assert len(entries) == 1
         assert entries.iloc[0]["shares"] == 90
+
+    @pytest.mark.parametrize(
+        "bad_shares",
+        [lambda shares: shares + 1, lambda shares: Decimal(-1)],
+    )
+    def test_backtest_when_slippage_returns_invalid_shares_then_error(
+        self, data_source_df, bad_shares
+    ):
+        # A fill-time model may only reduce shares (a partial fill). An
+        # increase used to be honored unclamped -- on an exit order it could
+        # even flip the position, since the can't-sell-more-than-held clamp
+        # runs before slippage.
+        class BadSlippageModel(SlippageModel):
+            def apply_at_fill(self, fill_ctx):
+                return bad_shares(fill_ctx.shares), fill_ctx.fill_price
+
+        def buy_exec_fn(ctx):
+            if not ctx.long_pos():
+                ctx.buy_shares = 100
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.set_slippage_model(BadSlippageModel())
+        strategy.add_execution(buy_exec_fn, "SPY")
+        with pytest.raises(
+            ValueError, match="must be between 0 and the ordered"
+        ):
+            strategy.backtest(calc_bootstrap=False)
+
+    def test_backtest_when_slippage_returns_fractional_shares_then_truncated(
+        self, data_source_df
+    ):
+        # In whole-share mode a fractional return used to be booked as-is:
+        # cash and pnl tracked the fraction while the result tables silently
+        # astype(int)'d it away, so they disagreed with the cash moved.
+        class HalfFillSlippageModel(SlippageModel):
+            def apply_at_fill(self, fill_ctx):
+                return fill_ctx.shares * Decimal("0.5"), fill_ctx.fill_price
+
+        def buy_exec_fn(ctx):
+            if not ctx.long_pos():
+                ctx.buy_shares = 101
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.set_slippage_model(HalfFillSlippageModel())
+        strategy.add_execution(buy_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        buys = result.orders[result.orders["type"] == "buy"]
+        assert len(buys) == 1
+        assert buys.iloc[0]["shares"] == 50
 
     def test_backtest_when_volume_slippage_and_nan_volume(
         self, data_source_df

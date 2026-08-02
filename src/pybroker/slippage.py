@@ -50,8 +50,10 @@ class FillSlippageContext:
         sym_end_index: Current bar index per symbol, or ``None`` when
             unavailable.
         enable_fractional_shares: Whether fractional shares are enabled. When
-            ``False``, a model that reduces ``shares`` must return a whole
-            number.
+            ``False``, a returned share quantity is truncated to a whole
+            number by the caller; the flag lets a model compute
+            price-dependent values (such as volume participation) from the
+            quantity that will actually fill.
     """
 
     side: Literal["buy", "sell"]
@@ -131,6 +133,10 @@ class SlippageModel(ABC):
         self, fill_ctx: FillSlippageContext
     ) -> tuple[Decimal, Decimal]:
         """Applies fill-time slippage using data from the fill bar.
+
+        The returned share quantity may be reduced to simulate a partial
+        fill, but never increased: returning more than ``fill_ctx.shares``
+        (or a negative quantity) raises a :class:`ValueError` at the fill.
 
         Returns:
             Tuple of ``(shares, fill_price)`` after slippage.

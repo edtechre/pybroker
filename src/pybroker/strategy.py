@@ -1476,6 +1476,13 @@ class BacktestMixin:
                     enable_fractional_shares=enable_fractional_shares,
                 )
                 shares, fill_price = slippage_model.apply_at_fill(fill_ctx)
+                if shares < 0 or shares > fill_ctx.shares:
+                    raise ValueError(
+                        f"{type(slippage_model).__name__}.apply_at_fill "
+                        f"returned {shares} shares; must be between 0 and "
+                        f"the ordered {fill_ctx.shares}."
+                    )
+                shares = self._get_shares(shares, enable_fractional_shares)
         if pending.type == "buy":
             order_type = (
                 OrderType.LIMIT

@@ -1443,6 +1443,7 @@ class Portfolio:
                     col_scope=col_scope,
                     ind_scope=ind_scope,
                     sym_end_index=sym_end_index,
+                    enable_fractional_shares=self._enable_fractional_shares,
                 )
             self.sell(
                 date=date,
@@ -1463,6 +1464,7 @@ class Portfolio:
                     col_scope=col_scope,
                     ind_scope=ind_scope,
                     sym_end_index=sym_end_index,
+                    enable_fractional_shares=self._enable_fractional_shares,
                 )
             self.buy(
                 date=date,
@@ -1936,6 +1938,7 @@ class Portfolio:
             col_scope=col_scope,
             ind_scope=ind_scope,
             sym_end_index=sym_end_index,
+            enable_fractional_shares=self._enable_fractional_shares,
         )
         if slipped_price is None or slipped_price <= 0:
             return fill_price
