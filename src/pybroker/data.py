@@ -6,6 +6,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import sys
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Final, Iterable, Optional, Union
@@ -548,6 +549,11 @@ class YFinance(DataSource):
             progress=show_yf_progress_bar,
             auto_adjust=self.auto_adjust,
         )
+        if show_yf_progress_bar:
+            # yfinance's progress bar leaves its final newline unflushed on
+            # stderr; flush before the caller logs to stdout, or the newline
+            # surfaces as a stray stderr block in notebook output.
+            sys.stderr.flush()
         if df.columns.empty:
             columns = [
                 DataCol.SYMBOL.value,
