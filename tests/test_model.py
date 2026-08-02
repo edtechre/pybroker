@@ -36,7 +36,7 @@ BETWEEN_TIME = ("10:00", "15:30")
 
 
 @pytest.fixture(params=[True, False])
-def enable_parallel_models(request):
+def parallel_models(request):
     return request.param
 
 
@@ -253,7 +253,7 @@ class TestModelsMixin:
         param_test_data,
         ind_data,
         cache_date_fields,
-        enable_parallel_models,
+        parallel_models,
         request,
     ):
         param_test_data = get_fixture(request, param_test_data)
@@ -264,7 +264,7 @@ class TestModelsMixin:
             param_test_data,
             ind_data,
             cache_date_fields,
-            enable_parallel_models=enable_parallel_models,
+            parallel_models=parallel_models,
         )
         self._assert_models(models, model_syms)
 
@@ -347,7 +347,7 @@ class TestModelsMixin:
                 test_data,
                 ind_data,
                 cache_date_fields,
-                enable_parallel_models=True,
+                parallel_models=True,
             )
             mock_parallel.assert_called_once()
             mock_pool.assert_called_once()
@@ -394,7 +394,7 @@ class TestModelsMixin:
                 test_data,
                 ind_data,
                 cache_date_fields,
-                enable_parallel_models=True,
+                parallel_models=True,
             )
         finally:
             parallel_mod._config = saved
@@ -770,7 +770,7 @@ class TestPooledModelsMixin:
                 test_data,
                 ind_data,
                 cache_date_fields,
-                enable_parallel_models=True,
+                parallel_models=True,
                 pooled_model_groups=pooled_model_groups,
             )
             mock_parallel.assert_not_called()
@@ -835,7 +835,7 @@ class TestPooledModelsMixin:
                 test_data,
                 ind_data,
                 cache_date_fields,
-                enable_parallel_models=True,
+                parallel_models=True,
                 pooled_model_groups=pooled_model_groups,
             )
             mock_parallel.assert_called_once()
@@ -904,7 +904,7 @@ class TestPooledModelsMixin:
                 test_data,
                 ind_data,
                 cache_date_fields,
-                enable_parallel_models=True,
+                parallel_models=True,
                 pooled_model_groups=pooled_model_groups,
             )
             mock_parallel.assert_called_once()
@@ -946,7 +946,7 @@ class TestPooledModelsMixin:
             test_data,
             ind_data,
             cache_date_fields,
-            enable_parallel_models=False,
+            parallel_models=False,
             pooled_model_groups=pooled_model_groups,
         )
         parallel_models = mixin.train_models(
@@ -955,7 +955,7 @@ class TestPooledModelsMixin:
             test_data,
             ind_data,
             cache_date_fields,
-            enable_parallel_models=True,
+            parallel_models=True,
             pooled_model_groups=pooled_model_groups,
         )
         assert set(serial_models.keys()) == set(parallel_models.keys())
@@ -1012,7 +1012,7 @@ class TestIntervalModels:
             df=df,
             indicator_syms=[IndicatorSymbol(tf_ind_name, sym)],
             cache_date_fields=cache_date_fields,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
             interval_data=interval_data,
         )
         m = model(
@@ -1082,7 +1082,7 @@ class TestIntervalModels:
             df=df,
             indicator_syms=ind_syms,
             cache_date_fields=cache_date_fields,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
             interval_data=interval_data,
         )
         train_fn = Mock(return_value=FakeModel("pooled", np.array([1.0])))

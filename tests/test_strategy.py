@@ -2857,7 +2857,7 @@ def calc_bootstrap(request):
 
 
 @pytest.fixture(params=[True, False])
-def enable_parallel_indicators(request):
+def parallel_indicators(request):
     return request.param
 
 
@@ -3182,7 +3182,7 @@ class TestStrategy:
         days,
         between_time,
         calc_bootstrap,
-        enable_parallel_indicators,
+        parallel_indicators,
         request,
     ):
         data_source = get_fixture(request, data_source)
@@ -3202,7 +3202,7 @@ class TestStrategy:
             days=days,
             between_time=between_time,
             calc_bootstrap=calc_bootstrap,
-            enable_parallel_indicators=enable_parallel_indicators,
+            parallel_indicators=parallel_indicators,
             adjust="adjustment",
         )
         if date_range[0] is None:
@@ -3240,7 +3240,7 @@ class TestStrategy:
         else:
             assert result.bootstrap is None
 
-    def test_walkforward_enable_parallel_models(
+    def test_walkforward_parallel_models(
         self, data_source_df, executions_with_models
     ):
         _parallel_mod = import_module("pybroker.parallel")
@@ -3256,7 +3256,7 @@ class TestStrategy:
                 lookahead=1,
                 timeframe="1d",
                 train_size=0.5,
-                enable_parallel_models=False,
+                parallel_models=False,
                 seed=42,
             )
             parallel_result = strategy.walkforward(
@@ -3264,7 +3264,7 @@ class TestStrategy:
                 lookahead=1,
                 timeframe="1d",
                 train_size=0.5,
-                enable_parallel_models=True,
+                parallel_models=True,
                 seed=42,
             )
             pd.testing.assert_frame_equal(
@@ -3281,7 +3281,7 @@ class TestStrategy:
                     lookahead=1,
                     timeframe="1d",
                     train_size=0.5,
-                    enable_parallel_models=True,
+                    parallel_models=True,
                     seed=42,
                 )
                 mock_parallel.assert_called()
@@ -3359,7 +3359,7 @@ class TestStrategy:
         assert len(_pooled_train_calls) == 2
         assert saw_weekly_preds
 
-    def test_walkforward_pooled_enable_parallel_models(
+    def test_walkforward_pooled_parallel_models(
         self, data_source_df, executions_with_picklable_pooled_models
     ):
         _parallel_mod = import_module("pybroker.parallel")
@@ -3375,7 +3375,7 @@ class TestStrategy:
                 lookahead=1,
                 timeframe="1d",
                 train_size=0.5,
-                enable_parallel_models=False,
+                parallel_models=False,
                 seed=42,
             )
             parallel_result = strategy.walkforward(
@@ -3383,7 +3383,7 @@ class TestStrategy:
                 lookahead=1,
                 timeframe="1d",
                 train_size=0.5,
-                enable_parallel_models=True,
+                parallel_models=True,
                 seed=42,
             )
             pd.testing.assert_frame_equal(
@@ -3412,7 +3412,7 @@ class TestStrategy:
                 lookahead=1,
                 timeframe="1d",
                 train_size=0.5,
-                enable_parallel_models=False,
+                parallel_models=False,
                 seed=42,
             )
             parallel_result = strategy.walkforward(
@@ -3420,7 +3420,7 @@ class TestStrategy:
                 lookahead=1,
                 timeframe="1d",
                 train_size=0.5,
-                enable_parallel_models=True,
+                parallel_models=True,
                 seed=42,
             )
             pd.testing.assert_frame_equal(
@@ -3437,7 +3437,7 @@ class TestStrategy:
                     lookahead=1,
                     timeframe="1d",
                     train_size=0.5,
-                    enable_parallel_models=True,
+                    parallel_models=True,
                     seed=42,
                 )
                 mock_parallel.assert_called()
@@ -3445,7 +3445,7 @@ class TestStrategy:
         finally:
             _parallel_mod._config = saved
 
-    def test_walkforward_pooled_mixed_enable_parallel_models(
+    def test_walkforward_pooled_mixed_parallel_models(
         self,
         data_source_df,
         executions_with_picklable_pooled_and_non_pooled_models,
@@ -3463,7 +3463,7 @@ class TestStrategy:
                 lookahead=1,
                 timeframe="1d",
                 train_size=0.5,
-                enable_parallel_models=False,
+                parallel_models=False,
                 seed=42,
             )
             parallel_result = strategy.walkforward(
@@ -3471,7 +3471,7 @@ class TestStrategy:
                 lookahead=1,
                 timeframe="1d",
                 train_size=0.5,
-                enable_parallel_models=True,
+                parallel_models=True,
                 seed=42,
             )
             pd.testing.assert_frame_equal(
@@ -3488,7 +3488,7 @@ class TestStrategy:
                     lookahead=1,
                     timeframe="1d",
                     train_size=0.5,
-                    enable_parallel_models=True,
+                    parallel_models=True,
                     seed=42,
                 )
                 mock_parallel.assert_called()
@@ -3497,7 +3497,7 @@ class TestStrategy:
             _parallel_mod._config = saved
 
     @pytest.mark.xdist_group(name="loky")
-    def test_walkforward_enable_parallel_models_loky(
+    def test_walkforward_parallel_models_loky(
         self, data_source_df, executions_with_picklable_models
     ):
         _parallel_mod = import_module("pybroker.parallel")
@@ -3513,7 +3513,7 @@ class TestStrategy:
                 lookahead=1,
                 timeframe="1d",
                 train_size=0.5,
-                enable_parallel_models=False,
+                parallel_models=False,
                 seed=42,
             )
             parallel_result = strategy.walkforward(
@@ -3521,7 +3521,7 @@ class TestStrategy:
                 lookahead=1,
                 timeframe="1d",
                 train_size=0.5,
-                enable_parallel_models=True,
+                parallel_models=True,
                 seed=42,
             )
             pd.testing.assert_frame_equal(
@@ -3535,7 +3535,7 @@ class TestStrategy:
             _parallel_mod._config = saved
 
     @pytest.mark.xdist_group(name="ray")
-    def test_walkforward_enable_parallel_models_ray(
+    def test_walkforward_parallel_models_ray(
         self, data_source_df, executions_with_picklable_models, ray_backend
     ):
         _parallel_mod = import_module("pybroker.parallel")
@@ -3551,7 +3551,7 @@ class TestStrategy:
                 lookahead=1,
                 timeframe="1d",
                 train_size=0.5,
-                enable_parallel_models=False,
+                parallel_models=False,
                 seed=42,
             )
             parallel_result = strategy.walkforward(
@@ -3559,7 +3559,7 @@ class TestStrategy:
                 lookahead=1,
                 timeframe="1d",
                 train_size=0.5,
-                enable_parallel_models=True,
+                parallel_models=True,
                 seed=42,
             )
             pd.testing.assert_frame_equal(
@@ -3659,7 +3659,7 @@ class TestStrategy:
             lookahead=1,
             train_size=0.5,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
         recorded_strategy = Strategy(
             data_source_df,
@@ -3677,7 +3677,7 @@ class TestStrategy:
             lookahead=1,
             train_size=0.5,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
         pd.testing.assert_frame_equal(
             default_result.portfolio, recorded_result.portfolio
@@ -5586,9 +5586,9 @@ def _sma(bar_data, period):
 
 
 class TestStrategyIntervals:
-    @pytest.mark.parametrize("enable_parallel_indicators", [True, False])
+    @pytest.mark.parametrize("parallel_indicators", [True, False])
     def test_weekly_interval_backtest(
-        self, data_source_df, enable_parallel_indicators, scope
+        self, data_source_df, parallel_indicators, scope
     ):
         def sma(bar_data, period):
             close = bar_data.close
@@ -5616,7 +5616,7 @@ class TestStrategyIntervals:
         )
         strategy.walkforward(
             windows=1,
-            enable_parallel_indicators=enable_parallel_indicators,
+            parallel_indicators=parallel_indicators,
             timeframe="1d",
         )
         assert seen
@@ -5648,9 +5648,9 @@ class TestStrategyIntervals:
         ):
             strategy.walkforward(windows=1, timeframe="1d")
 
-    @pytest.mark.parametrize("enable_parallel_models", [True, False])
+    @pytest.mark.parametrize("parallel_models", [True, False])
     def test_weekly_interval_model_walkforward(
-        self, data_source_df, scope, enable_parallel_models
+        self, data_source_df, scope, parallel_models
     ):
         def sma(bar_data, period):
             close = bar_data.close
@@ -5689,7 +5689,7 @@ class TestStrategyIntervals:
         )
         strategy.walkforward(
             windows=1,
-            enable_parallel_models=enable_parallel_models,
+            parallel_models=parallel_models,
             timeframe="1d",
         )
         assert seen
@@ -5800,9 +5800,9 @@ class TestStrategyIntervals:
             assert n_ind == n_bars
 
     @pytest.mark.parametrize("interval", ["weekly", 5])
-    @pytest.mark.parametrize("enable_parallel_models", [True, False])
+    @pytest.mark.parametrize("parallel_models", [True, False])
     def test_interval_model_walkforward(
-        self, data_source_df, scope, interval, enable_parallel_models
+        self, data_source_df, scope, interval, parallel_models
     ):
         sma_ind = self._sma_indicator()
 
@@ -5832,7 +5832,7 @@ class TestStrategyIntervals:
         )
         strategy.walkforward(
             windows=1,
-            enable_parallel_models=enable_parallel_models,
+            parallel_models=parallel_models,
             timeframe="1d",
         )
         assert seen

@@ -162,7 +162,7 @@ def test_ray_backend_dispatches_parallel_indicators(ray_backend, scope):
     pool_logger.addHandler(handler)
     reset_log_once("context_argument_warning")
     try:
-        result = ind_set(df, enable_parallel_indicators=True)
+        result = ind_set(df, parallel_indicators=True)
     finally:
         pool_logger.removeHandler(handler)
     assert not [

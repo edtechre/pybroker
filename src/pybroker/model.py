@@ -1824,7 +1824,7 @@ class ModelsMixin:
         test_data: pd.DataFrame,
         indicator_data: Mapping[IndicatorSymbol, pd.Series],
         cache_date_fields: CacheDateFields,
-        enable_parallel_models: bool = False,
+        parallel_models: bool = False,
         pooled_model_groups: Optional[
             Mapping[tuple[str, int], frozenset[str]]
         ] = None,
@@ -1847,7 +1847,7 @@ class ModelsMixin:
                 ``pandas.Series`` of :class:`pybroker.indicator.Indicator`
                 values.
             cache_date_fields: Date fields used to key cache data.
-            enable_parallel_models: If ``True``, :class:`.ModelTrainer` models
+            parallel_models: If ``True``, :class:`.ModelTrainer` models
                 are trained in parallel using multiple processes. Defaults to
                 ``False``.
             pooled_model_groups: ``Mapping`` of ``(model_name, execution_id)``
@@ -2082,7 +2082,7 @@ class ModelsMixin:
                 raise TypeError(f"Invalid ModelSource type: {type(source)}")
 
         trainer_results = self._run_model_trainers(
-            trainer_tasks, enable_parallel_models
+            trainer_tasks, parallel_models
         )
         for task, trainer_result in zip(trainer_tasks, trainer_results):
             if trainer_result[0] == "pooled":
@@ -2188,10 +2188,10 @@ class ModelsMixin:
     def _run_model_trainers(
         self,
         trainer_tasks: Collection[_TrainerTask],
-        enable_parallel_models: bool,
+        parallel_models: bool,
     ) -> list[TrainerReturn]:
         if (
-            enable_parallel_models
+            parallel_models
             and len(trainer_tasks) > 1
             and _effective_n_jobs() > 1
         ):

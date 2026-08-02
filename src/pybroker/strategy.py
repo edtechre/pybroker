@@ -2365,8 +2365,8 @@ class Strategy(
         train_size: float = 0,
         shuffle: bool = False,
         calc_bootstrap: bool = False,
-        enable_parallel_indicators: bool = False,
-        enable_parallel_models: bool = False,
+        parallel_indicators: bool = False,
+        parallel_models: bool = False,
         warmup: Optional[int] = None,
         portfolio: Optional[Portfolio] = None,
         adjust: Optional[Any] = None,
@@ -2416,10 +2416,10 @@ class Strategy(
                 via :meth:`pybroker.cache.enable_model_cache`.
             calc_bootstrap: Whether to compute randomized bootstrap evaluation
                 metrics. Defaults to ``False``.
-            enable_parallel_indicators: If ``True``,
+            parallel_indicators: If ``True``,
                 :class:`pybroker.indicator.Indicator` data is computed in
                 parallel using multiple processes. Defaults to ``False``.
-            enable_parallel_models: If ``True``, :class:`pybroker.model.ModelTrainer`
+            parallel_models: If ``True``, :class:`pybroker.model.ModelTrainer`
                 models are trained in parallel using multiple processes.
                 Defaults to ``False``.
             warmup: Number of bars that need to pass before running the
@@ -2445,8 +2445,8 @@ class Strategy(
             train_size=train_size,
             shuffle=shuffle,
             calc_bootstrap=calc_bootstrap,
-            enable_parallel_indicators=enable_parallel_indicators,
-            enable_parallel_models=enable_parallel_models,
+            parallel_indicators=parallel_indicators,
+            parallel_models=parallel_models,
             warmup=warmup,
             portfolio=portfolio,
             adjust=adjust,
@@ -2466,8 +2466,8 @@ class Strategy(
         train_size: float = 0.5,
         shuffle: bool = False,
         calc_bootstrap: bool = False,
-        enable_parallel_indicators: bool = False,
-        enable_parallel_models: bool = False,
+        parallel_indicators: bool = False,
+        parallel_models: bool = False,
         warmup: Optional[int] = None,
         portfolio: Optional[Portfolio] = None,
         adjust: Optional[Any] = None,
@@ -2523,10 +2523,10 @@ class Strategy(
                 via :meth:`pybroker.cache.enable_model_cache`.
             calc_bootstrap: Whether to compute randomized bootstrap evaluation
                 metrics. Defaults to ``False``.
-            enable_parallel_indicators: If ``True``,
+            parallel_indicators: If ``True``,
                 :class:`pybroker.indicator.Indicator` data is computed in
                 parallel using multiple processes. Defaults to ``False``.
-            enable_parallel_models: If ``True``, :class:`pybroker.model.ModelTrainer`
+            parallel_models: If ``True``, :class:`pybroker.model.ModelTrainer`
                 models are trained in parallel using multiple processes.
                 Defaults to ``False``.
             warmup: Number of bars that need to pass before running the
@@ -2609,7 +2609,7 @@ class Strategy(
                 indicator_data = self._fetch_indicators(
                     df=df,
                     cache_date_fields=cache_date_fields,
-                    enable_parallel_indicators=enable_parallel_indicators,
+                    parallel_indicators=parallel_indicators,
                     interval_data=interval_data,
                     symbol_store=master_store,
                     hyperparams=run_hyperparams or None,
@@ -2653,9 +2653,9 @@ class Strategy(
                 shuffle=shuffle,
                 train_only=train_only,
                 warmup=warmup,
-                enable_parallel_models=enable_parallel_models,
+                parallel_models=parallel_models,
                 has_selector=has_selector,
-                enable_parallel_indicators=enable_parallel_indicators,
+                parallel_indicators=parallel_indicators,
                 global_cache_date_fields=cache_date_fields,
                 run_hyperparams=run_hyperparams,
                 backtest_settings=backtest_settings,
@@ -2854,9 +2854,9 @@ class Strategy(
         shuffle: bool,
         train_only: bool,
         warmup: Optional[int],
-        enable_parallel_models: bool = False,
+        parallel_models: bool = False,
         has_selector: bool = False,
-        enable_parallel_indicators: bool = False,
+        parallel_indicators: bool = False,
         global_cache_date_fields: Optional[CacheDateFields] = None,
         run_hyperparams: Optional[dict[str, Any]] = None,
         backtest_settings: Optional[BacktestSettings] = None,
@@ -2910,7 +2910,7 @@ class Strategy(
                 window_indicator_data = self._fetch_indicators(
                     df=df,
                     cache_date_fields=global_cache_date_fields,
-                    enable_parallel_indicators=enable_parallel_indicators,
+                    parallel_indicators=parallel_indicators,
                     interval_data=interval_data,
                     executions=window_executions,
                     symbol_store=master_store,
@@ -3003,7 +3003,7 @@ class Strategy(
                         between_time=between_time,
                         days=days,
                     ),
-                    enable_parallel_models=enable_parallel_models,
+                    parallel_models=parallel_models,
                     pooled_model_groups=pooled_model_groups,
                     interval_data=interval_data,
                     history_store=history_store,
@@ -3235,7 +3235,7 @@ class Strategy(
         self,
         df: pd.DataFrame,
         cache_date_fields: CacheDateFields,
-        enable_parallel_indicators: bool,
+        parallel_indicators: bool,
         interval_data: Optional[IntervalData] = None,
         executions: Optional[set[Execution]] = None,
         symbol_store: Optional[SymbolArrayStore] = None,
@@ -3248,7 +3248,7 @@ class Strategy(
             df=df,
             indicator_syms=indicator_syms,
             cache_date_fields=cache_date_fields,
-            enable_parallel_indicators=enable_parallel_indicators,
+            parallel_indicators=parallel_indicators,
             interval_data=interval_data,
             symbol_store=symbol_store,
             hyperparams=hyperparams,

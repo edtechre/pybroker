@@ -23,8 +23,8 @@ class ParallelConfig:
     PyBroker can compute indicators, train models, and run optimizations in
     parallel using `joblib <https://joblib.readthedocs.io/>`_. Optimization
     trials run on all available cores by default; indicator computation and
-    model training additionally require their ``enable_parallel_indicators``/
-    ``enable_parallel_models`` flags. Call ``set_parallel(n_jobs=1)`` to run
+    model training additionally require their ``parallel_indicators``/
+    ``parallel_models`` flags. Call ``set_parallel(n_jobs=1)`` to run
     everything sequentially, and read the current configuration with
     :func:`get_parallel_config`.
 
