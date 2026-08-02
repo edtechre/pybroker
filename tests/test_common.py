@@ -14,6 +14,7 @@ from datetime import datetime
 from decimal import Decimal
 from pybroker.common import (
     BarData,
+    bars_to_df,
     parse_timeframe,
     quantize,
     to_datetime,
@@ -66,6 +67,67 @@ def test_bar_data_get_custom_data_when_no_attr_then_error():
         AttributeError, match=re.escape("Attribute 'foo' not found.")
     ):
         bar_data.foo
+
+
+def test_bars_to_df():
+    date = np.full(10, np.datetime64("2022-02-02"))
+    open_ = np.full(10, 1.0)
+    high = np.full(10, 2.0)
+    low = np.full(10, 3.0)
+    close = np.full(10, 4.0)
+    volume = np.full(10, 5.0)
+    vwap = np.full(10, 6.0)
+    foo = np.full(10, 7.0)
+    bar_data = BarData(
+        date=date,
+        open=open_,
+        high=high,
+        low=low,
+        close=close,
+        volume=volume,
+        vwap=vwap,
+        foo=foo,
+    )
+    df = bars_to_df(bar_data)
+    assert df.columns.tolist() == [
+        "date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "vwap",
+        "foo",
+    ]
+    assert len(df) == 10
+    assert (df["date"].to_numpy() == date).all()
+    assert (df["open"].to_numpy() == open_).all()
+    assert (df["high"].to_numpy() == high).all()
+    assert (df["low"].to_numpy() == low).all()
+    assert (df["close"].to_numpy() == close).all()
+    assert (df["volume"].to_numpy() == volume).all()
+    assert (df["vwap"].to_numpy() == vwap).all()
+    assert (df["foo"].to_numpy() == foo).all()
+
+
+def test_bars_to_df_when_optional_cols_none():
+    date = np.full(10, np.datetime64("2022-02-02"))
+    open_ = np.full(10, 1.0)
+    high = np.full(10, 2.0)
+    low = np.full(10, 3.0)
+    close = np.full(10, 4.0)
+    bar_data = BarData(
+        date=date,
+        open=open_,
+        high=high,
+        low=low,
+        close=close,
+        volume=None,
+        vwap=None,
+    )
+    df = bars_to_df(bar_data)
+    assert df.columns.tolist() == ["date", "open", "high", "low", "close"]
+    assert len(df) == 10
 
 
 @pytest.mark.parametrize(

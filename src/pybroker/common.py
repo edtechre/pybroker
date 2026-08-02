@@ -313,6 +313,33 @@ class BarData:
         raise AttributeError(f"Attribute {attr!r} not found.")
 
 
+def bars_to_df(bar_data: BarData) -> pd.DataFrame:
+    """Converts a :class:`.BarData` instance to a
+    :class:`pandas.DataFrame`.
+
+    Args:
+        bar_data: :class:`.BarData` to convert.
+
+    Returns:
+        :class:`pandas.DataFrame` containing a column for every field in
+        ``bar_data``, including custom data fields. The ``volume`` and
+        ``vwap`` columns are included only when set.
+    """
+    data = {
+        DataCol.DATE.value: bar_data.date,
+        DataCol.OPEN.value: bar_data.open,
+        DataCol.HIGH.value: bar_data.high,
+        DataCol.LOW.value: bar_data.low,
+        DataCol.CLOSE.value: bar_data.close,
+    }
+    if bar_data.volume is not None:
+        data[DataCol.VOLUME.value] = bar_data.volume
+    if bar_data.vwap is not None:
+        data[DataCol.VWAP.value] = bar_data.vwap
+    data.update(bar_data._custom_col_data)
+    return pd.DataFrame(data)
+
+
 def to_datetime(
     date: Union[str, datetime, np.datetime64, pd.Timestamp],
 ) -> datetime:
