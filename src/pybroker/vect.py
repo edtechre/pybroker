@@ -330,6 +330,39 @@ def _atr(
 
 
 @njit(cache=True)
+def atr(
+    high: NDArray[np.float64],
+    low: NDArray[np.float64],
+    close: NDArray[np.float64],
+    lookback: int,
+) -> NDArray[np.float64]:
+    """Computes Average True Range (ATR).
+
+    True range is the greatest of ``high - low``, ``abs(high - previous
+    close)``, and ``abs(low - previous close)``.
+
+    Args:
+        high: High prices.
+        low: Low prices.
+        close: Close prices.
+        lookback: Number of lookback bars.
+
+    Returns:
+        :class:`numpy.ndarray` of the ``lookback``-bar averages of true range.
+        The first ``lookback`` values are ``NaN``, since the true range of the
+        first bar has no previous close.
+    """
+    assert len(high) == len(low) and len(high) == len(close)
+    if not len(close):
+        return np.array(tuple())
+    _verify_input(close, lookback)
+    out = np.full(len(close), np.nan)
+    for i in range(lookback, len(close)):
+        out[i] = _atr(i, lookback, high, low, close)
+    return out
+
+
+@njit(cache=True)
 def _variance(
     use_change: bool, last_bar: int, length: int, prices: NDArray[np.float64]
 ) -> float:

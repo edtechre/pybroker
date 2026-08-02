@@ -105,6 +105,7 @@ from pybroker.interval import (
     compress_bars as compress_bars,
 )
 from pybroker.vect import (
+    atr as atr,
     cross as cross,
     highv as highv,
     lowv as lowv,

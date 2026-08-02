@@ -15,6 +15,7 @@ from pybroker.vect import (
     aroon_diff,
     aroon_down,
     aroon_up,
+    atr,
     close_minus_ma,
     cross,
     cubic_deviation,
@@ -128,6 +129,74 @@ def test_returnv(array, n, expected):
 def test_when_n_invalid_then_error(fnv, array, n, expected_msg):
     with pytest.raises(AssertionError, match=re.escape(expected_msg)):
         fnv(np.array(array), n)
+
+
+def _reference_atr(
+    high: np.ndarray, low: np.ndarray, close: np.ndarray, lookback: int
+) -> np.ndarray:
+    """Textbook ATR: rolling mean of true range, where true range is the
+    greatest of ``high - low``, ``abs(high - prev close)``, and
+    ``abs(low - prev close)``. Bar 0 has no previous close, so outputs start
+    once a full window of defined true ranges exists.
+    """
+    n = len(close)
+    tr = np.full(n, np.nan)
+    for i in range(1, n):
+        tr[i] = max(
+            high[i] - low[i],
+            abs(high[i] - close[i - 1]),
+            abs(low[i] - close[i - 1]),
+        )
+    out = np.full(n, np.nan)
+    for i in range(lookback, n):
+        out[i] = np.mean(tr[i - lookback + 1 : i + 1])
+    return out
+
+
+@pytest.mark.parametrize("lookback", [1, 2, 14, 99, 100])
+def test_atr_matches_reference(lookback):
+    n = 100
+    base = np.random.rand(n) * 10 + 10
+    spread = np.random.rand(n) + 0.1
+    high = base + spread
+    low = base - spread
+    close = base + (np.random.rand(n) - 0.5) * spread
+    result = atr(high, low, close, lookback)
+    assert np.allclose(
+        result, _reference_atr(high, low, close, lookback), equal_nan=True
+    )
+    assert np.all(np.isnan(result[:lookback]))
+    if lookback < n:
+        assert not np.any(np.isnan(result[lookback:]))
+
+
+def test_atr_when_prev_close_gaps_outside_bar_range():
+    high = np.array([10.0, 5.0, 30.0])
+    low = np.array([9.0, 4.0, 29.0])
+    close = np.array([9.5, 4.5, 29.5])
+    result = atr(high, low, close, 1)
+    assert np.isnan(result[0])
+    assert result[1] == 5.5
+    assert result[2] == 25.5
+
+
+def test_atr_when_empty_then_empty():
+    empty = np.array([])
+    assert not len(atr(empty, empty, empty, 5))
+
+
+@pytest.mark.parametrize(
+    "n, expected_msg",
+    [
+        (10, "n is greater than array length."),
+        (0, "n needs to be >= 1."),
+        (-1, "n needs to be >= 1."),
+    ],
+)
+def test_atr_when_n_invalid_then_error(n, expected_msg):
+    array = np.array([1.0, 2.0, 3.0])
+    with pytest.raises(AssertionError, match=re.escape(expected_msg)):
+        atr(array, array, array, n)
 
 
 def _brute_lowv(array: np.ndarray, n: int) -> np.ndarray:
