@@ -1454,6 +1454,9 @@ class BacktestMixin:
                 shares = held
             if shares <= 0:
                 return None, Decimal(), fill_price
+        # The unadjusted bar price, recorded on the order so slippage can be
+        # quantified per fill.
+        market_price = fill_price
         if slippage_model is not None:
             # Exact type check, not isinstance: a subclass may override
             # apply_at_fill and must not be routed to the fast path.
@@ -1489,6 +1492,7 @@ class BacktestMixin:
                     stops=pending.stops,
                     created=pending.created,
                     order_type=order_type,
+                    market_price=market_price,
                 ),
                 shares,
                 fill_price,
@@ -1508,6 +1512,7 @@ class BacktestMixin:
                 stops=pending.stops,
                 created=pending.created,
                 order_type=order_type,
+                market_price=market_price,
             ),
             shares,
             fill_price,
@@ -3396,7 +3401,7 @@ class Strategy(
         orders_df = pd.DataFrame.from_records(
             portfolio.orders, columns=Order._fields, index="id"
         )
-        for col in ("limit_price", "fill_price", "fees"):
+        for col in ("limit_price", "market_price", "fill_price", "fees"):
             orders_df[col] = quantize(
                 orders_df, col, self._config.round_test_result
             )

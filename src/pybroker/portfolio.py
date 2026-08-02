@@ -348,6 +348,9 @@ class Order(NamedTuple):
             ``sell_to_close``.
         shares: Number of shares bought or sold.
         limit_price: Limit price that was used for the order.
+        market_price: Market price prevailing when the order was filled,
+            before any fill-time slippage adjustment. Equal to
+            ``fill_price`` when no slippage model is set.
         fill_price: Price that the order was filled at.
         fees: Brokerage fees for order.
     """
@@ -373,6 +376,7 @@ class Order(NamedTuple):
     ]
     shares: Decimal
     limit_price: Optional[Decimal]
+    market_price: Decimal
     fill_price: Decimal
     fees: Decimal
 
@@ -695,6 +699,7 @@ class Portfolio:
         intent: PositionIntent,
         shares: Decimal,
         limit_price: Optional[Decimal],
+        market_price: Optional[Decimal],
         fill_price: Decimal,
     ) -> Order:
         self._order_id += 1
@@ -709,6 +714,9 @@ class Portfolio:
             intent=intent.value,
             shares=shares,
             limit_price=limit_price,
+            market_price=market_price
+            if market_price is not None
+            else fill_price,
             fill_price=fill_price,
             fees=fees,
         )
@@ -984,6 +992,7 @@ class Portfolio:
         stops: Optional[Iterable[Stop]] = None,
         created: Optional[np.datetime64] = None,
         order_type: OrderType = OrderType.MARKET,
+        market_price: Optional[Decimal] = None,
     ) -> Optional[Order]:
         r"""Places a buy order.
 
@@ -997,6 +1006,8 @@ class Portfolio:
                 the :class:`.Order`, if filled.
             created: Date the order signal was created.
             order_type: How the order originated.
+            market_price: Market price at fill time, before fill-time
+                slippage. Defaults to ``fill_price``.
 
         Returns:
             :class:`.Order` if the order was filled, otherwise ``None``.
@@ -1032,6 +1043,7 @@ class Portfolio:
             intent=intent,
             shares=covered.filled_shares + bought_shares,
             limit_price=limit_price,
+            market_price=market_price,
             fill_price=fill_price,
         )
         return order
@@ -1188,6 +1200,7 @@ class Portfolio:
         stops: Optional[Iterable[Stop]] = None,
         created: Optional[np.datetime64] = None,
         order_type: OrderType = OrderType.MARKET,
+        market_price: Optional[Decimal] = None,
     ) -> Optional[Order]:
         r"""Places a sell order.
 
@@ -1201,6 +1214,8 @@ class Portfolio:
                 the :class:`.Order`, if filled.
             created: Date the order signal was created.
             order_type: How the order originated.
+            market_price: Market price at fill time, before fill-time
+                slippage. Defaults to ``fill_price``.
 
         Returns:
             :class:`.Order` if the order was filled, otherwise ``None``.
@@ -1236,6 +1251,7 @@ class Portfolio:
             intent=intent,
             shares=sold.filled_shares + short_shares,
             limit_price=limit_price,
+            market_price=market_price,
             fill_price=fill_price,
         )
         return order
@@ -1411,7 +1427,9 @@ class Portfolio:
         ``buy_fill_price`` and ``sell_fill_price``.
 
         When ``slippage_model`` is set, both fills are adjusted by it. Share
-        adjustments are ignored because the positions are exited in full.
+        adjustments are ignored because the positions are exited in full. The
+        unadjusted prices are recorded as ``market_price`` on the resulting
+        :class:`.Order`\\ s.
         """
         if symbol in self.long_positions:
             long_shares = self.long_positions[symbol].shares
@@ -1431,6 +1449,7 @@ class Portfolio:
                 symbol=symbol,
                 shares=long_shares,
                 fill_price=fill_price,
+                market_price=sell_fill_price,
             )
         if symbol in self.short_positions:
             short_shares = self.short_positions[symbol].shares
@@ -1450,6 +1469,7 @@ class Portfolio:
                 symbol=symbol,
                 shares=short_shares,
                 fill_price=fill_price,
+                market_price=buy_fill_price,
             )
 
     def capture_bar(
@@ -1954,6 +1974,7 @@ class Portfolio:
             raise ValueError(f"Unknown stop type: {stop.stop_type}")
         if fill_price is None:
             return False, fill_price
+        market_price = fill_price
         # Slippage is applied after the trigger decision (which must use the
         # unslipped price) and before the limit check, matching the order in
         # which pending orders are filled.
@@ -2008,6 +2029,7 @@ class Portfolio:
             intent=intent,
             shares=stop_shares,
             limit_price=stop.limit_price,
+            market_price=market_price,
             fill_price=fill_price,
         )
         return True, fill_price

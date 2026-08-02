@@ -22,6 +22,7 @@ from pybroker.common import (
 )
 from pybroker.portfolio import Portfolio, Stop
 from pybroker.scope import ColumnScope, PriceScope
+from pybroker.slippage import FixedSlippageModel
 
 SYMBOL_1 = "SPY"
 SYMBOL_2 = "AAPL"
@@ -51,6 +52,7 @@ def assert_order(
     intent=None,
     shares=None,
     limit_price=None,
+    market_price=None,
     fill_price=None,
     fees=None,
 ):
@@ -62,6 +64,10 @@ def assert_order(
     assert order.intent == intent
     assert order.shares == shares
     assert order.limit_price == limit_price
+    if market_price is None:
+        assert order.market_price == fill_price
+    else:
+        assert order.market_price == market_price
     assert order.fill_price == fill_price
     assert order.fees == fees
 
@@ -1806,6 +1812,68 @@ def test_exit_position():
     )
 
 
+def test_buy_and_sell_when_market_price():
+    portfolio = Portfolio(CASH)
+    buy_order = portfolio.buy(
+        DATE_1,
+        SYMBOL_1,
+        SHARES_1,
+        FILL_PRICE_1,
+        market_price=Decimal("99.90"),
+    )
+    assert buy_order.market_price == Decimal("99.90")
+    assert buy_order.fill_price == FILL_PRICE_1
+    sell_order = portfolio.sell(DATE_2, SYMBOL_1, SHARES_1, FILL_PRICE_2)
+    assert sell_order.market_price == FILL_PRICE_2
+    assert sell_order.fill_price == FILL_PRICE_2
+
+
+def test_exit_position_when_slippage_then_market_price():
+    portfolio = Portfolio(CASH)
+    portfolio.buy(DATE_1, SYMBOL_1, SHARES_1, FILL_PRICE_1, LIMIT_PRICE_1)
+    portfolio.sell(DATE_1, SYMBOL_2, SHARES_2, FILL_PRICE_3, LIMIT_PRICE_3)
+    portfolio.incr_bars()
+    portfolio.exit_position(
+        DATE_2,
+        SYMBOL_1,
+        buy_fill_price=0,
+        sell_fill_price=FILL_PRICE_2,
+        slippage_model=FixedSlippageModel(bps=100),
+    )
+    portfolio.exit_position(
+        DATE_2,
+        SYMBOL_2,
+        buy_fill_price=FILL_PRICE_4,
+        sell_fill_price=0,
+        slippage_model=FixedSlippageModel(bps=100),
+    )
+    assert len(portfolio.orders) == 4
+    assert_order(
+        order=portfolio.orders[2],
+        date=DATE_2,
+        symbol=SYMBOL_1,
+        type="sell",
+        limit_price=None,
+        market_price=FILL_PRICE_2,
+        fill_price=FILL_PRICE_2 * Decimal("0.99"),
+        shares=SHARES_1,
+        fees=0,
+        intent="sell_to_close",
+    )
+    assert_order(
+        order=portfolio.orders[3],
+        date=DATE_2,
+        symbol=SYMBOL_2,
+        type="buy",
+        limit_price=None,
+        market_price=FILL_PRICE_4,
+        fill_price=FILL_PRICE_4 * Decimal("1.01"),
+        shares=SHARES_2,
+        fees=0,
+        intent="buy_to_close",
+    )
+
+
 def test_trigger_long_bar_stop():
     expected_fill_price = Decimal(200)
     df = pd.DataFrame(
@@ -2089,6 +2157,60 @@ def test_trigger_long_loss_stop(percent, points, expected_fill_price):
         type="sell",
         limit_price=None,
         fill_price=expected_fill_price,
+        shares=SHARES_1,
+        fees=0,
+        order_type="stop_loss",
+        intent="sell_to_close",
+    )
+
+
+def test_trigger_long_loss_stop_when_slippage_then_market_price():
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, 200, 300],
+            [SYMBOL_1, DATE_2, 100, 200],
+        ],
+        columns=["symbol", "date", "low", "high"],
+    )
+    df = df.set_index(["symbol", "date"])
+    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)}, True)
+    stops = (
+        Stop(
+            id=1,
+            symbol=SYMBOL_1,
+            stop_type=StopType.LOSS,
+            pos_type="long",
+            percent=Decimal(20),
+            points=None,
+            bars=None,
+            fill_price=None,
+            limit_price=None,
+            exit_price=None,
+        ),
+    )
+    entry_price = Decimal(200)
+    portfolio = Portfolio(CASH)
+    portfolio.buy(
+        DATE_1,
+        SYMBOL_1,
+        SHARES_1,
+        entry_price,
+        limit_price=None,
+        stops=stops,
+    )
+    portfolio.incr_bars()
+    portfolio.check_stops(
+        DATE_2, price_scope, slippage_model=FixedSlippageModel(bps=100)
+    )
+    assert len(portfolio.orders) == 2
+    assert_order(
+        order=portfolio.orders[1],
+        date=DATE_2,
+        symbol=SYMBOL_1,
+        type="sell",
+        limit_price=None,
+        market_price=Decimal(160),
+        fill_price=Decimal(160) * Decimal("0.99"),
         shares=SHARES_1,
         fees=0,
         order_type="stop_loss",

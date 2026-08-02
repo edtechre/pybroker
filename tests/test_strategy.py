@@ -4308,6 +4308,7 @@ class TestStrategy:
                     intent="buy_to_open",
                     shares=Decimal("3.14"),
                     limit_price=Decimal(100),
+                    market_price=Decimal(99),
                     fill_price=Decimal(99),
                     fees=Decimal(),
                 ),
@@ -4420,6 +4421,7 @@ class TestStrategy:
                     intent="buy_to_open",
                     shares=Decimal("3.144"),
                     limit_price=Decimal(100),
+                    market_price=Decimal(99),
                     fill_price=Decimal(99),
                     fees=Decimal(),
                 ),
@@ -4751,6 +4753,10 @@ class TestStrategy:
         assert order["date"] == fill_date
         assert order["limit_price"] == 50
         assert order["shares"] == 100
+        # Prices come from the fill bar (bar 5 middle of 50/30), not the
+        # signal bar the pending order was created on.
+        assert order["market_price"] == 40
+        assert order["fill_price"] == 40
 
     def test_limit_order_timeout_cancel(self):
         df = _limit_order_df(
@@ -4881,6 +4887,7 @@ class TestStrategy:
                 df[df["date"] == buy_date]["close"].item(), 2
             )
             assert row["fees"].item() == 0
+        assert (orders["market_price"] == orders["fill_price"]).all()
         assert len(result.trades) == len(buy_orders)
         assert (result.trades["stop"] == "bar").all()
 
@@ -4913,6 +4920,7 @@ class TestStrategy:
             assert row["shares"].item() == 100
             assert np.isnan(row["limit_price"].item())
             base = round(df[df["date"] == buy_date]["close"].item(), 2)
+            assert row["market_price"].item() == base
             assert row["fill_price"].item() == round(base * buy_factor, 2)
             assert row["fees"].item() == 0
         sell_orders = orders[orders["type"] == "sell"]
@@ -4924,6 +4932,7 @@ class TestStrategy:
             assert np.isnan(row["limit_price"].item())
             # Bar-stop exits are slipped adversely, same as scheduled orders.
             base = round(df[df["date"] == sell_date]["open"].item(), 2)
+            assert row["market_price"].item() == base
             assert row["fill_price"].item() == round(base * sell_factor, 2)
             assert row["fees"].item() == 0
         assert (result.trades["stop"] == "bar").all()
@@ -5125,6 +5134,12 @@ class TestStrategy:
         assert len(result.trades)
         assert not result.orders["fill_price"].isna().any()
         assert (result.orders["fill_price"] > 0).all()
+        # Every order here fills inside the ATR warmup, where the NaN ATR
+        # leaves fills unadjusted -- so the recorded market price must equal
+        # the fill price.
+        orders = result.orders
+        assert not orders["market_price"].isna().any()
+        assert (orders["fill_price"] == orders["market_price"]).all()
 
     def test_backtest_when_slippage_subclass_overrides_apply_at_fill(
         self, data_source_df
@@ -5150,6 +5165,7 @@ class TestStrategy:
         assert len(buy_orders) == 1
         buy_date = buy_orders.iloc[0]["date"]
         base = df[df["date"] == buy_date]["close"].item()
+        assert buy_orders.iloc[0]["market_price"] == round(base, 2)
         assert buy_orders.iloc[0]["fill_price"] == round(base * 2, 2)
 
     def test_backtest_when_slippage_and_stop_loss(self, data_source_df):
