@@ -208,13 +208,14 @@ on quantitative finance and algorithmic trading:
       :maxdepth: 1
       :caption: Other Information
 
+      Benchmarking <benchmarking>
       Changelog <changelog>
       License <license>
 
 Contact
 =======
 
-.. image:: _static/email-image.png
+.. image:: ../_static/email-image.png
 
 .. toctree::
    :caption: Stock News & Alerts

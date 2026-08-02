@@ -269,7 +269,7 @@ class BaseContext:
 
         Args:
             name: Name used to identify the model that was registered with
-                :meth:`pybroker.model.model`.
+                :func:`pybroker.model.model`.
             symbol: Ticker symbol of the data that was used to train the model.
 
         Returns:
@@ -414,7 +414,8 @@ class ExecSignal(NamedTuple):
 
 class PosSizeContext(BaseContext):
     r"""Holds data for a position size handler set with
-    :meth:`pybroker.Strategy.set_pos_size_handler`. Used to set position sizes
+    :meth:`pybroker.strategy.Strategy.set_pos_size_handler`. Used to set
+    position sizes
     when placing orders from buy and sell signals.
 
     Attributes:
@@ -882,7 +883,7 @@ class ExecContext(BaseContext):
 
         Args:
             name: Name used to identify the model that was registered with
-                :meth:`pybroker.model.model`.
+                :func:`pybroker.model.model`.
             symbol: Ticker symbol of the data that was used to train the model.
                 If ``None``, the ``ExecContext``\ 's :attr:`.symbol` is used.
 
