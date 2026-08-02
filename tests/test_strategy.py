@@ -5111,14 +5111,6 @@ class TestStrategy:
     def test_backtest_when_volatility_slippage_and_atr_warmup(
         self, data_source_df
     ):
-        # The ATR's leading NaNs used to raise decimal.InvalidOperation.
-        def atr_fn(data):
-            high, low = data.high, data.low
-            tr = np.abs(high - low)
-            return pd.Series(tr).rolling(14).mean().to_numpy()
-
-        atr_ind = indicator("atr_14", atr_fn)
-
         def buy_exec_fn(ctx):
             if not ctx.long_pos():
                 ctx.buy_shares = 100
@@ -5127,19 +5119,62 @@ class TestStrategy:
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
         strategy.set_slippage_model(
-            VolatilitySlippageModel(atr_indicator="atr_14", scale=0.1)
+            VolatilitySlippageModel(atr_period=14, scale=0.1)
         )
-        strategy.add_execution(buy_exec_fn, "SPY", indicators=atr_ind)
+        strategy.add_execution(buy_exec_fn, "SPY")
         result = strategy.backtest(calc_bootstrap=False)
         assert len(result.trades)
         assert not result.orders["fill_price"].isna().any()
         assert (result.orders["fill_price"] > 0).all()
-        # Every order here fills inside the ATR warmup, where the NaN ATR
-        # leaves fills unadjusted -- so the recorded market price must equal
-        # the fill price.
+        # Every order here fills inside the ATR warmup, which leaves fills
+        # unadjusted -- so the recorded market price must equal the fill
+        # price.
         orders = result.orders
         assert not orders["market_price"].isna().any()
         assert (orders["fill_price"] == orders["market_price"]).all()
+
+    def test_backtest_when_volatility_slippage_adjusts_fills(
+        self, data_source_df
+    ):
+        # Fills after the ATR warmup must be adjusted by exactly
+        # scale * ATR, with the ATR computed from the test data.
+        scale = 0.1
+
+        def buy_exec_fn(ctx):
+            if ctx.bars >= 20 and not ctx.long_pos():
+                ctx.buy_shares = 100
+
+        strategy = Strategy(
+            data_source_df,
+            START_DATE,
+            END_DATE,
+            StrategyConfig(round_fill_price=False, round_test_result=False),
+        )
+        strategy.set_slippage_model(
+            VolatilitySlippageModel(atr_period=14, scale=scale)
+        )
+        strategy.add_execution(buy_exec_fn, "SPY")
+        result = strategy.backtest(calc_bootstrap=False)
+        orders = result.orders
+        assert len(orders)
+        sym_df = data_source_df[data_source_df["symbol"] == "SPY"]
+        sym_df = sym_df[
+            (sym_df["date"] >= START_DATE) & (sym_df["date"] <= END_DATE)
+        ].sort_values("date")
+        from pybroker.vect import atr as vect_atr
+
+        atr_values = vect_atr(
+            sym_df["high"].to_numpy(),
+            sym_df["low"].to_numpy(),
+            sym_df["close"].to_numpy(),
+            14,
+        )
+        dates = sym_df["date"].to_numpy()
+        for _, order in orders.iterrows():
+            (idx,) = np.nonzero(dates == np.datetime64(order["date"]))
+            expected = scale * atr_values[idx[0]]
+            adjustment = order["fill_price"] - order["market_price"]
+            assert adjustment == pytest.approx(expected, rel=1e-9)
 
     def test_backtest_when_slippage_subclass_overrides_apply_at_fill(
         self, data_source_df

@@ -6,6 +6,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import numpy as np
 import pandas as pd
 import pytest
 import re
@@ -14,6 +15,7 @@ from decimal import Decimal
 from unittest.mock import MagicMock
 
 from pybroker.common import to_decimal
+from pybroker.vect import atr as vect_atr
 
 from pybroker.slippage import (
     FillSlippageContext,
@@ -34,10 +36,18 @@ def _fill_ctx(
     atr=2.5,
     enable_fractional_shares=True,
 ):
+    """Two OHLC bars built so that a 1-period ATR at the fill bar equals
+    ``atr`` exactly: the previous close sits inside the fill bar's range, so
+    the true range is ``high - low``.
+    """
     col_scope = MagicMock()
     col_scope.fetch_value.return_value = volume
+    col_scope.fetch_dict.return_value = {
+        "high": np.array([100.0, 100.0 + atr]),
+        "low": np.array([100.0, 100.0]),
+        "close": np.array([100.0, 100.0 + atr / 2]),
+    }
     ind_scope = MagicMock()
-    ind_scope.fetch_value.return_value = atr
     return FillSlippageContext(
         side=side,
         symbol="SPY",
@@ -45,7 +55,7 @@ def _fill_ctx(
         fill_price=fill_price,
         col_scope=col_scope,
         ind_scope=ind_scope,
-        sym_end_index={"SPY": 1},
+        sym_end_index={"SPY": 2},
         enable_fractional_shares=enable_fractional_shares,
     )
 
@@ -109,84 +119,102 @@ class TestFixedSlippageModel:
 class TestVolatilitySlippageModel:
     def test_init_when_negative_scale_then_error(self):
         with pytest.raises(ValueError, match=re.escape("scale must be >= 0.")):
-            VolatilitySlippageModel(atr_indicator="atr_14", scale=-0.1)
+            VolatilitySlippageModel(scale=-0.1)
 
-    def test_reads_fill_bar_atr(self):
-        model = VolatilitySlippageModel(atr_indicator="atr_14", scale=0.1)
+    @pytest.mark.parametrize("atr_period", [0, -1])
+    def test_init_when_atr_period_invalid_then_error(self, atr_period):
+        with pytest.raises(
+            ValueError, match=re.escape("atr_period must be >= 1.")
+        ):
+            VolatilitySlippageModel(atr_period=atr_period)
+
+    def test_computes_fill_bar_atr(self):
+        model = VolatilitySlippageModel(atr_period=1, scale=0.1)
         ctx = _fill_ctx("buy", atr=2.5)
         shares, price = model.apply_at_fill(ctx)
         assert shares == Decimal(100)
         assert price == Decimal("100.25")
-        ctx.ind_scope.fetch_value.assert_called_once_with("SPY", "atr_14", 1)
+        ctx.col_scope.fetch_dict.assert_called_once_with(
+            "SPY", ("high", "low", "close"), 2
+        )
 
     def test_sell_adverse(self):
-        model = VolatilitySlippageModel(atr_indicator="atr_14", scale=0.1)
+        model = VolatilitySlippageModel(atr_period=1, scale=0.1)
         shares, price = model.apply_at_fill(_fill_ctx("sell", atr=2.5))
         assert price == Decimal("99.75")
 
+    def test_matches_vect_atr(self):
+        n, period = 30, 14
+        base = 100 + np.cumsum(np.sin(np.arange(n)))
+        spread = 1 + np.cos(np.arange(n)) ** 2
+        high, low = base + spread, base - spread
+        close = base + np.sin(np.arange(n) + 1) * spread / 2
+        ctx = _fill_ctx("buy")
+        ctx.col_scope.fetch_dict.return_value = {
+            "high": high,
+            "low": low,
+            "close": close,
+        }
+        object.__setattr__(ctx, "sym_end_index", {"SPY": n})
+        model = VolatilitySlippageModel(atr_period=period, scale=0.1)
+        _, price = model.apply_at_fill(ctx)
+        expected = vect_atr(high, low, close, period)[-1]
+        assert price == Decimal(100) + Decimal("0.1") * to_decimal(expected)
+
     def test_scale_zero_is_fill_noop(self):
-        model = VolatilitySlippageModel(atr_indicator="atr_14", scale=0)
+        model = VolatilitySlippageModel(scale=0)
         assert model.is_fill_noop
-
-    def test_validate_when_indicator_missing(self):
-        strategy = MagicMock()
-        execution = MagicMock()
-        execution.indicator_names = frozenset({"sma_20"})
-        execution.symbols = frozenset({"SPY"})
-        strategy._executions = {execution}
-        model = VolatilitySlippageModel(atr_indicator="atr_14")
-        with pytest.raises(
-            ValueError,
-            match=re.escape(
-                "Indicator 'atr_14' must be attached to every execution"
-            ),
-        ):
-            model.validate(strategy)
-
-    def test_validate_when_indicator_missing_from_one_execution(self):
-        """The union is not enough: this model prices fills for every
-        execution, so one without the indicator raises at its first fill."""
-        strategy = MagicMock()
-        with_ind = MagicMock()
-        with_ind.indicator_names = frozenset({"atr_14"})
-        with_ind.symbols = frozenset({"SPY"})
-        without_ind = MagicMock()
-        without_ind.indicator_names = frozenset()
-        without_ind.symbols = frozenset({"AAPL"})
-        strategy._executions = {with_ind, without_ind}
-        model = VolatilitySlippageModel(atr_indicator="atr_14")
-        with pytest.raises(ValueError, match=re.escape("['AAPL']")):
-            model.validate(strategy)
-
-    def test_validate_when_indicator_attached(self):
-        strategy = MagicMock()
-        execution = MagicMock()
-        execution.indicator_names = frozenset({"atr_14"})
-        strategy._executions = {execution}
-        VolatilitySlippageModel(atr_indicator="atr_14").validate(strategy)
 
     @pytest.mark.parametrize("side", ["buy", "sell"])
     def test_when_atr_nan_then_unadjusted(self, side):
-        model = VolatilitySlippageModel(atr_indicator="atr_14")
+        model = VolatilitySlippageModel(atr_period=1)
         ctx = _fill_ctx(side, atr=NAN)
         assert model.apply_at_fill(ctx) == (ctx.shares, ctx.fill_price)
 
-    def test_when_no_ind_scope_then_unadjusted(self):
-        model = VolatilitySlippageModel(atr_indicator="atr_14")
+    def test_when_warmup_then_unadjusted(self):
+        # The fill bar is only the 2nd bar, so a 2-period ATR has no full
+        # window yet.
+        model = VolatilitySlippageModel(atr_period=2)
+        ctx = _fill_ctx("buy")
+        assert model.apply_at_fill(ctx) == (ctx.shares, ctx.fill_price)
+        ctx.col_scope.fetch_dict.assert_not_called()
+
+    def test_when_no_col_scope_then_unadjusted(self):
+        model = VolatilitySlippageModel(atr_period=1)
         ctx = _fill_ctx("buy")
         ctx = FillSlippageContext(
             side=ctx.side,
             symbol=ctx.symbol,
             shares=ctx.shares,
             fill_price=ctx.fill_price,
-            col_scope=ctx.col_scope,
-            ind_scope=None,
+            col_scope=None,
+            ind_scope=ctx.ind_scope,
             sym_end_index=ctx.sym_end_index,
         )
         assert model.apply_at_fill(ctx) == (ctx.shares, ctx.fill_price)
 
+    def test_when_symbol_not_in_col_scope_then_unadjusted(self):
+        model = VolatilitySlippageModel(atr_period=1)
+        ctx = _fill_ctx("buy")
+        ctx.col_scope.fetch_dict.side_effect = ValueError(
+            "Symbol not found: 'SPY'."
+        )
+        with pytest.warns(UserWarning, match="leaving that fill unadjusted"):
+            assert model.apply_at_fill(ctx) == (ctx.shares, ctx.fill_price)
+
+    def test_when_columns_missing_then_unadjusted(self):
+        model = VolatilitySlippageModel(atr_period=1)
+        ctx = _fill_ctx("buy")
+        ctx.col_scope.fetch_dict.return_value = {
+            "high": None,
+            "low": None,
+            "close": None,
+        }
+        with pytest.warns(UserWarning, match="leaving that fill unadjusted"):
+            assert model.apply_at_fill(ctx) == (ctx.shares, ctx.fill_price)
+
     def test_when_atr_exceeds_price_then_clamped_positive(self):
-        model = VolatilitySlippageModel(atr_indicator="atr_14", scale=1)
+        model = VolatilitySlippageModel(atr_period=1, scale=1)
         with pytest.warns(UserWarning, match="exceeded the fill price"):
             _, price = model.apply_at_fill(
                 _fill_ctx("sell", fill_price=Decimal(100), atr=500)
@@ -195,7 +223,7 @@ class TestVolatilitySlippageModel:
         assert price == Decimal(100) * Decimal("0.01")
 
     def test_clamp_warns_once_per_symbol(self):
-        model = VolatilitySlippageModel(atr_indicator="atr_14", scale=1)
+        model = VolatilitySlippageModel(atr_period=1, scale=1)
         ctx = _fill_ctx("sell", atr=500)
         with pytest.warns(UserWarning):
             model.apply_at_fill(ctx)
@@ -442,7 +470,7 @@ class TestSlippageModel:
         # models must degrade to a no-op instead of raising.
         for model in (
             VolumeSlippageModel(),
-            VolatilitySlippageModel(atr_indicator="atr_14"),
+            VolatilitySlippageModel(),
         ):
             assert model.adjust_fill(
                 side="sell",
@@ -452,37 +480,7 @@ class TestSlippageModel:
             ) == (Decimal(100), Decimal(100))
 
 
-def test_volatility_validate_ignores_executions_without_a_function():
-    """An execution with no function places no orders, so it never reaches
-    apply_at_fill and must not be required to attach the ATR indicator."""
-    strategy = MagicMock()
-    trading = MagicMock()
-    trading.fn = lambda ctx: None
-    trading.indicator_names = frozenset({"atr_14"})
-    trading.symbols = frozenset({"SPY"})
-    data_only = MagicMock()
-    data_only.fn = None
-    data_only.indicator_names = frozenset({"regime"})
-    data_only.symbols = frozenset({"AAPL"})
-    strategy._executions = {trading, data_only}
-    strategy._before_exec_fn = None
-    strategy._after_exec_fn = None
-    strategy._rotation_sizer = None
-    model = VolatilitySlippageModel(atr_indicator="atr_14")
-    model.validate(strategy)
-
-
-def test_volatility_validate_still_rejects_trading_execution_without_atr():
-    strategy = MagicMock()
-    trading = MagicMock()
-    trading.fn = lambda ctx: None
-    trading.indicator_names = frozenset({"atr_14"})
-    trading.symbols = frozenset({"SPY"})
-    other = MagicMock()
-    other.fn = lambda ctx: None
-    other.indicator_names = frozenset()
-    other.symbols = frozenset({"AAPL"})
-    strategy._executions = {trading, other}
-    model = VolatilitySlippageModel(atr_indicator="atr_14")
-    with pytest.raises(ValueError, match=re.escape("['AAPL']")):
-        model.validate(strategy)
+def test_volatility_validate_is_noop():
+    """The model computes its ATR from bar data, so no indicator needs to be
+    attached to any execution and validate() has nothing to check."""
+    VolatilitySlippageModel().validate(MagicMock())

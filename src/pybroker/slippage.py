@@ -14,9 +14,10 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import TYPE_CHECKING, Literal, Mapping, Optional
 
-from pybroker.common import DataCol, _static_symbols, to_decimal
+from pybroker.common import DataCol, to_decimal
 from pybroker.context import ExecContext
 from pybroker.scope import ColumnScope, IndicatorScope
+from pybroker.vect import atr
 
 if TYPE_CHECKING:
     from pybroker.strategy import Strategy
@@ -28,6 +29,7 @@ _DECIMAL_ZERO = Decimal(0)
 #: Floor applied to adverse price adjustments, as a fraction of the base fill
 #: price, so that a fill price can never reach zero or turn negative.
 _MIN_PRICE_FACTOR = Decimal("0.01")
+_ATR_COLS = (DataCol.HIGH.value, DataCol.LOW.value, DataCol.CLOSE.value)
 
 
 @dataclass(frozen=True)
@@ -40,8 +42,8 @@ class FillSlippageContext:
         shares: Number of shares to fill before slippage.
         fill_price: Base fill price resolved on the fill bar.
         col_scope: Column scope for bar data on the fill bar. ``None`` when
-            bar data is unavailable, in which case volume-based models leave
-            the fill unadjusted.
+            bar data is unavailable, in which case volume- and
+            volatility-based models leave the fill unadjusted.
         ind_scope: Indicator scope for indicator data on the fill bar.
             ``None`` when indicator data is unavailable, in which case
             indicator-based models leave the fill unadjusted.
@@ -229,19 +231,23 @@ class FixedSlippageModel(SlippageModel):
 class VolatilitySlippageModel(SlippageModel):
     """ATR-scaled slippage on fill price.
 
-    Adverse price adjustment equals ``scale * ATR`` at the fill bar. Bars
-    where the ATR is ``NaN`` (such as the indicator's warmup period) are left
-    unadjusted.
+    Adverse price adjustment equals ``scale * ATR`` at the fill bar, where
+    the Average True Range is computed over the ``atr_period`` bars ending at
+    the fill bar (see :func:`pybroker.vect.atr`). Fills during the warmup
+    period -- the first ``atr_period`` bars, which have no full ATR window --
+    or on bars where the ATR is ``NaN`` are left unadjusted.
 
     Args:
-        atr_indicator: Name of the ATR indicator attached to an execution.
+        atr_period: Number of lookback bars for the ATR. Defaults to ``14``.
         scale: Multiplier applied to the ATR value.
     """
 
-    def __init__(self, atr_indicator: str, scale: float = 0.1):
+    def __init__(self, atr_period: int = 14, scale: float = 0.1):
+        if atr_period < 1:
+            raise ValueError("atr_period must be >= 1.")
         if scale < 0:
             raise ValueError("scale must be >= 0.")
-        self.atr_indicator = atr_indicator
+        self.atr_period = atr_period
         self.scale = scale
         self._scale = Decimal(str(scale))
         self._clamped_symbols: set[str] = set()
@@ -251,66 +257,42 @@ class VolatilitySlippageModel(SlippageModel):
     def is_fill_noop(self) -> bool:
         return self.scale == 0
 
-    def validate(self, strategy: "Strategy") -> None:
-        # Every execution that can trade, not their union: this model prices
-        # the fills of each one, so an execution without the indicator would
-        # pass a union check and then raise "Indicator not found" mid-backtest
-        # at its first fill.
-        #
-        # An execution with no function of its own can still trade: a strategy
-        # builds an ExecContext for every symbol regardless, and hands them all
-        # to before_exec/after_exec, the rotation ranker and the rotation
-        # sizer, any of which may set buy_shares/sell_shares. The documented
-        # rebalancing recipe is exactly that -- add_execution(None, [...]) plus
-        # set_after_exec(...) -- so such an execution is only exempt when no
-        # global order-placing hook exists at all.
-        places_orders_globally = (
-            strategy._before_exec_fn is not None
-            or strategy._after_exec_fn is not None
-            or strategy._rotation_sizer is not None
-        )
-        incomplete = [
-            execution
-            for execution in strategy._executions
-            if (execution.fn is not None or places_orders_globally)
-            and self.atr_indicator not in execution.indicator_names
-        ]
-        if not incomplete:
-            return
-        message = (
-            f"Indicator {self.atr_indicator!r} must be attached to every "
-            "execution that places orders, via "
-            "add_execution(..., indicators=[...])."
-        )
-        missing = sorted(
-            symbol
-            for execution in incomplete
-            for symbol in _static_symbols(execution.symbols)
-        )
-        if missing:
-            message += f" Missing for: {missing}."
-        raise ValueError(message)
-
     def apply_at_fill(
         self, fill_ctx: FillSlippageContext
     ) -> tuple[Decimal, Decimal]:
         if self.scale == 0:
             return fill_ctx.shares, fill_ctx.fill_price
-        if fill_ctx.ind_scope is None or fill_ctx.sym_end_index is None:
+        if fill_ctx.col_scope is None or fill_ctx.sym_end_index is None:
             return fill_ctx.shares, fill_ctx.fill_price
         end_index = fill_ctx.sym_end_index[fill_ctx.symbol]
+        # The ATR window needs atr_period true ranges, each of which needs a
+        # previous close, so the fill bar must be at least the window'th bar.
+        window = self.atr_period + 1
+        if end_index < window:
+            return fill_ctx.shares, fill_ctx.fill_price
         try:
-            atr_value = fill_ctx.ind_scope.fetch_value(
-                fill_ctx.symbol, self.atr_indicator, end_index
+            cols = fill_ctx.col_scope.fetch_dict(
+                fill_ctx.symbol, _ATR_COLS, end_index
             )
         except ValueError:
-            # No indicator for this symbol here. validate() rejects that up
-            # front, but a fill can still be priced outside a test window --
-            # a boundary liquidation, say -- and aborting the whole backtest
-            # at a fill is worse than leaving it unadjusted.
-            self._warn_missing_indicator(fill_ctx.symbol)
+            # No bar data for this symbol here. A fill can still be priced
+            # outside a test window -- a boundary liquidation, say -- and
+            # aborting the whole backtest at a fill is worse than leaving it
+            # unadjusted.
+            self._warn_missing_data(fill_ctx.symbol)
             return fill_ctx.shares, fill_ctx.fill_price
-        if atr_value is None or math.isnan(atr_value):
+        high = cols[DataCol.HIGH.value]
+        low = cols[DataCol.LOW.value]
+        close = cols[DataCol.CLOSE.value]
+        if high is None or low is None or close is None:
+            self._warn_missing_data(fill_ctx.symbol)
+            return fill_ctx.shares, fill_ctx.fill_price
+        if len(high) < window or len(low) < window or len(close) < window:
+            return fill_ctx.shares, fill_ctx.fill_price
+        atr_value = atr(
+            high[-window:], low[-window:], close[-window:], self.atr_period
+        )[-1]
+        if math.isnan(atr_value):
             return fill_ctx.shares, fill_ctx.fill_price
         adjustment = self._scale * to_decimal(atr_value)
         price = _adverse_price(fill_ctx.side, fill_ctx.fill_price, adjustment)
@@ -320,12 +302,13 @@ class VolatilitySlippageModel(SlippageModel):
             price = floor
         return fill_ctx.shares, price
 
-    def _warn_missing_indicator(self, symbol: str):
+    def _warn_missing_data(self, symbol: str):
         if symbol in self._missing_symbols:
             return
         self._missing_symbols.add(symbol)
         warnings.warn(
-            f"{type(self).__name__}: {self.atr_indicator!r} not found for "
+            f"{type(self).__name__}: missing {DataCol.HIGH.value!r}/"
+            f"{DataCol.LOW.value!r}/{DataCol.CLOSE.value!r} data for "
             f"{symbol!r}; leaving that fill unadjusted.",
             stacklevel=2,
         )
@@ -335,9 +318,9 @@ class VolatilitySlippageModel(SlippageModel):
             return
         self._clamped_symbols.add(symbol)
         warnings.warn(
-            f"{type(self).__name__}: {self.atr_indicator!r} slippage for "
-            f"{symbol!r} exceeded the fill price and was clamped to "
-            f"{_MIN_PRICE_FACTOR:%} of it. Consider lowering scale.",
+            f"{type(self).__name__}: ATR slippage for {symbol!r} exceeded "
+            f"the fill price and was clamped to {_MIN_PRICE_FACTOR:%} of it. "
+            "Consider lowering scale.",
             stacklevel=2,
         )
 
