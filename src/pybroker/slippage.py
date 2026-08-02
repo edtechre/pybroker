@@ -15,7 +15,6 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Literal, Mapping, Optional
 
 from pybroker.common import DataCol, to_decimal
-from pybroker.context import ExecContext
 from pybroker.scope import ColumnScope, IndicatorScope
 from pybroker.vect import atr
 
@@ -33,8 +32,8 @@ _ATR_COLS = (DataCol.HIGH.value, DataCol.LOW.value, DataCol.CLOSE.value)
 
 
 @dataclass(frozen=True)
-class FillSlippageContext:
-    """Context passed to fill-time slippage adjustments.
+class SlippageContext:
+    """Context passed to slippage adjustments.
 
     Attributes:
         side: Order side, either ``buy`` or ``sell``.
@@ -95,12 +94,10 @@ def _fetch_scalar(
 class SlippageModel(ABC):
     """Base class for implementing a slippage model.
 
-    A slippage model may adjust fill price, share quantity, or both. Signal-
-    time adjustments are made in :meth:`apply_slippage`; fill-time
-    adjustments (using fill-bar price, volume, and indicators) are made in
-    :meth:`apply_at_fill`.
+    A slippage model may adjust fill price, share quantity, or both, using
+    data from the fill bar in :meth:`apply_slippage`.
 
-    :meth:`apply_at_fill` is called for scheduled buy and sell orders, for
+    :meth:`apply_slippage` is called for scheduled buy and sell orders, for
     stop exits (stop loss, take profit, trailing, and bar stops), and
     for :meth:`pybroker.portfolio.Portfolio.exit_position` fills. Stop and
     exit fills apply the returned **fill price only**; a returned share
@@ -109,39 +106,20 @@ class SlippageModel(ABC):
 
     @property
     def is_fill_noop(self) -> bool:
-        """Whether :meth:`apply_at_fill` is a no-op for this model."""
-        return type(self).apply_at_fill is SlippageModel.apply_at_fill
+        """Whether :meth:`apply_slippage` is a no-op for this model."""
+        return type(self).apply_slippage is SlippageModel.apply_slippage
 
-    @property
-    def uses_signal_slippage(self) -> bool:
-        """Whether :meth:`apply_slippage` was overridden by a subclass."""
-        return type(self).apply_slippage is not SlippageModel.apply_slippage
-
-    def apply_slippage(
-        self,
-        ctx: ExecContext,
-        buy_shares: Optional[Decimal] = None,
-        sell_shares: Optional[Decimal] = None,
-    ):
-        """Applies signal-time slippage to ``ctx``.
-
-        May adjust ``ctx.buy_shares``, ``ctx.sell_shares``,
-        ``ctx.buy_fill_price``, and/or ``ctx.sell_fill_price``.
-        """
-
-    def apply_at_fill(
-        self, fill_ctx: FillSlippageContext
-    ) -> tuple[Decimal, Decimal]:
-        """Applies fill-time slippage using data from the fill bar.
+    def apply_slippage(self, ctx: SlippageContext) -> tuple[Decimal, Decimal]:
+        """Applies slippage using data from the fill bar.
 
         The returned share quantity may be reduced to simulate a partial
-        fill, but never increased: returning more than ``fill_ctx.shares``
+        fill, but never increased: returning more than ``ctx.shares``
         (or a negative quantity) raises a :class:`ValueError` at the fill.
 
         Returns:
             Tuple of ``(shares, fill_price)`` after slippage.
         """
-        return fill_ctx.shares, fill_ctx.fill_price
+        return ctx.shares, ctx.fill_price
 
     def adjust_fill(
         self,
@@ -154,20 +132,20 @@ class SlippageModel(ABC):
         sym_end_index: Optional[Mapping[str, int]] = None,
         enable_fractional_shares: bool = True,
     ) -> tuple[Decimal, Decimal]:
-        """Builds a :class:`.FillSlippageContext` and applies
-        :meth:`apply_at_fill` to it.
+        """Builds a :class:`.SlippageContext` and applies
+        :meth:`apply_slippage` to it.
 
         Provided so that callers which cannot import :mod:`pybroker.slippage`
-        (such as :mod:`pybroker.portfolio`) can still apply fill-time
-        slippage.
+        (such as :mod:`pybroker.portfolio`) can still apply slippage to a
+        fill.
 
         Returns:
             Tuple of ``(shares, fill_price)`` after slippage.
         """
         if self.is_fill_noop:
             return shares, fill_price
-        return self.apply_at_fill(
-            FillSlippageContext(
+        return self.apply_slippage(
+            SlippageContext(
                 side=side,
                 symbol=symbol,
                 shares=shares,
@@ -225,12 +203,10 @@ class FixedSlippageModel(SlippageModel):
             return fill_price * self._buy_multiplier
         return fill_price * self._sell_multiplier
 
-    def apply_at_fill(
-        self, fill_ctx: FillSlippageContext
-    ) -> tuple[Decimal, Decimal]:
+    def apply_slippage(self, ctx: SlippageContext) -> tuple[Decimal, Decimal]:
         return (
-            fill_ctx.shares,
-            self.adjust_fill_price(fill_ctx.side, fill_ctx.fill_price),
+            ctx.shares,
+            self.adjust_fill_price(ctx.side, ctx.fill_price),
         )
 
 
@@ -263,50 +239,46 @@ class VolatilitySlippageModel(SlippageModel):
     def is_fill_noop(self) -> bool:
         return self.scale == 0
 
-    def apply_at_fill(
-        self, fill_ctx: FillSlippageContext
-    ) -> tuple[Decimal, Decimal]:
+    def apply_slippage(self, ctx: SlippageContext) -> tuple[Decimal, Decimal]:
         if self.scale == 0:
-            return fill_ctx.shares, fill_ctx.fill_price
-        if fill_ctx.col_scope is None or fill_ctx.sym_end_index is None:
-            return fill_ctx.shares, fill_ctx.fill_price
-        end_index = fill_ctx.sym_end_index[fill_ctx.symbol]
+            return ctx.shares, ctx.fill_price
+        if ctx.col_scope is None or ctx.sym_end_index is None:
+            return ctx.shares, ctx.fill_price
+        end_index = ctx.sym_end_index[ctx.symbol]
         # The ATR window needs atr_period true ranges, each of which needs a
         # previous close, so the fill bar must be at least the window'th bar.
         window = self.atr_period + 1
         if end_index < window:
-            return fill_ctx.shares, fill_ctx.fill_price
+            return ctx.shares, ctx.fill_price
         try:
-            cols = fill_ctx.col_scope.fetch_dict(
-                fill_ctx.symbol, _ATR_COLS, end_index
-            )
+            cols = ctx.col_scope.fetch_dict(ctx.symbol, _ATR_COLS, end_index)
         except ValueError:
             # No bar data for this symbol here. A fill can still be priced
             # outside a test window -- a boundary liquidation, say -- and
             # aborting the whole backtest at a fill is worse than leaving it
             # unadjusted.
-            self._warn_missing_data(fill_ctx.symbol)
-            return fill_ctx.shares, fill_ctx.fill_price
+            self._warn_missing_data(ctx.symbol)
+            return ctx.shares, ctx.fill_price
         high = cols[DataCol.HIGH.value]
         low = cols[DataCol.LOW.value]
         close = cols[DataCol.CLOSE.value]
         if high is None or low is None or close is None:
-            self._warn_missing_data(fill_ctx.symbol)
-            return fill_ctx.shares, fill_ctx.fill_price
+            self._warn_missing_data(ctx.symbol)
+            return ctx.shares, ctx.fill_price
         if len(high) < window or len(low) < window or len(close) < window:
-            return fill_ctx.shares, fill_ctx.fill_price
+            return ctx.shares, ctx.fill_price
         atr_value = atr(
             high[-window:], low[-window:], close[-window:], self.atr_period
         )[-1]
         if math.isnan(atr_value):
-            return fill_ctx.shares, fill_ctx.fill_price
+            return ctx.shares, ctx.fill_price
         adjustment = self._scale * to_decimal(atr_value)
-        price = _adverse_price(fill_ctx.side, fill_ctx.fill_price, adjustment)
-        floor = fill_ctx.fill_price * _MIN_PRICE_FACTOR
+        price = _adverse_price(ctx.side, ctx.fill_price, adjustment)
+        floor = ctx.fill_price * _MIN_PRICE_FACTOR
         if price < floor:
-            self._warn_clamped(fill_ctx.symbol)
+            self._warn_clamped(ctx.symbol)
             price = floor
-        return fill_ctx.shares, price
+        return ctx.shares, price
 
     def _warn_missing_data(self, symbol: str):
         if symbol in self._missing_symbols:
@@ -396,55 +368,53 @@ class VolumeSlippageModel(SlippageModel):
             stacklevel=2,
         )
 
-    def apply_at_fill(
-        self, fill_ctx: FillSlippageContext
-    ) -> tuple[Decimal, Decimal]:
+    def apply_slippage(self, ctx: SlippageContext) -> tuple[Decimal, Decimal]:
         if self.is_fill_noop:
-            return fill_ctx.shares, fill_ctx.fill_price
-        if fill_ctx.col_scope is None or fill_ctx.sym_end_index is None:
-            return fill_ctx.shares, fill_ctx.fill_price
+            return ctx.shares, ctx.fill_price
+        if ctx.col_scope is None or ctx.sym_end_index is None:
+            return ctx.shares, ctx.fill_price
 
         volume = _fetch_scalar(
-            fill_ctx.col_scope,
-            fill_ctx.symbol,
+            ctx.col_scope,
+            ctx.symbol,
             DataCol.VOLUME.value,
-            fill_ctx.sym_end_index[fill_ctx.symbol],
+            ctx.sym_end_index[ctx.symbol],
         )
         if volume is None:
-            self._warn_missing_volume(fill_ctx.symbol)
-            return fill_ctx.shares, fill_ctx.fill_price
+            self._warn_missing_volume(ctx.symbol)
+            return ctx.shares, ctx.fill_price
         if volume <= 0:
             # No volume means no participation to cap against. Only the
             # participation cap can refuse the fill; price impact alone is
             # undefined here and leaves the order untouched.
             if self._cap_enabled:
-                return _DECIMAL_ZERO, fill_ctx.fill_price
-            return fill_ctx.shares, fill_ctx.fill_price
+                return _DECIMAL_ZERO, ctx.fill_price
+            return ctx.shares, ctx.fill_price
 
-        shares = fill_ctx.shares
+        shares = ctx.shares
         if self._cap_enabled:
             assert self._volume_limit_dec is not None
             max_shares = self._volume_limit_dec * to_decimal(volume)
             if max_shares < shares:
                 shares = max_shares
-                if not fill_ctx.enable_fractional_shares:
+                if not ctx.enable_fractional_shares:
                     shares = to_decimal(int(shares))
 
-        price = fill_ctx.fill_price
+        price = ctx.fill_price
         if self._impact_enabled and shares > _DECIMAL_ZERO:
             ratio = float(shares) / volume
             impact = self._price_impact * ratio * ratio
             impact_dec = to_decimal(impact)
-            if fill_ctx.side == "buy":
-                price = fill_ctx.fill_price * (_DECIMAL_ONE + impact_dec)
+            if ctx.side == "buy":
+                price = ctx.fill_price * (_DECIMAL_ONE + impact_dec)
             else:
-                price = fill_ctx.fill_price * (_DECIMAL_ONE - impact_dec)
+                price = ctx.fill_price * (_DECIMAL_ONE - impact_dec)
                 # Impact is unbounded above, so an order large relative to bar
                 # volume drives the sell price to zero and past it. Clamp as
                 # VolatilitySlippageModel does rather than pay negative cash.
-                floor = fill_ctx.fill_price * _MIN_PRICE_FACTOR
+                floor = ctx.fill_price * _MIN_PRICE_FACTOR
                 if price < floor:
-                    self._warn_clamped(fill_ctx.symbol)
+                    self._warn_clamped(ctx.symbol)
                     price = floor
 
         return shares, price

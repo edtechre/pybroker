@@ -691,9 +691,6 @@ class TestSymbolSelector:
         calls = []
 
         class _HalvingSlippage(SlippageModel):
-            def process(self, buy_shares, sell_shares, ctx):
-                return buy_shares, sell_shares
-
             def adjust_fill(
                 self,
                 side,
@@ -4984,93 +4981,6 @@ class TestStrategy:
             second.orders.reset_index(drop=True),
         )
 
-    def test_backtest_when_slippage_and_sell_all_shares(self, data_source_df):
-        """Signal-time slippage must not shrink a full exit.
-
-        ``sell_all_shares`` exits the whole position, so a shrunk order would
-        strand an unintended remainder. The fill-time clamp cannot recover the
-        difference: it only ever reduces the order further.
-        """
-
-        class FakeSlippageModel(SlippageModel):
-            def apply_slippage(
-                self, ctx: ExecContext, buy_shares, sell_shares
-            ):
-                if sell_shares:
-                    ctx.sell_shares = 90
-
-        def buy_exec_fn(ctx):
-            if not ctx.long_pos():
-                ctx.buy_shares = 100
-            elif ctx.bars == 2:
-                ctx.sell_all_shares()
-
-        strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.set_slippage_model(FakeSlippageModel())
-        strategy.add_execution(buy_exec_fn, "SPY")
-        result = strategy.backtest(calc_bootstrap=False)
-        orders = result.orders
-        sell_orders = orders[orders["type"] == "sell"]
-        assert len(sell_orders) == 1
-        assert sell_orders.iloc[0]["shares"] == 100
-
-    def test_backtest_when_slippage_and_cover_all_shares(self, data_source_df):
-        """See :meth:`.test_backtest_when_slippage_and_sell_all_shares`."""
-
-        class FakeSlippageModel(SlippageModel):
-            def apply_slippage(
-                self, ctx: ExecContext, buy_shares, sell_shares
-            ):
-                if buy_shares:
-                    ctx.buy_shares = 90
-
-        def buy_exec_fn(ctx):
-            if not ctx.short_pos():
-                ctx.sell_shares = 100
-            elif ctx.bars == 2:
-                ctx.cover_all_shares()
-
-        strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.set_slippage_model(FakeSlippageModel())
-        strategy.add_execution(buy_exec_fn, "SPY")
-        result = strategy.backtest(calc_bootstrap=False)
-        orders = result.orders
-        buy_orders = orders[orders["type"] == "buy"]
-        assert len(buy_orders) == 1
-        assert buy_orders.iloc[0]["shares"] == 100
-
-    @pytest.mark.parametrize("type", ["long", "short"])
-    def test_backtest_when_slippage_and_partial_order_then_adjusted(
-        self, data_source_df, type
-    ):
-        """Signal-time slippage still adjusts ordinary, non-exit orders."""
-
-        class FakeSlippageModel(SlippageModel):
-            def apply_slippage(
-                self, ctx: ExecContext, buy_shares, sell_shares
-            ):
-                if buy_shares:
-                    ctx.buy_shares = 90
-                if sell_shares:
-                    ctx.sell_shares = 90
-
-        def exec_fn(ctx):
-            pos = ctx.long_pos() if type == "long" else ctx.short_pos()
-            if pos is None:
-                if type == "long":
-                    ctx.buy_shares = 100
-                else:
-                    ctx.sell_shares = 100
-
-        strategy = Strategy(data_source_df, START_DATE, END_DATE)
-        strategy.set_slippage_model(FakeSlippageModel())
-        strategy.add_execution(exec_fn, "SPY")
-        result = strategy.backtest(calc_bootstrap=False)
-        entry_type = "buy" if type == "long" else "sell"
-        entries = result.orders[result.orders["type"] == entry_type]
-        assert len(entries) == 1
-        assert entries.iloc[0]["shares"] == 90
-
     @pytest.mark.parametrize(
         "bad_shares",
         [lambda shares: shares + 1, lambda shares: Decimal(-1)],
@@ -5083,7 +4993,7 @@ class TestStrategy:
         # even flip the position, since the can't-sell-more-than-held clamp
         # runs before slippage.
         class BadSlippageModel(SlippageModel):
-            def apply_at_fill(self, fill_ctx):
+            def apply_slippage(self, fill_ctx):
                 return bad_shares(fill_ctx.shares), fill_ctx.fill_price
 
         def buy_exec_fn(ctx):
@@ -5105,7 +5015,7 @@ class TestStrategy:
         # cash and pnl tracked the fraction while the result tables silently
         # astype(int)'d it away, so they disagreed with the cash moved.
         class HalfFillSlippageModel(SlippageModel):
-            def apply_at_fill(self, fill_ctx):
+            def apply_slippage(self, fill_ctx):
                 return fill_ctx.shares * Decimal("0.5"), fill_ctx.fill_price
 
         def buy_exec_fn(ctx):
@@ -5226,12 +5136,12 @@ class TestStrategy:
             adjustment = order["fill_price"] - order["market_price"]
             assert adjustment == pytest.approx(expected, rel=1e-9)
 
-    def test_backtest_when_slippage_subclass_overrides_apply_at_fill(
+    def test_backtest_when_slippage_subclass_overrides_apply_slippage(
         self, data_source_df
     ):
         # A FixedSlippageModel subclass must not be routed to the fast path.
         class DoublingSlippageModel(FixedSlippageModel):
-            def apply_at_fill(self, fill_ctx):
+            def apply_slippage(self, fill_ctx):
                 return fill_ctx.shares, fill_ctx.fill_price * Decimal(2)
 
         def buy_exec_fn(ctx):

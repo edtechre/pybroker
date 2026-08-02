@@ -96,7 +96,7 @@ from pybroker.interval import (
     validate_interval,
 )
 from pybroker.slippage import (
-    FillSlippageContext,
+    SlippageContext,
     FixedSlippageModel,
     SlippageModel,
 )
@@ -974,17 +974,6 @@ class BacktestMixin:
                     )
                 _clear_unused_rotation_signals(active_ctxs)
             for ctx in active_ctxs.values():
-                if (
-                    slippage_model
-                    and slippage_model.uses_signal_slippage
-                    # An exit is for the whole position, so shrinking it here
-                    # would leave an unintended remainder behind. The fill-time
-                    # clamp cannot recover the difference: it only ever reduces
-                    # the order further.
-                    and not ctx._exiting_pos
-                    and (ctx.buy_shares or ctx.sell_shares)
-                ):
-                    self._apply_slippage(slippage_model, ctx)
                 result = ctx.to_result()
                 if result is None:
                     continue
@@ -1048,17 +1037,6 @@ class BacktestMixin:
             get_signals(signal_syms, col_scope, ind_scope, pred_scope)
             if config.return_signals
             else {}
-        )
-
-    def _apply_slippage(
-        self,
-        slippage_model: SlippageModel,
-        ctx: ExecContext,
-    ):
-        buy_shares = to_decimal(ctx.buy_shares) if ctx.buy_shares else None
-        sell_shares = to_decimal(ctx.sell_shares) if ctx.sell_shares else None
-        slippage_model.apply_slippage(
-            ctx, buy_shares=buy_shares, sell_shares=sell_shares
         )
 
     def _exit_position(
@@ -1459,13 +1437,13 @@ class BacktestMixin:
         market_price = fill_price
         if slippage_model is not None:
             # Exact type check, not isinstance: a subclass may override
-            # apply_at_fill and must not be routed to the fast path.
+            # apply_slippage and must not be routed to the fast path.
             if type(slippage_model) is FixedSlippageModel:
                 fill_price = slippage_model.adjust_fill_price(
                     pending.type, fill_price
                 )
             elif not slippage_model.is_fill_noop:
-                fill_ctx = FillSlippageContext(
+                slippage_ctx = SlippageContext(
                     side=pending.type,
                     symbol=pending.symbol,
                     shares=shares,
@@ -1475,12 +1453,14 @@ class BacktestMixin:
                     sym_end_index=sym_end_index,
                     enable_fractional_shares=enable_fractional_shares,
                 )
-                shares, fill_price = slippage_model.apply_at_fill(fill_ctx)
-                if shares < 0 or shares > fill_ctx.shares:
+                shares, fill_price = slippage_model.apply_slippage(
+                    slippage_ctx
+                )
+                if shares < 0 or shares > slippage_ctx.shares:
                     raise ValueError(
-                        f"{type(slippage_model).__name__}.apply_at_fill "
+                        f"{type(slippage_model).__name__}.apply_slippage "
                         f"returned {shares} shares; must be between 0 and "
-                        f"the ordered {fill_ctx.shares}."
+                        f"the ordered {slippage_ctx.shares}."
                     )
                 shares = self._get_shares(shares, enable_fractional_shares)
         if pending.type == "buy":

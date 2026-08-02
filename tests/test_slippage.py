@@ -18,7 +18,7 @@ from pybroker.common import to_decimal
 from pybroker.vect import atr as vect_atr
 
 from pybroker.slippage import (
-    FillSlippageContext,
+    SlippageContext,
     FixedSlippageModel,
     SlippageModel,
     VolatilitySlippageModel,
@@ -48,7 +48,7 @@ def _fill_ctx(
         "close": np.array([100.0, 100.0 + atr / 2]),
     }
     ind_scope = MagicMock()
-    return FillSlippageContext(
+    return SlippageContext(
         side=side,
         symbol="SPY",
         shares=shares,
@@ -77,20 +77,20 @@ class TestFixedSlippageModel:
             FixedSlippageModel(bps=bps)
 
     def test_sell_price_stays_positive_at_max_bps(self):
-        _, price = FixedSlippageModel(bps=9_999).apply_at_fill(
+        _, price = FixedSlippageModel(bps=9_999).apply_slippage(
             _fill_ctx("sell")
         )
         assert price > 0
 
     def test_buy_adverse(self):
         model = FixedSlippageModel(bps=5)
-        shares, price = model.apply_at_fill(_fill_ctx("buy"))
+        shares, price = model.apply_slippage(_fill_ctx("buy"))
         assert shares == Decimal(100)
         assert price == Decimal(100) * Decimal("1.0005")
 
     def test_sell_adverse(self):
         model = FixedSlippageModel(bps=5)
-        shares, price = model.apply_at_fill(_fill_ctx("sell"))
+        shares, price = model.apply_slippage(_fill_ctx("sell"))
         assert shares == Decimal(100)
         assert price == Decimal(100) * Decimal("0.9995")
 
@@ -98,22 +98,19 @@ class TestFixedSlippageModel:
         model = FixedSlippageModel(bps=0)
         ctx = _fill_ctx("buy")
         assert model.is_fill_noop
-        assert model.apply_at_fill(ctx) == (ctx.shares, ctx.fill_price)
+        assert model.apply_slippage(ctx) == (ctx.shares, ctx.fill_price)
         assert model.adjust_fill_price("buy", ctx.fill_price) == ctx.fill_price
 
-    def test_adjust_fill_price_matches_apply_at_fill(self):
+    def test_adjust_fill_price_matches_apply_slippage(self):
         model = FixedSlippageModel(bps=5)
         ctx = _fill_ctx("buy")
-        _, price = model.apply_at_fill(ctx)
+        _, price = model.apply_slippage(ctx)
         assert price == model.adjust_fill_price("buy", ctx.fill_price)
-
-    def test_uses_signal_slippage_false(self):
-        assert not FixedSlippageModel(bps=5).uses_signal_slippage
 
     def test_deterministic(self):
         model = FixedSlippageModel(bps=5)
         ctx = _fill_ctx("buy")
-        assert model.apply_at_fill(ctx) == model.apply_at_fill(ctx)
+        assert model.apply_slippage(ctx) == model.apply_slippage(ctx)
 
 
 class TestVolatilitySlippageModel:
@@ -131,7 +128,7 @@ class TestVolatilitySlippageModel:
     def test_computes_fill_bar_atr(self):
         model = VolatilitySlippageModel(atr_period=1, scale=0.1)
         ctx = _fill_ctx("buy", atr=2.5)
-        shares, price = model.apply_at_fill(ctx)
+        shares, price = model.apply_slippage(ctx)
         assert shares == Decimal(100)
         assert price == Decimal("100.25")
         ctx.col_scope.fetch_dict.assert_called_once_with(
@@ -140,7 +137,7 @@ class TestVolatilitySlippageModel:
 
     def test_sell_adverse(self):
         model = VolatilitySlippageModel(atr_period=1, scale=0.1)
-        shares, price = model.apply_at_fill(_fill_ctx("sell", atr=2.5))
+        shares, price = model.apply_slippage(_fill_ctx("sell", atr=2.5))
         assert price == Decimal("99.75")
 
     def test_matches_vect_atr(self):
@@ -157,7 +154,7 @@ class TestVolatilitySlippageModel:
         }
         object.__setattr__(ctx, "sym_end_index", {"SPY": n})
         model = VolatilitySlippageModel(atr_period=period, scale=0.1)
-        _, price = model.apply_at_fill(ctx)
+        _, price = model.apply_slippage(ctx)
         expected = vect_atr(high, low, close, period)[-1]
         assert price == Decimal(100) + Decimal("0.1") * to_decimal(expected)
 
@@ -169,20 +166,20 @@ class TestVolatilitySlippageModel:
     def test_when_atr_nan_then_unadjusted(self, side):
         model = VolatilitySlippageModel(atr_period=1)
         ctx = _fill_ctx(side, atr=NAN)
-        assert model.apply_at_fill(ctx) == (ctx.shares, ctx.fill_price)
+        assert model.apply_slippage(ctx) == (ctx.shares, ctx.fill_price)
 
     def test_when_warmup_then_unadjusted(self):
         # The fill bar is only the 2nd bar, so a 2-period ATR has no full
         # window yet.
         model = VolatilitySlippageModel(atr_period=2)
         ctx = _fill_ctx("buy")
-        assert model.apply_at_fill(ctx) == (ctx.shares, ctx.fill_price)
+        assert model.apply_slippage(ctx) == (ctx.shares, ctx.fill_price)
         ctx.col_scope.fetch_dict.assert_not_called()
 
     def test_when_no_col_scope_then_unadjusted(self):
         model = VolatilitySlippageModel(atr_period=1)
         ctx = _fill_ctx("buy")
-        ctx = FillSlippageContext(
+        ctx = SlippageContext(
             side=ctx.side,
             symbol=ctx.symbol,
             shares=ctx.shares,
@@ -191,7 +188,7 @@ class TestVolatilitySlippageModel:
             ind_scope=ctx.ind_scope,
             sym_end_index=ctx.sym_end_index,
         )
-        assert model.apply_at_fill(ctx) == (ctx.shares, ctx.fill_price)
+        assert model.apply_slippage(ctx) == (ctx.shares, ctx.fill_price)
 
     def test_when_symbol_not_in_col_scope_then_unadjusted(self):
         model = VolatilitySlippageModel(atr_period=1)
@@ -200,7 +197,7 @@ class TestVolatilitySlippageModel:
             "Symbol not found: 'SPY'."
         )
         with pytest.warns(UserWarning, match="leaving that fill unadjusted"):
-            assert model.apply_at_fill(ctx) == (ctx.shares, ctx.fill_price)
+            assert model.apply_slippage(ctx) == (ctx.shares, ctx.fill_price)
 
     def test_when_columns_missing_then_unadjusted(self):
         model = VolatilitySlippageModel(atr_period=1)
@@ -211,12 +208,12 @@ class TestVolatilitySlippageModel:
             "close": None,
         }
         with pytest.warns(UserWarning, match="leaving that fill unadjusted"):
-            assert model.apply_at_fill(ctx) == (ctx.shares, ctx.fill_price)
+            assert model.apply_slippage(ctx) == (ctx.shares, ctx.fill_price)
 
     def test_when_atr_exceeds_price_then_clamped_positive(self):
         model = VolatilitySlippageModel(atr_period=1, scale=1)
         with pytest.warns(UserWarning, match="exceeded the fill price"):
-            _, price = model.apply_at_fill(
+            _, price = model.apply_slippage(
                 _fill_ctx("sell", fill_price=Decimal(100), atr=500)
             )
         assert price > 0
@@ -226,10 +223,10 @@ class TestVolatilitySlippageModel:
         model = VolatilitySlippageModel(atr_period=1, scale=1)
         ctx = _fill_ctx("sell", atr=500)
         with pytest.warns(UserWarning):
-            model.apply_at_fill(ctx)
+            model.apply_slippage(ctx)
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            model.apply_at_fill(ctx)
+            model.apply_slippage(ctx)
 
 
 class TestVolumeSlippageModel:
@@ -245,7 +242,7 @@ class TestVolumeSlippageModel:
 
     def test_zero_volume_no_fill(self):
         model = VolumeSlippageModel()
-        shares, _ = model.apply_at_fill(_fill_ctx("buy", volume=0))
+        shares, _ = model.apply_slippage(_fill_ctx("buy", volume=0))
         assert shares == Decimal(0)
 
     def test_zero_volume_when_cap_disabled_then_unadjusted(self):
@@ -253,23 +250,23 @@ class TestVolumeSlippageModel:
         # off, a zero-volume bar must not silently drop the order.
         model = VolumeSlippageModel(price_impact=0.1, volume_limit=None)
         ctx = _fill_ctx("buy", volume=0)
-        assert model.apply_at_fill(ctx) == (ctx.shares, ctx.fill_price)
+        assert model.apply_slippage(ctx) == (ctx.shares, ctx.fill_price)
 
     @pytest.mark.parametrize("volume", [NAN, None])
     def test_when_volume_missing_then_unadjusted_and_warns(self, volume):
         model = VolumeSlippageModel()
         ctx = _fill_ctx("buy", volume=volume)
         with pytest.warns(UserWarning, match="missing or NaN 'volume'"):
-            assert model.apply_at_fill(ctx) == (ctx.shares, ctx.fill_price)
+            assert model.apply_slippage(ctx) == (ctx.shares, ctx.fill_price)
 
     def test_missing_volume_warns_once_per_symbol(self):
         model = VolumeSlippageModel()
         ctx = _fill_ctx("buy", volume=NAN)
         with pytest.warns(UserWarning):
-            model.apply_at_fill(ctx)
+            model.apply_slippage(ctx)
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            model.apply_at_fill(ctx)
+            model.apply_slippage(ctx)
 
     def test_when_impact_exceeds_price_then_clamped_and_warns(self):
         # Square-law impact is unbounded above, so an order large relative to
@@ -278,7 +275,7 @@ class TestVolumeSlippageModel:
         model = VolumeSlippageModel(price_impact=0.1, volume_limit=None)
         ctx = _fill_ctx("sell", shares=Decimal(1000), volume=100.0)
         with pytest.warns(UserWarning, match="exceeded the fill price"):
-            _, price = model.apply_at_fill(ctx)
+            _, price = model.apply_slippage(ctx)
         assert price > 0
         assert price == ctx.fill_price * Decimal("0.01")
 
@@ -286,15 +283,15 @@ class TestVolumeSlippageModel:
         model = VolumeSlippageModel(price_impact=0.1, volume_limit=None)
         ctx = _fill_ctx("sell", shares=Decimal(1000), volume=100.0)
         with pytest.warns(UserWarning):
-            model.apply_at_fill(ctx)
+            model.apply_slippage(ctx)
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            model.apply_at_fill(ctx)
+            model.apply_slippage(ctx)
 
     def test_when_no_col_scope_then_unadjusted(self):
         model = VolumeSlippageModel()
         base = _fill_ctx("buy")
-        ctx = FillSlippageContext(
+        ctx = SlippageContext(
             side=base.side,
             symbol=base.symbol,
             shares=base.shares,
@@ -303,7 +300,7 @@ class TestVolumeSlippageModel:
             ind_scope=base.ind_scope,
             sym_end_index=base.sym_end_index,
         )
-        assert model.apply_at_fill(ctx) == (ctx.shares, ctx.fill_price)
+        assert model.apply_slippage(ctx) == (ctx.shares, ctx.fill_price)
 
     def test_validate_when_volume_column_missing(self):
         df = pd.DataFrame(
@@ -340,13 +337,13 @@ class TestVolumeSlippageModel:
             volume=1_000_001,
             enable_fractional_shares=False,
         )
-        shares, _ = model.apply_at_fill(ctx)
+        shares, _ = model.apply_slippage(ctx)
         assert shares == Decimal(25_000)
         assert shares == shares.to_integral_value()
 
     def test_cap_keeps_fraction_when_fractional_shares_enabled(self):
         model = VolumeSlippageModel(price_impact=0, volume_limit=0.025)
-        shares, _ = model.apply_at_fill(
+        shares, _ = model.apply_slippage(
             _fill_ctx(
                 "buy",
                 shares=Decimal(100_000),
@@ -358,14 +355,14 @@ class TestVolumeSlippageModel:
 
     def test_when_shares_below_cap_then_not_increased(self):
         model = VolumeSlippageModel(price_impact=0, volume_limit=0.025)
-        shares, _ = model.apply_at_fill(
+        shares, _ = model.apply_slippage(
             _fill_ctx("buy", shares=Decimal(10), volume=1_000_000)
         )
         assert shares == Decimal(10)
 
     def test_sell_price_impact_is_adverse(self):
         model = VolumeSlippageModel(price_impact=0.1, volume_limit=0.025)
-        shares, price = model.apply_at_fill(
+        shares, price = model.apply_slippage(
             _fill_ctx("sell", shares=Decimal(100_000), volume=1_000_000)
         )
         assert shares == Decimal(25_000)
@@ -379,7 +376,7 @@ class TestVolumeSlippageModel:
     def test_cap_before_impact_on_capped_quantity(self):
         model = VolumeSlippageModel(price_impact=0.1, volume_limit=0.025)
         ctx = _fill_ctx("buy", shares=Decimal(100_000), volume=1_000_000)
-        shares, price = model.apply_at_fill(ctx)
+        shares, price = model.apply_slippage(ctx)
         assert shares == Decimal(25000)
         ratio = 25000 / 1_000_000
         expected_impact = 0.1 * ratio * ratio
@@ -390,14 +387,14 @@ class TestVolumeSlippageModel:
     def test_volume_limit_none_disables_cap(self):
         model = VolumeSlippageModel(price_impact=0, volume_limit=None)
         ctx = _fill_ctx("buy", shares=Decimal(100_000), volume=1_000)
-        shares, price = model.apply_at_fill(ctx)
+        shares, price = model.apply_slippage(ctx)
         assert shares == Decimal(100_000)
         assert price == Decimal(100)
 
     def test_price_impact_zero_disables_impact(self):
         model = VolumeSlippageModel(price_impact=0, volume_limit=0.025)
         ctx = _fill_ctx("buy", shares=Decimal(100_000), volume=1_000_000)
-        shares, price = model.apply_at_fill(ctx)
+        shares, price = model.apply_slippage(ctx)
         assert shares == Decimal(25000)
         assert price == Decimal(100)
 
@@ -405,45 +402,26 @@ class TestVolumeSlippageModel:
         model = VolumeSlippageModel(price_impact=0, volume_limit=None)
         assert model.is_fill_noop
         ctx = _fill_ctx("buy")
-        assert model.apply_at_fill(ctx) == (ctx.shares, ctx.fill_price)
-
-    def test_uses_signal_slippage_when_overridden(self):
-        class CustomSlippage(SlippageModel):
-            def apply_slippage(self, ctx, buy_shares=None, sell_shares=None):
-                if buy_shares:
-                    ctx.buy_shares = buy_shares - 1
-
-        assert CustomSlippage().uses_signal_slippage
+        assert model.apply_slippage(ctx) == (ctx.shares, ctx.fill_price)
 
     def test_deterministic(self):
         model = VolumeSlippageModel()
         ctx = _fill_ctx("buy")
-        assert model.apply_at_fill(ctx) == model.apply_at_fill(ctx)
+        assert model.apply_slippage(ctx) == model.apply_slippage(ctx)
 
 
 class TestSlippageModel:
     def test_base_model_is_fill_noop(self):
         assert SlippageModel().is_fill_noop
 
-    def test_signal_only_model_is_fill_noop(self):
-        class SignalOnly(SlippageModel):
-            def apply_slippage(self, ctx, buy_shares=None, sell_shares=None):
-                pass
+    def test_overriding_model_is_not_fill_noop(self):
+        class DoublingSlippage(SlippageModel):
+            def apply_slippage(self, ctx):
+                return ctx.shares, ctx.fill_price * Decimal(2)
 
-        model = SignalOnly()
-        assert model.is_fill_noop
-        assert model.uses_signal_slippage
+        assert not DoublingSlippage().is_fill_noop
 
-    def test_fill_model_is_not_fill_noop(self):
-        class FillOnly(SlippageModel):
-            def apply_at_fill(self, fill_ctx):
-                return fill_ctx.shares, fill_ctx.fill_price * Decimal(2)
-
-        model = FillOnly()
-        assert not model.is_fill_noop
-        assert not model.uses_signal_slippage
-
-    def test_adjust_fill_matches_apply_at_fill(self):
+    def test_adjust_fill_matches_apply_slippage(self):
         model = FixedSlippageModel(bps=5)
         ctx = _fill_ctx("buy")
         assert model.adjust_fill(
@@ -454,7 +432,7 @@ class TestSlippageModel:
             col_scope=ctx.col_scope,
             ind_scope=ctx.ind_scope,
             sym_end_index=ctx.sym_end_index,
-        ) == model.apply_at_fill(ctx)
+        ) == model.apply_slippage(ctx)
 
     def test_adjust_fill_when_noop_then_unchanged(self):
         model = SlippageModel()

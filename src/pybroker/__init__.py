@@ -88,8 +88,8 @@ from pybroker.scope import (
     unregister_columns as unregister_columns,
 )
 from pybroker.slippage import (
-    FillSlippageContext as FillSlippageContext,
     FixedSlippageModel as FixedSlippageModel,
+    SlippageContext as SlippageContext,
     SlippageModel as SlippageModel,
     VolatilitySlippageModel as VolatilitySlippageModel,
     VolumeSlippageModel as VolumeSlippageModel,

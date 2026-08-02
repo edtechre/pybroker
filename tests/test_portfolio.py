@@ -1875,12 +1875,12 @@ def test_exit_position_when_slippage_then_market_price():
 
 
 class _RecordingSlippageModel(SlippageModel):
-    """Captures the :class:`.FillSlippageContext` of each fill adjustment."""
+    """Captures the :class:`.SlippageContext` of each fill adjustment."""
 
     def __init__(self):
         self.contexts = []
 
-    def apply_at_fill(self, fill_ctx):
+    def apply_slippage(self, fill_ctx):
         self.contexts.append(fill_ctx)
         return fill_ctx.shares, fill_ctx.fill_price
 

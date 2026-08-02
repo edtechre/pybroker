@@ -46,8 +46,6 @@ from typing import (
 )
 
 if TYPE_CHECKING:
-    # Imported lazily for typing only: pybroker.slippage imports
-    # pybroker.context, which imports this module.
     from pybroker.slippage import SlippageModel
 
 _BarStopFillPrice = Union[
