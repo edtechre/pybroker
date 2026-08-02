@@ -952,7 +952,9 @@ class ExecContext:
           fixed-duration bins (digits plus unit letter).
 
         - **Calendar** (``str``): e.g. ``ctx.interval("weekly")`` for
-          calendar weekly bars.
+          calendar weekly bars. Weeks start on Monday, months on the first
+          of the month, quarters in January, April, July, and October, and
+          years on January 1.
 
         For example::
 

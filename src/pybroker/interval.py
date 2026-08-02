@@ -26,7 +26,9 @@ TimeframeInterval = Union[int, CalendarInterval, str]
 - ``str`` duration: digits plus one unit letter — ``"5m"``, ``"1h"``,
   ``"30s"``, or ``"1d"`` (letters: ``s``, ``m``, ``h``, ``d``).
 - ``str`` calendar: ``"daily"``, ``"weekly"``, ``"monthly"``,
-  ``"quarterly"``, or ``"yearly"``.
+  ``"quarterly"``, or ``"yearly"``, aligned to calendar boundaries: weeks
+  start on Monday, months on the first of the month, quarters in January,
+  April, July, and October, and years on January 1.
 """
 
 _CALENDAR_INTERVALS: frozenset[str] = frozenset(

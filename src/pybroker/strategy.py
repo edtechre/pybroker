@@ -2163,6 +2163,8 @@ class Strategy(
 
         - **Calendar** (``str``): Calendar buckets — ``"daily"``,
           ``"weekly"``, ``"monthly"``, ``"quarterly"``, or ``"yearly"``.
+          Weeks start on Monday, months on the first of the month, quarters
+          in January, April, July, and October, and years on January 1.
 
         For example, to use weekly bars, 5-bar bins, and 1-hour duration bars
         on a 1-minute feed::
