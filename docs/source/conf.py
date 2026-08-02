@@ -9,6 +9,12 @@ nitpick_ignore = [
     ("py:class", "numpy.float64"),
     ("py:class", "numpy.int64"),
     ("py:class", "numpy._typing._array_like._ScalarT"),
+    # numpy < 2.3 spells the above TypeVar differently.
+    ("py:class", "numpy._typing._array_like._ScalarType_co"),
+    # pandas < 3.0 exposes internal module paths in type annotations.
+    ("py:class", "pandas.core.frame.DataFrame"),
+    ("py:class", "pandas.core.series.Series"),
+    ("py:class", "pandas._libs.tslibs.timestamps.Timestamp"),
 ]
 
 project = "PyBroker"
