@@ -1,4 +1,4 @@
-akshare>=1.17.50
+akshare>=1.18.81
 alpaca-py>=0.43.5
 diskcache>=5.6.3
 flake8>=7.3.0
