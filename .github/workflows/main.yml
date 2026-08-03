@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -42,7 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -58,7 +58,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -87,7 +87,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python.version }}
           allow-prereleases: true
@@ -104,7 +104,7 @@ jobs:
       steps:
         - uses: actions/checkout@v7
 
-        - uses: actions/setup-python@v5
+        - uses: actions/setup-python@v7
           with:
             python-version: "3.12"
 
@@ -114,7 +114,7 @@ jobs:
         - name: Run build
           run: python -m build --sdist
 
-        - uses: actions/upload-artifact@v4
+        - uses: actions/upload-artifact@v7
           with:
             path: ./dist/*.tar.gz
 
@@ -131,7 +131,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: artifact
           path: ./dist

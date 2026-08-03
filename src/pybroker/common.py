@@ -409,11 +409,9 @@ def default_parallel() -> Parallel:
 
 
 def get_unique_sorted_dates(col: pd.Series) -> Sequence[np.datetime64]:
-    """Returns sorted unique values from a DataFrame column of dates.
-    Guarantees compatability between Pandas 1 and 2.
-    """
+    """Returns sorted unique values from a DataFrame column of dates."""
     result = col.unique()
-    # TODO: Remove after Pandas 1.0 is no longer supported.
+    # Index-like unique() results expose to_numpy(); ndarrays do not.
     if hasattr(result, "to_numpy"):
         result = result.to_numpy(copy=True)
     return cast(Sequence[np.datetime64], np.sort(result))
