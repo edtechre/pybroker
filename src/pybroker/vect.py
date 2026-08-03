@@ -99,7 +99,11 @@ def returnv(array: NDArray[np.float64], n: int = 1) -> NDArray[np.float64]:
     out_len = len(array)
     out = np.array([np.nan for _ in range(out_len)])
     for i in range(n, out_len):
-        out[i] = (array[i] - array[i - n]) / array[i - n]
+        base = array[i - n]
+        # A zero base has no defined return. Numba raises ZeroDivisionError
+        # here rather than yielding inf, which would abort a backtest on a
+        # single bad bar; leave it undefined instead.
+        out[i] = (array[i] - base) / base if base != 0 else np.nan
     return out
 
 
@@ -493,7 +497,9 @@ def stochastic_rsi(
         output[i] = (
             100.0 * (work1[i] - min_val) / (max_val - min_val + 1.0e-60) - 50.0
         )
-    if smoothing > 1:
+    # front_bad is clamped up to n, so seeding from output[front_bad] reads one
+    # past the end whenever the stochastic window leaves no computable bars.
+    if smoothing > 1 and front_bad < n:
         alpha = 2.0 / (smoothing + 1.0)
         smoothed = output[front_bad]
         for i in range(front_bad + 1, n):
@@ -593,6 +599,16 @@ def _trend(
     assert lookback > 0
     assert atr_length > 0
     assert scale > 0
+    # Mirrors _deviation: a degree-d fit needs more than d points, and
+    # _legendre_3 divides by a normalizer that is zero at lookback 3. Without
+    # this, cubic_trend(lookback=3) silently returned the linear trend and
+    # lookback 1-2 raised ZeroDivisionError.
+    if trend_type == "quadratic" and lookback < 4:
+        lookback = 4
+    if trend_type == "cubic" and lookback < 5:
+        lookback = 5
+    if trend_type == "linear" and lookback < 2:
+        lookback = 2
     n = len(values)
     front_bad = lookback - 1 if ((lookback - 1) > atr_length) else atr_length
     if front_bad > n:
@@ -750,21 +766,25 @@ def adx(
     assert lookback > 0
     n = len(close)
     output = np.zeros(n)
-    if n <= 2 * lookback:
+    # ``<``, not ``<=``: at exactly 2 * lookback bars the warmup loops below
+    # still fill indices 1..2*lookback-1 (the highest index they touch is
+    # n - 1), and only the final loop is empty. Bailing out discarded values
+    # that are computable.
+    if n < 2 * lookback:
         return output
     output[0] = 0
     dms_plus = dms_minus = atr_ = 0.0
     for i in range(1, lookback + 1):
-        dm_plus = high[i] - high[i - 1]
-        dm_minus = low[i - 1] - low[i]
-        if dm_plus >= dm_minus:
-            dm_minus = 0.0
-        else:
-            dm_plus = 0.0
-        if dm_plus < 0.0:
-            dm_plus = 0.0
-        if dm_minus < 0.0:
-            dm_minus = 0.0
+        up_move = high[i] - high[i - 1]
+        down_move = low[i - 1] - low[i]
+        # Wilder's rule: a directional move counts only when it is positive
+        # AND strictly larger than the opposing move, so a tie contributes to
+        # neither. Treating a tie as an up move biased +DI upward and made a
+        # symmetric expanding range read as a maximum-strength trend.
+        dm_plus = up_move if up_move > down_move and up_move > 0.0 else 0.0
+        dm_minus = (
+            down_move if down_move > up_move and down_move > 0.0 else 0.0
+        )
         dms_plus += dm_plus
         dms_minus += dm_minus
         term = high[i] - low[i]
@@ -778,16 +798,16 @@ def adx(
         adx_ = np.fabs(di_plus - di_minus) / (di_plus + di_minus + 1.0e-10)
         output[i] = 100 * adx_
     for i in range(lookback + 1, 2 * lookback):
-        dm_plus = high[i] - high[i - 1]
-        dm_minus = low[i - 1] - low[i]
-        if dm_plus >= dm_minus:
-            dm_minus = 0.0
-        else:
-            dm_plus = 0.0
-        if dm_plus < 0.0:
-            dm_plus = 0.0
-        if dm_minus < 0.0:
-            dm_minus = 0.0
+        up_move = high[i] - high[i - 1]
+        down_move = low[i - 1] - low[i]
+        # Wilder's rule: a directional move counts only when it is positive
+        # AND strictly larger than the opposing move, so a tie contributes to
+        # neither. Treating a tie as an up move biased +DI upward and made a
+        # symmetric expanding range read as a maximum-strength trend.
+        dm_plus = up_move if up_move > down_move and up_move > 0.0 else 0.0
+        dm_minus = (
+            down_move if down_move > up_move and down_move > 0.0 else 0.0
+        )
         dms_plus = (lookback - 1.0) / lookback * dms_plus + dm_plus
         dms_minus = (lookback - 1.0) / lookback * dms_minus + dm_minus
         term = high[i] - low[i]
@@ -802,16 +822,16 @@ def adx(
         output[i] = 100 * adx_ / (i - lookback + 1)
     adx_ /= lookback
     for i in range(2 * lookback, n):
-        dm_plus = high[i] - high[i - 1]
-        dm_minus = low[i - 1] - low[i]
-        if dm_plus >= dm_minus:
-            dm_minus = 0.0
-        else:
-            dm_plus = 0.0
-        if dm_plus < 0.0:
-            dm_plus = 0.0
-        if dm_minus < 0.0:
-            dm_minus = 0.0
+        up_move = high[i] - high[i - 1]
+        down_move = low[i - 1] - low[i]
+        # Wilder's rule: a directional move counts only when it is positive
+        # AND strictly larger than the opposing move, so a tie contributes to
+        # neither. Treating a tie as an up move biased +DI upward and made a
+        # symmetric expanding range read as a maximum-strength trend.
+        dm_plus = up_move if up_move > down_move and up_move > 0.0 else 0.0
+        dm_minus = (
+            down_move if down_move > up_move and down_move > 0.0 else 0.0
+        )
         dms_plus = (lookback - 1.0) / lookback * dms_plus + dm_plus
         dms_minus = (lookback - 1.0) / lookback * dms_minus + dm_minus
         term = high[i] - low[i]
@@ -844,24 +864,28 @@ def _aroon(
     elif aroon_type == "diff":
         output[0] = 0
     for i in range(1, n):
+        # The scan index is ``j``, not ``i``: reusing the outer bar index would
+        # leave it clobbered for the second scan and for the writes below,
+        # which then land on the wrong bar (and on a negative index, which
+        # wraps to the end of the array).
         if aroon_type == "up" or aroon_type == "diff":
             i_max = i
             x_max = high[i]
-            for i in range(i - 1, i - lookback - 1, -1):
-                if i < 0:
+            for j in range(i - 1, i - lookback - 1, -1):
+                if j < 0:
                     break
-                if high[i] > x_max:
-                    x_max = high[i]
-                    i_max = i
+                if high[j] > x_max:
+                    x_max = high[j]
+                    i_max = j
         if aroon_type == "down" or aroon_type == "diff":
             i_min = i
             x_min = low[i]
-            for i in range(i - 1, i - lookback - 1, -1):
-                if i < 0:
+            for j in range(i - 1, i - lookback - 1, -1):
+                if j < 0:
                     break
-                if low[i] < x_min:
-                    x_min = low[i]
-                    i_min = i
+                if low[j] < x_min:
+                    x_min = low[j]
+                    i_min = j
         if aroon_type == "up":
             output[i] = 100 * (lookback - (i - i_max)) / lookback
         elif aroon_type == "down":
@@ -1038,7 +1062,11 @@ def _deviation(
             total += diff * diff
             j += 1
         denom = np.sqrt(total / lookback)
-        if denom > 0.0:
+        # Relative, not ``> 0.0``: on a window of identical prices the residual
+        # RMS is float rounding noise rather than a true zero, and dividing by
+        # it amplified that noise into a full-scale reading. ``c0`` is the mean
+        # log price, so it sets the scale the residual is measured against.
+        if denom > 1.0e-12 * (1.0 + np.fabs(c0)):
             pred = c0 + c1 * work1[lookback - 1]
             if dev_type == "quadratic" or dev_type == "cubic":
                 pred += c2 * work2[lookback - 1]
@@ -1209,7 +1237,12 @@ def price_change_oscillator(
     output = np.zeros(n)
     for i in range(front_bad, n):
         short_sum = 0.0
-        for j in range(i - short_length - 1, i + 1):
+        # The short leg covers exactly ``short_length`` bars, which is what it
+        # is divided by below. Starting at ``i - short_length - 1`` summed two
+        # extra terms, double-counted them into the long leg, and -- for
+        # short_length of 1 -- reached index 0, whose ``close[j - 1]`` wraps
+        # around to the final bar of the series.
+        for j in range(i - short_length + 1, i + 1):
             short_sum += np.fabs(np.log(close[j] / close[j - 1]))
 
         long_sum = short_sum
@@ -1352,7 +1385,7 @@ def reactivity(
     close: NDArray[np.float64],
     volume: NDArray[np.float64],
     lookback: int,
-    smoothing: float = 0.0,
+    smoothing: float = 1.0,
     scale: float = 0.6,
 ) -> NDArray[np.float64]:
     """Computes Reactivity.
@@ -1389,7 +1422,12 @@ def reactivity(
     output = np.zeros(n)
     for i in range(front_bad):
         output[i] = 0.0
+    # An EMA coefficient must not exceed 1: above it the recursion amplifies
+    # instead of smoothing, driving the smoothed range negative and inverting
+    # the indicator. ``smoothing`` of 1 gives the textbook 2/(lookback+1).
     alpha = 2.0 / (lookback * smoothing + 1)
+    if alpha > 1.0:
+        alpha = 1.0
     lowest = low[first_volume]
     highest = high[first_volume]
     smoothed_range = highest - lowest
@@ -1574,6 +1612,11 @@ def _on_balance_volume(
             front_bad = n
         for i in range(n - 1, front_bad - 1, -1):
             output[i] -= output[i - delta_length]
+        # The bars below the new front are levels that were never differenced,
+        # because the level they would subtract is itself undefined. Leaving
+        # them in mixes raw OBV levels into a series of deltas.
+        for i in range(front_bad):
+            output[i] = 0.0
     return output
 
 
@@ -1660,7 +1703,12 @@ def _normalized_volume_index(
                     total += np.log(close[i - j] / close[i - j - 1])
         total /= np.sqrt(lookback)
         denom = np.sqrt(_variance(True, i, volatility_length, close))
-        if denom > 0.0:
+        if np.isnan(total) or np.isnan(denom):
+            # NaN in the window is bad data, not a neutral market. Emitting the
+            # 0.0 used for "undefined" would make it indistinguishable from a
+            # genuine mid-scale reading for the whole volatility window.
+            output[i] = np.nan
+        elif denom > 0.0:
             total /= denom
             output[i] = 100.0 * normal_cdf(scale * total) - 50.0
         else:
@@ -1792,7 +1840,8 @@ def laguerre_rsi(
     assert fe_length > 0
     n = len(close)
     output = np.zeros(n)
-    if n <= fe_length:
+    # fe_length of 1 would divide by log(1) == 0 below.
+    if n <= fe_length or fe_length == 1:
         return output
     alpha = np.zeros(n)
     L0_1, L1_1, L2_1, L3_1 = 0.0, 0.0, 0.0, 0.0
@@ -1808,12 +1857,16 @@ def laguerre_rsi(
             output[i] = alpha[i] = 0
             continue
         s = 0
-        for i in range(fe_length):
-            diff = max(high[i - i], close[i - i - 1]) - min(
-                low[i - i], close[i - i - 1]
+        # The scan index is ``j``, not ``i``: reusing the outer bar index made
+        # ``i - i`` identically 0 and ``i - i - 1`` identically -1, so every
+        # term read bar 0 and the series' final close, and left ``i`` clobbered
+        # for the writes below.
+        for j in range(fe_length):
+            diff = max(high[i - j], close[i - j - 1]) - min(
+                low[i - j], close[i - j - 1]
             )
             s += diff / denom
-        fe_alpha = np.log(s) / np.log(fe_length)
+        fe_alpha = np.log(s) / np.log(fe_length) if s > 0 else 0.0
         alpha[i] = fe_alpha * 100
         L0 = fe_alpha * fe_src + (1 - fe_alpha) * L0_1
         L1 = -(1 - fe_alpha) * L0 + L0_1 + (1 - fe_alpha) * L1_1

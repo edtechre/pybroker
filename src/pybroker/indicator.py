@@ -966,7 +966,7 @@ def money_flow(name: str, lookback: int, smoothing: float = 0.0) -> Indicator:
 
 
 def reactivity(
-    name: str, lookback: int, smoothing: float = 0.0, scale: float = 0.6
+    name: str, lookback: int, smoothing: float = 1.0, scale: float = 0.6
 ) -> Indicator:
     """Reactivity.
 
