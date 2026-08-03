@@ -68,7 +68,7 @@ class WalkforwardVolumeSlippage:
             windows=_WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
     def time_walkforward_volume_slippage(self) -> None:
@@ -77,7 +77,7 @@ class WalkforwardVolumeSlippage:
             windows=_WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
 
@@ -104,7 +104,7 @@ class WalkforwardVolatilitySlippage:
             windows=_WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
     def time_walkforward_volatility_slippage(self) -> None:
@@ -119,5 +119,5 @@ class WalkforwardVolatilitySlippage:
             windows=_WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )

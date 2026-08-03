@@ -98,7 +98,7 @@ class Walkforward:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=True,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
     def time_walkforward(self) -> None:
@@ -106,7 +106,7 @@ class Walkforward:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=True,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
     def peakmem_walkforward(self) -> None:
@@ -114,7 +114,7 @@ class Walkforward:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=True,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
 
@@ -132,7 +132,7 @@ class WalkforwardCold:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=True,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
 
@@ -170,7 +170,7 @@ class PortfolioHeldStops:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
     def time_portfolio_held_stops(self) -> None:
@@ -178,7 +178,7 @@ class PortfolioHeldStops:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
 
@@ -254,7 +254,7 @@ class WalkforwardScaled:
             windows=windows,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
     def time_walkforward_scaled(self, windows: int, symbols: int) -> None:
@@ -262,7 +262,7 @@ class WalkforwardScaled:
             windows=windows,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
 
@@ -282,7 +282,7 @@ class WalkforwardLarge:
             windows=5,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
     def time_walkforward_large(self) -> None:
@@ -290,7 +290,7 @@ class WalkforwardLarge:
             windows=5,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
     def peakmem_walkforward_large(self) -> None:
@@ -298,7 +298,7 @@ class WalkforwardLarge:
             windows=5,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
 
@@ -332,7 +332,7 @@ class WalkforwardMultiWindow:
             windows=10,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
     def time_walkforward_multi_window(self) -> None:
@@ -340,7 +340,7 @@ class WalkforwardMultiWindow:
             windows=10,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
 
@@ -356,7 +356,7 @@ class WalkforwardPerBar:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
     def time_walkforward_per_bar(self) -> None:
@@ -364,7 +364,7 @@ class WalkforwardPerBar:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
     def _build_strategy(self) -> Strategy:
@@ -517,7 +517,7 @@ class ExitOnLastBarPreprocess:
             windows=1,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
     def time_exit_on_last_bar_preprocess(self, n_symbols: int) -> None:
@@ -525,7 +525,7 @@ class ExitOnLastBarPreprocess:
             windows=1,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
     def _build_strategy(self) -> "_PreprocessOnlyStrategy":
@@ -586,19 +586,19 @@ class IndicatorPreprocess:
         for name, fn in kernels[:n_indicators]:
             ind_set.add(pybroker.indicator(name, fn))
         self._ind_set = ind_set
-        self._ind_set(self.df, enable_parallel_indicators=False)
+        self._ind_set(self.df, parallel_indicators=False)
 
     def time_indicator_set_call(
         self, n_symbols: int, n_indicators: int
     ) -> None:
-        self._ind_set(self.df, enable_parallel_indicators=False)
+        self._ind_set(self.df, parallel_indicators=False)
 
 
 class IndicatorParallel:
     """Bench parallel indicator scheduling in ``IndicatorSet.__call__``.
 
     Guards joblib task granularity in ``IndicatorsMixin._run_indicators``
-    when ``enable_parallel_indicators=True``. Tasks are batched by
+    when ``parallel_indicators=True``. Tasks are batched by
     symbol so each worker computes all indicators for one symbol. Workers
     are pinned to a fixed count so timings stay comparable across
     machines.
@@ -630,7 +630,7 @@ class IndicatorParallel:
         self._ind_set = ind_set
         self._saved_parallel = pybroker.get_parallel_config()
         pybroker.set_parallel(n_jobs=4)
-        self._ind_set(self.df, enable_parallel_indicators=False)
+        self._ind_set(self.df, parallel_indicators=False)
 
     def teardown(self, n_symbols: int, n_indicators: int) -> None:
         import pybroker.parallel as parallel_mod
@@ -640,7 +640,7 @@ class IndicatorParallel:
     def time_indicator_set_call_parallel(
         self, n_symbols: int, n_indicators: int
     ) -> None:
-        self._ind_set(self.df, enable_parallel_indicators=True)
+        self._ind_set(self.df, parallel_indicators=True)
 
 
 class IndicatorKernels:
@@ -1105,7 +1105,7 @@ class WalkforwardProperCold:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
 
@@ -1133,7 +1133,7 @@ class Determinism:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
         equity = result.portfolio["equity"].to_numpy()
         digest = hashlib.sha256(equity.tobytes()).hexdigest()
@@ -1160,7 +1160,7 @@ class WalkforwardIntervals:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
             timeframe="1d",
         )
 
@@ -1169,7 +1169,7 @@ class WalkforwardIntervals:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
             timeframe="1d",
         )
 
@@ -1206,7 +1206,7 @@ class WalkforwardModels:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
     def time_walkforward_models(self) -> None:
@@ -1214,7 +1214,7 @@ class WalkforwardModels:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
     def _build_strategy(self) -> Strategy:
@@ -1272,7 +1272,7 @@ class WalkforwardModelsCached(WalkforwardModels):
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
     def teardown(self) -> None:
@@ -1288,7 +1288,7 @@ class WalkforwardModelsCached(WalkforwardModels):
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
 
@@ -1473,7 +1473,7 @@ class WalkforwardModelsPerSymbol:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
     def time_walkforward_models_per_symbol(self) -> None:
@@ -1481,7 +1481,7 @@ class WalkforwardModelsPerSymbol:
             windows=WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
-            enable_parallel_indicators=False,
+            parallel_indicators=False,
         )
 
     def _build_strategy(self) -> Strategy:
