@@ -109,7 +109,10 @@ class TrainedModel(NamedTuple):
         name: Trained model name.
         instance: Trained model instance.
         predict_fn: :class:`Callable` that overrides calling the model's
-            default ``predict`` function.
+            default ``predict`` function. For models trained with ``lags``,
+            it is called with the lag feature matrix
+            (:class:`numpy.ndarray`) instead of a
+            :class:`pandas.DataFrame`.
         input_cols: Names of the columns to be used as input for the model when
             making predictions.
         per_bar: If ``True``, predictions are made incrementally once per bar.
@@ -121,7 +124,9 @@ class TrainedModel(NamedTuple):
 
     name: str
     instance: Any
-    predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]]
+    predict_fn: Optional[
+        Callable[[Any, Union[pd.DataFrame, NDArray]], NDArray]
+    ]
     input_cols: Optional[tuple[str]]
     per_bar: bool = False
     lag_columns: Optional[tuple[str, ...]] = None

@@ -1140,7 +1140,7 @@ class TestTimeSeriesModelOptions:
         sym = train_data[DataCol.SYMBOL.value].iloc[0]
         model(
             "lag_train",
-            lambda sym, train, test: (object(), ("close",)),
+            lambda sym, train, test, **kwargs: (object(), ("close",)),
             lags=2,
         )
         mixin = ModelsMixin()
@@ -1281,7 +1281,9 @@ def test_train_models_reuses_history_store(
     # pass on laziness alone and never exercise the supplied store.
     model(
         "store_model",
-        lambda symbol, train_df, test_df: FakeModel(symbol, np.array([1.0])),
+        lambda symbol, train_df, test_df, **kwargs: FakeModel(
+            symbol, np.array([1.0])
+        ),
         indicators,
         lags=2,
         lag_cols=("close",),

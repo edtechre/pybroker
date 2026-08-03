@@ -68,7 +68,6 @@ class _ModelImports:
     apply_prepare_input_data: Callable[..., ModelInput]
     merge_lag_series_cache_from_arrays: Callable[..., None]
     merge_interval_lag_series_cache: Callable[..., LagSeriesCache]
-    model_input_to_dataframe: Callable[..., pd.DataFrame]
     model_trainer_cls: type
     _indicator_values_for_dates: Callable[..., NDArray[np.float64]]
 
@@ -91,7 +90,6 @@ def _model() -> _ModelImports:
             merge_interval_lag_series_cache=(
                 model_mod.merge_interval_lag_series_cache
             ),
-            model_input_to_dataframe=model_mod.model_input_to_dataframe,
             model_trainer_cls=model_mod.ModelTrainer,
             _indicator_values_for_dates=(
                 model_mod._indicator_values_for_dates
@@ -1412,15 +1410,14 @@ class IntervalScope:
         base_model_name: str,
         end_index: int,
     ) -> pd.DataFrame:
-        model = _model()
         interval = normalize_interval(interval)
         idx = self.completed_index(symbol, interval, end_index)
         model_input = self._prepare_full_input(
             symbol, interval, base_model_name
         )
         if idx < 0:
-            return model.model_input_to_dataframe(model_input.slice(0))
-        return model.model_input_to_dataframe(model_input.slice(idx + 1))
+            return model_input.slice(0).to_dataframe()
+        return model_input.slice(idx + 1).to_dataframe()
 
     def fetch_preds(
         self,
@@ -1782,9 +1779,7 @@ class ModelInputScope:
             :class:`pandas.DataFrame` of model input data for every bar until
             ``end_index`` (when specified).
         """
-        model = _model()
-        model_input = self._fetch_model_input(symbol, name, end_index)
-        return model.model_input_to_dataframe(model_input)
+        return self._fetch_model_input(symbol, name, end_index).to_dataframe()
 
     def fetch_model_input(
         self, symbol: str, name: str, end_index: Optional[int] = None
@@ -2004,26 +1999,25 @@ class PredictionScope:
         return pred if end_index is None else pred[:end_index]
 
     @staticmethod
-    def _predict_input_df(
-        input_: Union[ModelInput, pd.DataFrame],
-    ) -> pd.DataFrame:
-        model = _model()
-        if isinstance(input_, model.model_input_cls):
-            return model.model_input_to_dataframe(input_)
-        return input_
-
-    @staticmethod
     def _run_predict(
         trained_model: TrainedModel,
         input_: Union[ModelInput, pd.DataFrame],
     ) -> NDArray:
-        input_df = PredictionScope._predict_input_df(input_)
+        # Lagged models predict against the lag feature matrix directly;
+        # no DataFrame is materialized for them.
+        if isinstance(input_, _model().model_input_cls):
+            if input_.lag_features is not None:
+                features: Union[pd.DataFrame, NDArray] = input_.lag_features
+            else:
+                features = input_.to_dataframe()
+        else:
+            features = input_
         if trained_model.predict_fn is not None:
-            pred = trained_model.predict_fn(trained_model.instance, input_df)
+            pred = trained_model.predict_fn(trained_model.instance, features)
         else:
             predict_fn = getattr(trained_model.instance, "predict", None)
             if predict_fn is not None and callable(predict_fn):
-                pred = trained_model.instance.predict(input_df)
+                pred = trained_model.instance.predict(features)
             else:
                 raise ValueError(
                     f"Model instance trained for {trained_model.name!r} "
@@ -2058,7 +2052,8 @@ class PredictionScope:
                 "Expected a scalar prediction for the current bar, e.g. "
                 "return preds[-1]."
             )
-        # The current bar is the last row of the input, so take the last
+        # The current bar is the last row of the input (and of the lag
+        # feature matrix, which is sliced in lockstep), so take the last
         # prediction when predict_fn returns one value per row.
         return float(flat[-1])
 

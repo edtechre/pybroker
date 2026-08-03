@@ -66,7 +66,6 @@ from pybroker.model import (
     ModelLoader as ModelLoader,
     ModelSource as ModelSource,
     ModelTrainer as ModelTrainer,
-    lag_features as lag_features,
     model as model,
 )
 from pybroker.portfolio import (

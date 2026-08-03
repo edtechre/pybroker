@@ -9,6 +9,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 """
 
 import functools
+import inspect
 import numpy as np
 import pandas as pd
 from numba import njit
@@ -76,8 +77,10 @@ LagSeriesCache = dict[LagSeriesKey, np.ndarray]
 class ModelInput:
     """Internal numpy-backed model input with optional lag feature metadata.
 
-    Not part of the public API. User-facing code receives :class:`pandas.DataFrame`
-    instances materialized via :func:`model_input_to_dataframe`.
+    Not part of the public API. User-facing code receives
+    :class:`pandas.DataFrame` instances materialized via
+    :meth:`to_dataframe`, with any lag feature matrix passed explicitly as a
+    separate :class:`numpy.ndarray` argument.
     """
 
     columns: tuple[str, ...]
@@ -259,7 +262,7 @@ class ModelInput:
         )
 
     def to_dataframe(self) -> pd.DataFrame:
-        """Materializes a DataFrame for legacy call sites."""
+        """Materializes a DataFrame of the input columns."""
         data = {
             col: self.arrays[col] for col in self.columns if col in self.arrays
         }
@@ -796,78 +799,11 @@ def apply_lags_to_model_input_pooled(
     return model_input
 
 
-LAG_FEATURES_ATTR = "lag_features"
-LAGS_ATTR = "lags"
-LAG_COLUMNS_ATTR = "lag_columns"
-
-
-class LagFeatures:
-    """Holds a lag feature matrix carried in :attr:`pandas.DataFrame.attrs`.
-
-    Lag features are attached to model input rather than added as columns, so
-    that the user's :class:`pandas.DataFrame` is never widened or copied.
-    Storing a bare :class:`numpy.ndarray` in ``attrs`` is unsound, though:
-    pandas compares ``attrs`` dicts when combining frames, which raises on
-    array equality, and deep copies ``attrs`` on nearly every operation. This
-    wrapper compares by identity and refuses to be copied, so the matrix is
-    shared rather than duplicated.
-    """
-
-    __slots__ = ("matrix", "lags", "columns", "n_rows")
-
-    def __init__(
-        self,
-        matrix: np.ndarray,
-        lags: Optional[int],
-        columns: Optional[tuple[str, ...]],
-    ):
-        self.matrix = matrix
-        self.lags = lags
-        self.columns = columns
-        self.n_rows = len(matrix)
-
-    def __eq__(self, other: Any) -> bool:
-        return self is other
-
-    def __hash__(self) -> int:
-        return id(self)
-
-    def __deepcopy__(self, memo) -> "LagFeatures":
-        return self
-
-    def __copy__(self) -> "LagFeatures":
-        return self
-
-    def __repr__(self) -> str:
-        return (
-            f"LagFeatures(n_rows={self.n_rows}, lags={self.lags}, "
-            f"columns={self.columns})"
-        )
-
-
-def model_input_to_dataframe(model_input: ModelInput) -> pd.DataFrame:
-    """Materializes a DataFrame with optional lag metadata in ``attrs``."""
-    df = model_input.to_dataframe()
-    if model_input.lag_features is not None:
-        lag_features = LagFeatures(
-            model_input.lag_features,
-            model_input.lags,
-            model_input.lag_columns,
-        )
-        df.attrs[LAG_FEATURES_ATTR] = lag_features
-        df.attrs[LAGS_ATTR] = model_input.lags
-        df.attrs[LAG_COLUMNS_ATTR] = model_input.lag_columns
-    return df
-
-
 def apply_prepare_input_data(
     model_input: ModelInput,
     prepare_fn: Callable[[pd.DataFrame], pd.DataFrame],
 ) -> ModelInput:
     """Applies a DataFrame-only prepare function to ``model_input``."""
-    lag_features = model_input.lag_features
-    lags = model_input.lags
-    lag_columns = model_input.lag_columns
     n_rows = len(model_input.dates)
     df = prepare_fn(model_input.to_dataframe())
     if len(df.columns) and len(df) != n_rows:
@@ -880,66 +816,10 @@ def apply_prepare_input_data(
     result = model_input_from_frame(
         df, columns=tuple(df.columns), dates=model_input.dates
     )
-    if lag_features is not None:
-        result.lag_features = lag_features
-        result.lags = lags
-        result.lag_columns = lag_columns
+    result.lag_features = model_input.lag_features
+    result.lags = model_input.lags
+    result.lag_columns = model_input.lag_columns
     return result
-
-
-def lag_features(
-    data: Union[ModelInput, pd.DataFrame],
-) -> Optional[np.ndarray]:
-    """Returns ``data``'s lagged values as a ready-to-use feature matrix.
-
-    For a model registered with ``lags`` and ``lag_cols``, the matrix has
-    shape ``(len(data), len(lag_cols) * (lags + 1))``: one contiguous block
-    per column in ``lag_cols`` declaration order, each block holding the
-    column's current value followed by lags ``1`` through ``lags``, where lag
-    ``1`` is the value from the previous bar. Returns ``None`` when ``data``
-    has no lag features.
-
-    Fit and predict against this matrix directly. The intended prediction
-    target is the *next* bar — using the current bar's value as the target
-    would leak it through the first feature of its block.
-
-    Raises:
-        ValueError: If rows were added to or dropped from ``data`` after the
-            lag features were built, which would misalign them.
-    """
-    if isinstance(data, ModelInput):
-        return (
-            None
-            if data.lag_features is None
-            else np.asarray(data.lag_features)
-        )
-    matrix = data.attrs.get(LAG_FEATURES_ATTR)
-    if matrix is None:
-        return None
-    if isinstance(matrix, LagFeatures):
-        if matrix.n_rows != len(data):
-            raise ValueError(
-                f"Lag features cover {matrix.n_rows} rows but this "
-                f"DataFrame has {len(data)}. Model input must stay aligned "
-                "one row per bar; do not add or drop rows before reading lag "
-                "features."
-            )
-        return np.asarray(matrix.matrix)
-    return np.asarray(matrix)
-
-
-def _input_lags(data: Union[ModelInput, pd.DataFrame]) -> Optional[int]:
-    if isinstance(data, ModelInput):
-        return data.lags
-    return data.attrs.get(LAGS_ATTR)
-
-
-def _input_lag_columns(
-    data: Union[ModelInput, pd.DataFrame],
-) -> Optional[tuple[str, ...]]:
-    if isinstance(data, ModelInput):
-        return data.lag_columns
-    return data.attrs.get(LAG_COLUMNS_ATTR)
 
 
 from pybroker.scope import (
@@ -1245,13 +1125,16 @@ class ModelSource:
             predictions. If set, ``input_data_fn`` will be called with a
             :class:`pandas.DataFrame` containing all test data.
         predict_fn: :class:`Callable[[Model, DataFrame], ndarray]` that
-            overrides calling the model's default ``predict`` function. If set,
-            ``predict_fn`` will be called with the trained model and a
-            :class:`pandas.DataFrame` containing all test data.
+            overrides calling the model's default ``predict`` function. If
+            set, ``predict_fn`` will be called with the trained model and a
+            :class:`pandas.DataFrame` containing all test data. When ``lags``
+            is set, it is instead called with the lag feature matrix
+            (:class:`numpy.ndarray`) in place of the DataFrame.
         lags: Number of lagged values to include for each column in
             ``lag_cols``, producing a ``(n_rows, len(lag_cols) * (lags + 1))``
-            feature matrix (see :func:`pybroker.model.lag_features`) attached
-            to model input rather than added as columns.
+            feature matrix that is passed to ``train_fn`` as
+            ``lag_train``/``lag_test`` and to ``predict_fn`` in place of the
+            input DataFrame, rather than added as columns.
         lag_cols: Columns to compute lagged values for. Defaults to the data
             columns of the training data, excluding ``date`` and ``symbol``;
             indicators are lagged only when named here.
@@ -1267,7 +1150,9 @@ class ModelSource:
         name: str,
         indicator_names: Iterable[str],
         input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]],
-        predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]],
+        predict_fn: Optional[
+            Callable[[Any, Union[pd.DataFrame, NDArray]], NDArray]
+        ],
         pooled: bool,
         kwargs: dict[str, Any],
         lags: Optional[int] = None,
@@ -1322,9 +1207,11 @@ class ModelLoader(ModelSource):
             predictions. If set, ``input_data_fn`` will be called with a
             :class:`pandas.DataFrame` containing all test data.
         predict_fn: :class:`Callable[[Model, DataFrame], ndarray]` that
-            overrides calling the model's default ``predict`` function. If set,
-            ``predict_fn`` will be called with the trained model and a
-            :class:`pandas.DataFrame` containing all test data.
+            overrides calling the model's default ``predict`` function. If
+            set, ``predict_fn`` will be called with the trained model and a
+            :class:`pandas.DataFrame` containing all test data. When ``lags``
+            is set, it is instead called with the lag feature matrix
+            (:class:`numpy.ndarray`) in place of the DataFrame.
         pooled: If ``True``, the model is trained once per execution using
             combined multi-symbol data. Defaults to ``False``.
         kwargs: ``dict`` of kwargs to pass to ``load_fn``.
@@ -1336,7 +1223,9 @@ class ModelLoader(ModelSource):
         load_fn: Callable[..., Union[Any, tuple[Any, Iterable[str]]]],
         indicator_names: Iterable[str],
         input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]],
-        predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]],
+        predict_fn: Optional[
+            Callable[[Any, Union[pd.DataFrame, NDArray]], NDArray]
+        ],
         pooled: bool,
         kwargs: dict[str, Any],
         lags: Optional[int] = None,
@@ -1386,7 +1275,11 @@ class ModelTrainer(ModelSource):
         train_fn: When ``pooled`` is ``False``, ``Callable[[symbol: str,
             train_data: DataFrame, test_data: DataFrame, ...], DataFrame]``.
             When ``pooled`` is ``True``, ``Callable[[train_data: DataFrame,
-            test_data: DataFrame, ...], DataFrame]``. This is expected to
+            test_data: DataFrame, ...], DataFrame]``. When ``lags`` is set,
+            ``train_fn`` is additionally called with ``lag_train=`` and
+            ``lag_test=`` keyword arguments holding the lag feature matrices
+            aligned one row per ``train_data``/``test_data`` row, and must
+            accept both. This is expected to
             return either a trained model instance, or a tuple containing a
             trained model instance and a :class:`Iterable` of column names to
             to be used as input for the model when making predictions.
@@ -1398,9 +1291,11 @@ class ModelTrainer(ModelSource):
             predictions. If set, ``input_data_fn`` will be called with a
             :class:`pandas.DataFrame` containing all test data.
         predict_fn: :class:`Callable[[Model, DataFrame], ndarray]` that
-            overrides calling the model's default ``predict`` function. If set,
-            ``predict_fn`` will be called with the trained model and a
-            :class:`pandas.DataFrame` containing all test data.
+            overrides calling the model's default ``predict`` function. If
+            set, ``predict_fn`` will be called with the trained model and a
+            :class:`pandas.DataFrame` containing all test data. When ``lags``
+            is set, it is instead called with the lag feature matrix
+            (:class:`numpy.ndarray`) in place of the DataFrame.
         pooled: If ``True``, the model is trained once per execution using
             combined multi-symbol data. Defaults to ``False``.
         kwargs: ``dict`` of kwargs to pass to ``train_fn``.
@@ -1412,7 +1307,9 @@ class ModelTrainer(ModelSource):
         train_fn: Callable[..., Union[Any, tuple[Any, Iterable[str]]]],
         indicator_names: Iterable[str],
         input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]],
-        predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]],
+        predict_fn: Optional[
+            Callable[[Any, Union[pd.DataFrame, NDArray]], NDArray]
+        ],
         pooled: bool,
         kwargs: dict[str, Any],
         lags: Optional[int] = None,
@@ -1433,7 +1330,13 @@ class ModelTrainer(ModelSource):
         self._train_fn = functools.partial(train_fn, **kwargs)
 
     def __call__(
-        self, symbol: str, train_data: pd.DataFrame, test_data: pd.DataFrame
+        self,
+        symbol: str,
+        train_data: pd.DataFrame,
+        test_data: pd.DataFrame,
+        *,
+        lag_train: Optional[NDArray] = None,
+        lag_test: Optional[NDArray] = None,
     ) -> Union[Any, tuple[Any, Iterable[str]]]:
         """Trains model per symbol.
 
@@ -1441,31 +1344,96 @@ class ModelTrainer(ModelSource):
             symbol: Ticker symbol of model (models are trained per symbol).
             train_data: Train data.
             test_data: Test data.
+            lag_train: Lag feature matrix aligned one row per ``train_data``
+                row. Passed to ``train_fn`` as ``lag_train=`` when the model
+                is registered with ``lags``.
+            lag_test: Lag feature matrix aligned one row per ``test_data``
+                row. Passed to ``train_fn`` as ``lag_test=`` when the model
+                is registered with ``lags``.
 
         Returns:
             Trained model.
         """
-        return self._train_fn(symbol, train_data, test_data)
+        if self.lags is None:
+            return self._train_fn(symbol, train_data, test_data)
+        return self._train_fn(
+            symbol,
+            train_data,
+            test_data,
+            lag_train=lag_train,
+            lag_test=lag_test,
+        )
 
     def train_pooled(
-        self, train_data: pd.DataFrame, test_data: pd.DataFrame
+        self,
+        train_data: pd.DataFrame,
+        test_data: pd.DataFrame,
+        *,
+        lag_train: Optional[NDArray] = None,
+        lag_test: Optional[NDArray] = None,
     ) -> Union[Any, tuple[Any, Iterable[str]]]:
         """Trains model using combined multi-symbol data.
 
         Args:
             train_data: Train data containing a ``symbol`` column.
             test_data: Test data containing a ``symbol`` column.
+            lag_train: Lag feature matrix aligned one row per ``train_data``
+                row. Passed to ``train_fn`` as ``lag_train=`` when the model
+                is registered with ``lags``.
+            lag_test: Lag feature matrix aligned one row per ``test_data``
+                row. Passed to ``train_fn`` as ``lag_test=`` when the model
+                is registered with ``lags``.
 
         Returns:
             Trained model.
         """
-        return self._train_fn(train_data, test_data)
+        if self.lags is None:
+            return self._train_fn(train_data, test_data)
+        return self._train_fn(
+            train_data, test_data, lag_train=lag_train, lag_test=lag_test
+        )
 
     def __repr__(self):
         return self.__str__()
 
     def __str__(self):
         return f"ModelTrainer({self.name!r}, {self._kwargs})"
+
+
+def _validate_lagged_train_fn(
+    name: str, fn: Callable, kwargs: Mapping[str, Any]
+):
+    """Validates that a lagged ``train_fn`` accepts lag matrix kwargs."""
+    for reserved in ("lag_train", "lag_test"):
+        if reserved in kwargs:
+            raise ValueError(
+                f"Model {name!r}: {reserved!r} is reserved for the lag "
+                "feature matrix passed to train_fn and cannot be used as a "
+                "model kwarg."
+            )
+    try:
+        sig = inspect.signature(fn)
+    except (ValueError, TypeError):
+        return
+    params = sig.parameters.values()
+    if any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params):
+        return
+    accepted = {
+        p.name
+        for p in params
+        if p.kind
+        in (
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            inspect.Parameter.KEYWORD_ONLY,
+        )
+    }
+    if "lag_train" not in accepted or "lag_test" not in accepted:
+        raise ValueError(
+            f"Model {name!r} is registered with lags= but its train_fn does "
+            "not accept the lag feature matrices. Expected a signature like "
+            "train_fn(symbol, train_data, test_data, lag_train, lag_test)"
+            " (pooled models omit symbol)."
+        )
 
 
 def _parse_lag_cols(
@@ -1513,7 +1481,9 @@ def model(
     lag_cols: Optional[Iterable[Union[str, Indicator]]] = None,
     per_bar: bool = False,
     input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]] = None,
-    predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]] = None,
+    predict_fn: Optional[
+        Callable[[Any, Union[pd.DataFrame, NDArray]], NDArray]
+    ] = None,
     pretrained: bool = False,
     pooled: bool = False,
     **kwargs,
@@ -1532,7 +1502,10 @@ def model(
             frames contain a ``symbol`` column with data for all symbols in the
             execution. If for loading, then ``fn`` has signature
             ``Callable[[symbol: str, train_start_date: datetime,
-            train_end_date: datetime, ...], DataFrame]``. This is expected to
+            train_end_date: datetime, ...], DataFrame]``. When ``lags`` is
+            set, a training ``fn`` is additionally called with ``lag_train=``
+            and ``lag_test=`` keyword arguments holding the prebuilt lag
+            feature matrices, and must accept both. This is expected to
             return either a trained model instance, or a tuple containing a
             trained model instance and a :class:`Iterable` of column names to
             to be used as input for the model when making predictions. When
@@ -1543,12 +1516,19 @@ def model(
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
         lags: Number of lagged values to include for each column in
-            ``lag_cols``. Retrieve them with
-            :func:`pybroker.model.lag_features`, which returns a feature
-            matrix of shape ``(n_rows, len(lag_cols) * (lags + 1))`` holding
-            each column's current value followed by lags ``1`` through
-            ``lags``, where lag ``1`` is the value from the previous bar. Lag
-            data is attached to model input rather than added as columns, so
+            ``lag_cols``. The lagged values are built into a feature matrix
+            of shape ``(n_rows, len(lag_cols) * (lags + 1))``: one contiguous
+            block per column in ``lag_cols`` declaration order, each block
+            holding the column's current value followed by lags ``1`` through
+            ``lags``, where lag ``1`` is the value from the previous bar. The
+            matrix is passed to a training ``fn`` as the ``lag_train`` and
+            ``lag_test`` keyword arguments, aligned one row per
+            ``train_data``/``test_data`` row, and to ``predict_fn`` (or the
+            model's default ``predict``) in place of the input DataFrame.
+            Because the current bar's value is the first feature of each
+            block, the intended prediction target is the *next* bar — using
+            the current bar's value as the target would leak it. Lag data is
+            kept separate from model input rather than added as columns, so
             the input :class:`pandas.DataFrame` is never widened or copied.
             Lagged values are computed from each symbol's full history, so
             rows at the start of a test window use real values carried over
@@ -1563,7 +1543,9 @@ def model(
             named here.
         per_bar: If ``True``, ``predict_fn`` is called once per bar with input
             truncated to rows up to and including the current bar, and must
-            return a scalar prediction for that bar. Use for models that are
+            return a scalar prediction for that bar. With ``lags``, the input
+            is the lag feature matrix truncated the same way, with the
+            current bar as its last row. Use for models that are
             refit or updated every bar, such as GARCH or state space models.
             Note this makes one model call per bar per symbol, which is far
             slower than a single vectorized ``predict_fn`` call over the whole
@@ -1575,11 +1557,15 @@ def model(
             :class:`pandas.DataFrame` containing all test data, including when
             ``per_bar=True``. It must return one row per bar; adding or
             dropping rows would misalign predictions with bars and raises a
-            :class:`ValueError`.
+            :class:`ValueError`. For models registered with ``lags``, it
+            shapes :meth:`pybroker.context.ExecContext.input` only, since
+            predictions are made from the lag feature matrix.
         predict_fn: :class:`Callable[[Model, DataFrame], ndarray]` that
             overrides calling the model's default ``predict`` function. If set,
             ``predict_fn`` will be called with the trained model and a
-            :class:`pandas.DataFrame` containing all test data. When
+            :class:`pandas.DataFrame` containing all test data. When ``lags``
+            is set, it is instead called with the lag feature matrix
+            (:class:`numpy.ndarray`) in place of the DataFrame. When
             ``per_bar=True``, ``predict_fn`` receives input rows up to and
             including the current bar and must return a scalar prediction.
         pretrained: If ``True``, then ``fn`` is used to load and return a
@@ -1595,6 +1581,8 @@ def model(
     if lags is not None:
         if not isinstance(lags, int) or lags <= 0:
             raise ValueError("lags must be a positive integer.")
+        if not pretrained:
+            _validate_lagged_train_fn(name, fn, kwargs)
     if per_bar and pooled:
         raise ValueError("per_bar=True is not supported with pooled=True.")
     if per_bar and predict_fn is None:
@@ -1759,8 +1747,10 @@ def _train_model_sym(
     model_name, sym = model_sym
     model_result = source(
         sym,
-        model_input_to_dataframe(sym_train_data),
-        model_input_to_dataframe(sym_test_data),
+        sym_train_data.to_dataframe(),
+        sym_test_data.to_dataframe(),
+        lag_train=sym_train_data.lag_features,
+        lag_test=sym_test_data.lag_features,
     )
     model, input_cols = _parse_model_result(
         model_result,
@@ -1779,8 +1769,10 @@ def _train_model_pooled(
     pooled_test_data: ModelInput,
 ) -> PooledTrainResult:
     model_result = source.train_pooled(
-        model_input_to_dataframe(pooled_train_data),
-        model_input_to_dataframe(pooled_test_data),
+        pooled_train_data.to_dataframe(),
+        pooled_test_data.to_dataframe(),
+        lag_train=pooled_train_data.lag_features,
+        lag_test=pooled_test_data.lag_features,
     )
     model, input_cols = _parse_model_result(
         model_result,

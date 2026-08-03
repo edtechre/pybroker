@@ -11,11 +11,9 @@ from pybroker.model import (
     build_lag_feature_matrix,
     build_lag_feature_matrix_pooled,
     compute_lag_series_cache,
-    lag_features,
     model_input_from_frame,
     symbol_history_arrays,
     _build_stacked_lags,
-    _input_lags,
 )
 from pybroker.model import model
 from pybroker.scope import (
@@ -101,7 +99,7 @@ class TestLagData:
             history_dates_arr,
         )
         assert model_input.columns == tuple(sym_df.columns)
-        matrix = lag_features(model_input)
+        matrix = model_input.lag_features
         assert matrix is not None
         # lags=2 yields the current value plus lags 1 and 2 per column.
         assert matrix.shape == (len(sym_df), 3)
@@ -109,7 +107,7 @@ class TestLagData:
         np.testing.assert_array_equal(matrix[:, 0], close)
         np.testing.assert_array_equal(matrix[2:, 1], close[1:-1])
         np.testing.assert_array_equal(matrix[2:, 2], close[:-2])
-        assert _input_lags(model_input) == 2
+        assert model_input.lags == 2
 
     def test_drop_lag_warmup(self, sample_df):
         cache = compute_lag_series_cache(sample_df, ("SPY",), ("close",), 2)
@@ -131,7 +129,7 @@ class TestLagData:
         trimmed = model_input.drop_lag_warmup()
         assert len(trimmed) == 3
         assert trimmed["close"][0] == 102
-        matrix = lag_features(trimmed)
+        matrix = trimmed.lag_features
         assert matrix is not None
         assert not np.isnan(matrix).any()
 
@@ -149,7 +147,7 @@ class TestModelInputScopeLags:
 
         model(
             "lag_model",
-            lambda s, t, u: (object(), ("close",)),
+            lambda s, t, u, **kwargs: (object(), ("close",)),
             lags=2,
             input_data_fn=input_data_fn,
         )
@@ -177,17 +175,19 @@ class TestModelInputScopeLags:
 
     def test_lag_features_before_input_data_fn(self, lag_setup):
         input_scope, sym, _, seen_cols, _ = lag_setup
-        model_input = input_scope.fetch(sym, "lag_model")
+        model_input = input_scope.fetch_model_input(sym, "lag_model")
         assert seen_cols[0] == ["close"]
-        matrix = lag_features(model_input)
+        matrix = model_input.lag_features
         assert matrix is not None
         assert matrix.shape[1] == 3
 
     def test_test_bar_zero_has_train_tail_lags(self, lag_setup):
         input_scope, sym, _, _, sym_df = lag_setup
         train_tail = sym_df.iloc[len(sym_df) // 2 - 1]
-        model_input = input_scope.fetch(sym, "lag_model", end_index=1)
-        matrix = lag_features(model_input)
+        model_input = input_scope.fetch_model_input(
+            sym, "lag_model", end_index=1
+        )
+        matrix = model_input.lag_features
         assert matrix is not None
         # Test bar 0 carries real lag values from the tail of the train
         # window rather than NaN warmup.
@@ -197,13 +197,21 @@ class TestModelInputScopeLags:
 
     def test_slice_preserves_lag_features(self, lag_setup):
         input_scope, sym, _, _, _ = lag_setup
-        full = input_scope.fetch(sym, "lag_model")
-        sliced = input_scope.fetch(sym, "lag_model", end_index=2)
-        full_matrix = lag_features(full)
-        sliced_matrix = lag_features(sliced)
+        full = input_scope.fetch_model_input(sym, "lag_model")
+        sliced = input_scope.fetch_model_input(sym, "lag_model", end_index=2)
+        full_matrix = full.lag_features
+        sliced_matrix = sliced.lag_features
         assert full_matrix is not None
         assert sliced_matrix is not None
         np.testing.assert_array_equal(sliced_matrix, full_matrix[:2])
+
+    def test_fetch_returns_plain_dataframe(self, lag_setup):
+        # Lag matrices are never attached to user-facing DataFrames, so a
+        # frame does not keep the matrix alive after the input is released.
+        input_scope, sym, _, _, _ = lag_setup
+        df = input_scope.fetch(sym, "lag_model")
+        assert isinstance(df, pd.DataFrame)
+        assert df.attrs == {}
 
 
 def _build_stacked_lags_reference(values: np.ndarray, lags: int) -> np.ndarray:
@@ -404,7 +412,7 @@ class TestLagCacheDepth:
             for name, cols, lags in specs:
                 model(
                     name,
-                    lambda s, t, u, c=cols: (object(), c),
+                    lambda s, t, u, c=cols, **kwargs: (object(), c),
                     lags=lags,
                     lag_cols=cols,
                 )
@@ -444,10 +452,10 @@ class TestLagCacheDepth:
         input_scope, sym, sym_df = scope_setup(
             [("lag2", ("close",), 2), ("lag6", ("close",), 6)]
         )
-        shallow = input_scope.fetch(sym, "lag2")
-        deep = input_scope.fetch(sym, "lag6")
-        shallow_matrix = lag_features(shallow)
-        deep_matrix = lag_features(deep)
+        shallow_matrix = input_scope.fetch_model_input(
+            sym, "lag2"
+        ).lag_features
+        deep_matrix = input_scope.fetch_model_input(sym, "lag6").lag_features
         assert shallow_matrix.shape[1] == 3
         assert deep_matrix.shape[1] == 7
         np.testing.assert_array_equal(
@@ -463,12 +471,10 @@ class TestLagCacheDepth:
         input_scope, sym, sym_df = scope_setup(
             [("deep", ("close",), 6), ("shallow", ("close",), 2)]
         )
-        deep_matrix = lag_features(
-            input_scope.fetch(sym, "deep")
-        )
-        shallow_matrix = lag_features(
-            input_scope.fetch(sym, "shallow")
-        )
+        deep_matrix = input_scope.fetch_model_input(sym, "deep").lag_features
+        shallow_matrix = input_scope.fetch_model_input(
+            sym, "shallow"
+        ).lag_features
         np.testing.assert_array_equal(
             deep_matrix,
             self._expected_lags(sym_df, "close", 6, len(deep_matrix)),
@@ -482,12 +488,12 @@ class TestLagCacheDepth:
         input_scope, sym, sym_df = scope_setup(
             [("on_close", ("close",), 2), ("on_volume", ("volume",), 2)]
         )
-        close_matrix = lag_features(
-            input_scope.fetch(sym, "on_close")
-        )
-        volume_matrix = lag_features(
-            input_scope.fetch(sym, "on_volume")
-        )
+        close_matrix = input_scope.fetch_model_input(
+            sym, "on_close"
+        ).lag_features
+        volume_matrix = input_scope.fetch_model_input(
+            sym, "on_volume"
+        ).lag_features
         np.testing.assert_array_equal(
             close_matrix,
             self._expected_lags(sym_df, "close", 2, len(close_matrix)),
@@ -536,54 +542,34 @@ class TestLagCacheBounds:
             build_lag_feature_matrix("SPY", ("close",), 2, dates, dates, {})
 
 
-class TestLagFeaturesAttrs:
-    """The lag matrix rides in ``attrs``; it must not break pandas ops."""
+class TestLaggedTrainFnSignature:
+    """A lagged train_fn must accept the lag matrix kwargs to register."""
 
-    @pytest.fixture()
-    def sample_df(self):
-        return pd.DataFrame(
-            {
-                DataCol.SYMBOL.value: ["SPY"] * 5,
-                DataCol.DATE.value: pd.date_range("2020-01-01", periods=5),
-                DataCol.CLOSE.value: [100.0, 101.0, 102.0, 103.0, 104.0],
-            }
+    def test_missing_lag_params_raises(self):
+        with pytest.raises(ValueError, match="lag_train"):
+            model("m", lambda s, t, u: None, lags=2)
+
+    def test_var_keyword_registers(self):
+        assert model("m_kw", lambda s, t, u, **kwargs: None, lags=2)
+
+    def test_explicit_lag_params_register(self):
+        assert model(
+            "m_explicit",
+            lambda s, t, u, lag_train, lag_test: None,
+            lags=2,
         )
 
-    @pytest.fixture()
-    def lagged_df(self, sample_df):
-        cache = compute_lag_series_cache(sample_df, ("SPY",), ("close",), 2)
-        sym_df = sample_df[sample_df[DataCol.SYMBOL.value] == "SPY"].drop(
-            columns=DataCol.SYMBOL.value
-        )
-        history_dates_arr, _ = symbol_history_arrays(
-            sample_df, "SPY", ("close",)
-        )
-        model_input = model_input_from_frame(sym_df)
-        apply_lags_to_model_input(
-            model_input, ("close",), 2, cache, "SPY", history_dates_arr
-        )
-        from pybroker.model import model_input_to_dataframe
+    def test_reserved_model_kwargs_raise(self):
+        with pytest.raises(ValueError, match="reserved"):
+            model(
+                "m_reserved",
+                lambda s, t, u, lag_train, lag_test: None,
+                lags=2,
+                lag_train=1,
+            )
 
-        return model_input_to_dataframe(model_input)
-
-    def test_concat_does_not_raise(self, lagged_df):
-        # A bare ndarray in attrs makes pandas' attrs comparison raise.
-        assert len(pd.concat([lagged_df, lagged_df.copy()])) == 2 * len(
-            lagged_df
-        )
-
-    def test_merge_does_not_raise(self, lagged_df):
-        merged = lagged_df.merge(lagged_df.copy(), on=DataCol.CLOSE.value)
-        assert not merged.empty
-
-    def test_matrix_is_not_copied(self, lagged_df):
-        holder = lagged_df.attrs["lag_features"]
-        assert lagged_df.head(2).attrs["lag_features"] is holder
-
-    def test_dropped_rows_raise_instead_of_misaligning(self, lagged_df):
-        trimmed = lagged_df.iloc[1:]
-        with pytest.raises(ValueError, match="one row per bar"):
-            lag_features(trimmed)
+    def test_non_lagged_fn_is_not_checked(self):
+        assert model("m_no_lags", lambda s, t, u: None)
 
 
 class TestColumnOrderDeterminism:

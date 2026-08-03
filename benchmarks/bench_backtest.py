@@ -1444,7 +1444,7 @@ class ModelTrainPrepLags:
         pybroker.clear_params()
         model(
             "bench_pooled_lags",
-            lambda _train_df, _test_df: self._constant_model(),
+            lambda _train_df, _test_df, **kwargs: self._constant_model(),
             pooled=True,
             lags=_LAG_PREP_LAGS,
         )

@@ -7,11 +7,6 @@ import pytest
 from pybroker import Strategy, indicator, model
 from pybroker.common import DataCol
 from pybroker.config import StrategyConfig
-from pybroker.model import (
-    _input_lag_columns,
-    _input_lags,
-    lag_features,
-)
 from pybroker.scope import StaticScope
 from .fixtures import *  # noqa: F401
 
@@ -63,29 +58,26 @@ class TestStatefulWalkforward:
 
     def test_lags_walkforward_feature_metadata(self, data_source_df):
         seen_train_cols = []
-        seen_train_matrix = []
+        seen_train = []
+        seen_predict = []
         seen_input = []
 
-        def train_fn(symbol, train_data, test_data):
+        def train_fn(symbol, train_data, test_data, lag_train, lag_test):
             seen_train_cols.append(set(train_data.columns))
-            seen_train_matrix.append(
-                lag_features(train_data)
+            seen_train.append(
+                (lag_train, len(train_data), lag_test, len(test_data))
             )
             return object(), ("close",)
 
         def predict_fn(model, data):
+            seen_predict.append(data)
             return np.full(len(data), 1.0)
 
         def exec_fn(ctx):
+            ctx.preds("lag_wf", ctx.symbol)
             df = ctx.input("lag_wf", ctx.symbol)
             if len(df) == 1:
-                seen_input.append(
-                    (
-                        set(df.columns),
-                        lag_features(df),
-                        _input_lags(df),
-                    )
-                )
+                seen_input.append((set(df.columns), dict(df.attrs)))
 
         m = model(
             "lag_wf",
@@ -103,17 +95,23 @@ class TestStatefulWalkforward:
             assert "close" in cols
             # Lag features ride alongside model input rather than widening it.
             assert not any(name.endswith("_lag1") for name in cols)
-        for matrix in seen_train_matrix:
-            assert matrix is not None
+        for lag_train, n_train, lag_test, n_test in seen_train:
+            # lags=2 over one lag column: the current value plus lags 1 and
+            # 2, aligned one row per train/test row.
+            assert isinstance(lag_train, np.ndarray)
+            assert lag_train.shape == (n_train, 3)
+            assert not np.isnan(lag_train).any()
+            assert isinstance(lag_test, np.ndarray)
+            assert lag_test.shape == (n_test, 3)
+        assert seen_predict
+        for matrix in seen_predict:
+            assert isinstance(matrix, np.ndarray)
             assert matrix.shape[1] == 3
         assert seen_input
-        cols, matrix, lags = seen_input[0]
+        cols, attrs = seen_input[0]
         assert cols == {"close"}
-        assert matrix is not None
-        # lags=2 over one lag column: the current value plus lags 1 and 2,
-        # matching training.
-        assert matrix.shape == (1, 3)
-        assert lags == 2
+        # The lag matrix is never attached to user-facing DataFrames.
+        assert attrs == {}
 
     def test_per_bar_fresh_model_each_walkforward_window(self, data_source_df):
         train_counts = []
@@ -140,22 +138,19 @@ class TestStatefulWalkforward:
     def test_per_bar_lag_features_composition(self, data_source_df):
         calls = []
 
-        def train_fn(symbol, train_data, test_data):
+        def train_fn(symbol, train_data, test_data, lag_train, lag_test):
             return object()
 
-        def predict_fn(model, data):
-            matrix = lag_features(data)
-            assert matrix is not None
-            # Per-bar input slices must slice the matrix rows with them.
-            assert matrix.shape == (len(data), 3)
-            close = data["close"].to_numpy()
+        def predict_fn(model, matrix):
+            # Per-bar predictions receive the growing lag matrix directly.
+            assert isinstance(matrix, np.ndarray)
+            assert matrix.shape[1] == 3
             # Last row is the current bar's value followed by its lags,
             # with the first test bar's lags carried from the train window.
-            assert matrix[-1, 0] == close[-1]
-            if len(close) > 1:
-                assert matrix[-1, 1] == close[-2]
+            if len(matrix) > 1:
+                assert matrix[-1, 1] == matrix[-2, 0]
             assert np.isfinite(matrix[-1]).all()
-            calls.append(len(data))
+            calls.append(len(matrix))
             return 1.0
 
         m = model(
@@ -220,18 +215,18 @@ class TestGarchIntegration:
         assert all(np.isfinite(p) and p > 0 for p in preds)
 
     def test_garch_with_lags(self, spy_df):
-        def train_fn(symbol, train_data, test_data):
+        def train_fn(symbol, train_data, test_data, lag_train, lag_test):
             returns = train_data["close"].pct_change().dropna() * 100
             model = arch.arch_model(returns, vol="GARCH", p=1, q=1).fit(
                 disp="off"
             )
             return model, ("close",)
 
-        def predict_fn(model, data):
-            matrix = lag_features(data)
-            assert matrix is not None
+        def predict_fn(model, matrix):
+            assert isinstance(matrix, np.ndarray)
             assert matrix.shape[1] == 4
-            returns = data["close"].pct_change().dropna() * 100
+            # The first column of the lag block is the current close series.
+            returns = pd.Series(matrix[:, 0]).pct_change().dropna() * 100
             res = model.model.fix(model.params.values, returns)
             fcast = res.forecast(horizon=1)
             daily_vol = np.sqrt(fcast.variance.iloc[-1, 0]) / 100
@@ -258,25 +253,24 @@ class TestLagColumnContract:
     def _widths(data_source_df, pooled, lag_cols=None):
         widths = {}
 
-        def capture_train(train_data):
-            widths["train"] = lag_features(
-                train_data
-            ).shape[1]
-            widths["train_cols"] = _input_lag_columns(train_data)
+        def capture_train(train_data, lag_train):
+            widths["train"] = lag_train.shape[1]
+            widths["data_cols"] = [
+                col
+                for col in train_data.columns
+                if col not in ("date", "symbol")
+            ]
 
-        def train_fn(symbol, train_data, test_data):
-            capture_train(train_data)
+        def train_fn(symbol, train_data, test_data, lag_train, lag_test):
+            capture_train(train_data, lag_train)
             return object(), ("close",)
 
-        def pooled_train_fn(train_data, test_data):
-            capture_train(train_data)
+        def pooled_train_fn(train_data, test_data, lag_train, lag_test):
+            capture_train(train_data, lag_train)
             return object(), ("close",)
 
         def predict_fn(model, data):
-            widths.setdefault(
-                "predict", lag_features(data).shape[1]
-            )
-            widths.setdefault("predict_cols", _input_lag_columns(data))
+            widths.setdefault("predict", data.shape[1])
             return np.zeros(len(data))
 
         m = model(
@@ -302,16 +296,14 @@ class TestLagColumnContract:
         # or the model is handed a different shape than it was fit on.
         widths = self._widths(data_source_df, pooled)
         assert widths["train"] == widths["predict"]
-        assert widths["train_cols"] == widths["predict_cols"]
-        assert widths["train"] == len(widths["train_cols"]) * 4
+        # Inferred lag columns are the data columns excluding date/symbol.
+        assert widths["train"] == len(widths["data_cols"]) * 4
 
     @pytest.mark.parametrize("pooled", [False, True])
     def test_lag_cols_narrows_both_ends(self, data_source_df, pooled):
         widths = self._widths(data_source_df, pooled, lag_cols=("close",))
         assert widths["train"] == 4
         assert widths["predict"] == 4
-        assert widths["train_cols"] == ("close",)
-        assert widths["predict_cols"] == ("close",)
 
     def test_lag_cols_requires_lags(self):
         with pytest.raises(ValueError, match="lag_cols requires lags"):
@@ -321,7 +313,7 @@ class TestLagColumnContract:
         with pytest.raises(ValueError, match="reserved column 'date'"):
             model(
                 "bad_reserved",
-                lambda s, t, u: None,
+                lambda s, t, u, **kwargs: None,
                 lags=2,
                 lag_cols=("date",),
             )
@@ -329,7 +321,7 @@ class TestLagColumnContract:
     def test_lag_cols_rejects_unknown_column(self, data_source_df):
         m = model(
             "bad_unknown",
-            lambda s, t, u: object(),
+            lambda s, t, u, **kwargs: object(),
             predict_fn=lambda _m, d: np.zeros(len(d)),
             lags=2,
             lag_cols=("not_a_column",),
@@ -442,7 +434,7 @@ class TestIntervalPerBar:
 
         m = model(
             "tf_proba",
-            lambda s, t, u: object(),
+            lambda s, t, u, **kwargs: object(),
             predict_fn=predict_fn,
             lags=3,
             lag_cols=["close"],
@@ -476,7 +468,7 @@ class TestIntervalPerBar:
 
         m = model(
             "tf_shortpred",
-            lambda s, t, u: object(),
+            lambda s, t, u, **kwargs: object(),
             predict_fn=predict_fn,
             lags=3,
             lag_cols=["close"],
@@ -504,17 +496,16 @@ class TestIntervalPerBar:
         """
         seen_matrices = []
 
-        def predict_fn(_m, data):
-            matrix = lag_features(data)
-            assert matrix is not None
+        def predict_fn(_m, matrix):
+            assert isinstance(matrix, np.ndarray)
             seen_matrices.append(matrix)
             if not np.isfinite(matrix).all():
                 raise ValueError("Input X contains NaN")
-            return np.zeros(len(data))
+            return np.zeros(len(matrix))
 
         m = model(
             "tf_lag_warmup",
-            lambda s, t, u: object(),
+            lambda s, t, u, **kwargs: object(),
             predict_fn=predict_fn,
             lags=3,
             lag_cols=["close"],
@@ -543,15 +534,15 @@ class TestIntervalPerBar:
         # The interval lag cache is keyed by the *string* form of the
         # interval. Writing it under one key type and reading it under
         # another silently misses, surfacing as "Lag history missing".
-        lags_seen = []
+        widths_seen = []
 
-        def predict_fn(_m, data):
-            lags_seen.append(_input_lags(data))
-            return np.zeros(len(data))
+        def predict_fn(_m, matrix):
+            widths_seen.append(matrix.shape[1])
+            return np.zeros(len(matrix))
 
         m = model(
             "tf_lag",
-            lambda s, t, u: object(),
+            lambda s, t, u, **kwargs: object(),
             predict_fn=predict_fn,
             lags=2,
             lag_cols=["close"],
@@ -569,8 +560,9 @@ class TestIntervalPerBar:
         )
         strategy.walkforward(windows=1, train_size=0.5, timeframe="1d")
         assert seen
-        assert lags_seen
-        assert all(n == 2 for n in lags_seen)
+        assert widths_seen
+        # lags=2 over one lag column: current value plus lags 1 and 2.
+        assert all(n == 3 for n in widths_seen)
 
 
 def _sma(bar_data, period):
@@ -615,7 +607,7 @@ class TestIndicatorLagColumns:
         ind = indicator("sma5", _sma, period=5)
         m = model(
             "ind_lags",
-            lambda s, t, u: object(),
+            lambda s, t, u, **kwargs: object(),
             [ind],
             predict_fn=lambda _m, d: np.zeros(len(d)),
             lags=2,
@@ -626,8 +618,9 @@ class TestIndicatorLagColumns:
         ind = indicator("sma5", _sma, period=5)
         seen = {}
 
-        def train_fn(symbol, train_data, test_data):
-            seen["cols"] = _input_lag_columns(train_data)
+        def train_fn(symbol, train_data, test_data, lag_train, lag_test):
+            seen["width"] = lag_train.shape[1]
+            seen["cols"] = list(train_data.columns)
             return object()
 
         m = model(
@@ -639,7 +632,13 @@ class TestIndicatorLagColumns:
         )
         self._walkforward(m, spy_df, ["SPY"])
         assert seen["cols"]
-        assert "sma5" not in seen["cols"]
+        # Inferred lag columns are the data columns, excluding date and the
+        # sma5 indicator; a width including sma5 would be one block wider.
+        data_cols = [
+            col for col in seen["cols"] if col not in ("date", "sma5")
+        ]
+        assert data_cols
+        assert seen["width"] == len(data_cols) * 3
 
     @pytest.mark.parametrize("intervals", [None, ["weekly"]])
     @pytest.mark.parametrize("pooled", [False, True])
@@ -649,25 +648,16 @@ class TestIndicatorLagColumns:
         ind = indicator("sma5", _sma, period=5)
         widths = {}
 
-        def capture(train_data):
-            widths["train"] = lag_features(
-                train_data
-            ).shape[1]
-            widths["train_cols"] = _input_lag_columns(train_data)
-
-        def train_fn(symbol, train_data, test_data):
-            capture(train_data)
+        def train_fn(symbol, train_data, test_data, lag_train, lag_test):
+            widths["train"] = lag_train.shape[1]
             return object(), ("close",)
 
-        def pooled_train_fn(train_data, test_data):
-            capture(train_data)
+        def pooled_train_fn(train_data, test_data, lag_train, lag_test):
+            widths["train"] = lag_train.shape[1]
             return object(), ("close",)
 
         def predict_fn(_m, data):
-            widths.setdefault(
-                "predict", lag_features(data).shape[1]
-            )
-            widths.setdefault("predict_cols", _input_lag_columns(data))
+            widths.setdefault("predict", data.shape[1])
             return np.zeros(len(data))
 
         m = model(
@@ -682,10 +672,9 @@ class TestIndicatorLagColumns:
         syms = ["SPY", "AAPL"] if pooled else ["SPY"]
         ds = data_source_df[data_source_df[DataCol.SYMBOL.value].isin(syms)]
         self._walkforward(m, ds, syms, intervals)
-        assert widths["train_cols"] == ("sma5",)
-        assert widths["predict_cols"] == ("sma5",)
         # Training and prediction must build the same shape, or the model is
-        # fed a matrix it was never fit on.
+        # fed a matrix it was never fit on. lags=2 over the single sma5 lag
+        # column yields width 3.
         assert widths["train"] == widths["predict"] == 3
 
     def test_test_bar_zero_uses_train_window_indicator_history(self, spy_df):
@@ -695,16 +684,14 @@ class TestIndicatorLagColumns:
         ind = indicator("sma5", _sma, period=5)
         seen = {}
 
-        def train_fn(symbol, train_data, test_data):
+        def train_fn(symbol, train_data, test_data, lag_train, lag_test):
             # The split boundary comes from the data the model actually sees.
             seen["train_tail"] = train_data[DataCol.DATE.value].to_numpy()[-2:]
             return object(), ("close",)
 
-        def predict_fn(_m, data):
-            seen.setdefault(
-                "row0", lag_features(data)[0].copy()
-            )
-            return np.zeros(len(data))
+        def predict_fn(_m, matrix):
+            seen.setdefault("row0", matrix[0].copy())
+            return np.zeros(len(matrix))
 
         m = model(
             "ind_history",
@@ -731,7 +718,7 @@ class TestIndicatorLagColumns:
     def test_unknown_lag_col_raises_clear_error(self, spy_df):
         m = model(
             "bad_lag_col",
-            lambda s, t, u: object(),
+            lambda s, t, u, **kwargs: object(),
             predict_fn=lambda _m, d: np.zeros(len(d)),
             lags=2,
             lag_cols=("not_a_column",),
@@ -745,9 +732,147 @@ class TestIndicatorLagColumns:
         )
         m = model(
             "vwap_lags",
-            lambda s, t, u: (object(), ("close",)),
+            lambda s, t, u, **kwargs: (object(), ("close",)),
             predict_fn=lambda _m, d: np.zeros(len(d)),
             lags=2,
             lag_cols=("vwap",),
         )
         self._walkforward(m, ds, ["SPY"], ["weekly"])
+
+
+class TestLagMatrixArguments:
+    """Lag matrices are passed explicitly, never through the DataFrames."""
+
+    @staticmethod
+    def _run(m, data_source_df, syms):
+        ds = data_source_df[data_source_df[DataCol.SYMBOL.value].isin(syms)]
+        strategy = Strategy(ds, START_DATE, END_DATE)
+        strategy.add_execution(lambda ctx: ctx.preds(m.name), syms, models=m)
+        strategy.walkforward(windows=1, train_size=0.5)
+
+    def test_train_fn_receives_aligned_matrices(self, data_source_df):
+        seen = {}
+
+        def train_fn(symbol, train_data, test_data, lag_train, lag_test):
+            seen["lag_train"] = lag_train
+            seen["lag_test"] = lag_test
+            seen["n_train"] = len(train_data)
+            seen["n_test"] = len(test_data)
+            seen["train_close"] = train_data["close"].to_numpy()
+            return object(), ("close",)
+
+        m = model(
+            "aligned_lags",
+            train_fn,
+            predict_fn=lambda _m, d: np.zeros(len(d)),
+            lags=2,
+            lag_cols=("close",),
+        )
+        self._run(m, data_source_df, ["SPY"])
+        lag_train, lag_test = seen["lag_train"], seen["lag_test"]
+        assert isinstance(lag_train, np.ndarray)
+        assert isinstance(lag_test, np.ndarray)
+        assert lag_train.shape == (seen["n_train"], 3)
+        assert lag_test.shape == (seen["n_test"], 3)
+        # Row i of the matrix belongs to row i of the frame, and lag 1 of a
+        # bar is the previous bar's current value.
+        np.testing.assert_array_equal(lag_train[:, 0], seen["train_close"])
+        np.testing.assert_array_equal(lag_train[1:, 1], lag_train[:-1, 0])
+        # Warmup rows are already dropped from training data only.
+        assert not np.isnan(lag_train).any()
+
+    def test_pooled_train_fn_receives_matrices(self, data_source_df):
+        seen = {}
+
+        def pooled_train_fn(train_data, test_data, lag_train, lag_test):
+            seen["lag_train"] = lag_train
+            seen["lag_test"] = lag_test
+            seen["n_train"] = len(train_data)
+            seen["n_test"] = len(test_data)
+            assert "symbol" in train_data.columns
+            return object(), ("close",)
+
+        m = model(
+            "pooled_lags",
+            pooled_train_fn,
+            predict_fn=lambda _m, d: np.zeros(len(d)),
+            lags=2,
+            lag_cols=("close",),
+            pooled=True,
+        )
+        self._run(m, data_source_df, ["SPY", "AAPL"])
+        assert seen["lag_train"].shape == (seen["n_train"], 3)
+        assert seen["lag_test"].shape == (seen["n_test"], 3)
+        assert not np.isnan(seen["lag_train"]).any()
+
+    def test_predict_input_type_by_lags(self, data_source_df):
+        seen = {}
+
+        def lag_predict_fn(_m, data):
+            seen.setdefault("lagged", type(data))
+            return np.zeros(len(data))
+
+        def plain_predict_fn(_m, data):
+            seen.setdefault("plain", type(data))
+            return np.zeros(len(data))
+
+        m_lag = model(
+            "typed_lags",
+            lambda s, t, u, **kwargs: (object(), ("close",)),
+            predict_fn=lag_predict_fn,
+            lags=2,
+            lag_cols=("close",),
+        )
+        m_plain = model(
+            "typed_plain",
+            lambda s, t, u: (object(), ("close",)),
+            predict_fn=plain_predict_fn,
+        )
+        ds = data_source_df[data_source_df[DataCol.SYMBOL.value] == "SPY"]
+        strategy = Strategy(ds, START_DATE, END_DATE)
+        strategy.add_execution(
+            lambda ctx: (ctx.preds("typed_lags"), ctx.preds("typed_plain")),
+            ["SPY"],
+            models=[m_lag, m_plain],
+        )
+        strategy.walkforward(windows=1, train_size=0.5)
+        assert seen["lagged"] is np.ndarray
+        assert seen["plain"] is pd.DataFrame
+
+    def test_default_predict_receives_matrix(self, data_source_df):
+        # Without a predict_fn, the model's own predict gets the matrix.
+        instances = []
+
+        class RecordingModel:
+            def __init__(self):
+                self.seen = []
+
+            def predict(self, X):
+                self.seen.append((type(X), np.asarray(X).shape[1]))
+                return np.zeros(len(X))
+
+        def train_fn(symbol, train_data, test_data, lag_train, lag_test):
+            instance = RecordingModel()
+            instances.append(instance)
+            return instance, ("close",)
+
+        m = model("default_predict", train_fn, lags=2, lag_cols=("close",))
+        self._run(m, data_source_df, ["SPY"])
+        assert instances
+        assert instances[-1].seen
+        for input_type, width in instances[-1].seen:
+            assert input_type is np.ndarray
+            assert width == 3
+
+    def test_strict_train_fn_without_lags_gets_no_kwargs(self, data_source_df):
+        # A three-positional-arg train_fn (no **kwargs) must keep working
+        # for models without lags.
+        def train_fn(symbol, train_data, test_data):
+            return object(), ("close",)
+
+        m = model(
+            "strict_no_lags",
+            train_fn,
+            predict_fn=lambda _m, d: np.zeros(len(d)),
+        )
+        self._run(m, data_source_df, ["SPY"])
