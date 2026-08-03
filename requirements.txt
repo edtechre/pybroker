@@ -1,5 +1,5 @@
 akshare>=1.17.50
-alpaca-py>=0.10.0
+alpaca-py>=0.43.5
 diskcache>=5.6.3
 flake8>=5.0.4
 flake8-bugbear>=22.10.25
