@@ -303,14 +303,13 @@ def _fill_lag_feature_block_njit(
     offset: int,
     n_rows: int,
 ) -> None:
-    # Row k of ``stacked`` holds the series lagged by k bars, so lags 1
-    # through ``lags`` fill block columns 0 through ``lags - 1``. Row 0 is the
-    # unlagged series, which is left out: it is already available as the
-    # column itself, and including it would feed the current bar's value into
-    # the model as a lag feature.
+    # Row k of ``stacked`` holds the series lagged by k bars, so the block's
+    # ``lags + 1`` columns are the unlagged series followed by lags 1 through
+    # ``lags``. Including row 0 makes the matrix a complete feature set that
+    # models can fit and predict against directly.
     for r in range(n_rows):
-        for c in range(lags):
-            matrix[r, col_start + c] = stacked[c + 1, offset + r]
+        for c in range(lags + 1):
+            matrix[r, col_start + c] = stacked[c, offset + r]
 
 
 @njit(cache=True)
@@ -666,12 +665,12 @@ def build_lag_feature_matrix(
 ) -> np.ndarray:
     """Builds a lag-expanded feature matrix from numpy arrays.
 
-    Returns a matrix of shape ``(len(row_dates), len(columns) * lags)``, laid
-    out as one contiguous block per column, each block holding lags 1 through
-    ``lags`` in ascending order.
+    Returns a matrix of shape ``(len(row_dates), len(columns) * (lags + 1))``,
+    laid out as one contiguous block per column, each block holding the
+    column's current value followed by lags 1 through ``lags``.
     """
     n_rows = len(row_dates)
-    n_features = len(columns) * lags
+    n_features = len(columns) * (lags + 1)
     if n_rows == 0:
         return np.empty((0, n_features), dtype=np.float64)
     offset = history_date_offset(history_dates, row_dates)
@@ -689,7 +688,7 @@ def build_lag_feature_matrix(
             offset,
             n_rows,
         )
-        col_idx += lags
+        col_idx += lags + 1
     return matrix
 
 
@@ -705,7 +704,7 @@ def build_lag_feature_matrix_pooled(
 ) -> np.ndarray:
     """Builds a lag-expanded feature matrix for pooled multi-symbol data."""
     n_rows = len(sym_col)
-    n_features = len(columns) * lags
+    n_features = len(columns) * (lags + 1)
     if n_rows == 0:
         return np.empty((0, n_features), dtype=np.float64)
     matrix = np.empty((n_rows, n_features), dtype=np.float64)
@@ -743,7 +742,7 @@ def apply_lags_to_model_input(
     interval: Optional[str] = None,
 ) -> ModelInput:
     """Attaches lag feature metadata to ``model_input``."""
-    n_features = len(lag_columns) * lags
+    n_features = len(lag_columns) * (lags + 1)
     if model_input.empty():
         model_input.lag_features = np.empty((0, n_features), dtype=np.float64)
         model_input.lags = lags
@@ -774,7 +773,7 @@ def apply_lags_to_model_input_pooled(
     interval: Optional[str] = None,
 ) -> ModelInput:
     """Attaches lag feature metadata to pooled ``model_input``."""
-    n_features = len(lag_columns) * lags
+    n_features = len(lag_columns) * (lags + 1)
     if model_input.empty():
         model_input.lag_features = np.empty((0, n_features), dtype=np.float64)
         model_input.lags = lags
@@ -888,15 +887,21 @@ def apply_prepare_input_data(
     return result
 
 
-def feature_matrix_from_model_input(
+def lag_features(
     data: Union[ModelInput, pd.DataFrame],
 ) -> Optional[np.ndarray]:
-    """Returns the lag feature matrix for ``data``, if any.
+    """Returns ``data``'s lagged values as a ready-to-use feature matrix.
 
-    The matrix has shape ``(len(data), len(lag_cols) * lags)`` and is laid out
-    as one contiguous block per lag column, each block holding lags ``1``
-    through ``lags`` in ascending order. Use
-    :func:`model_input_lag_columns` for the block order.
+    For a model registered with ``lags`` and ``lag_cols``, the matrix has
+    shape ``(len(data), len(lag_cols) * (lags + 1))``: one contiguous block
+    per column in ``lag_cols`` declaration order, each block holding the
+    column's current value followed by lags ``1`` through ``lags``, where lag
+    ``1`` is the value from the previous bar. Returns ``None`` when ``data``
+    has no lag features.
+
+    Fit and predict against this matrix directly. The intended prediction
+    target is the *next* bar — using the current bar's value as the target
+    would leak it through the first feature of its block.
 
     Raises:
         ValueError: If rows were added to or dropped from ``data`` after the
@@ -908,32 +913,30 @@ def feature_matrix_from_model_input(
             if data.lag_features is None
             else np.asarray(data.lag_features)
         )
-    lag_features = data.attrs.get(LAG_FEATURES_ATTR)
-    if lag_features is None:
+    matrix = data.attrs.get(LAG_FEATURES_ATTR)
+    if matrix is None:
         return None
-    if isinstance(lag_features, LagFeatures):
-        if lag_features.n_rows != len(data):
+    if isinstance(matrix, LagFeatures):
+        if matrix.n_rows != len(data):
             raise ValueError(
-                f"Lag features cover {lag_features.n_rows} rows but this "
+                f"Lag features cover {matrix.n_rows} rows but this "
                 f"DataFrame has {len(data)}. Model input must stay aligned "
                 "one row per bar; do not add or drop rows before reading lag "
                 "features."
             )
-        return np.asarray(lag_features.matrix)
-    return np.asarray(lag_features)
+        return np.asarray(matrix.matrix)
+    return np.asarray(matrix)
 
 
-def model_input_lags(data: Union[ModelInput, pd.DataFrame]) -> Optional[int]:
-    """Returns the lag count for ``data``, if any."""
+def _input_lags(data: Union[ModelInput, pd.DataFrame]) -> Optional[int]:
     if isinstance(data, ModelInput):
         return data.lags
     return data.attrs.get(LAGS_ATTR)
 
 
-def model_input_lag_columns(
+def _input_lag_columns(
     data: Union[ModelInput, pd.DataFrame],
 ) -> Optional[tuple[str, ...]]:
-    """Returns the columns lag features were built from, in block order."""
     if isinstance(data, ModelInput):
         return data.lag_columns
     return data.attrs.get(LAG_COLUMNS_ATTR)
@@ -1246,9 +1249,9 @@ class ModelSource:
             ``predict_fn`` will be called with the trained model and a
             :class:`pandas.DataFrame` containing all test data.
         lags: Number of lagged values to include for each column in
-            ``lag_cols``, producing a ``(n_rows, len(lag_cols) * lags)``
-            feature matrix attached to model input rather than added as
-            columns. See :func:`pybroker.model.model`.
+            ``lag_cols``, producing a ``(n_rows, len(lag_cols) * (lags + 1))``
+            feature matrix (see :func:`pybroker.model.lag_features`) attached
+            to model input rather than added as columns.
         lag_cols: Columns to compute lagged values for. Defaults to the data
             columns of the training data, excluding ``date`` and ``symbol``;
             indicators are lagged only when named here.
@@ -1540,19 +1543,17 @@ def model(
             :class:`pybroker.indicator.Indicator`\ s used as features of the
             model.
         lags: Number of lagged values to include for each column in
-            ``lag_cols``. Produces a feature matrix of shape ``(n_rows,
-            len(lag_cols) * lags)``, laid out as one contiguous block per
-            column holding lags ``1`` through ``lags`` in ascending order,
-            where lag ``1`` is the value from the previous bar. The unlagged
-            value is not included, since it is already available as the column
-            itself. Retrieve the matrix with
-            :func:`pybroker.model.feature_matrix_from_model_input`; it is
-            attached to model input rather than added as columns, so the input
-            :class:`pandas.DataFrame` is never widened or copied. Lagged
-            values are computed from each symbol's full history, so rows at
-            the start of a test window use real values carried over from the
-            preceding train window instead of ``NaN``. Rows whose lags are
-            undefined are dropped from training data only.
+            ``lag_cols``. Retrieve them with
+            :func:`pybroker.model.lag_features`, which returns a feature
+            matrix of shape ``(n_rows, len(lag_cols) * (lags + 1))`` holding
+            each column's current value followed by lags ``1`` through
+            ``lags``, where lag ``1`` is the value from the previous bar. Lag
+            data is attached to model input rather than added as columns, so
+            the input :class:`pandas.DataFrame` is never widened or copied.
+            Lagged values are computed from each symbol's full history, so
+            rows at the start of a test window use real values carried over
+            from the preceding train window instead of ``NaN``. Rows whose
+            lags are undefined are dropped from training data only.
         lag_cols: Column names and/or
             :class:`pybroker.indicator.Indicator`\ s to compute lagged values
             for. :class:`pybroker.indicator.Indicator`\ s passed here are added

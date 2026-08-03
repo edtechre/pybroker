@@ -8,9 +8,9 @@ from pybroker import Strategy, indicator, model
 from pybroker.common import DataCol
 from pybroker.config import StrategyConfig
 from pybroker.model import (
-    feature_matrix_from_model_input,
-    model_input_lag_columns,
-    model_input_lags,
+    _input_lag_columns,
+    _input_lags,
+    lag_features,
 )
 from pybroker.scope import StaticScope
 from .fixtures import *  # noqa: F401
@@ -69,7 +69,7 @@ class TestStatefulWalkforward:
         def train_fn(symbol, train_data, test_data):
             seen_train_cols.append(set(train_data.columns))
             seen_train_matrix.append(
-                feature_matrix_from_model_input(train_data)
+                lag_features(train_data)
             )
             return object(), ("close",)
 
@@ -82,8 +82,8 @@ class TestStatefulWalkforward:
                 seen_input.append(
                     (
                         set(df.columns),
-                        feature_matrix_from_model_input(df),
-                        model_input_lags(df),
+                        lag_features(df),
+                        _input_lags(df),
                     )
                 )
 
@@ -105,13 +105,14 @@ class TestStatefulWalkforward:
             assert not any(name.endswith("_lag1") for name in cols)
         for matrix in seen_train_matrix:
             assert matrix is not None
-            assert matrix.shape[1] == 2
+            assert matrix.shape[1] == 3
         assert seen_input
         cols, matrix, lags = seen_input[0]
         assert cols == {"close"}
         assert matrix is not None
-        # lags=2 over one lag column: lag 1 and lag 2, matching training.
-        assert matrix.shape == (1, 2)
+        # lags=2 over one lag column: the current value plus lags 1 and 2,
+        # matching training.
+        assert matrix.shape == (1, 3)
         assert lags == 2
 
     def test_per_bar_fresh_model_each_walkforward_window(self, data_source_df):
@@ -135,6 +136,44 @@ class TestStatefulWalkforward:
         strategy.add_execution(lambda ctx: None, ["SPY"], models=m)
         strategy.walkforward(windows=2, train_size=0.5)
         assert len(train_counts) == 2
+
+    def test_per_bar_lag_features_composition(self, data_source_df):
+        calls = []
+
+        def train_fn(symbol, train_data, test_data):
+            return object()
+
+        def predict_fn(model, data):
+            matrix = lag_features(data)
+            assert matrix is not None
+            # Per-bar input slices must slice the matrix rows with them.
+            assert matrix.shape == (len(data), 3)
+            close = data["close"].to_numpy()
+            # Last row is the current bar's value followed by its lags,
+            # with the first test bar's lags carried from the train window.
+            assert matrix[-1, 0] == close[-1]
+            if len(close) > 1:
+                assert matrix[-1, 1] == close[-2]
+            assert np.isfinite(matrix[-1]).all()
+            calls.append(len(data))
+            return 1.0
+
+        m = model(
+            "per_bar_lags",
+            train_fn,
+            predict_fn=predict_fn,
+            lags=2,
+            lag_cols=("close",),
+            per_bar=True,
+        )
+        ds = data_source_df[data_source_df[DataCol.SYMBOL.value] == "SPY"]
+        strategy = Strategy(ds, START_DATE, END_DATE)
+        strategy.add_execution(
+            lambda ctx: ctx.preds("per_bar_lags"), ["SPY"], models=m
+        )
+        strategy.walkforward(windows=2, train_size=0.5)
+        assert calls
+        assert max(calls) > 1
 
 
 class TestGarchIntegration:
@@ -189,9 +228,9 @@ class TestGarchIntegration:
             return model, ("close",)
 
         def predict_fn(model, data):
-            matrix = feature_matrix_from_model_input(data)
+            matrix = lag_features(data)
             assert matrix is not None
-            assert matrix.shape[1] == 3
+            assert matrix.shape[1] == 4
             returns = data["close"].pct_change().dropna() * 100
             res = model.model.fix(model.params.values, returns)
             fcast = res.forecast(horizon=1)
@@ -220,10 +259,10 @@ class TestLagColumnContract:
         widths = {}
 
         def capture_train(train_data):
-            widths["train"] = feature_matrix_from_model_input(
+            widths["train"] = lag_features(
                 train_data
             ).shape[1]
-            widths["train_cols"] = model_input_lag_columns(train_data)
+            widths["train_cols"] = _input_lag_columns(train_data)
 
         def train_fn(symbol, train_data, test_data):
             capture_train(train_data)
@@ -235,9 +274,9 @@ class TestLagColumnContract:
 
         def predict_fn(model, data):
             widths.setdefault(
-                "predict", feature_matrix_from_model_input(data).shape[1]
+                "predict", lag_features(data).shape[1]
             )
-            widths.setdefault("predict_cols", model_input_lag_columns(data))
+            widths.setdefault("predict_cols", _input_lag_columns(data))
             return np.zeros(len(data))
 
         m = model(
@@ -264,13 +303,13 @@ class TestLagColumnContract:
         widths = self._widths(data_source_df, pooled)
         assert widths["train"] == widths["predict"]
         assert widths["train_cols"] == widths["predict_cols"]
-        assert widths["train"] == len(widths["train_cols"]) * 3
+        assert widths["train"] == len(widths["train_cols"]) * 4
 
     @pytest.mark.parametrize("pooled", [False, True])
     def test_lag_cols_narrows_both_ends(self, data_source_df, pooled):
         widths = self._widths(data_source_df, pooled, lag_cols=("close",))
-        assert widths["train"] == 3
-        assert widths["predict"] == 3
+        assert widths["train"] == 4
+        assert widths["predict"] == 4
         assert widths["train_cols"] == ("close",)
         assert widths["predict_cols"] == ("close",)
 
@@ -466,7 +505,7 @@ class TestIntervalPerBar:
         seen_matrices = []
 
         def predict_fn(_m, data):
-            matrix = feature_matrix_from_model_input(data)
+            matrix = lag_features(data)
             assert matrix is not None
             seen_matrices.append(matrix)
             if not np.isfinite(matrix).all():
@@ -507,7 +546,7 @@ class TestIntervalPerBar:
         lags_seen = []
 
         def predict_fn(_m, data):
-            lags_seen.append(model_input_lags(data))
+            lags_seen.append(_input_lags(data))
             return np.zeros(len(data))
 
         m = model(
@@ -588,7 +627,7 @@ class TestIndicatorLagColumns:
         seen = {}
 
         def train_fn(symbol, train_data, test_data):
-            seen["cols"] = model_input_lag_columns(train_data)
+            seen["cols"] = _input_lag_columns(train_data)
             return object()
 
         m = model(
@@ -611,10 +650,10 @@ class TestIndicatorLagColumns:
         widths = {}
 
         def capture(train_data):
-            widths["train"] = feature_matrix_from_model_input(
+            widths["train"] = lag_features(
                 train_data
             ).shape[1]
-            widths["train_cols"] = model_input_lag_columns(train_data)
+            widths["train_cols"] = _input_lag_columns(train_data)
 
         def train_fn(symbol, train_data, test_data):
             capture(train_data)
@@ -626,9 +665,9 @@ class TestIndicatorLagColumns:
 
         def predict_fn(_m, data):
             widths.setdefault(
-                "predict", feature_matrix_from_model_input(data).shape[1]
+                "predict", lag_features(data).shape[1]
             )
-            widths.setdefault("predict_cols", model_input_lag_columns(data))
+            widths.setdefault("predict_cols", _input_lag_columns(data))
             return np.zeros(len(data))
 
         m = model(
@@ -647,7 +686,7 @@ class TestIndicatorLagColumns:
         assert widths["predict_cols"] == ("sma5",)
         # Training and prediction must build the same shape, or the model is
         # fed a matrix it was never fit on.
-        assert widths["train"] == widths["predict"] == 2
+        assert widths["train"] == widths["predict"] == 3
 
     def test_test_bar_zero_uses_train_window_indicator_history(self, spy_df):
         # The lag cache must reach back past the test window. Sourcing from
@@ -663,7 +702,7 @@ class TestIndicatorLagColumns:
 
         def predict_fn(_m, data):
             seen.setdefault(
-                "row0", feature_matrix_from_model_input(data)[0].copy()
+                "row0", lag_features(data)[0].copy()
             )
             return np.zeros(len(data))
 
@@ -683,8 +722,10 @@ class TestIndicatorLagColumns:
         )
         prev, last = seen["train_tail"]
         assert not np.isnan(seen["row0"]).any()
+        dates = spy_df[DataCol.DATE.value].to_numpy()
+        bar0 = dates[np.searchsorted(dates, last) + 1]
         np.testing.assert_allclose(
-            seen["row0"], [full.loc[last], full.loc[prev]]
+            seen["row0"], [full.loc[bar0], full.loc[last], full.loc[prev]]
         )
 
     def test_unknown_lag_col_raises_clear_error(self, spy_df):
