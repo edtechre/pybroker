@@ -33,7 +33,7 @@ take your trading to the next level!
 
 ## Installation
 
-PyBroker supports Python 3.9+ on Windows, Mac, and Linux. You can install
+PyBroker supports Python 3.10+ on Windows, Mac, and Linux. You can install
 PyBroker using ``pip``:
 
 ```bash
