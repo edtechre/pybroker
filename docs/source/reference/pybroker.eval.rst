@@ -17,4 +17,4 @@ pybroker.eval module
       loss_rate, total_pnl, total_return_pct, total_fees, losing_trades,
       winning_trades, drawdown, annual_return_pct, annual_std_error,
       annual_volatility_pct, calmar, largest_loss_pct, largest_win_pct,
-      sortino, unrealized_pnl
+      sortino, unrealized_pnl, max_drawdown_date

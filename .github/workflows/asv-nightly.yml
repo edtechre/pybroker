@@ -24,7 +24,7 @@ jobs:
           - version: "3.12"
           - version: "3.13"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 

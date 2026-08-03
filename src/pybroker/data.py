@@ -257,6 +257,7 @@ class DataSource(ABC, DataSourceCacheMixin):
         adjust: Optional[Any],
     ) -> pd.DataFrame:
         """:meta public:
+
         Override this method to return data from a custom
         source. The returned :class:`pandas.DataFrame` must contain the
         following columns: ``symbol``, ``date``, ``open``, ``high``, ``low``,
@@ -467,7 +468,7 @@ class AlpacaCrypto(DataSource):
             timeframe=TimeFrame(amount, unit),
             limit=None,
         )
-        df = _get_alpaca_crypto_bars(self._api, request).df  # type: ignore[union-attr]
+        df = _get_alpaca_crypto_bars(self._api, request).df
         if df.columns.empty:
             return pd.DataFrame(columns=self.COLUMNS)
         if df.empty:
