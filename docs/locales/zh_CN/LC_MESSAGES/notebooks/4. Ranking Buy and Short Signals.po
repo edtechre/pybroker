@@ -20,8 +20,8 @@ msgstr ""
 
 #: ../../source/notebooks/4. 4df90d73630f4349836b0d74b0fec2e4 Position Ranking
 #: Sizing.ipynb:9 and
-msgid "Ranking and Position Sizing"
-msgstr "排名和仓位调整"
+msgid "Ranking Buy and Short Signals"
+msgstr "排名买入和做空信号"
 
 #: ../../source/notebooks/4. 63d542e96a7c4b04a3c2d6730b2a483e Position Ranking
 #: Sizing.ipynb:11 and

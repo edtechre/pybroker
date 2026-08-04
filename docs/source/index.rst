@@ -155,7 +155,7 @@ To learn how to use PyBroker, see the notebooks under the *User Guide*:
    notebooks/1. Getting Started with Data Sources
    notebooks/2. Backtesting a Strategy
    notebooks/3. Evaluating with Bootstrap Metrics
-   notebooks/4. Ranking
+   notebooks/4. Ranking Buy and Short Signals
    notebooks/5. Writing Indicators
    notebooks/6. Training a Model
    notebooks/7. Creating a Custom Data Source
