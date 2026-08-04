@@ -5,5 +5,6 @@ pybroker.common module
    :members:
    :undoc-members:
    :show-inheritance:
-   :exclude-members: ind_name, symbol, model_name, instance, name, exec_id,
-      predict_fn, shares, fill_price, order_type
+   :exclude-members: ind_name, symbol, model_name, instance, name,
+      predict_fn, shares, fill_price, order_type, input_cols, per_bar,
+      lag_columns
