@@ -122,7 +122,7 @@ snippets:
    import pybroker
    from pybroker import Alpaca, Strategy
 
-   def train_fn(train_data, test_data, ticker):
+   def train_fn(symbol, train_data, test_data):
       # Train the model using indicators stored in train_data.
       ...
       return trained_model
@@ -155,7 +155,7 @@ To learn how to use PyBroker, see the notebooks under the *User Guide*:
    notebooks/1. Getting Started with Data Sources
    notebooks/2. Backtesting a Strategy
    notebooks/3. Evaluating with Bootstrap Metrics
-   notebooks/4. Ranking and Position Sizing
+   notebooks/4. Ranking
    notebooks/5. Writing Indicators
    notebooks/6. Training a Model
    notebooks/7. Creating a Custom Data Source
@@ -163,10 +163,17 @@ To learn how to use PyBroker, see the notebooks under the *User Guide*:
    notebooks/9. Rebalancing Positions
    notebooks/10. Rotational Trading
    notebooks/11. Configuring Parallelization
+   notebooks/12. Parameter Optimization
+   notebooks/13. Margin Trading
+   notebooks/14. Modeling Slippage
+   notebooks/15. Multiple Time Intervals
+   notebooks/16. Time Series Models
+   notebooks/17. Multi-Symbol Models
+   notebooks/18. Dynamic Symbol Selection
    notebooks/FAQs
 
 `The notebooks above are also available on Github
-<https://github.com/edtechre/pybroker/tree/master/docs/notebooks>`_.
+<https://github.com/edtechre/pybroker/tree/master/docs/source/notebooks>`_.
 
 .. toctree::
    :maxdepth: 4
