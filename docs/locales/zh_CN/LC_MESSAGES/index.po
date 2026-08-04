@@ -160,10 +160,10 @@ msgstr ""
 
 #: ../../source/install.rst:4 cf05a3fdfdda4d8697dce94cccca5773
 msgid ""
-"PyBroker supports Python 3.9+ on Windows, Mac, and Linux. You can install"
+"PyBroker supports Python 3.11+ on Windows, Mac, and Linux. You can install"
 " PyBroker using ``pip``:"
 msgstr ""
-"PyBroker 支持基于 Windows、Mac 和 Linux 的 Python 3.9 及以上版本，"
+"PyBroker 支持基于 Windows、Mac 和 Linux 的 Python 3.11 及以上版本，"
 "你可以通过 ``pip`` 来安装 PyBroker："
 
 #: ../../source/install.rst:11 6049e3484903453583a9fdc076f2eb8e
