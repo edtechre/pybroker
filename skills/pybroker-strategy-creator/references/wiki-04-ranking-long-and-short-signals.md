@@ -22,7 +22,7 @@ In this section, we will learn about how to rank ticker symbols when placing buy
 ```python
 def buy_highest_volume(ctx):
     # If there are no long positions across all tickers being traded:
-    if not tuple(ctx.long_positions()):
+    if not ctx.has_long_positions():
         ctx.buy_shares = ctx.calc_target_shares(1)
         ctx.hold_bars = 2
         ctx.long_score = ctx.volume[-1]
@@ -54,12 +54,12 @@ def long_high_short_low(ctx):
         return
     # Calculate the 5-day rate of change (ROC):
     roc = (ctx.close[-1] - ctx.close[-6]) / ctx.close[-6]
-    if roc > 0 and not tuple(ctx.long_positions()):
+    if roc > 0 and not ctx.has_long_positions():
         ctx.set_target_shares(0.5, dir="long")
         # Hold the long position for 2 bars
         ctx.hold_bars = 2
         ctx.long_score = roc
-    elif roc < 0 and not tuple(ctx.short_positions()):
+    elif roc < 0 and not ctx.has_short_positions():
         ctx.set_target_shares(0.5, dir="short")
         # Hold the short position for 2 bars
         ctx.hold_bars = 2

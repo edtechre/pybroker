@@ -687,6 +687,14 @@ class ExecContext:
         """
         return self.positions(symbol, "short")
 
+    def has_long_positions(self) -> bool:
+        """Returns whether any long positions are currently open."""
+        return bool(self._portfolio.long_positions)
+
+    def has_short_positions(self) -> bool:
+        """Returns whether any short positions are currently open."""
+        return bool(self._portfolio.short_positions)
+
     def _verify_pos_type(self, pos_type: str):
         if pos_type != "short" and pos_type != "long":
             raise ValueError(f"Unknown pos_type: {pos_type!r}.")

@@ -522,6 +522,33 @@ def test_short_positions_when_empty(ctx, symbol):
     assert not len(tuple(ctx.short_positions(symbol)))
 
 
+def test_has_long_positions_when_empty(ctx):
+    assert not ctx.has_long_positions()
+
+
+def test_has_short_positions_when_empty(ctx):
+    assert not ctx.has_short_positions()
+
+
+def test_has_long_and_short_positions(ctx_with_pos):
+    assert ctx_with_pos.has_long_positions()
+    assert ctx_with_pos.has_short_positions()
+
+
+def test_has_long_positions_when_long_only(ctx, portfolio, symbol):
+    portfolio.long_positions = {symbol: Position(symbol, 200, "long")}
+    portfolio.short_positions = {}
+    assert ctx.has_long_positions()
+    assert not ctx.has_short_positions()
+
+
+def test_has_short_positions_when_short_only(ctx, portfolio, symbol):
+    portfolio.long_positions = {}
+    portfolio.short_positions = {symbol: Position(symbol, 100, "short")}
+    assert not ctx.has_long_positions()
+    assert ctx.has_short_positions()
+
+
 def test_calc_target_shares(ctx):
     assert ctx.calc_target_shares(0.5, 33.50) == 50_000 // 33.5
 
