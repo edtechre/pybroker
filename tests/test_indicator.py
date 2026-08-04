@@ -27,6 +27,7 @@ from pybroker.indicator import (
     aroon_diff,
     aroon_down,
     aroon_up,
+    atr,
     close_minus_ma,
     cubic_deviation,
     cubic_trend,
@@ -408,6 +409,12 @@ def test_wrappers(fn, values, period, expected):
         (
             cubic_trend,
             {"field": "close", "lookback": 10, "atr_length": 20, "scale": 0.5},
+        ),
+        (
+            atr,
+            {
+                "lookback": 10,
+            },
         ),
         (
             adx,

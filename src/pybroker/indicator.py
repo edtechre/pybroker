@@ -944,6 +944,25 @@ def cubic_trend(
     return indicator(name, _cubic_trend)
 
 
+def atr(name: str, lookback: int) -> Indicator:
+    """Average True Range (ATR).
+
+    Args:
+        name: Indicator name.
+        lookback: Number of lookback bars.
+
+    Returns:
+        Average True Range :class:`.Indicator`.
+    """
+
+    def _atr(data: BarData):
+        return vect.atr(
+            high=data.high, low=data.low, close=data.close, lookback=lookback
+        )
+
+    return indicator(name, _atr)
+
+
 def adx(name: str, lookback: int) -> Indicator:
     """Average Directional Movement Index.
 
