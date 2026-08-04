@@ -1249,9 +1249,9 @@ class TestBacktestMixin:
 
     def test_rank_by_short_score(self):
         assert _rank_by_short_score({"B": 2.0, "A": 3.0, "C": 1.0}) == {
-            "C": 1,
+            "A": 1,
             "B": 2,
-            "A": 3,
+            "C": 3,
         }
 
     def test_backtest_executions_when_worst_rank_held_rotates(self):
@@ -1422,28 +1422,28 @@ class TestBacktestMixin:
         symbols = ["S1", "S2", "S3", "S4", "S5", "S6"]
         scores_by_bar = [
             {
-                "S1": 10,
-                "S2": 20,
-                "S3": 30,
-                "S4": 40,
-                "S5": 50,
-                "S6": 60,
-            },
-            {
-                "S1": 15,
-                "S2": 25,
-                "S3": 35,
-                "S4": 45,
-                "S5": 55,
-                "S6": 65,
-            },
-            {
                 "S1": 60,
                 "S2": 50,
                 "S3": 40,
                 "S4": 30,
                 "S5": 20,
                 "S6": 10,
+            },
+            {
+                "S1": 55,
+                "S2": 45,
+                "S3": 35,
+                "S4": 25,
+                "S5": 15,
+                "S6": 5,
+            },
+            {
+                "S1": 1,
+                "S2": 2,
+                "S3": 3,
+                "S4": 4,
+                "S5": 5,
+                "S6": 60,
             },
         ]
 
@@ -1497,7 +1497,7 @@ class TestBacktestMixin:
         symbols = ["S1", "S2", "S3"]
 
         def exec_fn(ctx):
-            ctx.short_score = {"S1": 10, "S2": 20, "S3": 30}[ctx.symbol]
+            ctx.short_score = {"S1": 30, "S2": 20, "S3": 10}[ctx.symbol]
             if ctx.buy_shares is not None:
                 ctx.buy_fill_price = PriceType.CLOSE
             if ctx.sell_shares is not None:
@@ -1538,8 +1538,8 @@ class TestBacktestMixin:
     ):
         symbols = ["S1", "S2", "S3"]
         scores_by_bar = [
-            {"S1": 10, "S2": 20, "S3": 30},
-            {"S1": float("nan"), "S2": 20, "S3": 30},
+            {"S1": 30, "S2": 20, "S3": 10},
+            {"S1": float("nan"), "S2": 20, "S3": 10},
         ]
 
         def exec_fn(ctx):
@@ -1620,28 +1620,28 @@ class TestBacktestMixin:
         ]
         short_scores_by_bar = [
             {
-                "S1": 60,
-                "S2": 50,
-                "S3": 40,
-                "S4": 30,
-                "S5": 20,
-                "S6": 10,
-            },
-            {
-                "S1": 65,
-                "S2": 55,
-                "S3": 45,
-                "S4": 35,
-                "S5": 25,
-                "S6": 15,
-            },
-            {
-                "S1": 1,
-                "S2": 2,
-                "S3": 3,
-                "S4": 4,
-                "S5": 5,
+                "S1": 10,
+                "S2": 20,
+                "S3": 30,
+                "S4": 40,
+                "S5": 50,
                 "S6": 60,
+            },
+            {
+                "S1": 5,
+                "S2": 15,
+                "S3": 25,
+                "S4": 35,
+                "S5": 45,
+                "S6": 55,
+            },
+            {
+                "S1": 60,
+                "S2": 5,
+                "S3": 4,
+                "S4": 3,
+                "S5": 2,
+                "S6": 1,
             },
         ]
 
@@ -2017,13 +2017,13 @@ class TestBacktestMixin:
         self,
     ):
         # Ranking one universe from both ends: the strongest names are the best
-        # longs and the weakest are the best shorts.
+        # longs and the weakest are the best shorts (via negated short_score).
         symbols = ["A", "B", "C", "D"]
         momentum = {"A": 40, "B": 30, "C": 20, "D": 10}
 
         def exec_fn(ctx):
             ctx.long_score = momentum[ctx.symbol]
-            ctx.short_score = momentum[ctx.symbol]
+            ctx.short_score = -momentum[ctx.symbol]
 
         portfolio = _run_rotation(
             symbols,
@@ -2045,7 +2045,7 @@ class TestBacktestMixin:
 
         def exec_fn(ctx):
             ctx.long_score = momentum[ctx.symbol]
-            ctx.short_score = momentum[ctx.symbol]
+            ctx.short_score = -momentum[ctx.symbol]
 
         portfolio = _run_rotation(
             symbols,
@@ -2372,9 +2372,9 @@ class TestBacktestMixin:
             ctx.sell_fill_price = PriceType.CLOSE
             ctx.sell_shares = 200
             if ctx.symbol == "AAPL":
-                ctx.short_score = 0
-            else:
                 ctx.short_score = 1
+            else:
+                ctx.short_score = 0
 
         exec = Execution(
             id=1,

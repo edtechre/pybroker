@@ -194,7 +194,7 @@ def _sort_by_buy_score(result: ExecResult) -> float:
 def _sort_by_sell_score(result: ExecResult) -> float:
     if result.short_score is not None:
         return (
-            -result.short_score
+            result.short_score
             if _is_rankable(result.short_score)
             else _UNRANKABLE_SORT_SCORE
         )
@@ -225,8 +225,7 @@ def _rank_by_score(scores: Mapping[str, float]) -> dict[str, int]:
 
 
 def _rank_by_short_score(scores: Mapping[str, float]) -> dict[str, int]:
-    sorted_scores = sorted(scores.items(), key=lambda item: (item[1], item[0]))
-    return {symbol: rank + 1 for rank, (symbol, _) in enumerate(sorted_scores)}
+    return _rank_by_score(scores)
 
 
 def _long_rotation_score(ctx: ExecContext) -> Optional[float]:

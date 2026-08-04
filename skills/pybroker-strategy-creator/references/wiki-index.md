@@ -11,7 +11,7 @@ Use this index to choose the smallest relevant reference file before writing or 
 - `wiki-03-evaluating-with-bootstrap-metrics.md` - Evaluating With Bootstrap Metrics; 5 code cells.
   Topics: Evaluating with Bootstrap Metrics; Confidence Intervals; Maximum Drawdown.
 - `wiki-04-ranking-long-and-short-signals.md` - Ranking Long And Short Signals; code cells from the notebook.
-  Topics: Ranking Long and Short Signals; Scoring Ticker Symbols; Shorting the Lowest Scores.
+  Topics: Ranking Long and Short Signals; Scoring Ticker Symbols; Ranking Short Signals.
 - `wiki-05-writing-indicators.md` - Writing Indicators; 15 code cells.
   Topics: Writing Indicators; Using the Indicator in a Strategy; Vectorized Helpers; Computing Multiple Indicators; Using TA-Lib; Built-In Indicators.
 - `wiki-06-training-a-model.md` - Training A Model; 13 code cells.

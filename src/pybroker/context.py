@@ -85,7 +85,7 @@ class ExecResult:
             :class:`pybroker.strategy.Execution` are ignored.
             Mutually exclusive with ``score``.
         short_score: Score used to rank ``symbol`` when ranking sell signals.
-            Orders are placed for symbols with the lowest ``short_score``
+            Orders are placed for symbols with the highest ``short_score``
             values, where the number of short positions held at any time in
             the :class:`pybroker.portfolio.Portfolio` is specified by
             :meth:`pybroker.strategy.Strategy.set_max_short_positions`.
@@ -358,7 +358,7 @@ class ExecContext:
             :class:`pybroker.strategy.Execution` are ignored.
             Mutually exclusive with ``score``.
         short_score: Score used to rank ``symbol`` when ranking sell signals.
-            Orders are placed for symbols with the lowest ``short_score``
+            Orders are placed for symbols with the highest ``short_score``
             values, where the number of short positions held at any time in
             the :class:`pybroker.portfolio.Portfolio` is specified by
             :meth:`pybroker.strategy.Strategy.set_max_short_positions`.
@@ -1723,7 +1723,7 @@ class RotationContext:
         long_ranks: Rankings computed from rankable :attr:`.ExecContext.long_score`
             values, where ``1`` is the highest score.
         short_ranks: Rankings computed from rankable
-            :attr:`.ExecContext.short_score` values, where ``1`` is the lowest
+            :attr:`.ExecContext.short_score` values, where ``1`` is the highest
             score.
         config: :class:`pybroker.config.StrategyConfig`.
     """
