@@ -2907,7 +2907,7 @@ def _picklable_train_fake_model(sym, train_data, test_data):
 
 
 POOLED_MODEL_NAME = "pooled_fake_model"
-_pooled_train_calls: list[tuple[int, frozenset[str]]] = []
+_pooled_train_calls: list[tuple[int, frozenset[str], tuple[str, ...]]] = []
 
 
 class PooledFakeModel:
@@ -2915,17 +2915,18 @@ class PooledFakeModel:
         self.symbols = frozenset(symbols)
 
 
-def _train_pooled_fake_model(train_data, test_data):
+def _train_pooled_fake_model(symbols, train_data, test_data):
     _pooled_train_calls.append(
         (
             train_data.shape[0],
             frozenset(train_data[DataCol.SYMBOL.value].unique()),
+            tuple(symbols),
         )
     )
     return PooledFakeModel(train_data[DataCol.SYMBOL.value].unique())
 
 
-def _picklable_train_pooled_fake_model(train_data, test_data):
+def _picklable_train_pooled_fake_model(symbols, train_data, test_data):
     return PooledFakeModel(train_data[DataCol.SYMBOL.value].unique())
 
 
@@ -3304,8 +3305,9 @@ class TestStrategy:
             seed=42,
         )
         assert len(_pooled_train_calls) == 1
-        _, symbols = _pooled_train_calls[0]
+        _, symbols, symbols_arg = _pooled_train_calls[0]
         assert symbols == frozenset({"AAPL", "MSFT"})
+        assert symbols_arg == ("AAPL", "MSFT")
 
     def test_walkforward_pooled_model_predict(
         self, data_source_df, executions_with_pooled_models

@@ -48,6 +48,7 @@ from typing import (
     Mapping,
     NamedTuple,
     Optional,
+    Sequence,
     Union,
     cast,
 )
@@ -1274,8 +1275,9 @@ class ModelTrainer(ModelSource):
         name: Name of model.
         train_fn: When ``pooled`` is ``False``, ``Callable[[symbol: str,
             train_data: DataFrame, test_data: DataFrame, ...], DataFrame]``.
-            When ``pooled`` is ``True``, ``Callable[[train_data: DataFrame,
-            test_data: DataFrame, ...], DataFrame]``. When ``lags`` is set,
+            When ``pooled`` is ``True``, ``Callable[[symbols: Sequence[str],
+            train_data: DataFrame, test_data: DataFrame, ...], DataFrame]``.
+            When ``lags`` is set,
             ``train_fn`` is additionally called with ``lag_train=`` and
             ``lag_test=`` keyword arguments holding the lag feature matrices
             aligned one row per ``train_data``/``test_data`` row, and must
@@ -1366,6 +1368,7 @@ class ModelTrainer(ModelSource):
 
     def train_pooled(
         self,
+        symbols: Sequence[str],
         train_data: pd.DataFrame,
         test_data: pd.DataFrame,
         *,
@@ -1375,6 +1378,11 @@ class ModelTrainer(ModelSource):
         """Trains model using combined multi-symbol data.
 
         Args:
+            symbols: Ticker symbols of the pooled group, sorted in ascending
+                order to match the order that symbol blocks appear in
+                ``train_data`` and ``test_data``. A listed symbol can have no
+                rows in a frame, such as when ``lags`` drops all of its rows
+                with the lag warmup.
             train_data: Train data containing a ``symbol`` column.
             test_data: Test data containing a ``symbol`` column.
             lag_train: Lag feature matrix aligned one row per ``train_data``
@@ -1388,9 +1396,13 @@ class ModelTrainer(ModelSource):
             Trained model.
         """
         if self.lags is None:
-            return self._train_fn(train_data, test_data)
+            return self._train_fn(symbols, train_data, test_data)
         return self._train_fn(
-            train_data, test_data, lag_train=lag_train, lag_test=lag_test
+            symbols,
+            train_data,
+            test_data,
+            lag_train=lag_train,
+            lag_test=lag_test,
         )
 
     def __repr__(self):
@@ -1432,7 +1444,7 @@ def _validate_lagged_train_fn(
             f"Model {name!r} is registered with lags= but its train_fn does "
             "not accept the lag feature matrices. Expected a signature like "
             "train_fn(symbol, train_data, test_data, lag_train, lag_test)"
-            " (pooled models omit symbol)."
+            " (pooled models take symbols instead of symbol)."
         )
 
 
@@ -1497,10 +1509,14 @@ def model(
             for training with ``pooled=False``, then ``fn`` has signature
             ``Callable[[symbol: str, train_data: DataFrame, test_data:
             DataFrame, ...], DataFrame]``. If for training with
-            ``pooled=True``, then ``fn`` has signature ``Callable[[train_data:
-            DataFrame, test_data: DataFrame, ...], DataFrame]`` where both
-            frames contain a ``symbol`` column with data for all symbols in the
-            execution. If for loading, then ``fn`` has signature
+            ``pooled=True``, then ``fn`` has signature ``Callable[[symbols:
+            Sequence[str], train_data: DataFrame, test_data: DataFrame, ...],
+            DataFrame]`` where ``symbols`` contains the pooled symbols sorted
+            in ascending order, and both frames contain a ``symbol`` column
+            with each symbol's rows grouped together in that order. A listed
+            symbol can have no rows in a frame, such as when ``lags`` drops
+            all of its rows with the lag warmup. If for loading, then ``fn``
+            has signature
             ``Callable[[symbol: str, train_start_date: datetime,
             train_end_date: datetime, ...], DataFrame]``. When ``lags`` is
             set, a training ``fn`` is additionally called with ``lag_train=``
@@ -1769,6 +1785,7 @@ def _train_model_pooled(
     pooled_test_data: ModelInput,
 ) -> PooledTrainResult:
     model_result = source.train_pooled(
+        tuple(sorted(symbols)),
         pooled_train_data.to_dataframe(),
         pooled_test_data.to_dataframe(),
         lag_train=pooled_train_data.lag_features,

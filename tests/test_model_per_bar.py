@@ -30,7 +30,7 @@ class TestPerBarValidation:
         ):
             model(
                 "m",
-                lambda t, u: None,
+                lambda s, t, u: None,
                 predict_fn=lambda m, d: np.array([1.0]),
                 per_bar=True,
                 pooled=True,

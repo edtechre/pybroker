@@ -448,11 +448,12 @@ class TestPooledModelsMixin:
         )
         train_fn.assert_called_once()
         call_args = train_fn.call_args[0]
-        assert len(call_args) == 2
-        pooled_train, pooled_test = call_args
+        assert len(call_args) == 3
+        symbols_arg, pooled_train, pooled_test = call_args
+        assert symbols_arg == tuple(sorted(pooled_symbols))
         assert DataCol.SYMBOL.value in pooled_train.columns
-        assert set(pooled_train[DataCol.SYMBOL.value].unique()) == set(
-            pooled_symbols
+        assert list(pooled_train[DataCol.SYMBOL.value].unique()) == list(
+            symbols_arg
         )
         assert len(models) == len(pooled_symbols)
 
@@ -471,7 +472,7 @@ class TestPooledModelsMixin:
     ):
         captured = {}
 
-        def train_pooled(train_df, test_df):
+        def train_pooled(symbols, train_df, test_df):
             captured["train"] = train_df
             captured["test"] = test_df
             return FakeModel("pooled", np.array([1.0]))
@@ -505,7 +506,7 @@ class TestPooledModelsMixin:
         shared = FakeModel("pooled", np.array([1.0]))
         model(
             "pooled_model",
-            lambda train_df, test_df: shared,
+            lambda symbols, train_df, test_df: shared,
             indicators,
             pooled=True,
         )
@@ -537,7 +538,9 @@ class TestPooledModelsMixin:
     ):
         model(
             "pooled_model",
-            lambda train_df, test_df: FakeModel("pooled", np.array([1.0])),
+            lambda symbols, train_df, test_df: FakeModel(
+                "pooled", np.array([1.0])
+            ),
             indicators,
             pooled=True,
         )
@@ -580,7 +583,9 @@ class TestPooledModelsMixin:
     ):
         model(
             "pooled_model",
-            lambda train_df, test_df: FakeModel("pooled", np.array([1.0])),
+            lambda symbols, train_df, test_df: FakeModel(
+                "pooled", np.array([1.0])
+            ),
             indicators,
             pooled=True,
         )
@@ -613,7 +618,7 @@ class TestPooledModelsMixin:
         explicit_cols = ("hhv", "symbol_id")
         model(
             "pooled_model",
-            lambda train_df, test_df: (
+            lambda symbols, train_df, test_df: (
                 FakeModel("pooled", np.array([1.0])),
                 explicit_cols,
             ),
@@ -723,7 +728,9 @@ class TestPooledModelsMixin:
     ):
         model(
             "pooled_model",
-            lambda train_df, test_df: FakeModel("pooled", np.array([1.0])),
+            lambda symbols, train_df, test_df: FakeModel(
+                "pooled", np.array([1.0])
+            ),
             indicators,
             pooled=True,
         )
@@ -758,7 +765,9 @@ class TestPooledModelsMixin:
     ):
         model(
             "pooled_model",
-            lambda train_df, test_df: FakeModel("pooled", np.array([1.0])),
+            lambda symbols, train_df, test_df: FakeModel(
+                "pooled", np.array([1.0])
+            ),
             indicators,
             pooled=True,
         )
@@ -789,7 +798,9 @@ class TestPooledModelsMixin:
     ):
         model(
             "pooled_model",
-            lambda train_df, test_df: FakeModel("pooled", np.array([1.0])),
+            lambda symbols, train_df, test_df: FakeModel(
+                "pooled", np.array([1.0])
+            ),
             indicators,
             pooled=True,
         )
@@ -858,7 +869,9 @@ class TestPooledModelsMixin:
     ):
         model(
             "pooled_model",
-            lambda train_df, test_df: FakeModel("pooled", np.array([1.0])),
+            lambda symbols, train_df, test_df: FakeModel(
+                "pooled", np.array([1.0])
+            ),
             indicators,
             pooled=True,
         )
@@ -925,7 +938,9 @@ class TestPooledModelsMixin:
     ):
         model(
             "pooled_model",
-            lambda train_df, test_df: FakeModel("pooled", np.array([1.0])),
+            lambda symbols, train_df, test_df: FakeModel(
+                "pooled", np.array([1.0])
+            ),
             indicators,
             pooled=True,
         )
@@ -1117,9 +1132,12 @@ class TestIntervalModels:
             pooled_model_groups=pooled_model_groups,
         )
         train_fn.assert_called_once()
-        pooled_train, _pooled_test = train_fn.call_args[0]
+        symbols_arg, pooled_train, _pooled_test = train_fn.call_args[0]
+        assert symbols_arg == tuple(sorted(pooled_syms))
         assert DataCol.SYMBOL.value in pooled_train.columns
-        assert set(pooled_train[DataCol.SYMBOL.value].unique()) == pooled_syms
+        assert list(pooled_train[DataCol.SYMBOL.value].unique()) == list(
+            symbols_arg
+        )
         assert len(pooled_train) > 0
         assert len(models) == len(pooled_model_syms)
         instances = {
@@ -1352,7 +1370,9 @@ def test_get_cached_models_pooled_single_pass(
 
     model(
         "pooled_cache",
-        lambda train_df, test_df: FakeModel("pooled_cache", np.array([1.0])),
+        lambda symbols, train_df, test_df: FakeModel(
+            "pooled_cache", np.array([1.0])
+        ),
         [],
         pooled=True,
     )

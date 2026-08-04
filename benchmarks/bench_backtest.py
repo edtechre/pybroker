@@ -1228,8 +1228,8 @@ class WalkforwardModels:
             "hhv20", lambda bar_data: highv(bar_data.close, 20)
         )
 
-        def train_pooled(train_df, test_df):
-            del train_df, test_df
+        def train_pooled(symbols, train_df, test_df):
+            del symbols, train_df, test_df
             return _BenchConstantModel()
 
         bench_pooled = model(
@@ -1338,7 +1338,7 @@ class ModelTrainPrep:
 
             return _ConstantModel()
 
-        def train_pooled(_train_df, _test_df):
+        def train_pooled(_symbols, _train_df, _test_df):
             return train_sym(None, _train_df, _test_df)
 
         model("bench_sym", train_sym)
@@ -1368,7 +1368,7 @@ class ModelTrainPrep:
         pybroker.clear_params()
         model(
             "bench_pooled",
-            lambda _train_df, _test_df: self._constant_model(),
+            lambda _symbols, _train_df, _test_df: self._constant_model(),
             pooled=True,
         )
         self._mixin.train_models(
@@ -1444,7 +1444,9 @@ class ModelTrainPrepLags:
         pybroker.clear_params()
         model(
             "bench_pooled_lags",
-            lambda _train_df, _test_df, **kwargs: self._constant_model(),
+            lambda _symbols, _train_df, _test_df, **kwargs: (
+                self._constant_model()
+            ),
             pooled=True,
             lags=_LAG_PREP_LAGS,
         )

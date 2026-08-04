@@ -265,7 +265,9 @@ class TestLagColumnContract:
             capture_train(train_data, lag_train)
             return object(), ("close",)
 
-        def pooled_train_fn(train_data, test_data, lag_train, lag_test):
+        def pooled_train_fn(
+            symbols, train_data, test_data, lag_train, lag_test
+        ):
             capture_train(train_data, lag_train)
             return object(), ("close",)
 
@@ -652,7 +654,9 @@ class TestIndicatorLagColumns:
             widths["train"] = lag_train.shape[1]
             return object(), ("close",)
 
-        def pooled_train_fn(train_data, test_data, lag_train, lag_test):
+        def pooled_train_fn(
+            symbols, train_data, test_data, lag_train, lag_test
+        ):
             widths["train"] = lag_train.shape[1]
             return object(), ("close",)
 
@@ -784,7 +788,9 @@ class TestLagMatrixArguments:
     def test_pooled_train_fn_receives_matrices(self, data_source_df):
         seen = {}
 
-        def pooled_train_fn(train_data, test_data, lag_train, lag_test):
+        def pooled_train_fn(
+            symbols, train_data, test_data, lag_train, lag_test
+        ):
             seen["lag_train"] = lag_train
             seen["lag_test"] = lag_test
             seen["n_train"] = len(train_data)
