@@ -1,10 +1,10 @@
-# Ranking Buy And Short Signals
+# Ranking Long And Short Signals
 
-Source: `docs/source/notebooks/4. Ranking Buy and Short Signals.ipynb`
+Source: `docs/source/notebooks/4. Ranking Long and Short Signals.ipynb`
 
 This reference was generated from the local PyBroker documentation notebook. Use it as the detailed wiki page for this topic.
 
-# Ranking Buy and Short Signals
+# Ranking Long and Short Signals
 
 In this notebook, we will learn about the features of **PyBroker** that enable you to rank ticker symbols in your trading strategy. With these features, you can easily optimize your strategy and manage risk more effectively.
 

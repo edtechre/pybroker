@@ -10,8 +10,8 @@ Use this index to choose the smallest relevant reference file before writing or 
   Topics: Backtesting a Strategy; Defining Strategy Rules; Adding a Second Execution; Running a Backtest; Filtering Backtest Data.
 - `wiki-03-evaluating-with-bootstrap-metrics.md` - Evaluating With Bootstrap Metrics; 5 code cells.
   Topics: Evaluating with Bootstrap Metrics; Confidence Intervals; Maximum Drawdown.
-- `wiki-04-ranking-buy-and-short-signals.md` - Ranking Buy And Short Signals; code cells from the notebook.
-  Topics: Ranking Buy and Short Signals; Scoring Ticker Symbols; Shorting the Lowest Scores.
+- `wiki-04-ranking-long-and-short-signals.md` - Ranking Long And Short Signals; code cells from the notebook.
+  Topics: Ranking Long and Short Signals; Scoring Ticker Symbols; Shorting the Lowest Scores.
 - `wiki-05-writing-indicators.md` - Writing Indicators; 15 code cells.
   Topics: Writing Indicators; Using the Indicator in a Strategy; Vectorized Helpers; Computing Multiple Indicators; Using TA-Lib; Built-In Indicators.
 - `wiki-06-training-a-model.md` - Training A Model; 13 code cells.
@@ -37,7 +37,7 @@ Use this index to choose the smallest relevant reference file before writing or 
 - Data downloads, caches, Alpaca/YFinance, or DataFrame inputs: read `wiki-01-getting-started-with-data-sources.md`.
 - Core Strategy/ExecContext order logic: read `wiki-02-backtesting-a-strategy.md` and `pybroker-patterns.md`.
 - Metrics, randomized bootstrap, or result inspection: read `wiki-03-evaluating-with-bootstrap-metrics.md`.
-- Ranking buy/short signals, scores, or max positions: read `wiki-04-ranking-buy-and-short-signals.md`.
+- Ranking long/short signals, scores, or max positions: read `wiki-04-ranking-long-and-short-signals.md`.
 - Built-in or custom indicators: read `wiki-05-writing-indicators.md`.
 - ML models, prediction inputs, caching, or walkforward training: read `wiki-06-training-a-model.md`.
 - Custom DataSource, CSV, DataFrame, or custom columns: read `wiki-07-creating-a-custom-data-source.md`.
