@@ -11,7 +11,7 @@
 ## Algorithmic Trading in Python with Machine Learning
 
 Are you looking to enhance your trading strategies with the power of Python and
-machine learning? Then you need to check out **PyBroker**! This Python framework
+machine learning? **PyBroker** is a Python framework
 is designed for developing algorithmic trading strategies, with a focus on
 strategies that use machine learning. With PyBroker, you can easily create and
 fine-tune trading rules, build powerful models, and gain valuable insights into
@@ -25,9 +25,9 @@ your strategy’s performance.
 - Access to historical data from [Alpaca](https://alpaca.markets/), [Yahoo Finance](https://finance.yahoo.com/), [AKShare](https://github.com/akfamily/akshare), or from [your own data provider](https://www.pybroker.com/en/latest/notebooks/7.%20Creating%20a%20Custom%20Data%20Source.html).
 - The option to train and backtest models using [Walkforward Analysis](https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis), which simulates how the strategy would perform during actual trading.
 - More reliable trading metrics that use randomized [bootstrapping](https://en.wikipedia.org/wiki/Bootstrapping_(statistics)) to provide more accurate results.
-- [Parameter optimization](https://www.pybroker.com/en/latest/notebooks/12.%20Parameter%20Optimization.html) with [Optuna](https://optuna.org/) to select the best parameters and evaluate them out-of-sample.
+- [Parameter optimization](https://www.pybroker.com/en/latest/notebooks/12.%20Parameter%20Optimization.html) with [Optuna](https://optuna.org/) to select the best strategy parameters.
 - [Caching](https://www.pybroker.com/en/latest/notebooks/1.%20Getting%20Started%20with%20Data%20Sources.html#Caching-Data) of downloaded data, indicators, and models to speed up your development process.
-- [Parallelized](https://www.pybroker.com/en/latest/notebooks/11.%20Configuring%20Parallelization.html) computations that enable faster performance.
+- [Parallelized](https://www.pybroker.com/en/latest/notebooks/11.%20Configuring%20Parallelization.html) computation and training for faster performance.
 - [Agent Skills](https://www.pybroker.com/en/latest/agent-skills.html) that help AI agents write trading strategies and backtests using PyBroker.
 
 With PyBroker, you will have the tools to build, test, and evaluate algorithmic trading strategies backed by machine learning.
@@ -101,7 +101,6 @@ snippets:
 
 ## User Guide
 
-- [Agent Skills](https://www.pybroker.com/en/latest/agent-skills.html)
 - [Getting Started with Data Sources](https://www.pybroker.com/en/latest/notebooks/1.%20Getting%20Started%20with%20Data%20Sources.html)
 - [Backtesting a Strategy](https://www.pybroker.com/en/latest/notebooks/2.%20Backtesting%20a%20Strategy.html)
 - [Evaluating with Bootstrap Metrics](https://www.pybroker.com/en/latest/notebooks/3.%20Evaluating%20with%20Bootstrap%20Metrics.html)
@@ -120,6 +119,7 @@ snippets:
 - [Time Series Models](https://www.pybroker.com/en/latest/notebooks/16.%20Time%20Series%20Models.html)
 - [Multi-Symbol Models](https://www.pybroker.com/en/latest/notebooks/17.%20Multi-Symbol%20Models.html)
 - [Dynamic Symbol Selection](https://www.pybroker.com/en/latest/notebooks/18.%20Dynamic%20Symbol%20Selection.html)
+- [Agent Skills](https://www.pybroker.com/en/latest/agent-skills.html)
 - [FAQs](https://www.pybroker.com/en/latest/notebooks/FAQs.html)
 
 ## Online Documentation
