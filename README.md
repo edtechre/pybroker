@@ -19,16 +19,16 @@ your strategy’s performance.
 
 ## Key Features
 
-- A super-fast backtesting engine built in [NumPy](https://numpy.org/) and accelerated with [Numba](https://numba.pydata.org/).
-- The ability to create and execute trading rules and models across multiple instruments with ease.
-- Combining signals across [multiple time intervals](https://www.pybroker.com/en/latest/notebooks/15.%20Multiple%20Time%20Intervals.html), including daily, weekly, and monthly.
-- Access to historical data from [Alpaca](https://alpaca.markets/), [Yahoo Finance](https://finance.yahoo.com/), [AKShare](https://github.com/akfamily/akshare), or from [your own data provider](https://www.pybroker.com/en/latest/notebooks/7.%20Creating%20a%20Custom%20Data%20Source.html).
-- The option to train and backtest models using [Walkforward Analysis](https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis), which simulates how the strategy would perform during actual trading.
-- More reliable trading metrics that use randomized [bootstrapping](https://en.wikipedia.org/wiki/Bootstrapping_(statistics)) to provide more accurate results.
-- [Parameter optimization](https://www.pybroker.com/en/latest/notebooks/12.%20Parameter%20Optimization.html) with [Optuna](https://optuna.org/) to select the best strategy parameters.
-- [Caching](https://www.pybroker.com/en/latest/notebooks/1.%20Getting%20Started%20with%20Data%20Sources.html#Caching-Data) of downloaded data, indicators, and models to speed up your development process.
-- [Parallelized](https://www.pybroker.com/en/latest/notebooks/11.%20Configuring%20Parallelization.html) computation and training for faster performance.
-- [Agent Skills](https://www.pybroker.com/en/latest/agent-skills.html) that help AI agents write trading strategies and backtests using PyBroker.
+* A super-fast backtesting engine built in [NumPy](https://numpy.org/) and accelerated with [Numba](https://numba.pydata.org/).
+* Easy creation of trading rules and models for executing across multiple instruments.
+* Integration of trading signals across [multiple time intervals](https://www.pybroker.com/en/latest/notebooks/15.%20Multiple%20Time%20Intervals.html), including daily, weekly, and monthly.
+* Access to historical data from [Alpaca](https://alpaca.markets/), [Yahoo Finance](https://finance.yahoo.com/), [AKShare](https://github.com/akfamily/akshare), or from [your own data provider](https://www.pybroker.com/en/latest/notebooks/7.%20Creating%20a%20Custom%20Data%20Source.html).
+* Model training and backtesting using [Walkforward Analysis](https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis), which simulates how the strategy would perform during actual trading.
+* Reliable trading metrics that use randomized [bootstrapping](https://en.wikipedia.org/wiki/Bootstrapping_(statistics)) to provide more accurate results.
+* [Parameter optimization](https://www.pybroker.com/en/latest/notebooks/12.%20Parameter%20Optimization.html) with [Optuna](https://optuna.org/) to select the best strategy parameters.
+* [Caching](https://www.pybroker.com/en/latest/notebooks/1.%20Getting%20Started%20with%20Data%20Sources.html#Caching-Data) of downloaded data, indicators, and models to speed up your development process.
+* [Parallelized](https://www.pybroker.com/en/latest/notebooks/11.%20Configuring%20Parallelization.html) computation and training for faster performance.
+* [Agent Skills](https://www.pybroker.com/en/latest/agent-skills.html) that help AI agents write trading strategies and backtests using PyBroker.
 
 With PyBroker, you will have the tools to build, test, and evaluate algorithmic trading strategies backed by machine learning.
 
