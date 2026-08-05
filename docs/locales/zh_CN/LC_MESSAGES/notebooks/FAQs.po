@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-04 18:14-0700\n"
+"POT-Creation-Date: 2026-08-05 16:46-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -18,23 +18,23 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../source/notebooks/FAQs.ipynb:9 a90c5cc015c847e9a15760a3e38597fc
+#: ../../source/notebooks/FAQs.ipynb:9 56897c4f601f46dc85f5ba760f0bb2c0
 msgid "FAQs"
 msgstr "问答"
 
-#: ../../source/notebooks/FAQs.ipynb:12 0cefd4a93e2d4a10aa8a318aa52fbd28
+#: ../../source/notebooks/FAQs.ipynb:12 f4e73a8b6ea046c991cf2b3b8c807d14
 msgid "How to..."
 msgstr "如何 ..."
 
-#: ../../source/notebooks/FAQs.ipynb:24 d1e13a8c5f9b4d1494a0c8596f0a0ced
+#: ../../source/notebooks/FAQs.ipynb:24 bcb7563fceba4a3a9fc2882ee3cdac14
 msgid "See your version of PyBroker"
 msgstr "查看你的 PyBroker 版本"
 
-#: ../../source/notebooks/FAQs.ipynb:73 79095bdcdbee446ea8d2d3d106530001
+#: ../../source/notebooks/FAQs.ipynb:73 072bc615457f4203b3e01537ed869831
 msgid "Get data for another symbol"
 msgstr "获取其他标的的数据"
 
-#: ../../source/notebooks/FAQs.ipynb:75 8439b39b5d5d46fa90ad05fcbddd766e
+#: ../../source/notebooks/FAQs.ipynb:75 36cc82152212428f98cc3852a59b6bd6
 msgid ""
 "Use `ctx.foreign "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.foreign>`__"
@@ -42,11 +42,11 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.indicator>`__:"
 msgstr ""
 "使用 `ctx.foreign "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.foreign>`__"
-"，并将标的符号传入 `ctx.indicator "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.foreign>`__，并将标的符号传入"
+" `ctx.indicator "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.indicator>`__："
 
-#: ../../source/notebooks/FAQs.ipynb:306 7ed195cc17974cf491541f851067622d
+#: ../../source/notebooks/FAQs.ipynb:306 86f92e7ec7934f6caa802b415b3a6332
 msgid ""
 "You can also retrieve models, predictions, and other data for other "
 "symbols. `For more information, refer to the ExecContext reference "
@@ -57,11 +57,11 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
 " 参考文档。"
 
-#: ../../source/notebooks/FAQs.ipynb:318 66b8bb405c4f48209c6be5e3a02fb437
+#: ../../source/notebooks/FAQs.ipynb:318 e8f2e4284a28436bb4a321ec4ebd895e
 msgid "Set a limit price"
 msgstr "设置限价"
 
-#: ../../source/notebooks/FAQs.ipynb:320 be9d03c0ae4e4de1b0b43c7c29da4e8d
+#: ../../source/notebooks/FAQs.ipynb:320 bfe65749070346eba2e393c9c2ae1ddd
 msgid ""
 "Set `buy_limit_price "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buy_limit_price>`__"
@@ -73,11 +73,11 @@ msgstr ""
 " 或 `卖出限价（sell_limit_price） "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_limit_price>`__："
 
-#: ../../source/notebooks/FAQs.ipynb:795 1a9222fa6c714caa88618709440966f4
+#: ../../source/notebooks/FAQs.ipynb:795 3d3fd76de58a4d3ca9c666cae0f5f20c
 msgid "Set the fill price"
 msgstr "设置成交价格"
 
-#: ../../source/notebooks/FAQs.ipynb:797 c2a5c31469c24134ae5b394c6a73c675
+#: ../../source/notebooks/FAQs.ipynb:797 ca13586d801140bdb0a18c446a7d896c
 msgid ""
 "Set `buy_fill_price "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buy_fill_price>`__"
@@ -95,11 +95,11 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.PriceType>`__"
 " 以查看选项。"
 
-#: ../../source/notebooks/FAQs.ipynb:1274 e3299345aa1f430da484557b6639bcb0
+#: ../../source/notebooks/FAQs.ipynb:1274 fe5bcc4396744bf89bcb47c8d7e66c14
 msgid "Get current positions"
 msgstr "获取当前仓位"
 
-#: ../../source/notebooks/FAQs.ipynb:1276 a2d8474571d1414996af20dda54a5fde
+#: ../../source/notebooks/FAQs.ipynb:1276 a1d99a13685b4b62872cc53b64273b9f
 msgid ""
 "Use `positions "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.positions>`__,"
@@ -118,21 +118,21 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.has_short_positions>`__:"
 msgstr ""
 "使用 `positions "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.positions>`__、"
-"`long_positions "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.long_positions>`__、"
-"`short_positions "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.short_positions>`__、"
-"`long_pos "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.positions>`__、`long_positions"
+" "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.long_positions>`__、`short_positions"
+" "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.short_positions>`__、`long_pos"
+" "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.long_pos>`__"
 " 和 `short_pos "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.short_pos>`__。"
-"如果只是想检查是否存在多头或空头仓位，而不需要实际获取这些仓位对象，可以使用 `has_long_positions "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.short_pos>`__。如果只是想检查是否存在多头或空头仓位，而不需要实际获取这些仓位对象，可以使用"
+" `has_long_positions "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.has_long_positions>`__"
 " 和 `has_short_positions "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.has_short_positions>`__："
 
-#: ../../source/notebooks/FAQs.ipynb:1461 0d8ca5c9dfc949d3899cdd873f9ffc1b
+#: ../../source/notebooks/FAQs.ipynb:1461 d65bf92869bd4fc9a915f467b9a45fc6
 msgid ""
 "`See the Position class for more information. "
 "<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.Position>`__"
@@ -140,11 +140,11 @@ msgstr ""
 "`有关更多信息，请参阅 Position 类 "
 "<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.Position>`__。"
 
-#: ../../source/notebooks/FAQs.ipynb:1473 e7fb2a3b2882482288c0ed6dbf981e8a
+#: ../../source/notebooks/FAQs.ipynb:1473 a4960d08536a4ddd8a8fcdd27f07310f
 msgid "Use custom column data"
 msgstr "使用自定义列数据"
 
-#: ../../source/notebooks/FAQs.ipynb:1475 20137d5131974a1496b66cf088750113
+#: ../../source/notebooks/FAQs.ipynb:1475 bf19455edc0d45f8bdd00e5237db1702
 msgid ""
 "Register your custom columns with `pybroker.register_columns "
 "<https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.register_columns>`__:"
@@ -153,11 +153,11 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.register_columns>`__"
 " 注册您的自定义列："
 
-#: ../../source/notebooks/FAQs.ipynb:1955 7de0dd901e2b4c218a4e268efaaa7d77
+#: ../../source/notebooks/FAQs.ipynb:1955 4974f85dc4c645be890ee529cc73fff3
 msgid "Place an order more than one bar ahead"
 msgstr "在超过一个K线之后下单"
 
-#: ../../source/notebooks/FAQs.ipynb:1957 e8e94484f0034479aebda65aad9af2e7
+#: ../../source/notebooks/FAQs.ipynb:1957 58475bc2b44b4842bab4da20a4ed6380
 msgid ""
 "Use the `buy_delay "
 "<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.buy_delay>`__"
@@ -171,11 +171,11 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.sell_delay>`__"
 " 配置选项："
 
-#: ../../source/notebooks/FAQs.ipynb:2434 3193974142004309a43065b96d531ce8
+#: ../../source/notebooks/FAQs.ipynb:2434 9b2cfc1534b44c01a9e37e97f9d6c534
 msgid "Cancel pending orders"
 msgstr "取消未完成的订单"
 
-#: ../../source/notebooks/FAQs.ipynb:2436 4059e5785c4f46938aebbeb3b0a6b344
+#: ../../source/notebooks/FAQs.ipynb:2436 763599901d3d437d967911922e2a21c1
 msgid ""
 "See the `cancel_pending_order "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.cancel_pending_order>`__"
@@ -189,11 +189,11 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.cancel_all_pending_orders>`__"
 " 方法。"
 
-#: ../../source/notebooks/FAQs.ipynb:2876 b105ac054cd3440b8e56f7becb0c38c7
+#: ../../source/notebooks/FAQs.ipynb:2876 de50c028197840ab957a9241aeacd3b7
 msgid "Persist data across bars"
 msgstr "在多个K线之间保持数据"
 
-#: ../../source/notebooks/FAQs.ipynb:2878 f9b2e484c69f43478166c05d85416f95
+#: ../../source/notebooks/FAQs.ipynb:2878 12d22bdfb13b42c3ac714b758618f563
 msgid ""
 "Use the `ctx.session "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.session>`__"
@@ -203,11 +203,11 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.session>`__"
 " 字典："
 
-#: ../../source/notebooks/FAQs.ipynb:3054 2fe07a38d7ba4ee3b5b18a8cd6f9bd13
+#: ../../source/notebooks/FAQs.ipynb:3054 eaad47c6b38e4838866852179d884afa
 msgid "Exit a position"
 msgstr "平仓"
 
-#: ../../source/notebooks/FAQs.ipynb:3056 35baac7b8cad4d328194a9527568244a
+#: ../../source/notebooks/FAQs.ipynb:3056 5545e7d64c7d4de4b5e62ef77b1219e2
 msgid ""
 "Use `sell_all_shares "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_all_shares>`__"
@@ -221,11 +221,11 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.cover_all_shares>`__"
 " 来清空仓位："
 
-#: ../../source/notebooks/FAQs.ipynb:3508 af0d58e586b543259518bb4b5caf4871
+#: ../../source/notebooks/FAQs.ipynb:3508 86f37ff478fb4d5d89eb8f01646776df
 msgid "Process multiple symbols at once"
 msgstr "同时处理多个标的"
 
-#: ../../source/notebooks/FAQs.ipynb:3510 184ce6a8617e4343b5aa538e8dc9b5f5
+#: ../../source/notebooks/FAQs.ipynb:3510 a378c456d36f43428cd19c85065767d8
 msgid ""
 "Use `set_before_exec "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_before_exec>`__"
@@ -237,11 +237,11 @@ msgstr ""
 " 或 `set_after_exec "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_after_exec>`__："
 
-#: ../../source/notebooks/FAQs.ipynb:4070 fa3961743895496288d5c2c4ecc4ab68
+#: ../../source/notebooks/FAQs.ipynb:4070 31b09cfed7f44ab88caf3221ef7ee9d2
 msgid "Annualize the Sharpe Ratio"
 msgstr "对夏普比率进行年化"
 
-#: ../../source/notebooks/FAQs.ipynb:4072 1f88639ffec94f4b8d48bd2b6e9bf185
+#: ../../source/notebooks/FAQs.ipynb:4072 1d636a07003c4e58a0f54e5ed4cf0146
 msgid ""
 "Set the `bars_per_year "
 "<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.bars_per_year>`__"
@@ -252,11 +252,11 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.bars_per_year>`__"
 " 配置选项。例如，设置为 ``252`` 的值将用于对每日回报进行年化。"
 
-#: ../../source/notebooks/FAQs.ipynb:4278 f5243b6677ae4390bc30d0e2cd2821e8
+#: ../../source/notebooks/FAQs.ipynb:4278 664dd86a558b48f290c9828842821c14
 msgid "Get and set a global parameter"
 msgstr "获取和设置全局参数"
 
-#: ../../source/notebooks/FAQs.ipynb:4280 563117c650294bf6aa709163f88a7eb2
+#: ../../source/notebooks/FAQs.ipynb:4280 b446bb6a40674385a9f6040073e68fea
 msgid ""
 "Use `param "
 "<https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.param>`__"
@@ -272,26 +272,27 @@ msgstr ""
 " 来设置在整个会话中共享的全局值。对于配合 `optimize "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.optimize>`__"
 " 使用的可调策略参数，请改用 `hyperparam "
-"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.hyperparam>`__"
-"："
+"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.hyperparam>`__："
 
-#: ../../source/notebooks/FAQs.ipynb:4333 2114590df3ec4974ac48fdd60ee18db5
+#: ../../source/notebooks/FAQs.ipynb:4333 924656c809f34e8090b260399920d76e
 msgid "Set a target allocation"
 msgstr "设置目标仓位"
 
-#: ../../source/notebooks/FAQs.ipynb:4335 7834e590ebe341ac80108b102ff8a2cf
+#: ../../source/notebooks/FAQs.ipynb:4335 a8855a36dcb045aaa0adccaa710e8ba0
 msgid ""
-"Use `set_target_shares "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.set_target_shares>`__:"
+"`set_target_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.set_target_shares>`__"
+" will buy and sell enough shares to approximate a target allocation:"
 msgstr ""
-"使用 `set_target_shares "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.set_target_shares>`__："
+"`set_target_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.set_target_shares>`__"
+" 会买卖足够的股数，以逼近目标仓位："
 
-#: ../../source/notebooks/FAQs.ipynb:4897 d883a8c698e5454abd788b51e0fba323
+#: ../../source/notebooks/FAQs.ipynb:4897 72a9aac162c3482eb72cb157e57fa134
 msgid "Record position bars"
 msgstr "记录仓位K线数据"
 
-#: ../../source/notebooks/FAQs.ipynb:4899 2042448a22c64d7b8925d3aef710b781
+#: ../../source/notebooks/FAQs.ipynb:4899 567e3ac47b16427d935fa8cf329d24b2
 msgid ""
 "Set `record_position_bars "
 "<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.record_position_bars>`__"
@@ -299,7 +300,8 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.TestResult.positions>`__:"
 msgstr ""
 "设置 `record_position_bars "
-"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.record_position_bars>`__"
-"，即可在 `result.positions "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.record_position_bars>`__，即可在"
+" `result.positions "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.TestResult.positions>`__"
 " 中捕获每根K线的仓位快照："
+

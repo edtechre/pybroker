@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-04 18:14-0700\n"
+"POT-Creation-Date: 2026-08-05 16:46-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -19,23 +19,21 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../source/notebooks/17. 7a5fa2ee134245c8b5e5698c3277e5b9 Models.ipynb:9
+#: ../../source/notebooks/17. 45ea3e05b9f24b62ae30a56b8eefc1be Models.ipynb:9
 #: Multi-Symbol
 msgid "Multi-Symbol Models"
 msgstr "多品种模型"
 
-#: ../../source/notebooks/17. 0b7ddb81fdef4b29845258e3ee4293fb Models.ipynb:11
+#: ../../source/notebooks/17. 921886505fff406dbcc5f5e5a82d68f5 Models.ipynb:11
 #: Multi-Symbol
 msgid ""
 "The models trained so far have trained a separate instance for every "
 "ticker symbol. Symbols that share the same dynamics, such as stocks in a "
 "single industry, can instead be modeled jointly. This approach provides a"
 " single model with much more data to learn from."
-msgstr ""
-"到目前为止，我们训练的模型都是为每个股票代码单独训练一个实例。而对于具有相同动态特征的品种（例如同一行业的股票），"
-"则可以将其联合建模。这种方法能让单个模型获得更多可供学习的数据。"
+msgstr "到目前为止，我们训练的模型都是为每个股票代码单独训练一个实例。而对于具有相同动态特征的品种（例如同一行业的股票），则可以将其联合建模。这种方法能让单个模型获得更多可供学习的数据。"
 
-#: ../../source/notebooks/17. 5586d855c48f43dbbe901d0c2f9eb432 Models.ipynb:13
+#: ../../source/notebooks/17. 7ad99df2205c486ba3e26c688ea37c59 Models.ipynb:13
 #: Multi-Symbol
 msgid ""
 "**PyBroker v2** supports training one model across all symbols passed to "
@@ -47,13 +45,13 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__"
 " 的所有品种上训练同一个模型，本文档将对此进行演示。"
 
-#: ../../source/notebooks/17. 24a3a39015c84727a05fd28298f6c14e Models.ipynb:65
+#: ../../source/notebooks/17. 7a0892ba9c1b4771bc3fb96625dfda60 Models.ipynb:64
 #: Multi-Symbol
 msgid "Training One Model on Multiple Symbols"
 msgstr "在多个品种上训练一个模型"
 
-#: ../../source/notebooks/17. Models.ipynb:67 Multi-Symbol
-#: f04f2b7f469a4dca8ee418d14fa28ea8
+#: ../../source/notebooks/17. 3086b55bd4d74cf38d4bf10bcce7b7a2 Models.ipynb:66
+#: Multi-Symbol
 msgid ""
 "This notebook repurposes the linear regression example from `Training a "
 "Model "
@@ -72,8 +70,8 @@ msgstr ""
 "learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html>`__"
 " 模型："
 
-#: ../../source/notebooks/17. Models.ipynb:105 Multi-Symbol
-#: f2c52bee09ca4200be63e8b99d0537ea
+#: ../../source/notebooks/17. 2eadbd34ef334d65ab309b7c57a30cfd Models.ipynb:104
+#: Multi-Symbol
 msgid ""
 "Registering the model with ``pooled=True`` via `model "
 "<https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model>`__"
@@ -86,30 +84,8 @@ msgstr ""
 " 以 ``pooled=True`` 注册模型后，该模型在每次执行中只会训练一次。启用此选项后，训练函数会用一个 ``symbols`` "
 "元组替换原本单一的 ``symbol`` 参数，并接收这些品种合并后的训练集和测试集划分。"
 
-#: ../../source/notebooks/17. 057c18cb155744f0a6aa907944ce54a0 Models.ipynb:107
+#: ../../source/notebooks/17. 40157ac35a2b4d68b3131e30ffb99adf Models.ipynb:106
 #: Multi-Symbol
-msgid ""
-"During the strategy execution, the trained model is shared across "
-"symbols. Predictions are read with `ctx.preds "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.preds>`__,"
-" positions are sized with `set_target_shares "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.set_target_shares>`__,"
-" and exits use `sell_all_shares "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_all_shares>`__."
-" After `add_execution "
-"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__,"
-" we run a `walkforward "
-"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`__"
-" backtest:"
-msgstr ""
-"在策略执行过程中，已训练的模型会在各品种之间共享。使用 `ctx.preds "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.preds>`__"
-" 读取预测值，使用 `set_target_shares "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.set_target_shares>`__"
-" 确定仓位大小，并使用 `sell_all_shares "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_all_shares>`__"
-" 进行平仓。在调用 `add_execution "
-"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__"
-" 之后，我们运行一次 `walkforward "
-"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`__"
-" 回测："
+msgid "During the backtest, the trained model is shared across symbols:"
+msgstr "在回测过程中，已训练的模型会在各品种之间共享："
+

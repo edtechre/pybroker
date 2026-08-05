@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-04 18:14-0700\n"
+"POT-Creation-Date: 2026-08-05 16:46-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -19,21 +19,20 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../source/notebooks/16. 4c4439e61199444da73060a26bbc9a8e Models.ipynb:9
+#: ../../source/notebooks/16. 7767bfcbb5ad4edcb1cca1e649bb9de9 Models.ipynb:9
 #: Series Time
 msgid "Time Series Models"
 msgstr "时间序列模型"
 
-#: ../../source/notebooks/16. Models.ipynb:11 Series Time
-#: a66587d78dee4c5d8eeb2043a46bb82d
+#: ../../source/notebooks/16. 0eddcc7e171647c28de372fd3a038740 Models.ipynb:11
+#: Series Time
 msgid ""
 "**PyBroker v2** introduces support for backtesting time series models. "
 "Instead of relying on a single row of features, these models make "
 "predictions based on a series' own past values."
-msgstr ""
-"**PyBroker v2** 引入了对时间序列模型回测的支持。这类模型不再依赖单行特征，而是基于序列自身的历史值进行预测。"
+msgstr "**PyBroker v2** 引入了对时间序列模型回测的支持。这类模型不再依赖单行特征，而是基于序列自身的历史值进行预测。"
 
-#: ../../source/notebooks/16. 11bf2f992db9499ca3a3656d7aef63ab Models.ipynb:13
+#: ../../source/notebooks/16. 953ac8411e454d80946226cd12c4d556 Models.ipynb:13
 #: Series Time
 msgid ""
 "To show how this works, we will backtest two different strategies. The "
@@ -44,18 +43,18 @@ msgid ""
 " Since **PyBroker** does not include ``arch`` by default, you must "
 "install it first by running ``pip install arch``."
 msgstr ""
-"为了展示其工作原理，我们将回测两种不同的策略。第一种策略依赖于使用 `arch <https://arch.readthedocs.io/>`__ "
-"库构建的 `GARCH(1,1) "
+"为了展示其工作原理，我们将回测两种不同的策略。第一种策略依赖于使用 `arch <https://arch.readthedocs.io/>`__"
+" 库构建的 `GARCH(1,1) "
 "<https://en.wikipedia.org/wiki/Autoregressive_conditional_heteroskedasticity>`__"
-" 模型给出的波动率预测。第二种策略使用一个在每根 K 线上都重新拟合的滚动回归模型。由于 **PyBroker** 默认不包含 ``arch``，"
-"你必须先运行 ``pip install arch`` 进行安装。"
+" 模型给出的波动率预测。第二种策略使用一个在每根 K 线上都重新拟合的滚动回归模型。由于 **PyBroker** 默认不包含 "
+"``arch``，你必须先运行 ``pip install arch`` 进行安装。"
 
 #: ../../source/notebooks/16. Models.ipynb:66 Series Time
-#: e547fbf69ca743edbf3da8d0b9d6f4c6
+#: a74e19416d0e42a2b6e94f811fde388b
 msgid "Forecasting Volatility with GARCH"
 msgstr "使用 GARCH 预测波动率"
 
-#: ../../source/notebooks/16. 9536318fef484944bc44200086393f70 Models.ipynb:68
+#: ../../source/notebooks/16. 9f711eff34a647c89e1665fb229b68d9 Models.ipynb:68
 #: Series Time
 msgid ""
 "GARCH will model the volatility of a return series, so we start by "
@@ -66,14 +65,14 @@ msgstr ""
 "GARCH 用于对收益率序列的波动率进行建模，因此我们首先为对数收益率定义一个 `indicator "
 "<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.indicator>`__："
 
-#: ../../source/notebooks/16. 3ab24f63dbff44a4a71a0787b0dfb112 Models.ipynb:96
+#: ../../source/notebooks/16. 861d2c89e3794e0e8b51ffb4ec706ee2 Models.ipynb:96
 #: Series Time
 msgid ""
 "The training function scales the log returns to percentages for more "
 "reliable estimation:"
 msgstr "训练函数会将对数收益率缩放为百分比，以获得更可靠的估计："
 
-#: ../../source/notebooks/16. 7416a9dcea4245e99c402feb47195ed2 Models.ipynb:128
+#: ../../source/notebooks/16. 28076b30d12f48528315be075cc1f086 Models.ipynb:128
 #: Series Time
 msgid ""
 "The model is built using the combined returns from both the train and "
@@ -84,23 +83,22 @@ msgstr ""
 "该模型使用训练窗口和测试窗口合并后的收益率进行构建。不过，传入 ``last_obs`` "
 "可确保参数估计仅依赖训练窗口，并将测试收益率隔离开来，以防止数据泄漏。"
 
-#: ../../source/notebooks/16. 4c2be12666144befbbbab496c1698089 Models.ipynb:130
+#: ../../source/notebooks/16. 4704eaae44894981a9dd9f632b1993f4 Models.ipynb:130
 #: Series Time
 msgid ""
 "For every test data bar, the prediction function uses the trained model "
 "to forecast the variance of the next bar:"
 msgstr "对于每根测试数据 K 线，预测函数都会使用已训练的模型来预测下一根 K 线的方差："
 
-#: ../../source/notebooks/16. Models.ipynb:158 Series Time
-#: a244459ca7244b6090d1baea55de29c0
+#: ../../source/notebooks/16. 7311471a61d3433199a259495898433d Models.ipynb:158
+#: Series Time
 msgid ""
 "Because the model already stores the full return series, the model input "
 "is only the location of the current bar. The forecast then only uses "
 "returns up to that point."
-msgstr ""
-"由于模型已经保存了完整的收益率序列，因此模型的输入仅为当前 K 线的位置。预测过程只会使用到该位置为止的收益率数据。"
+msgstr "由于模型已经保存了完整的收益率序列，因此模型的输入仅为当前 K 线的位置。预测过程只会使用到该位置为止的收益率数据。"
 
-#: ../../source/notebooks/16. 83ecb20f12ee424ea440d2ae25fab45c Models.ipynb:160
+#: ../../source/notebooks/16. 68b973ea6e6443e69e85e3cd42e7b4b6 Models.ipynb:160
 #: Series Time
 msgid ""
 "By default, **PyBroker** passes all test window data to the model in a "
@@ -112,51 +110,44 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model>`__"
 " once per bar:"
 msgstr ""
-"默认情况下，**PyBroker** 会在一次调用中将全部测试窗口数据传给模型。这种向量化的方式虽然高效，但并不适用于自回归模型，"
-"因为这类模型需要依赖上一步的输出来生成下一次预测。此时，向 `model "
+"默认情况下，**PyBroker** "
+"会在一次调用中将全部测试窗口数据传给模型。这种向量化的方式虽然高效，但并不适用于自回归模型，因为这类模型需要依赖上一步的输出来生成下一次预测。此时，向"
+" `model "
 "<https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model>`__"
 " 传入 ``per_bar=True`` 会让 `predict_fn "
 "<https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model>`__"
 " 每根 K 线调用一次："
 
-#: ../../source/notebooks/16. 50abc29f6f924b2985ac2b41c33b116c Models.ipynb:187
+#: ../../source/notebooks/16. 60913fd518f24f16b4ee915ba2f7c869 Models.ipynb:187
 #: Series Time
 msgid ""
 "The strategy uses the volatility forecast from `ctx.preds "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.preds>`__"
-" as a regime filter. It enters with `set_target_shares "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.set_target_shares>`__"
-" while forecast volatility is below the threshold, and exits with "
-"`sell_all_shares "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_all_shares>`__"
-" when it rises above:"
+" as a regime filter. It enters a long position when forecast volatility "
+"is below the threshold, and exits when it rises above:"
 msgstr ""
 "该策略将 `ctx.preds "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.preds>`__"
-" 给出的波动率预测用作市场状态过滤器：当预测波动率低于阈值时，使用 `set_target_shares "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.set_target_shares>`__"
-" 建仓；当波动率升至阈值以上时，使用 `sell_all_shares "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_all_shares>`__"
-" 平仓："
+" 给出的波动率预测用作市场状态过滤器：当预测波动率低于阈值时进场做多，并在波动率升至阈值以上时离场："
 
-#: ../../source/notebooks/16. 73a727b29fa043b6aa926f3813ed31fb Models.ipynb:718
+#: ../../source/notebooks/16. 0e50b0c8ef5a4ac4a22af039b3c9e4b4 Models.ipynb:717
 #: Series Time
 msgid "Random Forest on Lagged Returns"
 msgstr "基于滞后收益率的随机森林"
 
-#: ../../source/notebooks/16. Models.ipynb:720 Series Time
-#: f9bb6235365149e7bed038b25dda6206
+#: ../../source/notebooks/16. Models.ipynb:719 Series Time
+#: c0f743c362d54c71a2f37eb8f31c33fc
 msgid ""
 "The second strategy trains a `RandomForestRegressor <https://scikit-"
 "learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html>`__"
 " to predict the next bar's return from lagged returns."
 msgstr ""
 "第二种策略训练一个 `RandomForestRegressor <https://scikit-"
-"learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html>`__，"
-"根据滞后收益率来预测下一根 K 线的收益率。"
+"learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html>`__，根据滞后收益率来预测下一根"
+" K 线的收益率。"
 
-#: ../../source/notebooks/16. Models.ipynb:749 Series Time
-#: a4f4562693c04d8a9fa57e0d8b2f3d35
+#: ../../source/notebooks/16. 08632e8490784101a5a4eb16202471f9 Models.ipynb:748
+#: Series Time
 msgid ""
 "The training function receives ``lag_train`` and ``lag_test`` parameters "
 "built from the model's `lags "
@@ -170,17 +161,16 @@ msgstr ""
 " 配置构建的 ``lag_train`` 和 ``lag_test`` 参数。二者均为特征矩阵，每根输入 K 线对应一行，每一行都以该 K 线的 "
 "``log_return`` 值开头，后面跟着其滞后值。"
 
-#: ../../source/notebooks/16. 3cba7d9dfc2b45bfac30485b734759e2 Models.ipynb:751
-#: Series Time
+#: ../../source/notebooks/16. Models.ipynb:750 Series Time
+#: c3695d7526ab4c6882bd1fa119d04fd6
 msgid ""
 "Unlike the per-bar GARCH model, the predict function uses **PyBroker's** "
 "default behavior and evaluates the entire test window in a single "
 "vectorized call:"
-msgstr ""
-"与逐 K 线计算的 GARCH 模型不同，该预测函数使用 **PyBroker** 的默认行为，在一次向量化调用中对整个测试窗口进行评估："
+msgstr "与逐 K 线计算的 GARCH 模型不同，该预测函数使用 **PyBroker** 的默认行为，在一次向量化调用中对整个测试窗口进行评估："
 
-#: ../../source/notebooks/16. Models.ipynb:773 Series Time
-#: fb0b35e8860f4142ad46db4cd5a772a8
+#: ../../source/notebooks/16. 625cf74200d244018f21f9ee288108ae Models.ipynb:772
+#: Series Time
 msgid ""
 "Registering the model with `lags "
 "<https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model>`__"
@@ -194,7 +184,7 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model>`__"
 " 中的每一列都包含过去三个滞后值："
 
-#: ../../source/notebooks/16. 26004ebee5784ea082d1f41bf4954ade Models.ipynb:800
+#: ../../source/notebooks/16. 4b99a1fe10fc4ebd88f99ad864c36626 Models.ipynb:799
 #: Series Time
 msgid ""
 "The strategy buys when `ctx.preds "
@@ -213,3 +203,4 @@ msgstr ""
 " 之后，我们运行一次 `walkforward "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`__"
 " 回测："
+
