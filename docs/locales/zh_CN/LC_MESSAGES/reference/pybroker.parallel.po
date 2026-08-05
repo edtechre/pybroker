@@ -1,0 +1,135 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-05 15:57-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/reference/pybroker.parallel.rst:2
+#: 1a82c3af2a524dd98773b230f2cb0b86
+msgid "pybroker.parallel module"
+msgstr ""
+
+#: bf2dd488f2ab427c8d7b50addca05d91 of pybroker.parallel:1
+msgid "Contains parallel execution configuration."
+msgstr ""
+
+#: 811e5594c4e947e8aeef34a5145e99a5 of pybroker.parallel.ParallelConfig:1
+msgid "Configuration for parallel execution used by PyBroker."
+msgstr ""
+
+#: 6a10fa73976b48789bac4b3413173681 of pybroker.parallel.ParallelConfig:3
+msgid ""
+"PyBroker can compute indicators, train models, and run optimizations in "
+"parallel using `joblib <https://joblib.readthedocs.io/>`_. Optimization "
+"trials run on all available cores by default; indicator computation and "
+"model training additionally require their ``parallel_indicators``/ "
+"``parallel_models`` flags. Call ``set_parallel(n_jobs=1)`` to run "
+"everything sequentially, and read the current configuration with "
+":func:`get_parallel_config`."
+msgstr ""
+
+#: 4b3f347407014552a998394e8ecd4a65 of pybroker.parallel.ParallelConfig:13
+msgid ""
+"Number of worker jobs. ``-1`` (the default) uses all available cores; "
+"``1`` runs sequentially."
+msgstr ""
+
+#: 0c0bfb642c5142a8bd7abc77a2c4c5f6 1cf217179cde4477b39f4d97a02394cd
+#: 2d109f5ad0f24a6aa71aab2bae3b106f of pybroker.parallel.ParallelConfig
+msgid "type"
+msgstr ""
+
+#: a6320d16c7b14a2eaaaf2045cc377dd8 of pybroker.parallel.ParallelConfig:16
+msgid "int | None"
+msgstr ""
+
+#: c2321c0941214a5bb7b9d9d37cbbfe29 of pybroker.parallel.ParallelConfig:20
+msgid ""
+"joblib backend name. ``'loky'`` (the default) runs work in separate "
+"processes. Any backend registered with joblib is also accepted (e.g. "
+"``'ray'`` after ``ray.util.joblib.register_ray()``)."
+msgstr ""
+
+#: 92c830a6b3ec4982b290584a3c0df815 of pybroker.parallel.ParallelConfig:24
+msgid "str | None"
+msgstr ""
+
+#: f19ba8358fa5470aa0a9354ddc7452f9 of pybroker.parallel.ParallelConfig:28
+msgid ""
+"Optional pre-constructed :class:`joblib.Parallel` instance that overrides"
+" ``n_jobs`` and ``backend`` entirely. When set, PyBroker uses it directly"
+" and the caller owns its lifecycle. Defaults to ``None``."
+msgstr ""
+
+#: 7e3f8838dc754f1c9f8bdc24076b01ce of pybroker.parallel.ParallelConfig:33
+msgid "joblib.parallel.Parallel | None"
+msgstr ""
+
+#: bea74399c31542088e32bc095799eb70 of pybroker.parallel.get_parallel_config:1
+msgid "Returns the current parallel configuration"
+msgstr ""
+
+#: 729fbb7b85974ef784389f25dfddecb9 of pybroker.parallel.set_parallel:1
+msgid "Configures parallel execution used by PyBroker."
+msgstr ""
+
+#: 6401dc85f44b44e5a0551aeee8974f16 of pybroker.parallel.set_parallel:3
+msgid ""
+"PyBroker uses all available cores by default; call "
+"``set_parallel(n_jobs=1)`` to run sequentially."
+msgstr ""
+
+#: ../../source/reference/pybroker.parallel.rst
+#: ca9b95b4f8ed4cde959860cca0b1265f
+msgid "Parameters"
+msgstr ""
+
+#: ec1ef33bbba6488eab09f2a0130ed470 of pybroker.parallel.set_parallel:6
+msgid ""
+"Number of workers. ``-1`` uses all cores (the default); ``1`` runs "
+"sequentially. Leave as ``None`` to keep the currently configured value."
+msgstr ""
+
+#: 3d4e9f6b0a244a639dc89c07d41a174c of pybroker.parallel.set_parallel:9
+msgid ""
+"joblib backend name: ``'loky'`` (default) or any backend registered via "
+":func:`joblib.register_parallel_backend` (e.g. ``'ray'`` after "
+"``ray.util.joblib.register_ray()``). The ``'multiprocessing'`` backend is"
+" rejected because its standard pickle serialization cannot ship "
+"PyBroker's dispatch closures."
+msgstr ""
+
+#: 40aab51d04bc45e3a1070573b53fe44e of pybroker.parallel.set_parallel:14
+msgid ""
+"Pre-constructed :class:`joblib.Parallel` instance. Mutually exclusive "
+"with ``n_jobs``/``backend``; caller owns its lifecycle."
+msgstr ""
+
+#: ../../source/reference/pybroker.parallel.rst
+#: d020f6052afe4c8199e6e7f86fe208ea
+msgid "Raises"
+msgstr ""
+
+#: 6b1b362da9d745dfa2a46bf38d084bc9 of pybroker.parallel.set_parallel:17
+msgid ""
+"If ``parallel`` is passed together with ``n_jobs`` or     ``backend``, if"
+" ``backend`` is not a registered joblib backend or     is "
+"``'multiprocessing'``, or if ``parallel`` returns results out     of "
+"submission order."
+msgstr ""
+

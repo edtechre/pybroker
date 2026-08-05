@@ -1,14 +1,14 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) 2023, Edward West
+# Copyright (C) 2026, Edward West
 # This file is distributed under the same license as the PyBroker package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
 #
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-08-09 16:35+0800\n"
+"POT-Creation-Date: 2026-08-05 15:57-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -17,239 +17,730 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.12.1\n"
+"Generated-By: Babel 2.18.0\n"
 
 #: ../../source/reference/pybroker.indicator.rst:2
-#: 8bba6309a31c444db53f7fea084965f0
+#: 2181d3bb936d4a559a756a1200645408
 msgid "pybroker.indicator module"
 msgstr ""
 
-#: e7df6eb089574529a2605611b73a85db of pybroker.indicator:1
+#: 462b5da9194d4f9a8c7858543d269beb of pybroker.indicator:1
 msgid "Contains indicator related functionality."
 msgstr ""
 
-#: 2e6dcfd288fe49f1b4de04cfbdb42049 ac4b5ab168a348b584347fb76dce78b3 of
-#: pybroker.indicator.Indicator:1 pybroker.indicator.IndicatorsMixin:1
-msgid "Bases: :py:class:`object`"
-msgstr ""
-
-#: e32808daa734498da786a5697923b3e1 of pybroker.indicator.Indicator:1
+#: b258568aaa814fafa628eed959c0bfd8 of pybroker.indicator.Indicator:1
 msgid "Class representing an indicator."
 msgstr ""
 
-#: 0257f0692a3d40d2bc28287edd720f2c 12bc3cba93c74182ae5eb1693b49de18
-#: 2bc4326b1b28418386fc406801656b60 6b2e2018eaaf4b558005b03836b0918e
-#: 7d01dcf14c7848f48b13ff6d5b5a4608 de248f899cf943b4b54beb09cdaf4b77
-#: f7f7839492bd451f9b13f8b1d2e90c1a of pybroker.indicator.Indicator
-#: pybroker.indicator.IndicatorSet.__call__
-#: pybroker.indicator.IndicatorsMixin.compute_indicators
-#: pybroker.indicator.highest pybroker.indicator.indicator
-#: pybroker.indicator.lowest pybroker.indicator.returns
+#: ../../source/reference/pybroker.indicator.rst
+#: 0397795e518c450ab64678575fd21004 0776dee1121d40f0be5f79a1a6e27c74
+#: 08699eeae3bb4b45938fd718a3a9ba51 09ca1967410049728a13c839236940b0
+#: 15a15d378a6e4ffaae7920c0abfca811 1d36fd018d4049b2aeba4c534510a629
+#: 2844a54e76d04442a8ba55f1bb6f9d34 2a16965a834245e58b707f868d6bb87e
+#: 2ee2988c09784285b460826e2c026bda 3982a5f66e4a440dbab793d998b9c6dc
+#: 3e9a9cdec0894ab0a472ee087aadfaad 3ecfe1c8861b4aa4be2ac0fe3c13b72e
+#: 43dddd5a0d4d40a991e547ae26ecc258 4ccfc303aca742e89dcfec48c6ab863d
+#: 5764d15709124044b1c444f4b7215652 669d3b458dd64372a659d982f7908a50
+#: 6a6820ac26464e1e92425804f250a83e 6ec555c9d06e4194ad9b517d90b2cdc5
+#: 709d5a016aa44d0cacedf26befebc3a2 a07fca5f4b1046c186cfc5061dd67c57
+#: a112352e71af4db980f321576dd4a7d3 ae6d8444b9994403a4b2b5bb3cc47356
+#: ae7da39ac45d40acbc7534513f2f3b10 b020d6bf9b6e4b17b8a5460c4f04f6c8
+#: b5c96d2777d64b4dbb1a4be453843e0a baa74d60239b42799fe3eea9b222eb90
+#: c88a6ed489c34e2f9b6b8b053259b0f1 cba63b0ed3d3467ebd9cfd3bc82e7755
+#: d412ccac99154f61807ba6f9c129780f dc5c33b9a806442b9ff4a9e4322bba3d
+#: de3070da59f64854a63d845989e72f6b e0e74e809f4445cc93b6e6f1d4e192bd
+#: e2ebc1f9f0fb4479933cdb80e812d09e e90727e21df1426e840f36089270335b
+#: f52ba955374f42a9b82320ed05cbc648 f840a8d4779f4252af6ecdffbfd1227e
 msgid "Parameters"
 msgstr ""
 
-#: ab3c04bc159743e79e62e670b8b9c4af of pybroker.indicator.Indicator:3
+#: 5cb007ac4b87471aba4eff955af0a293 of pybroker.indicator.Indicator:3
 msgid "Name of indicator."
 msgstr ""
 
-#: 84e521c8f7d345c3b2fbccf11c04e0b8 of pybroker.indicator.Indicator:4
+#: 870b6e9b13204edf82a6374377e35adf of pybroker.indicator.Indicator:4
 msgid ":class:`Callable` used to compute the series of indicator values."
 msgstr ""
 
-#: e4eb669ae0ab40df8c4e4ab5c768445d of pybroker.indicator.Indicator:5
+#: d792800d624d457d8900ce4ebef978e5 of pybroker.indicator.Indicator:5
 msgid "``dict`` of kwargs to pass to ``fn``."
 msgstr ""
 
-#: c54599a8d4124cddb46a4cb85d3ffd63 of pybroker.indicator.Indicator.__call__:1
+#: 5b2c18bf3dba469ea4605bd5e331a58a of pybroker.indicator.Indicator.__call__:1
 msgid "Computes indicator values."
 msgstr ""
 
-#: eaebb998f4194e3b9a633653ad49f251 of pybroker.indicator.Indicator.iqr:1
+#: ccc22f1ec4e948aba02a3307605bddd7 of pybroker.indicator.Indicator.iqr:1
 msgid ""
 "Generates indicator data with ``data`` and computes its `interquartile "
 "range (IQR) <https://en.wikipedia.org/wiki/Interquartile_range>`_."
 msgstr ""
 
-#: c738c13eac7440eab74c33e0eafb6705 of
+#: 46879282871e4e648086c6a3556ec24c of
 #: pybroker.indicator.Indicator.relative_entropy:1
 msgid ""
 "Generates indicator data with ``data`` and computes its relative `entropy"
 " <https://en.wikipedia.org/wiki/Entropy_(information_theory)>`_."
 msgstr ""
 
-#: af3a42c831b84eafa38267365d922c94 of pybroker.indicator.IndicatorSet:1
-msgid "Bases: :py:class:`~pybroker.indicator.IndicatorsMixin`"
-msgstr ""
-
-#: ce274541c1fe4a40b9b3f980f85bfa9b of pybroker.indicator.IndicatorSet:1
+#: 160ec6fc7acc4f36b587f80de79050cc of pybroker.indicator.IndicatorSet:1
 msgid "Computes data for multiple indicators."
 msgstr ""
 
-#: 31fcbfbbe27a445e86c469fdd35ad98a of
+#: c20f1f2f9cc44c49899ad5baa76bf65b of
 #: pybroker.indicator.IndicatorSet.__call__:1
 msgid "Computes indicator data."
 msgstr ""
 
-#: c2dc32c67a05453aac92774d4923a4d9 of
+#: 6118691d1ea34aed9a80fc118ad62cf3 of
 #: pybroker.indicator.IndicatorSet.__call__:3
 msgid ":class:`pandas.DataFrame` of input data."
 msgstr ""
 
-#: 66125e40759a41a0a124d0e5bf837f7f of
+#: 7e03243cd2e446e1b2317554597bb093 of
 #: pybroker.indicator.IndicatorSet.__call__:4
 msgid ""
-"If ``True``, indicator data is computed serially. If ``False``, indicator"
-" data is computed in parallel using multiple processes. Defaults to "
-"``False``."
+"If ``True``, indicator data is computed in parallel using multiple "
+"processes. If ``False``, indicator data is computed serially. Defaults to"
+" ``False``."
 msgstr ""
 
-#: 1c9980b0726c4afc8c922867bb71f09b 4f526e8e6a2a490eb5c123a8503242fb
-#: 7e9f4d1c888549afa60bcb983d4ca893 9bfa592041024200aa3c2f64b7bc4b21
-#: e0482047fdae4adf85edb8e85b0d499f eaa1d09d3bfa4bd2901073ea9ac2a803 of
-#: pybroker.indicator.IndicatorSet.__call__
-#: pybroker.indicator.IndicatorsMixin.compute_indicators
-#: pybroker.indicator.highest pybroker.indicator.indicator
-#: pybroker.indicator.lowest pybroker.indicator.returns
+#: ../../source/reference/pybroker.indicator.rst
+#: 048eb11d0dc043989c97e3225ffb80f2 2558343dbea84468990d7fd53d01a4b5
+#: 2adc8fa445d94099aab99374b9fb741f 2be8897854ce41daadaa3c64b6c852ac
+#: 2fb342517b6b4b3e813e9b060945996a 31ccbd5faf094ce788140d2da9de7ff1
+#: 3253ab697d95488cbc2b9a7c08a34496 377795fab3e940f9835c062ba8a9b452
+#: 377f8c5a49c84373a99cd514878f47a0 3b6767a736234a18b18ae28e3d654607
+#: 3c475841efc840deac886df332339769 53d3d7643cc2414ca4c5908aa65e696f
+#: 565e474b982c43f889b713e2c25eebb2 56ffee4ed44945aebee1b9fdb9a6e412
+#: 5dc524f2af7d41008c71fb3a2e034ddc 60ad5fe5148e467393f36238679884c8
+#: 62ab56c2e7fe4903afe959952f73fd64 63a602b27f5346fcbf661a26833d1633
+#: 696b10891932434b968c8e56f4483e89 6f9c4985d60e4735b5d4536d6baf38bc
+#: 75a8f4b6a24d48ff90f61ffac324617c 7a307924d56443f4b862f721d5d3f2d8
+#: 7f6e67a612d84804897debae4c91fab3 8b346cec824c4abbacdb372ef6241e79
+#: 91fe1a5fd7574a4793e0d6444edb5793 94870c03d0c441f7ac2d7013c57e8604
+#: 98cc71ff6850480a8cf7052ac6cf2309 997e9ab805cf47fa9f9f0fb64e9469d2
+#: a4c4c62d7aa54184b0dea6d0969235e6 bfa8ab034a184d76bab23466e62e4e27
+#: c66939e49a0e470d9394a48b1ddbdff6 db3a6159f4d74c558f81cd6f0a2b9d41
+#: fb39e79ea37e4268ad22a1d22fad9fda fd7e67e69a9d422bb985724a19eb3308
+#: fee764ffc4bb44198a323430cb6fc855
 msgid "Returns"
 msgstr ""
 
-#: 62d274b8a6a94957afbee0a8c2cf14bf of
+#: fd41335be55d4d33a7a2e510cbd46899 of
 #: pybroker.indicator.IndicatorSet.__call__:8
 msgid ":class:`pandas.DataFrame` containing the computed indicator data."
 msgstr ""
 
-#: 98549163c0044cb09905a4ca0e1d1d66 of pybroker.indicator.IndicatorSet.add:1
+#: f3a87697cc124ee6869d3f7ad7a67190 of pybroker.indicator.IndicatorSet.add:1
 msgid "Adds indicators."
 msgstr ""
 
-#: 845e718de20d497fa40b13081cb2d9e8 of pybroker.indicator.IndicatorSet.clear:1
+#: 76330984a7c14eae801f2fea0d41234b of pybroker.indicator.IndicatorSet.clear:1
 msgid "Removes all indicators."
 msgstr ""
 
-#: 1e93760c30de44738824a6d7db4bda31 of pybroker.indicator.IndicatorSet.remove:1
+#: 7834700b789c49bf86e809cc9d7cfc61 of pybroker.indicator.IndicatorSet.remove:1
 msgid "Removes indicators."
 msgstr ""
 
-#: cf40015a33eb4309810fbfd0b1724bdd of pybroker.indicator.IndicatorsMixin:1
+#: 8021b10cc7c84ed894a7afdd7f471060 of pybroker.indicator.IndicatorsMixin:1
 msgid "Mixin implementing indicator related functionality."
 msgstr ""
 
-#: c6447909881142ce812df83f7d06c84f of
+#: 2201cb3a598a4a2f8da23e7273174921 of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:1
 msgid ""
 "Computes indicator data for the provided "
 ":class:`pybroker.common.IndicatorSymbol` pairs."
 msgstr ""
 
-#: 79f93d6d1b724c7cbfb5144d187a1dae of
+#: d239280429b84e5c8b9d1be16ab9e329 of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:4
 msgid ":class:`pandas.DataFrame` used to compute the indicator values."
 msgstr ""
 
-#: 6f4442c626aa4b15abb35d946695cc6b of
+#: cc146d5f3f784097b2323607be02d8b5 of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:5
 msgid ""
 "``Iterable`` of :class:`pybroker.common.IndicatorSymbol` pairs of "
 "indicators to compute."
 msgstr ""
 
-#: 722abdd905c24f1192279c1bec989d83 of
+#: 0fb923d01978408abb204ba840ef9d2a of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:8
 msgid "Date fields used to key cache data. Pass ``None`` to disable caching."
 msgstr ""
 
-#: d18150dfbf064a6b8b0d832e2e28221a of
+#: ef3a316a12ac4b2fbc3ba31f8f28448b of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:10
 msgid ""
-"If ``True``, indicator data is computed serially for all "
-":class:`pybroker.common.IndicatorSymbol` pairs. If ``False``, indicator "
-"data is computed in parallel using multiple processes."
+"If ``True``, indicator data is computed in parallel using multiple "
+"processes. If ``False``, indicator data is computed serially for all "
+":class:`pybroker.common.IndicatorSymbol` pairs."
 msgstr ""
 
-#: 2aa4c3d1389a417cb591fb7215ee5c36 of
+#: 6ba11747e3134ed9baf609ca9c64a868 of
+#: pybroker.indicator.IndicatorsMixin.compute_indicators:14
+msgid "Optional compressed interval data."
+msgstr ""
+
+#: f516b2e0ddda4b349553af0de0524e6c of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:15
+msgid ""
+"Optional pre-built :class:`pybroker.scope.SymbolArrayStore` to avoid "
+"rebuilding per-symbol arrays from ``df``."
+msgstr ""
+
+#: 4a99dd8ee67f437fb1d7fe8483439829 of
+#: pybroker.indicator.IndicatorsMixin.compute_indicators:17
+msgid ""
+"Optional hyperparameter overrides for indicators that declare "
+"hyperparameters. During :meth:`pybroker.optimize.OptimizeMixin.optimize`,"
+" results are memoized in memory."
+msgstr ""
+
+#: cb6492f657e34785ad62c3d9b6ea98ab of
+#: pybroker.indicator.IndicatorsMixin.compute_indicators:22
 msgid ""
 "``dict`` mapping each :class:`pybroker.common.IndicatorSymbol` pair to a "
 "computed :class:`pandas.Series` of indicator values."
 msgstr ""
 
-#: 6a5b038468c5406e8e4b2898e61e58cd of pybroker.indicator.highest:1
-msgid "Creates a rolling high :class:`.Indicator`."
+#: 647adce009ca4345abb6cd288196a634 of pybroker.indicator.adx:1
+msgid "Average Directional Movement Index."
 msgstr ""
 
-#: 02f3c5b8d7214824bdab808673ded378 4a9b2443c7044f0b95a473c46a63ab98
-#: b4eca442bfb440238e2bc8508e3dd8a2 of pybroker.indicator.highest:3
-#: pybroker.indicator.lowest:3 pybroker.indicator.returns:3
+#: 00ca78c093c5488b958eeb0df3edd6d4 09107b8d54d44f70904f46d9e56e006e
+#: 09348ff14bb34bbf952159d8033e9e3a 102a9ad370b84860a865c1dcdbdb4939
+#: 10d8a7486b6d4fd89f86cf6b95d3de9f 15f4e49f54ae440b86d81f9c5a327fe5
+#: 26795c69cb5d4736b88ca6d6e372cbab 32e8d7c075ef4e3b8259b5000db361fd
+#: 37c0c747af824d659ae715a9db67e4e5 4dcc61ce7b82416eac98eb60f77491d4
+#: 61d02423b2cb421684b47a9eaf6436c4 648c57ad430d420187f52334472168a6
+#: 68579d540b2342559c1ea48cc3b9372c 6877570462ff49a5ba04f82ad759761d
+#: 6ace60f1c7fd4a208831a8dbc10cc2e9 70dd8a3239034ae488533310450e458d
+#: 74c27a1347eb49858e88c568b32e7b86 7cd907c8931f4819ab00eefb3c5980d6
+#: 8ca89781549b46e78eb5529c01d7c7f7 90cf325b83dd47699d611d8e4c292532
+#: 939cbcc3ea6344d392238e232f45d5e8 96ac9af9136b4d53b64880b75df55d3f
+#: 9ef336f0be8d4f29b2770a166cb3adc1 9fd5d62c16674d17806f21fb52e84274
+#: a1fa11cc6b94492693a1c5dafae0b095 aba6c5bebc584a6bba913f52c99878b1
+#: b1023aa101d34c5b862df2e9af34c2d1 c031f512f7cb480889ad2a07dce48b3b
+#: cb46997265f1432f916acfdaa0baec03 e3f6d93fe5d147aa9ee15726d33e0c13
+#: ed23bc456ca34eb79d8a8924bf84d065 ed732f73a7a74bee8040239b33f8ba56 of
+#: pybroker.indicator.adx:3 pybroker.indicator.aroon_diff:3
+#: pybroker.indicator.aroon_down:3 pybroker.indicator.aroon_up:3
+#: pybroker.indicator.atr:3 pybroker.indicator.close_minus_ma:3
+#: pybroker.indicator.cubic_deviation:3 pybroker.indicator.cubic_trend:3
+#: pybroker.indicator.delta_on_balance_volume:3
+#: pybroker.indicator.detrended_rsi:3 pybroker.indicator.highest:3
+#: pybroker.indicator.intraday_intensity:3 pybroker.indicator.laguerre_rsi:3
+#: pybroker.indicator.linear_deviation:3 pybroker.indicator.linear_trend:3
+#: pybroker.indicator.lowest:3 pybroker.indicator.macd:3
+#: pybroker.indicator.money_flow:3
+#: pybroker.indicator.normalized_negative_volume_index:3
+#: pybroker.indicator.normalized_on_balance_volume:3
+#: pybroker.indicator.normalized_positive_volume_index:3
+#: pybroker.indicator.price_change_oscillator:3
+#: pybroker.indicator.price_intensity:3 pybroker.indicator.price_volume_fit:3
+#: pybroker.indicator.quadratic_deviation:3
+#: pybroker.indicator.quadratic_trend:3 pybroker.indicator.reactivity:3
+#: pybroker.indicator.returns:3 pybroker.indicator.stochastic:3
+#: pybroker.indicator.stochastic_rsi:3 pybroker.indicator.volume_momentum:3
+#: pybroker.indicator.volume_weighted_ma_ratio:3
 msgid "Indicator name."
 msgstr ""
 
-#: 29d49c055a384c1b9c2b24a8400253aa of pybroker.indicator.highest:4
+#: 2f18f4173463431e99edd20e2b2e0f72 30c1fa5f421843849a7c750dfdbe33bf
+#: 4f9f1296525e496cb718f2509f99072c 5b0a2421c75449e5a1087321f68d45cb
+#: 7acb6a2b016d40d99b0e6b78bbec85be 8cb1799c7f874626bc9ebf5d39d929b7
+#: 8dbe6eb6b6364208967283216299ce5b 8f7ec4f4cca146d48b3c452637fdd2e2
+#: 95faa1017e9f407287d3fc91bd6d023c 994cc4bed1ba4eeeb7a016d05bb54d01
+#: a9f7b57713d7408597b5934578e939d2 c8e9b95bd91a444e8ed76b5225cd16f2
+#: cc085269a81b4db1b32e1e5125b3206d ced3ee132799480daab6e4b507f8e577
+#: d7fad29c49964beb981a9b009787563f dbddbab58d71458d843f757435b5fde9
+#: e1c78fbb5007401dbf24b98b8b3d3c8f e86b20e49a6e491fb021e28532b6093b
+#: ec3ee011630f409694b301f3ef64782b ef841f8b758c4529835373cabbd2abb5
+#: f7da7dc55f864785a7f37f8a9a7296ba fb6aef9aad6647a99475ea3d83810e6b of
+#: pybroker.indicator.adx:4 pybroker.indicator.aroon_diff:4
+#: pybroker.indicator.aroon_down:4 pybroker.indicator.aroon_up:4
+#: pybroker.indicator.atr:4 pybroker.indicator.close_minus_ma:4
+#: pybroker.indicator.cubic_deviation:5 pybroker.indicator.cubic_trend:5
+#: pybroker.indicator.delta_on_balance_volume:4
+#: pybroker.indicator.intraday_intensity:4
+#: pybroker.indicator.linear_deviation:5 pybroker.indicator.linear_trend:5
+#: pybroker.indicator.money_flow:4
+#: pybroker.indicator.normalized_negative_volume_index:4
+#: pybroker.indicator.normalized_on_balance_volume:4
+#: pybroker.indicator.normalized_positive_volume_index:4
+#: pybroker.indicator.price_volume_fit:4
+#: pybroker.indicator.quadratic_deviation:5
+#: pybroker.indicator.quadratic_trend:5 pybroker.indicator.reactivity:4
+#: pybroker.indicator.stochastic:4
+#: pybroker.indicator.volume_weighted_ma_ratio:4
+msgid "Number of lookback bars."
+msgstr ""
+
+#: 035722a8e52f48eda19a1a1811c7cfe5 of pybroker.indicator.adx:6
+msgid "Average Directional Movement Index :class:`.Indicator`."
+msgstr ""
+
+#: d013518fa74042efa2c794e0ab063864 of pybroker.indicator.aroon_diff:1
+msgid "Aroon Upward Trend minus Aroon Downward Trend."
+msgstr ""
+
+#: 52cdf43d956747f3a9b07009ed3cb8b5 of pybroker.indicator.aroon_diff:6
+msgid "Aroon Upward Trend minus Aroon Downward Trend :class:`.Indicator`."
+msgstr ""
+
+#: ffc705d707d3496d81a98f5a77fae941 of pybroker.indicator.aroon_down:1
+msgid "Aroon Downward Trend."
+msgstr ""
+
+#: fa128499e5364435b4ba3c80742f3d42 of pybroker.indicator.aroon_down:6
+msgid "Aroon Downward Trend :class:`.Indicator`."
+msgstr ""
+
+#: 02091fda6de44ff79aa79df8f1104740 of pybroker.indicator.aroon_up:1
+msgid "Aroon Upward Trend."
+msgstr ""
+
+#: 16edfd806fc14792b47b428e5f0fe0f1 of pybroker.indicator.aroon_up:6
+msgid "Aroon Upward Trend :class:`.Indicator`."
+msgstr ""
+
+#: 1b8c4b46bf6b445fbaf6d101d1f8d7a1 of pybroker.indicator.atr:1
+msgid "Average True Range (ATR)."
+msgstr ""
+
+#: 736f18b4129342689951c41a24622dbf of pybroker.indicator.atr:6
+msgid "Average True Range :class:`.Indicator`."
+msgstr ""
+
+#: 154b7240247845a09aaf050fef5df3b2 of pybroker.indicator.close_minus_ma:1
+msgid "Close Minus Moving Average."
+msgstr ""
+
+#: 17d0274063e64443935ff0b459e77f52 1f0fc8ebd482483ab6284bee96520284
+#: 4d79ee627d974224a9941f3cf6832128 a6c7566f65ee41a4aeffca1819f620fa of
+#: pybroker.indicator.close_minus_ma:5 pybroker.indicator.cubic_trend:6
+#: pybroker.indicator.linear_trend:6 pybroker.indicator.quadratic_trend:6
+msgid "Lookback length used for Average True Range (ATR) normalization."
+msgstr ""
+
+#: 0e12829330434380a3444c3d981c19ee 394794be24b94b3799ba80ed79f95d95
+#: 93653b6342ef40589b3a704a5acd4aac 9a55312fcb7c4683ba9261cb095a415e
+#: b531da0ebdb445849feb628d499bf37c cb961889c66c475aa39d8221bc3dd408 of
+#: pybroker.indicator.close_minus_ma:7 pybroker.indicator.cubic_trend:8
+#: pybroker.indicator.linear_trend:8 pybroker.indicator.macd:8
+#: pybroker.indicator.quadratic_trend:8
+#: pybroker.indicator.volume_weighted_ma_ratio:5
+msgid ""
+"Increase > 1.0 for more compression of return values, decrease < 1.0 for "
+"less. Defaults to ``1.0``."
+msgstr ""
+
+#: 2fe013a7f47b4867a9a3a8deecdc79e2 of pybroker.indicator.close_minus_ma:10
+msgid "Close Minus Moving Average :class:`.Indicator`."
+msgstr ""
+
+#: a9cbca8a2ffe4760b1e08bbaec89b8cf of pybroker.indicator.cubic_deviation:1
+msgid "Deviation from Cubic Trend."
+msgstr ""
+
+#: 04a58d4297484b5b90059e9fbf8e7ed0 090f6fec19b94a0da17a5f7cc6147369
+#: 274d34cb564043b1a658318a4bd9e790 3c40ad28212d465a95f01bc2f55e461c
+#: 4677dd10a23a452cb25f4b8d6a801ba2 4e315f055c63491081dbd2c5ff3305aa
+#: 601a6d4e1b5744e2931a0ebe962e4813 68ad4662ece345a7b250da2506c7b2a0
+#: 71ec842ee50e4d33952515d15e2bf92d of pybroker.indicator.cubic_deviation:4
+#: pybroker.indicator.cubic_trend:4 pybroker.indicator.detrended_rsi:4
+#: pybroker.indicator.linear_deviation:4 pybroker.indicator.linear_trend:4
+#: pybroker.indicator.macd:4 pybroker.indicator.quadratic_deviation:4
+#: pybroker.indicator.quadratic_trend:4 pybroker.indicator.stochastic_rsi:4
+msgid ":class:`pybroker.common.BarData` field name."
+msgstr ""
+
+#: 5522f7a212be409f89515d46c571903e 5784af7241f845c58b72ea992e38e731
+#: 9c2323bb3b0b448d9cc829b55c9e3990 a733109d4f794158a72bfe6808b9d5fc
+#: a809f97172664fd68e03f787900c1911 c9731d069e314330979afcee3056a7be of
+#: pybroker.indicator.cubic_deviation:6
+#: pybroker.indicator.delta_on_balance_volume:6
+#: pybroker.indicator.linear_deviation:6
+#: pybroker.indicator.normalized_on_balance_volume:5
+#: pybroker.indicator.quadratic_deviation:6 pybroker.indicator.reactivity:6
+msgid ""
+"Increase > 1.0 for more compression of return values, decrease < 1.0 for "
+"less. Defaults to ``0.6``."
+msgstr ""
+
+#: 5fe5ca1cd928430e83aff15a1db11982 of pybroker.indicator.cubic_deviation:9
+msgid "Deviation from Cubic Trend :class:`.Indicator`."
+msgstr ""
+
+#: 4414c00f5710424d84eb475f06e3bb1b of pybroker.indicator.cubic_trend:1
+msgid "Cubic Trend Strength."
+msgstr ""
+
+#: 0688bd2f58d04f14a4d4bcd3b47ef743 of pybroker.indicator.cubic_trend:11
+msgid "Cubic Trend Strength :class:`.Indicator`."
+msgstr ""
+
+#: 20d4b84e360c4292bc82b86f5efdbdc5 of
+#: pybroker.indicator.delta_on_balance_volume:1
+msgid "Delta On-Balance Volume."
+msgstr ""
+
+#: 2a3374193a084a219bfe9f3cecf3d776 of
+#: pybroker.indicator.delta_on_balance_volume:5
+msgid "Lag for differencing."
+msgstr ""
+
+#: 4a94bf231da14dc2986c65e32e777c28 of
+#: pybroker.indicator.delta_on_balance_volume:9
+msgid "Delta On-Balance Volume :class:`.Indicator`."
+msgstr ""
+
+#: e4497713b7ca4d4c920b8a31ac1afdd7 of pybroker.indicator.detrended_rsi:1
+msgid "Detrended Relative Strength Index (RSI)."
+msgstr ""
+
+#: adc03d38476247aea258d71a31b15c5e of pybroker.indicator.detrended_rsi:5
+msgid "Lookback for the short-term RSI."
+msgstr ""
+
+#: 28f9f20960fc45d3936c1095d5004dda of pybroker.indicator.detrended_rsi:6
+msgid "Lookback for the long-term RSI."
+msgstr ""
+
+#: b2c849c96d764e848fa7edd8407a99a9 of pybroker.indicator.detrended_rsi:7
+msgid "Number of bars used for linear regressions."
+msgstr ""
+
+#: e37054ba1af140619e957cf2226b75b2 of pybroker.indicator.detrended_rsi:9
+msgid "Detrended RSI :class:`.Indicator`."
+msgstr ""
+
+#: 3c2597d3d941420aa6666fee46ada5bd of pybroker.indicator.highest:1
+msgid "Creates a rolling high :class:`.Indicator`."
+msgstr ""
+
+#: dc6a5eb64c394dd98b61573538c1ff3c of pybroker.indicator.highest:4
 msgid ":class:`pybroker.common.BarData` field for computing the rolling high."
 msgstr ""
 
-#: c0b985d690f748139938004a5910c71a e1cd405072974b36ba89de5df18ddad1 of
+#: 3661fd13b6a14ab8a2a7fb43dfe4de6d a7629c33506940d2accd301f96459e01 of
 #: pybroker.indicator.highest:6 pybroker.indicator.lowest:6
 msgid "Lookback period."
 msgstr ""
 
-#: a29692f5480e42ebbc658f1632e6ddf1 of pybroker.indicator.highest:8
+#: c5de1eb60c6b4693bd8c58ec00b3cc7e of pybroker.indicator.highest:8
 msgid "Rolling high :class:`.Indicator`."
 msgstr ""
 
-#: 2d7cf7f034a8455488d5ecf58c0621e5 of pybroker.indicator.indicator:1
+#: 39dec83fd99340fabdc5f066122c79a5 of pybroker.indicator.indicator:1
 msgid ""
 "Creates an :class:`.Indicator` instance and registers it globally with "
 "``name``."
 msgstr ""
 
-#: d9a2b0ba6d964df782c8e72bc0e6e158 of pybroker.indicator.indicator:4
+#: 9a2db299a4af44afbdd1e62e20feb059 of pybroker.indicator.indicator:4
 msgid "Name for referencing the indicator globally."
 msgstr ""
 
-#: df886b5546b04067a859793da4416c66 of pybroker.indicator.indicator:5
+#: 4839e04570b549778e1002d60c7d50f8 of pybroker.indicator.indicator:5
 msgid ""
 "``Callable[[BarData, ...], NDArray[float]]`` used to compute the series "
 "of indicator values."
 msgstr ""
 
-#: 932c95b918e24bf89a0bca1847f4d794 of pybroker.indicator.indicator:7
+#: f78185fd87044948ae7ce8b020982ba9 of pybroker.indicator.indicator:7
 msgid "Additional arguments to pass to ``fn``."
 msgstr ""
 
-#: 28772ec318b8479cbce05a970e189755 of pybroker.indicator.indicator:9
+#: 315e83bc441a4951b988a2147db00355 of pybroker.indicator.indicator:9
 msgid ":class:`.Indicator` instance."
 msgstr ""
 
-#: 368ff2ee4cd542a59ac84d9eb0b048df of pybroker.indicator.lowest:1
+#: ad6b0d61d0ac4e3fab0b75d1a5ec9ae9 of pybroker.indicator.intraday_intensity:1
+msgid "Intraday Intensity."
+msgstr ""
+
+#: 4c63e20422eb40d797383c716a2b0eed 5f53b4aa635c43ceb9f9857bbdf31554
+#: d351c747364f4d9188b3f097645858dc of pybroker.indicator.intraday_intensity:5
+#: pybroker.indicator.money_flow:5 pybroker.indicator.stochastic_rsi:7
+msgid "Amount of smoothing; <= 1 for none. Defaults to ``0``."
+msgstr ""
+
+#: b43671fdff4b458084b96ef6ed0748a5 of pybroker.indicator.intraday_intensity:7
+msgid "Intraday Intensity :class:`.Indicator`."
+msgstr ""
+
+#: 9328f8d4897f4771a8bca5c646ae5e00 of pybroker.indicator.laguerre_rsi:1
+msgid "Laguerre Relative Strength Index (RSI)."
+msgstr ""
+
+#: 42589b78598a4e09ae9e66401bfdd346 of pybroker.indicator.laguerre_rsi:4
+msgid "Fractal Energy length. Defaults to ``13``."
+msgstr ""
+
+#: 569d2562ae5b4456a0719679829039ee of pybroker.indicator.laguerre_rsi:6
+msgid "Laguerre RSI :class:`.Indicator`."
+msgstr ""
+
+#: e0803c2d845e4649a5a2c925082118b2 of pybroker.indicator.linear_deviation:1
+msgid "Deviation from Linear Trend."
+msgstr ""
+
+#: 88e3e5d22e2d41a9a53e01a739311556 of pybroker.indicator.linear_deviation:9
+msgid "Deviation from Linear Trend :class:`.Indicator`."
+msgstr ""
+
+#: 19cdbebcec4c4d52998f4b92da4aa8c0 of pybroker.indicator.linear_trend:1
+msgid "Linear Trend Strength."
+msgstr ""
+
+#: e9815d6cc3c742e9b929c89c9d8a6755 of pybroker.indicator.linear_trend:11
+msgid "Linear Trend Strength :class:`.Indicator`."
+msgstr ""
+
+#: 34ca603838794bfe81dcf640920adb07 of pybroker.indicator.lowest:1
 msgid "Creates a rolling low :class:`.Indicator`."
 msgstr ""
 
-#: 5b6ccac2801b476a8cd8571d31c0c34a of pybroker.indicator.lowest:4
+#: fefe613827ac48698926377359cc2637 of pybroker.indicator.lowest:4
 msgid ":class:`pybroker.common.BarData` field for computing the rolling low."
 msgstr ""
 
-#: 6c9dca1cc55c453aaa66798dc58d99f6 of pybroker.indicator.lowest:8
+#: 2913c8ad59394cd5bc10d6525e369f97 of pybroker.indicator.lowest:8
 msgid "Rolling low :class:`.Indicator`."
 msgstr ""
 
-#: 2d02eb5b9dcd42c58750a76a6cb1bf25 of pybroker.indicator.returns:1
+#: 35b7f52b4cb344bc9985257d57493cbf of pybroker.indicator.macd:1
+msgid "Moving Average Convergence Divergence."
+msgstr ""
+
+#: 3131ac3849014ef39bdd309aaadd816f of pybroker.indicator.macd:5
+msgid "Short-term lookback."
+msgstr ""
+
+#: 17a28768ff5e424db67a6d778e667dde of pybroker.indicator.macd:6
+msgid "Long-term lookback."
+msgstr ""
+
+#: 22de4e8967c5457e8217ea88a1f58438 of pybroker.indicator.macd:7
+msgid "Compute MACD minus smoothed if >= 2."
+msgstr ""
+
+#: aae3392485594d13a2003d1b4fec24d0 of pybroker.indicator.macd:11
+msgid "Moving Average Convergence Divergence :class:`.Indicator`."
+msgstr ""
+
+#: f958f4a62057447caefb28bdb91eb951 of pybroker.indicator.money_flow:1
+msgid "Chaikin's Money Flow."
+msgstr ""
+
+#: 4daa3367d7f243c8a1ffbe4baf9cfa79 of pybroker.indicator.money_flow:7
+msgid "Chaikin's Money Flow :class:`.Indicator`."
+msgstr ""
+
+#: b2db1b057e3a4527a135403ba4a80814 of
+#: pybroker.indicator.normalized_negative_volume_index:1
+msgid "Normalized Negative Volume Index."
+msgstr ""
+
+#: 68891fdc4f1841e4ac4e74342be1b374 fb03807093da4408b2390a94d9a3a71e of
+#: pybroker.indicator.normalized_negative_volume_index:5
+#: pybroker.indicator.normalized_positive_volume_index:5
+msgid ""
+"Increase > 1.0 for more compression of return values, decrease < 1.0 for "
+"less. Defaults to ``0.5``."
+msgstr ""
+
+#: bff6a1465b0c40c88a382bc17e0e08b7 of
+#: pybroker.indicator.normalized_negative_volume_index:8
+msgid "Normalized Negative Volume Index :class:`.Indicator`."
+msgstr ""
+
+#: d3cf43c2640444fabcab8f7f7882b080 of
+#: pybroker.indicator.normalized_on_balance_volume:1
+msgid "Normalized On-Balance Volume."
+msgstr ""
+
+#: 6fd6ca99f99f4f128455a64ac3950f7c of
+#: pybroker.indicator.normalized_on_balance_volume:8
+msgid "Normalized On-Balance Volume :class:`.Indicator`."
+msgstr ""
+
+#: 9f2ea1d73bb94f9e828092ded84bffef of
+#: pybroker.indicator.normalized_positive_volume_index:1
+msgid "Normalized Positive Volume Index."
+msgstr ""
+
+#: 406d169cf91a41a4a2e751fdb8bfc216 of
+#: pybroker.indicator.normalized_positive_volume_index:8
+msgid "Normalized Positive Volume Index :class:`.Indicator`."
+msgstr ""
+
+#: 0d86d000a7f146f7925a81e84eeec588 of
+#: pybroker.indicator.price_change_oscillator:1
+msgid "Price Change Oscillator."
+msgstr ""
+
+#: 04b2e93a1f284577ad8c7247d1afdae2 319601fcf8df49caa68708ef0f13e43c of
+#: pybroker.indicator.price_change_oscillator:4
+#: pybroker.indicator.volume_momentum:4
+msgid "Number of short lookback bars."
+msgstr ""
+
+#: 8f493068569a4e098c0e44d52ead69f6 of
+#: pybroker.indicator.price_change_oscillator:5
+msgid ""
+"Multiplier used to compute number of long lookback bars = ``multiplier * "
+"short_length``."
+msgstr ""
+
+#: de78fd90f5c1416296826c9748cfd491 of
+#: pybroker.indicator.price_change_oscillator:7
+msgid ""
+"Increase > 1.0 for more compression of return values, decrease < 1.0 for "
+"less. Defaults to ``4.0``."
+msgstr ""
+
+#: 0e432e398378447f84c22ca00c6cb00b of
+#: pybroker.indicator.price_change_oscillator:10
+msgid "Price Change Oscillator :class:`.Indicator`."
+msgstr ""
+
+#: fb2f465db41e48228930e1bc959a6abf of pybroker.indicator.price_intensity:1
+msgid "Price Intensity."
+msgstr ""
+
+#: d88a7739705943f09a530adeaedffdbf of pybroker.indicator.price_intensity:4
+msgid "Amount of smoothing. Defaults to ``0``."
+msgstr ""
+
+#: 83a8f43aa4ab428eb33efeb8b728983a of pybroker.indicator.price_intensity:5
+msgid ""
+"Increase > 1.0 for more compression of return values, decrease < 1.0 for "
+"less. Defaults to ``0.8``."
+msgstr ""
+
+#: df11a5ca3e7c42389ab9ee7407d007b3 of pybroker.indicator.price_intensity:8
+msgid "Price Intensity :class:`.Indicator`."
+msgstr ""
+
+#: a23974a4afad494a807b9569b2886466 of pybroker.indicator.price_volume_fit:1
+msgid "Price Volume Fit."
+msgstr ""
+
+#: db2d9858b9b04945af77b1fe758f3fc2 of pybroker.indicator.price_volume_fit:5
+msgid ""
+"Increase > 1.0 for more compression of return values, decrease < 1.0 for "
+"less. Defaults to ``9.0``."
+msgstr ""
+
+#: 145917d9eabc409bbd323a159e294fc9 of pybroker.indicator.price_volume_fit:8
+msgid "Price Volume Fit :class:`.Indicator`."
+msgstr ""
+
+#: 90abd5f7f8fb409c9bb6104cfdda6372 of pybroker.indicator.quadratic_deviation:1
+msgid "Deviation from Quadratic Trend."
+msgstr ""
+
+#: c2a38566658744a5ba81cd09da2c929a of pybroker.indicator.quadratic_deviation:9
+msgid "Deviation from Quadratic Trend :class:`.Indicator`."
+msgstr ""
+
+#: 4327284ee5464f5191f601706c2bc5cd of pybroker.indicator.quadratic_trend:1
+msgid "Quadratic Trend Strength."
+msgstr ""
+
+#: 220ae5962f8647ff9f85372e69c3c15a of pybroker.indicator.quadratic_trend:11
+msgid "Quadratic Trend Strength :class:`.Indicator`."
+msgstr ""
+
+#: 65093bdc19594bed9128f7dabe9e8477 of pybroker.indicator.reactivity:1
+msgid "Reactivity."
+msgstr ""
+
+#: 3294b7886901440f96f71d033e587b1f of pybroker.indicator.reactivity:5
+msgid "Smoothing multiplier."
+msgstr ""
+
+#: 2869b6b55f0744abbb2a143cb18053bc of pybroker.indicator.reactivity:9
+msgid "Reactivity :class:`.Indicator`."
+msgstr ""
+
+#: 410a9376707f48cca213e3008c2ebbb4 of pybroker.indicator.returns:1
 msgid "Creates a rolling returns :class:`.Indicator`."
 msgstr ""
 
-#: 0b6ea2fd8dbd430fb2ef02c22d43a746 of pybroker.indicator.returns:4
+#: 2b5985e59b264f2eb7465001ef45b849 of pybroker.indicator.returns:4
 msgid ":class:`pybroker.common.BarData` field for computing the rolling returns."
 msgstr ""
 
-#: a6607e4611394840a405e9a2e9d7fdb0 of pybroker.indicator.returns:6
+#: e590443b0fee48578601a10bf042f8be of pybroker.indicator.returns:6
 msgid "Returns period. Defaults to 1."
 msgstr ""
 
-#: c54fa5c79489482b932af17291f2c785 of pybroker.indicator.returns:8
+#: a6b86a6fa5f1426f80fb7a6874e917d4 of pybroker.indicator.returns:8
 msgid "Rolling returns :class:`.Indicator`."
 msgstr ""
 
-#~ msgid ""
-#~ "``Collection`` of :class:`pybroker.common.IndicatorSymbol`"
-#~ " pairs of indicators to compute."
-#~ msgstr ""
+#: 9e5603da5ed14b8b87edfeafd4156245 of pybroker.indicator.stochastic:1
+msgid "Stochastic."
+msgstr ""
+
+#: d7f2a83512e6459f84ac900d5977a1f0 of pybroker.indicator.stochastic:5
+msgid ""
+"Number of times the raw stochastic is smoothed, either 0, 1, or 2 times. "
+"Defaults to ``0``."
+msgstr ""
+
+#: 29c42deb95b84df8a1c01af412ae1e53 of pybroker.indicator.stochastic:8
+msgid "Stochastic :class:`.Indicator`."
+msgstr ""
+
+#: e3726e7ce5a9490e99eb62868ba1f39a of pybroker.indicator.stochastic_rsi:1
+msgid "Stochastic Relative Strength Index (RSI)."
+msgstr ""
+
+#: 6579a017ea7847fb9c22460160f67336 of pybroker.indicator.stochastic_rsi:5
+msgid "Lookback length for RSI calculation."
+msgstr ""
+
+#: 3cff2c40d6cb43e78a1e49f59f9394f9 of pybroker.indicator.stochastic_rsi:6
+msgid "Lookback length for Stochastic calculation."
+msgstr ""
+
+#: f343a05660ad41379323946a605b1a00 of pybroker.indicator.stochastic_rsi:9
+msgid "Stochastic RSI :class:`.Indicator`."
+msgstr ""
+
+#: e1b91a7575374a498697c43b6ccf91ee of pybroker.indicator.volume_momentum:1
+msgid "Volume Momentum."
+msgstr ""
+
+#: a8302dd0baef4fdc984bb9cf395e1192 of pybroker.indicator.volume_momentum:5
+msgid "Lookback multiplier. Defaults to ``2``."
+msgstr ""
+
+#: 6a3260025b824aaeaf817728e8e2d68e of pybroker.indicator.volume_momentum:6
+msgid ""
+"Increase > 1.0 for more compression of return values, decrease < 1.0 for "
+"less. Defaults to ``3.0``."
+msgstr ""
+
+#: f5a73a1fe1c242e2b3a49a86db23891f of pybroker.indicator.volume_momentum:9
+msgid "Volume Momentum :class:`.Indicator`."
+msgstr ""
+
+#: 7d77229a208a4ba580f5848bd3c7508d of
+#: pybroker.indicator.volume_weighted_ma_ratio:1
+msgid "Volume-Weighted Moving Average Ratio."
+msgstr ""
+
+#: e98abefd9494493395f808ba1597097f of
+#: pybroker.indicator.volume_weighted_ma_ratio:8
+msgid "Volume-Weighted Moving Average Ratio :class:`.Indicator`."
+msgstr ""
 

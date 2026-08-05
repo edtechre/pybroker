@@ -1,14 +1,14 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) 2023, Edward West
+# Copyright (C) 2026, Edward West
 # This file is distributed under the same license as the PyBroker package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
 #
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-02 21:23+0800\n"
+"POT-Creation-Date: 2026-08-05 15:57-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -17,189 +17,201 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.12.1\n"
+"Generated-By: Babel 2.18.0\n"
 
-#: ../../source/reference/pybroker.cache.rst:2 21a415b240554ed6a05d3c6d1ed36308
+#: ../../source/reference/pybroker.cache.rst:2 a1d61c2cb2944c65972b31b439f5ddd5
 msgid "pybroker.cache module"
 msgstr ""
 
-#: 6774c2dfb5874b248089fa201679afa6 of pybroker.cache:1
+#: 869803fc15c14d0bbdc004f4c25ce526 of pybroker.cache:1
 msgid "Contains caching utilities."
 msgstr ""
 
-#: 2d3f11120e6f42cdb31e96f232a17a09 79a050fb3c8a4588ae74a082d3730d74
-#: d345ed8e56e14c3abbb010a7115a440d dc2014a939324c65bc036889bb93b173 of
-#: pybroker.cache.CacheDateFields:1 pybroker.cache.DataSourceCacheKey:1
-#: pybroker.cache.IndicatorCacheKey:1 pybroker.cache.ModelCacheKey:1
-msgid "Bases: :py:class:`object`"
+#: 899343ac7c31493fb48bc6e66acb7a7e of pybroker.cache:3
+msgid "Copyright (C) 2023 Edward West. All rights reserved."
 msgstr ""
 
-#: 49e965e33fd040f4ad762af981a976f1 of pybroker.cache.CacheDateFields:1
+#: 7f860c0dae404b9f94d212450e8caf0c of pybroker.cache:5
+msgid ""
+"This code is licensed under Apache 2.0 with Commons Clause license (see "
+"LICENSE for details)."
+msgstr ""
+
+#: 9b72e3a92c084f0bae803b9fda13ff35 of pybroker.cache.CacheDateFields:1
 msgid "Date fields for keying cache data."
 msgstr ""
 
-#: 4d23613625d142f587251bf24d047f7f of pybroker.cache.CacheDateFields:5
+#: f0b76f506aa849c8bc7c347d736886da of pybroker.cache.CacheDateFields:5
 msgid "Start date of cache data."
 msgstr ""
 
-#: 0efdeadb39a842ab9714972b2d784c82 103b21dac6c549469f669bff243bcd25
-#: 2ba0cc8e939e45dcacc0df9493b30b8d 4dacc80459214fe594cf87ca728e1a23
-#: 4dd0fea2a4534bfc95c5608b226a6b9c of pybroker.cache.CacheDateFields
+#: 044fb3eec1584502b6209c77f869e2e4 1b1519c35e2740d89ad22416417b3a9b
+#: 309c9e5793f54707865f70b6563a14ee 52d1fd8147bc4b6788365ef0efd4be74
+#: 89ece4116b684ae8af15c1a2fcb091ec of pybroker.cache.CacheDateFields
 msgid "type"
 msgstr ""
 
-#: 164b8076cd1c4bf9bf6b150c71fc8bcf 1790becdc6d14def862e911f13e15a7d of
+#: a4fc16edde534b8e946dce5edae86d75 e09fbb91c7d1434b9efa22c1acbb5204 of
 #: pybroker.cache.CacheDateFields:7 pybroker.cache.CacheDateFields:13
 msgid "datetime.datetime"
 msgstr ""
 
-#: 096ecb20702541119caaa8f7c0f06917 of pybroker.cache.CacheDateFields:11
+#: 093b40ab309f4c96824303881ffcbd7f of pybroker.cache.CacheDateFields:11
 msgid "End date of cache data."
 msgstr ""
 
-#: 132cad56ad894592b455d3a43dbb0e25 of pybroker.cache.CacheDateFields:17
+#: c040bc9a7d8d480e80adb9c1bd4d4279 of pybroker.cache.CacheDateFields:17
 msgid "Timeframe resolution of cache data represented in seconds."
 msgstr ""
 
-#: b721512bbc504ebaa1450e24f49ea091 of pybroker.cache.CacheDateFields:19
+#: 7bda18fc0538465087f2e22401b9ecc6 of pybroker.cache.CacheDateFields:19
 msgid "int"
 msgstr ""
 
-#: bb9a58a0a93f47359c9008c74ea2bc1b of pybroker.cache.CacheDateFields:23
+#: f74e19025b054fbcbcada9bb25981961 of pybroker.cache.CacheDateFields:23
 msgid ""
 "``tuple[str, str]`` of times of day (e.g. 9:00-9:30 AM) that were used to"
 " filter the cache data."
 msgstr ""
 
-#: 497061ad6ac94984a4c426e72670c317 of pybroker.cache.CacheDateFields:26
+#: 82fa114a920d413488c9a80e9d510f2e of pybroker.cache.CacheDateFields:26
 msgid "tuple[str, str] | None"
 msgstr ""
 
-#: 1ad251b0f5294729a484543c27bedfd6 of pybroker.cache.CacheDateFields:30
+#: 6fe971b95b734eeaabfa6324644988d5 of pybroker.cache.CacheDateFields:30
 msgid ""
 "Days (e.g. ``\"mon\"``, ``\"tues\"`` etc.) that were used to filter the "
 "cache data."
 msgstr ""
 
-#: 9bf63b84ef804fa49efc0c32fa89ef19 of pybroker.cache.CacheDateFields:33
+#: ea67bf6f7e01467688abe7a43cef12d3 of pybroker.cache.CacheDateFields:33
 msgid "tuple[int] | None"
 msgstr ""
 
-#: 8827871b16b04ec18d08fdc5a82c73e6 of pybroker.cache.DataSourceCacheKey:1
+#: d8b3ad87d33340cfa35bff753e6c0f66 of pybroker.cache.DataSourceCacheKey:1
 msgid "Cache key used for :class:`pybroker.data.DataSource` data."
 msgstr ""
 
-#: fc2fc916172449569428990713b5213e of pybroker.cache.IndicatorCacheKey:1
+#: ed49338109b6473bb028277665abd7ba of pybroker.cache.IndicatorCacheKey:1
 msgid "Cache key used for indicator data."
 msgstr ""
 
-#: 091667e89a26485da2293081c903a618 of pybroker.cache.ModelCacheKey:1
+#: 40f9f38d96ba49c89c64c6ecc703c4c0 of pybroker.cache.ModelCacheKey:1
 msgid "Cache key used for trained models."
 msgstr ""
 
-#: d826176cf68e475b970089c944619182 of pybroker.cache.clear_caches:1
+#: cd2c9e04d378423ba55ec69a35fdde51 of pybroker.cache.clear_caches:1
 msgid ""
 "Clears cached data from all caches. :meth:`enable_caches` must be called "
 "first before clearing."
 msgstr ""
 
-#: 374d2682c60b4bb2afc7ed293357b8fa of pybroker.cache.clear_data_source_cache:1
+#: b0dcdbb5814e415dad7507fc2ca3b679 of pybroker.cache.clear_data_source_cache:1
 msgid ""
 "Clears data cached from :class:`pybroker.data.DataSource`\\ s. "
 ":meth:`enable_data_source_cache` must be called first before clearing."
 msgstr ""
 
-#: 8576b45227324072bd823baaa5e375ec of pybroker.cache.clear_indicator_cache:1
+#: f978d84c3dc94bd4bdc52b46583fcb20 of pybroker.cache.clear_indicator_cache:1
 msgid ""
 "Clears cached indicator data. :meth:`enable_indicator_cache` must be "
 "called first before clearing."
 msgstr ""
 
-#: aa31343e4701417b93dc9b4c49cf86af of pybroker.cache.clear_model_cache:1
+#: afa469519ce64d60b16057cf1fa2fdcf of pybroker.cache.clear_model_cache:1
 msgid ""
 "Clears cached trained models. :meth:`enable_model_cache` must be called "
 "first before clearing."
 msgstr ""
 
-#: 74f4a1ea51c54a468845396b33e59bb4 of pybroker.cache.disable_caches:1
+#: c0088d61947b48deafa6de2d20d4e34c of pybroker.cache.disable_caches:1
 msgid "Disables all caches."
 msgstr ""
 
-#: c870be12f96247c6af19a1b029bb2598 of
+#: e9268c493c91415096b5deec289d9744 of
 #: pybroker.cache.disable_data_source_cache:1
 msgid ""
 "Disables caching data retrieved from :class:`pybroker.data.DataSource`\\ "
 "s."
 msgstr ""
 
-#: b3700b82a93f4467b0eec6477c496f8d of pybroker.cache.disable_indicator_cache:1
+#: 1149a349f94e44e5b4b50c6ed9dc19d6 of pybroker.cache.disable_indicator_cache:1
 msgid "Disables caching indicator data."
 msgstr ""
 
-#: fc39aad2ce494f5cb4d5c350a4c97b4a of pybroker.cache.disable_model_cache:1
+#: 0581d55f7e2a46588a1b07d326ca13f6 of pybroker.cache.disable_model_cache:1
 msgid "Disables caching trained models."
 msgstr ""
 
-#: 676d8f7c249240acace389a566b50a42 of pybroker.cache.enable_caches:1
+#: 0ef841b0907147be8b01a4c343d3c5bf of pybroker.cache.enable_caches:1
 msgid "Enables all caches."
 msgstr ""
 
-#: 5c9d93386af74fb2a5aff2832b8cd0e5 685d9446d12b4578a4ca18120dff90f8
-#: 9ec7461dfda14600a78b8303a4f85188 ec74ef6398334fc0a06f68aa492b8782 of
-#: pybroker.cache.enable_caches pybroker.cache.enable_data_source_cache
-#: pybroker.cache.enable_indicator_cache pybroker.cache.enable_model_cache
+#: ../../source/reference/pybroker.cache.rst 2641ca4686f141d6bdc42528b0b79b6b
+#: 55844fff5daf4731bce6577744431b73 d4ffc0910b6b4134ad1b8b802953bee7
+#: f0a39c74c440425494481386633a6960
 msgid "Parameters"
 msgstr ""
 
-#: 6982198d7e46484b9a914135bfa0a262 of pybroker.cache.enable_caches:3
+#: 7e29f202ae624aa5b01685a0c768495e of pybroker.cache.enable_caches:3
 msgid "Namespace shared by cached data."
 msgstr ""
 
-#: 666872c725254868b93aeaabc3b4f98c 8a176f6155bd4d9f88584df09c9b841f of
+#: 3ca03638bdc84eae863c4ad40b915e63 4e91a423ed5f48629bc9bc1b30984f64 of
 #: pybroker.cache.enable_caches:4 pybroker.cache.enable_data_source_cache:5
 msgid "Directory used to store cached data."
 msgstr ""
 
-#: 46275636a1a44e84b6d82e5041bf48d0 of
+#: 044a0ca32ef149e0af46aef95eefd8c8 of pybroker.cache.enable_caches:5
+msgid "Maximum in-process L1 cache entries per cache."
+msgstr ""
+
+#: 55bffa54436b40f4b0d04869c77ee61d of
 #: pybroker.cache.enable_data_source_cache:1
 msgid ""
 "Enables caching of data retrieved from "
 ":class:`pybroker.data.DataSource`\\ s."
 msgstr ""
 
-#: 5dafa754d5c647b8a69fac0bd8daa81a be61983da6044c429befa24a772cfe20
-#: ed6ada5a8b85459280334a2e269a3aa6 of
+#: 71b405de93574427b1f7c61c8a22a0c1 83f222816e3f4f4b9629e3b1fd64cb93
+#: a64ab339f52149089778f95ba22c2bfd of
 #: pybroker.cache.enable_data_source_cache:4
 #: pybroker.cache.enable_indicator_cache:3 pybroker.cache.enable_model_cache:3
 msgid "Namespace of the cache."
 msgstr ""
 
-#: 104a3ae091a34662841b27db783b252b 9c577c81e2c84f8eac525b573771e301
-#: f8f259f3e4c94c09a31daf5a31dcb3a2 of pybroker.cache.enable_data_source_cache
-#: pybroker.cache.enable_indicator_cache pybroker.cache.enable_model_cache
+#: a0696073374747db98fe3c2bd11f4410 b593d3201511473fa26969aec1371dfe
+#: e9ef249a56c54156b3f9f79163f336ea of
+#: pybroker.cache.enable_data_source_cache:6
+#: pybroker.cache.enable_indicator_cache:5 pybroker.cache.enable_model_cache:5
+msgid "Maximum in-process L1 cache entries."
+msgstr ""
+
+#: ../../source/reference/pybroker.cache.rst 6b49f8d287d040d2bf568477f88d4167
+#: 9a9ccf3115634f789aaf966f9997dd78 f0f5c9c4fc8c47d1bc9c4260735ec509
 msgid "Returns"
 msgstr ""
 
-#: 9cea223d90344df3a61317d10f4a8ae7 ae0f8750b3f346c29785d27303911fbb
-#: ba5e4c00af2a44ad84ba9a9c75e0afbf of
-#: pybroker.cache.enable_data_source_cache:7
-#: pybroker.cache.enable_indicator_cache:6 pybroker.cache.enable_model_cache:6
+#: 1b5885ab19d84fc8b2566dde48ae6b94 54eec3dcd92d4c3ea44833e0512e6ed1
+#: 6378a3ec535e4b478ae3a694adeb9b8a of
+#: pybroker.cache.enable_data_source_cache:8
+#: pybroker.cache.enable_indicator_cache:7 pybroker.cache.enable_model_cache:7
 msgid ":class:`diskcache.Cache` instance."
 msgstr ""
 
-#: f7249d37b9f64cc993be93ec058a02f6 of pybroker.cache.enable_indicator_cache:1
+#: c0e7a45e34ab40f38365dd62342202a5 of pybroker.cache.enable_indicator_cache:1
 msgid "Enables caching indicator data."
 msgstr ""
 
-#: 15c27f37f64e4bd2b716e6ec9a274d18 of pybroker.cache.enable_indicator_cache:4
+#: 6ca8a940624a4ace926d9a67d4da63b3 of pybroker.cache.enable_indicator_cache:4
 msgid "Directory used to store cached indicator data."
 msgstr ""
 
-#: 4caf574533674e1ea941ab4d1e107b0e of pybroker.cache.enable_model_cache:1
+#: 473ae15db5d1454d9b0b2328dfba7e17 of pybroker.cache.enable_model_cache:1
 msgid "Enables caching trained models."
 msgstr ""
 
-#: f63403be3f8543ec90ac29ea19cd7b25 of pybroker.cache.enable_model_cache:4
+#: c9064b2c0b32461d97ad0d249dd1fa10 of pybroker.cache.enable_model_cache:4
 msgid "Directory used to store cached models."
 msgstr ""
 

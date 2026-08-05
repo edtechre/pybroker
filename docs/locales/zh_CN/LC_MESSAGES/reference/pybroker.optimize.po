@@ -1,0 +1,587 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-05 15:57-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/reference/pybroker.optimize.rst:2
+#: 837e8caf79a144399b39b365bce4f4b9
+msgid "pybroker.optimize module"
+msgstr ""
+
+#: bf8dc1c4385342b8beacce1325130c2e of pybroker.optimize:1
+msgid "Hyperparameter declaration and optimization with Optuna."
+msgstr ""
+
+#: 205723514b184d8181b1f33666959428 of pybroker.optimize:3
+msgid ""
+"Hyperparams declare tunable values for indicators and executions. Each "
+"hyperparam is registered globally by name via :func:`hyperparam` and "
+"resolved to a concrete int or float at backtest or optimization time."
+msgstr ""
+
+#: e2e4fb9f45ad4e058292d75af24efdc9 of pybroker.optimize:7
+msgid ""
+"Pass hyperparams as keyword arguments to "
+":func:`pybroker.indicator.indicator`, or list them on "
+":meth:`pybroker.strategy.Strategy.add_execution` to read them inside an "
+"execution with ``ctx.hyperparam(name)``."
+msgstr ""
+
+#: 502b6489f9c6401fb60e015b4cf56af4 of pybroker.optimize.Hyperparam:1
+msgid "Declares a named hyperparameter with bounds and step size."
+msgstr ""
+
+#: fe33344caf4d4a61a7b2a3983bcf4080 of pybroker.optimize.Hyperparam:3
+msgid "Created with :func:`hyperparam` and registered globally by ``name``."
+msgstr ""
+
+#: 4425920e64ba4bf69be1b3b2aa43e505 of pybroker.optimize.Hyperparam:7
+msgid ""
+"Unique identifier used in indicator kwargs, execution hyperparam lists, "
+"and optimization results."
+msgstr ""
+
+#: 049b031872c9410c8c27142b7828a6a7 05c75cf6a6b74cc3a513f319fc9accab
+#: 11cb46cda64c477caa388315495b0711 505db7dac8ab4f5b8e7b0aeca0dd89b6
+#: 57436831c6eb408b99f03ac8a9c6fd58 6b05ec406c0a444f902bbe1cc874fc08
+#: 746b68d4bfd0482cb6ed2f5fd109d13d 8ec591c3aa63447285dbabe10ac33312
+#: 94e9a8157be746f1b255bf058625671a 9de0fbd52be047e4b4c00974a56c4412
+#: a2319a43d6504bcda730cbd836cc8ec0 aa973a47aaaa428ca764f6b4984e227b
+#: aed23486753943aea3340b748867e5b4 b427c39407bf452aa739fb8edd2eedc4
+#: c08c6735238247f59c636260c17f7361 cc646aecb58b4f5d9d217b1b45c5e7e7
+#: cd0e28a8a3444c1ea0eab208d0952a19 e039d609eda744d3ad93912ddfc6ec68
+#: fdf8996988744d3abf061e72332df8e5 of pybroker.optimize.Hyperparam
+#: pybroker.optimize.OptimizeResult pybroker.optimize.SearchSpace
+#: pybroker.optimize.WindowOptimizeResult
+msgid "type"
+msgstr ""
+
+#: 0b63f7845afb4a7c9f44780d56c0ba50 of pybroker.optimize.Hyperparam:10
+msgid "str"
+msgstr ""
+
+#: d6af0ecf73c94408a9501a487f84db34 of pybroker.optimize.Hyperparam:14
+msgid ""
+"Value for backtests and the baseline during optimization. Should lie "
+"within ``[low, high]``."
+msgstr ""
+
+#: 1db51656ac804eada90569668ba2fe10 1ecb528e112f461391e2c930131cf763
+#: 38d1e83d09084d8ab881c58062394f75 d1cd4fee31ec4e74832aa879a0ec2d3e of
+#: pybroker.optimize.Hyperparam:17 pybroker.optimize.Hyperparam:23
+#: pybroker.optimize.Hyperparam:31 pybroker.optimize.Hyperparam:39
+msgid "int | float"
+msgstr ""
+
+#: 720b58b9f51e4a5f9628164ac63885be c3947f87d54946c4988841d0bb9992bc of
+#: pybroker.optimize.Hyperparam:21 pybroker.optimize.hyperparam:7
+msgid "Minimum candidate value searched during optimize (inclusive)."
+msgstr ""
+
+#: 3179870b9077447da8374e85fb5c79fe of pybroker.optimize.Hyperparam:27
+msgid ""
+"Maximum candidate value searched during optimize (inclusive). Candidate "
+"values are ``low``, ``low + step``, ... up to the largest value not "
+"exceeding ``high``."
+msgstr ""
+
+#: 0afa7035d01a4504867fecb49cdc00ff of pybroker.optimize.Hyperparam:35
+msgid ""
+"Spacing between candidate values. Must be positive. Integer hyperparams "
+"use integer steps; float hyperparams use float steps with values rounded "
+"to match Optuna stepped suggestions."
+msgstr ""
+
+#: 66dcd0fcef754382919f23876d1146e1 of pybroker.optimize.Hyperparam:42
+msgid "Examples"
+msgstr ""
+
+#: 5e5ca5f7ff7641d98f393f401a538008 of pybroker.optimize.Hyperparam:43
+msgid "Indicator period from 5 to 50 in steps of 5::"
+msgstr ""
+
+#: 45bcf7c255aa44b6b787442ef8832dc4 of pybroker.optimize.ObjectiveBundle:1
+msgid "Return value of :func:`make_objective`."
+msgstr ""
+
+#: ce77f50a340e42128e1e1e35214d29d4 of pybroker.optimize.OptimizeMixin:1
+msgid "Mixin implementing hyperparameter optimization."
+msgstr ""
+
+#: 911e851e6a8645378f70c084259e4149 of
+#: pybroker.optimize.OptimizeMixin.optimize:1
+msgid ""
+"Searches :func:`pybroker.optimize.hyperparam` values on a training "
+"window, then evaluates the best values on the held out test window."
+msgstr ""
+
+#: ce501ad5514d42ccbc3d236673d8f93d of
+#: pybroker.optimize.OptimizeMixin.optimize:4
+msgid ""
+"Data supplied by the :class:`pybroker.data.DataSource` is split into "
+"train and test as specified by ``train_size``. Every trial backtests the "
+"train window with one combination of hyperparameter values and scores it "
+"with ``score_fn``. The winning combination is then replayed on the test "
+"window, which ``score_fn`` never sees."
+msgstr ""
+
+#: 456f527c32f94748a8fba6679dd7b680 of
+#: pybroker.optimize.OptimizeMixin.optimize:10
+msgid ""
+"Pretrained models (``model(..., pretrained=True)``) are loaded per train "
+"window and reused across that window's trials. Trainable models are not "
+"supported; tune them inside ``train_fn`` with a validation split, or use "
+":meth:`pybroker.strategy.Strategy.walkforward`."
+msgstr ""
+
+#: ../../source/reference/pybroker.optimize.rst
+#: 197414084eae4623a457698d0853c6f0 7c33934037614f9dac7a03121329aa63
+#: ef1ff8d6901d48ec884603f8771b05eb
+msgid "Parameters"
+msgstr ""
+
+#: c6a7c07d80c445c68996cd2e8ee09b05 of
+#: pybroker.optimize.OptimizeMixin.optimize:15
+msgid ""
+"``Callable[[TestResult], float]`` that scores one trial's train window "
+"backtest. Maximized by default; see ``direction``."
+msgstr ""
+
+#: d3de815863eb41df920fd5fac4aa9128 of
+#: pybroker.optimize.OptimizeMixin.optimize:17
+msgid ""
+"How candidate values are chosen. ``\"grid\"`` (the default) exhaustively "
+"enumerates every combination, ``\"tpe\"`` uses "
+":class:`optuna.samplers.TPESampler`, ``\"random\"`` uses "
+":class:`optuna.samplers.RandomSampler`. An "
+":class:`optuna.samplers.BaseSampler` instance is also accepted; it is "
+"deep-copied and re-seeded per window, and a multi-window run ships copies"
+" to worker processes, so it must be picklable. Grid and random samplers "
+"evaluate trials in parallel on the configured workers. Any other sampler "
+"— ``\"tpe\"``, or an instance that is not a "
+":class:`~optuna.samplers.GridSampler` or "
+":class:`~optuna.samplers.RandomSampler` — is adaptive, and evaluating its"
+" trials in batches would change the values it proposes and tie results to"
+" the worker count; its trials therefore run sequentially, and an info-"
+"level log message notes that parallelism was disabled."
+msgstr ""
+
+#: 83be6c03af414f1ba3ccd862eaf37920 of
+#: pybroker.optimize.OptimizeMixin.optimize:33
+msgid ""
+"Number of trials to run. Required for every sampler except ``\"grid\"``, "
+"where it defaults to the full grid size and a smaller value samples that "
+"many combinations at random."
+msgstr ""
+
+#: 78621f0380e84ebaa9afb0754907e92d of
+#: pybroker.optimize.OptimizeMixin.optimize:36
+msgid "``\"maximize\"`` (default) or ``\"minimize\"`` ``score_fn``."
+msgstr ""
+
+#: 358da94cc34241f8b307081fb344a62b of
+#: pybroker.optimize.OptimizeMixin.optimize:37
+msgid ""
+"Random seed for the sampler and for bootstrap metrics. Defaults to "
+"``None``, which does not reproduce."
+msgstr ""
+
+#: 67ffc3bffbc74659be82aad0f49ea89f of
+#: pybroker.optimize.OptimizeMixin.optimize:39
+msgid ""
+"When greater than ``1``, hyperparameters are optimized separately in each"
+" of ``windows`` walkforward windows and the test windows are stitched "
+"into one continuous result. Defaults to ``None``, a single train/test "
+"split."
+msgstr ""
+
+#: 303beec5f596412dbe4fff295226490e of
+#: pybroker.optimize.OptimizeMixin.optimize:43
+msgid ""
+"Existing :class:`optuna.study.Study` to record trials in, for example one"
+" backed by persistent storage. The study's own sampler and pruner are "
+"used, and its direction must match ``direction``. Not supported when "
+"``windows`` is greater than ``1``."
+msgstr ""
+
+#: d592ba441be44f46bff989fe08ed4a84 of
+#: pybroker.optimize.OptimizeMixin.optimize:48
+msgid ""
+":class:`optuna.pruners.BasePruner` attached to the created study. Each "
+"trial is one complete backtest with no intermediate values to report, so "
+"pruning never actually triggers."
+msgstr ""
+
+#: ebadc7b82aed42e08583848b584a638f of
+#: pybroker.optimize.OptimizeMixin.optimize:51
+msgid ""
+"Fraction of each window used for training, exclusive of ``0`` and ``1``. "
+"Defaults to ``0.5``."
+msgstr ""
+
+#: 9c89b278b5c145ab8f5bc19399d29338 of
+#: pybroker.optimize.OptimizeMixin.optimize:53
+msgid ""
+"Number of bars in the future of the target prediction. Held out between "
+"train and test to prevent training data from leaking across the boundary."
+" Defaults to ``1``."
+msgstr ""
+
+#: 9177ec4cb56a491eb15c97ec785004bd of
+#: pybroker.optimize.OptimizeMixin.optimize:56
+msgid ""
+"Starting date of the optimization (inclusive). Must be within the range "
+"passed to the :class:`pybroker.strategy.Strategy` constructor."
+msgstr ""
+
+#: fc6a8be313594a1c85be4bfe8ab17de5 of
+#: pybroker.optimize.OptimizeMixin.optimize:59
+msgid ""
+"Ending date of the optimization (inclusive). Must be within the range "
+"passed to the :class:`pybroker.strategy.Strategy` constructor."
+msgstr ""
+
+#: c86e8a9bef5646cbb67ec5690fcd67eb of
+#: pybroker.optimize.OptimizeMixin.optimize:62
+msgid ""
+"Formatted string specifying the timeframe resolution of the data, as in "
+":meth:`pybroker.strategy.Strategy.walkforward`."
+msgstr ""
+
+#: 1f04d34a0e1747f9bc591331947d47f8 of
+#: pybroker.optimize.OptimizeMixin.optimize:64
+msgid ""
+"``tuple[str, str]`` of times of day e.g. ``('9:30', '16:00')`` used to "
+"filter the data (inclusive)."
+msgstr ""
+
+#: 679b94c8457f4ffab0d72bf247c4b34f of
+#: pybroker.optimize.OptimizeMixin.optimize:66
+msgid "Days (e.g. ``\"mon\"``, ``\"tues\"``) used to filter the data."
+msgstr ""
+
+#: d2eb06631fae452aa454477b06f49877 of
+#: pybroker.optimize.OptimizeMixin.optimize:67
+msgid ""
+"Number of bars that need to pass before running the executions. Must be "
+"greater than ``0`` when set."
+msgstr ""
+
+#: ab13405c76954be7bb7cdc87e01ae88d of
+#: pybroker.optimize.OptimizeMixin.optimize:69
+msgid ""
+"If ``True``, :class:`pybroker.indicator.Indicator` data is computed in "
+"parallel using multiple processes. Defaults to ``False``."
+msgstr ""
+
+#: 3eef02a5fe0a4effb8aa3da8ecde0684 of
+#: pybroker.optimize.OptimizeMixin.optimize:72
+msgid "The type of adjustment to make to the :class:`pybroker.data.DataSource`."
+msgstr ""
+
+#: fe1073a8144d43aa911a56769df91e41 of
+#: pybroker.optimize.OptimizeMixin.optimize:74
+msgid ""
+"Whether to compute randomized bootstrap evaluation metrics for the test "
+"result. Defaults to ``False``."
+msgstr ""
+
+#: 54b9aa373f38452ca02270348cc72b1e of
+#: pybroker.optimize.OptimizeMixin.optimize:76
+msgid ""
+"Whether to log every trial's backtest -- indicator computation, test "
+"split progress bars, and Optuna's own trial logging. Defaults to "
+"``False``, which logs the optimization summary and the final test window "
+"evaluation only."
+msgstr ""
+
+#: ../../source/reference/pybroker.optimize.rst
+#: 3e82d9ad84dd4441bd3fb776a5dd9e2b ac8e1fdd8f9b415b90fe5d7f902b536c
+#: b559e93b1ca348e2a475127b6a2041a1
+msgid "Returns"
+msgstr ""
+
+#: a4ec00e81cc045f4bc75ed591bd175e5 of
+#: pybroker.optimize.OptimizeMixin.optimize:81
+msgid ""
+":class:`.OptimizeResult` with the winning hyperparameter values, the "
+"train window score they earned, and the test window "
+":class:`pybroker.strategy.TestResult` they produced. When ``windows`` is "
+"greater than ``1``, ``best_params``, ``best_score``, and ``study`` "
+"describe the **last** window while ``result`` is stitched across all of "
+"them; see :attr:`.OptimizeResult.windows` for the per-window results."
+msgstr ""
+
+#: ../../source/reference/pybroker.optimize.rst
+#: 248921aadbc64f9e91192b7fa08da1c5
+msgid "Raises"
+msgstr ""
+
+#: 2fe2020f4f134945a14264f7a7c39d48 of
+#: pybroker.optimize.OptimizeMixin.optimize:89
+msgid ""
+"If no executions were added, if any model source is     trainable, if "
+"``train_size`` is not between ``0`` and ``1``     exclusive, if "
+"``warmup`` is not greater than ``0``, if     ``windows`` is not greater "
+"than ``0``, if ``study`` is combined     with ``windows`` greater than "
+"``1`` or has a conflicting     direction, or if the dates fall outside "
+"the range passed to the     :class:`pybroker.strategy.Strategy` "
+"constructor."
+msgstr ""
+
+#: bb0f017352cc4cadaff88281aad4774d of pybroker.optimize.OptimizeResult:1
+msgid "Result of ``Strategy.optimize()``."
+msgstr ""
+
+#: e12e0f4b7ec84122afdcc6303478521a of pybroker.optimize.OptimizeResult:5
+msgid ""
+"Winning hyperparameter values, including the ones that were fixed rather "
+"than searched. When ``windows`` is set, these are the **last** window's "
+"values, since each window is tuned separately."
+msgstr ""
+
+#: df8bf97b91ba4f0b88dd92b5e5979165 ee42eb05190c4e2b80f4a8298f4e207b of
+#: pybroker.optimize.OptimizeResult:9 pybroker.optimize.WindowOptimizeResult:12
+msgid "dict[str, Any]"
+msgstr ""
+
+#: d05d9f8dca724c57b83a18691781b2c2 of pybroker.optimize.OptimizeResult:13
+msgid ""
+"``score_fn`` value that ``best_params`` earned on the train window. When "
+"``windows`` is set, this is the last window's score."
+msgstr ""
+
+#: a92148c1e80b42d382556490a47b695d c232c334bc8b43679e5b2665fbf1c4ed of
+#: pybroker.optimize.OptimizeResult:16
+#: pybroker.optimize.WindowOptimizeResult:25
+msgid "float"
+msgstr ""
+
+#: ea2c8e6a7081433a88bc5f36d4f77970 of pybroker.optimize.OptimizeResult:20
+msgid ""
+":class:`pybroker.strategy.TestResult` for the test window. When "
+"``windows`` is set, this is a single continuous result stitched from "
+"every window's test data, with positions and cash carried across window "
+"boundaries."
+msgstr ""
+
+#: 0db413cb1e94422e8be925529301d648 of pybroker.optimize.OptimizeResult:25
+msgid "TestResult"
+msgstr ""
+
+#: 391c60b8a9d24f4e8288af9b232c488f of pybroker.optimize.OptimizeResult:29
+msgid ""
+":class:`optuna.study.Study` holding the trials. When ``windows`` is set, "
+"this is the last window's study; see ``windows`` for the rest."
+msgstr ""
+
+#: c2eb2c46d80340f9a212b38f187fc25c of pybroker.optimize.OptimizeResult:32
+msgid "optuna.Study"
+msgstr ""
+
+#: 856960ae54b448afadc27a0975fe8ac1 of pybroker.optimize.OptimizeResult:36
+msgid "Per-window tuning results, or ``None`` for a single train/test split."
+msgstr ""
+
+#: 2be0681b8ade42789bfdefd4c03259e6 of pybroker.optimize.OptimizeResult:39
+msgid "Optional[tuple[WindowOptimizeResult, ...]]"
+msgstr ""
+
+#: 4de0d69e9dd14b87a13ba6daed7e49b8 of
+#: pybroker.optimize.OptimizeResult.to_json:1
+msgid "Returns JSON-serializable optimization results."
+msgstr ""
+
+#: 51e484121fa348a884bdd033e2ab8aaf e695a42007d64b48a0e82cce364a485a of
+#: pybroker.optimize.OptimizeResult.to_json_str:1
+#: pybroker.optimize.WindowOptimizeResult.to_json_str:1
+msgid "Returns strict JSON text from :meth:`to_json`."
+msgstr ""
+
+#: 9f412449f49d44499d0d4d01541c93fe of pybroker.optimize.SearchSpace:1
+msgid "Searchable hyperparameters collected from a strategy."
+msgstr ""
+
+#: 39ace3d1fe704a718e5dd3af4830aa64 of pybroker.optimize.SearchSpace:3
+msgid ""
+"Only includes hyperparams with ``low < high`` that are passed to Optuna "
+"during ``Strategy.optimize()``."
+msgstr ""
+
+#: 35fc38b5ef6248afbc0b6db32160c541 of pybroker.optimize.SearchSpace:8
+msgid "Names of hyperparams searched during optimize."
+msgstr ""
+
+#: 303c22f2618746a7b50bfb6faf3319a2 of pybroker.optimize.SearchSpace:10
+msgid "frozenset[str]"
+msgstr ""
+
+#: b683ee71b978473c9c67533d177c7b79 of pybroker.optimize.SearchSpace:14
+msgid "Mapping of hyperparam name to :class:`Hyperparam` spec."
+msgstr ""
+
+#: 14a6f6f0a5544a35b93cda663e280691 of pybroker.optimize.SearchSpace:16
+msgid "Mapping[str, pybroker.optimize.Hyperparam]"
+msgstr ""
+
+#: 21b61aa5522f47cdaf39882acb28ea10 of
+#: pybroker.optimize.SearchSpace.grid_size:1
+msgid "Total number of grid combinations."
+msgstr ""
+
+#: 837c3b5ca55a4cfc9b1d012d8228bcd0 of pybroker.optimize.WindowOptimizeResult:1
+msgid "Per-window walk-forward optimization result."
+msgstr ""
+
+#: b0b12d87156a4ab5a8965997d2cc91f3 of pybroker.optimize.WindowOptimizeResult:3
+msgid ""
+"Holds the values a window was tuned to, not a backtest of its own: the "
+"single out-of-sample :class:`pybroker.strategy.TestResult` lives on "
+":attr:`OptimizeResult.result`, stitched across every window."
+msgstr ""
+
+#: 53c66ea0eb2e4dbe94487308de0260e0 of pybroker.optimize.WindowOptimizeResult:9
+msgid ""
+"Winning hyperparameter values for this window, including the ones that "
+"were fixed rather than searched."
+msgstr ""
+
+#: 7cba12aec25c4579bb170c466c7a3927 of
+#: pybroker.optimize.WindowOptimizeResult:16
+msgid ":class:`optuna.study.Study` holding this window's trials."
+msgstr ""
+
+#: 07fd6087780741beb3f4d071d0f21e6a of
+#: pybroker.optimize.WindowOptimizeResult:18
+msgid "optuna.study.study.Study"
+msgstr ""
+
+#: 444e2c6c409542a994b4a01ed9db836c of
+#: pybroker.optimize.WindowOptimizeResult:22
+msgid "``score_fn`` value that ``params`` earned on this window's train data."
+msgstr ""
+
+#: 932818c56bfb40af9007a89339735f9b of
+#: pybroker.optimize.WindowOptimizeResult:29
+msgid ""
+"First date of the window's train data, or ``None`` when the train split "
+"is empty."
+msgstr ""
+
+#: 0273a678bd2c4d55824468ea3aa930f9 2667eeb63f6d4e4b8f446645ea388149
+#: 3913a5be7023429ebf2d96b6d420e184 bd2712b7d178412184de121ee6f71d97 of
+#: pybroker.optimize.WindowOptimizeResult:32
+#: pybroker.optimize.WindowOptimizeResult:39
+#: pybroker.optimize.WindowOptimizeResult:48
+#: pybroker.optimize.WindowOptimizeResult:55
+msgid "datetime.datetime | None"
+msgstr ""
+
+#: d4a181b845aa439d834cd5daad56e343 of
+#: pybroker.optimize.WindowOptimizeResult:36
+msgid ""
+"Last date of the window's train data, or ``None`` when the train split is"
+" empty."
+msgstr ""
+
+#: 5532ca5b2243419fb0c66b17c0303ea5 of
+#: pybroker.optimize.WindowOptimizeResult:43
+msgid ""
+"First date of the window's test data -- the span its tuned ``params`` "
+"trade in the stitched :attr:`OptimizeResult.result` -- or ``None`` when "
+"the test split is empty."
+msgstr ""
+
+#: 06843a73de7743519a866cb5ab8e9559 of
+#: pybroker.optimize.WindowOptimizeResult:52
+msgid ""
+"Last date of the window's test data, or ``None`` when the test split is "
+"empty."
+msgstr ""
+
+#: a12f489792e74d728113e333af271142 of
+#: pybroker.optimize.WindowOptimizeResult.to_json:1
+msgid "Returns JSON-serializable walk-forward optimization window results."
+msgstr ""
+
+#: 25e37e1157564e76bb12a3570e72c6b2 of
+#: pybroker.optimize.build_run_hyperparams:1
+msgid "Builds the hyperparam dict for a single backtest or trial run."
+msgstr ""
+
+#: b985848a107c44efaf9a4ec17c9991e1 of
+#: pybroker.optimize.build_run_hyperparams:3
+msgid "All hyperparams reachable from the strategy."
+msgstr ""
+
+#: eb6b6398861e4be89edc9b56890183ec of
+#: pybroker.optimize.build_run_hyperparams:4
+msgid "Trial or user-supplied values to merge over defaults."
+msgstr ""
+
+#: 58cd3d67f5394e4789899f7b052be418 of
+#: pybroker.optimize.build_run_hyperparams:6
+msgid "Dict of ``name -> value`` for every hyperparam in ``specs``."
+msgstr ""
+
+#: 46968e2714d64d708670f0db977d6cf8 of pybroker.optimize.collect_hyperparams:1
+msgid "Collects all hyperparams reachable from ``strategy``."
+msgstr ""
+
+#: 0d29b11a4c4d405c9f861a1ffb8c4bf3 of pybroker.optimize.collect_search_space:1
+msgid "Collects searchable hyperparams reachable from ``strategy``."
+msgstr ""
+
+#: 1be85bd5237b42d9b95ad4693d2b1526 of pybroker.optimize.hyperparam:1
+msgid "Creates and registers a :class:`Hyperparam`."
+msgstr ""
+
+#: 381935c5975243399ff31dff9b0ffab6 of pybroker.optimize.hyperparam:3
+msgid ""
+"Unique identifier for the hyperparam. Referenced in indicator kwargs, "
+"``add_execution(..., hyperparams=[...])``, and ``ctx.hyperparam(name)``."
+msgstr ""
+
+#: dd574a4afd514d46951a1140c95fbade of pybroker.optimize.hyperparam:6
+msgid "Value used for backtests."
+msgstr ""
+
+#: 3eafb62f3a57474dacecd9fd36114d54 of pybroker.optimize.hyperparam:8
+msgid "Maximum candidate value searched during optimize (inclusive)."
+msgstr ""
+
+#: 545e4b0ee47c4fbc9db7cdc05ce8e26a of pybroker.optimize.hyperparam:9
+msgid "Spacing between candidate values. Must be positive."
+msgstr ""
+
+#: fe0ec31b1f444efb8dd41840d26c4e72 of pybroker.optimize.hyperparam:11
+msgid "The registered :class:`Hyperparam` instance."
+msgstr ""
+
+#: cdd2e4f54b114657bf51f15221eb2afa of pybroker.optimize.make_objective:1
+msgid "Builds an Optuna objective for train-window scoring."
+msgstr ""
+
+#: 91705a20d11546ed9dba0c95cff7c713 of pybroker.optimize.make_objective:3
+msgid ""
+"When ``verbose`` is ``False`` (the default), each trial's backtest runs "
+"with logging suppressed so that per-trial progress bars do not repeat for"
+" every combination searched."
+msgstr ""
+

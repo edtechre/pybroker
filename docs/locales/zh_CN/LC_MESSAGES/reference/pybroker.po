@@ -1,14 +1,14 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) 2023, Edward West
+# Copyright (C) 2026, Edward West
 # This file is distributed under the same license as the PyBroker package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
 #
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-07 17:57+0800\n"
+"POT-Creation-Date: 2026-08-05 15:57-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -17,20 +17,17 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.12.1\n"
+"Generated-By: Babel 2.18.0\n"
 
-#: ../../source/reference/pybroker.rst:2 8434e54d5fed4e9abe18d387ae188da9
+#: ../../source/reference/pybroker.rst:2 532d972beae84a479b572361ec25faa6
 msgid "pybroker package"
 msgstr ""
 
-#: b7f7b00cfe104e4386503a5b08cf3750 of pybroker:1
+#: 1a47a65900134ef9a80bb80d3eb88104 of pybroker:1
 msgid "Global imports."
 msgstr ""
 
-#: ../../source/reference/pybroker.rst:10 fc335e95c650492dbc9d9c3c1057d66a
+#: ../../source/reference/pybroker.rst:10 88924575526f4c80a6bf5548e1e1658e
 msgid "Submodules"
 msgstr ""
-
-#~ msgid "Global imports."
-#~ msgstr ""
 

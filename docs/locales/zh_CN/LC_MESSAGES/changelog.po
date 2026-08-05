@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-02 21:23+0800\n"
+"POT-Creation-Date: 2026-08-05 15:57-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -17,50 +17,101 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.12.1\n"
+"Generated-By: Babel 2.18.0\n"
 
-#: ../../source/changelog.rst:3 3bad2582e1b841deaaf5bafb532d8542
+#: ../../source/changelog.rst:3 f5cc0c8cef9545c8956b7fdc8d2c6b0b
 msgid "Changelog"
 msgstr "更新日志"
 
-#: ../../source/changelog.rst:6 8d01d4e16aa244febc8fdcbef94b9c68
+#: ../../source/changelog.rst:6 fd8d98bb70a54f3d8017758d893cbdb6
+msgid "1.2.13"
+msgstr ""
+
+#: ../../source/changelog.rst:8 3bfaaf88573540ffa832d2f60622f382
+msgid ""
+"Adds signal provenance fields to `Order "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.Order>`_:"
+msgstr ""
+
+#: ../../source/changelog.rst:10 c85d9ce19efe4af0aafc736736b5728d
+msgid "``created`` — date the order signal was created."
+msgstr ""
+
+#: ../../source/changelog.rst:11 2ad883e8457b489db24b621689758134
+msgid ""
+"``order_type`` — how the order originated (``market``, ``limit``, "
+"``stop_bar``, ``stop_loss``, ``stop_profit``, ``stop_trailing``)."
+msgstr ""
+
+#: ../../source/changelog.rst:12 bc1c6fc69a6f460c84ef5f3555eed103
+msgid ""
+"``intent`` — position intent (``buy_to_open``, ``buy_to_close``, "
+"``sell_to_open``, ``sell_to_close``)."
+msgstr ""
+
+#: ../../source/changelog.rst:14 0c034f32de3e431881bf4e2ec4a49a7b
+msgid ""
+"Adds `OrderType "
+"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.OrderType>`_"
+" and `PositionIntent "
+"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.PositionIntent>`_"
+" enums."
+msgstr ""
+
+#: ../../source/changelog.rst:16 621bed5b948341b687112ceedbf59807
+msgid ""
+"Adds ``order_id`` parameter to `PendingOrderScope.orders() "
+"<https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.PendingOrderScope.orders>`_."
+msgstr ""
+
+#: ../../source/changelog.rst:19 0b3c0d10081e40ec9e1eb803d0b05606
+msgid "1.2.3"
+msgstr ""
+
+#: ../../source/changelog.rst:21 dde60955bcc6485e826e31965b624b44
+msgid ""
+"Adds built-in indicators to the `indicator module "
+"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html>`_."
+msgstr ""
+
+#: ../../source/changelog.rst:25 f58644eb5725408fbad748a876eec83b
 msgid "1.1.0"
 msgstr ""
 
-#: ../../source/changelog.rst:8 1918a59aee4e4cc5a491319e3f68d6cd
+#: ../../source/changelog.rst:27 7a7c589364ae4acea9ff71b33a37836a
 msgid ""
 "`Adds support for the following stop types: "
 "<https://www.pybroker.com/en/latest/notebooks/8.%20Applying%20Stops.html>`_"
 msgstr ""
 
-#: ../../source/changelog.rst:10 4d94ac547c724baf93d1a8ec2b0f35f4
+#: ../../source/changelog.rst:29 b29e0e40c5d7470d82662bc2fb1a33db
 msgid "Stop loss"
 msgstr ""
 
-#: ../../source/changelog.rst:11 c644150a368942f884c488e4996ee34a
+#: ../../source/changelog.rst:30 44da05f77d474f658461e5cda9601076
 msgid "Trailing stop loss"
 msgstr ""
 
-#: ../../source/changelog.rst:12 80192d58102d472889ac1d4876ede4a8
+#: ../../source/changelog.rst:31 689cbf259bb64805b70fede5dff4f99e
 msgid "Take profit"
 msgstr ""
 
-#: ../../source/changelog.rst:14 a99daf0195da4507bba82c4e474a9cae
+#: ../../source/changelog.rst:33 9eeb0b68b66541a0a5eaefc492cb266a
 msgid ""
 "`Allows canceling pending orders. "
 "<https://www.pybroker.com/en/latest/notebooks/FAQs.html#...-cancel-"
 "pending-orders?>`_"
 msgstr ""
 
-#: ../../source/changelog.rst:16 044e914e21d047dc8b5618109cb73e03
+#: ../../source/changelog.rst:35 fa6ed27e69404792bc62b9eb4cd34eb5
 msgid "Upgrades ``alpaca-trade-api-python`` to ``alpaca-py`` package."
 msgstr ""
 
-#: ../../source/changelog.rst:19 c34e5c2d0ce64e2280c85c589039fdf2
+#: ../../source/changelog.rst:38 c12addf705c547aeae5dd639bf1a851a
 msgid "1.0.0"
 msgstr ""
 
-#: ../../source/changelog.rst:21 3d0fbdba01644d75afe5cf3587505214
+#: ../../source/changelog.rst:40 79599adc46e94372b1044d183b0ded82
 msgid "Initial release!"
 msgstr ""
 

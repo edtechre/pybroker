@@ -1,14 +1,14 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) 2023, Edward West
+# Copyright (C) 2026, Edward West
 # This file is distributed under the same license as the PyBroker package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
 #
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-27 18:02+0800\n"
+"POT-Creation-Date: 2026-08-05 15:57-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -17,327 +17,20 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.12.1\n"
+"Generated-By: Babel 2.18.0\n"
 
 #: ../../source/reference/pybroker.context.rst:2
-#: 253e799bb2c24ee0893e651e40190634
+#: e2dba73ebfc346bba7dcb929df703d8b
 msgid "pybroker.context module"
 msgstr ""
 
-#: aa12ce8ac7cd477db46b595364e9cd2c of pybroker.context:1
+#: 1eb6bb40c8db4c20b4cd1a6726e5fa6f of pybroker.context:1
 msgid ""
 "Contains context related classes. A context provides data during the "
 "execution of a :class:`pybroker.strategy.Strategy`."
 msgstr ""
 
-#: 06065225c8294e23917a497377e44036 ee82b13e74db40a4a552985f2b5fa71d of
-#: pybroker.context.BaseContext:1 pybroker.context.ExecResult:1
-msgid "Bases: :py:class:`object`"
-msgstr ""
-
-#: f9cdad3551764129a16cad3977978ed6 of pybroker.context.BaseContext:1
-msgid "Base context class."
-msgstr ""
-
-#: 963718c2fa8b41b7b8ef46ccc7433cdc of pybroker.context.BaseContext:5
-msgid ":class:`pybroker.config.StrategyConfig`."
-msgstr ""
-
-#: 61db33781b0541119f810bc6c59c546e b4a62d642e484613aa2fc0a4d499158c of
-#: pybroker.context.BaseContext.calc_target_shares:1
-#: pybroker.context.ExecContext.calc_target_shares:1
-msgid ""
-"Calculates the number of shares given a ``target_size`` allocation and "
-"share ``price``."
-msgstr ""
-
-#: 174738232a074d79b09614591a0a1461 231f72931964465894aeff436a601ac2
-#: 4a6b3bb2e5e24bd19781d755c4999bb1 5e816ab5af54431baaca7a6eec8b2465
-#: 672de2bf80114ccd8898058280395e65 6e543ab43b9145f3944768956913f460
-#: 9263e07180dd4bfcb8fde977489dbc73 d2b8da327a164e7db9f67db2ee0623ab
-#: d92e086f76bd4254a9c09ff0c6c9c006 f00646ff95094aec83e0929c5fefeffc of
-#: pybroker.context.BaseContext.calc_target_shares
-#: pybroker.context.BaseContext.indicator pybroker.context.BaseContext.input
-#: pybroker.context.BaseContext.long_positions
-#: pybroker.context.BaseContext.model pybroker.context.BaseContext.pos
-#: pybroker.context.BaseContext.positions pybroker.context.BaseContext.preds
-#: pybroker.context.BaseContext.short_positions
-#: pybroker.context.ExecContext.calc_target_shares
-#: pybroker.context.ExecContext.cancel_stops
-#: pybroker.context.ExecContext.foreign pybroker.context.ExecContext.indicator
-#: pybroker.context.ExecContext.input pybroker.context.ExecContext.long_pos
-#: pybroker.context.ExecContext.model pybroker.context.ExecContext.preds
-#: pybroker.context.ExecContext.short_pos pybroker.context.set_exec_ctx_data
-#: pybroker.context.set_pos_size_ctx_data
-msgid "Parameters"
-msgstr ""
-
-#: b1d6e8f612874d29be233645636b6131 c01da2f524394b5fabb9004cc9d07a22 of
-#: pybroker.context.BaseContext.calc_target_shares:4
-#: pybroker.context.ExecContext.calc_target_shares:4
-#, python-format
-msgid ""
-"Proportion of cash used to calculate the number of shares, where the max "
-"``target_size`` is ``1``. For example, a ``target_size`` of ``0.1`` would"
-" represent 10% of cash."
-msgstr ""
-
-#: fbb7adc6cf4d48068d6f3580f451df4d of
-#: pybroker.context.BaseContext.calc_target_shares:7
-msgid "Share price used to calculate the number of shares."
-msgstr ""
-
-#: 0b74bc0c60424ce6a6226f0caa0e42e5 3b60c5cef21349418f8e469f7ac6919e of
-#: pybroker.context.BaseContext.calc_target_shares:8
-#: pybroker.context.ExecContext.calc_target_shares:10
-msgid ""
-"Cash used to calculate the number of number of shares. If ``None``, then "
-"the :class:`pybroker.portfolio.Portfolio` equity is used to calculate the"
-" number of shares."
-msgstr ""
-
-#: 312f9f3fc4f243689bfff7eeb46af807 3c8fd6e0a46c4ad3b102ed696fc3072b
-#: 453b0f3bc29b410abc5f04f1b5a4e275 49c06d70388c44acac6b4222c93814cc
-#: 4d7ee86e7c9e42b9adfeec1794f75ed7 9f91d730274b40b996bb11fdf401529e
-#: c40134c0c84b499c8d9e5ab8b73db916 c8df50b5a35a4a31a30663765bea96cd
-#: dac65bbda6d94bf6b11a638c762011d4 f12ef3237ba3442d8f7142315f27a664 of
-#: pybroker.context.BaseContext.calc_target_shares
-#: pybroker.context.BaseContext.indicator pybroker.context.BaseContext.input
-#: pybroker.context.BaseContext.long_positions
-#: pybroker.context.BaseContext.model pybroker.context.BaseContext.pos
-#: pybroker.context.BaseContext.positions pybroker.context.BaseContext.preds
-#: pybroker.context.BaseContext.short_positions
-#: pybroker.context.ExecContext.calc_target_shares
-#: pybroker.context.ExecContext.foreign pybroker.context.ExecContext.indicator
-#: pybroker.context.ExecContext.input pybroker.context.ExecContext.long_pos
-#: pybroker.context.ExecContext.model pybroker.context.ExecContext.preds
-#: pybroker.context.ExecContext.short_pos
-msgid "Returns"
-msgstr ""
-
-#: 5c63fe173d064beab29db25c0cebe197 f1241153a98a490b8400707fe80fd9cf of
-#: pybroker.context.BaseContext.calc_target_shares:12
-#: pybroker.context.ExecContext.calc_target_shares:14
-msgid "Number of shares given ``target_size`` and share ``price``."
-msgstr ""
-
-#: 5c64e830b8e14a6d910a6d836ef85e58 of pybroker.context.BaseContext.cash:1
-msgid "Total cash currently held in the :class:`pybroker.portfolio.Portfolio`."
-msgstr ""
-
-#: cc3fac0a4b7540c3b33aacfb14f07638 cf1ed82187e943318eae0149019e44f5 of
-#: pybroker.context.BaseContext.indicator:1
-#: pybroker.context.ExecContext.indicator:1
-msgid "Returns indicator data."
-msgstr ""
-
-#: 5fd0052b5e9c48c982b78a0a9e3e1d38 of pybroker.context.BaseContext.indicator:3
-msgid ""
-"Name used to identify the indicator that was registered with "
-":meth:`pybroker.indicator.indicator`."
-msgstr ""
-
-#: 152fcfa9c5c84a4f881df697940457d9 of pybroker.context.BaseContext.indicator:5
-msgid "Ticker symbol that was used to generate the indicator data."
-msgstr ""
-
-#: d27188655ab5443d947f246629c2cb65 of pybroker.context.BaseContext.indicator:7
-msgid ""
-":class:`numpy.ndarray` of indicator data for all bars up to the current "
-"one, sorted in ascending chronological order."
-msgstr ""
-
-#: 36bf3db8ec454df5a199f8249cb9b463 caf52a59fa894b38852254de52a400c0 of
-#: pybroker.context.BaseContext.input:1 pybroker.context.ExecContext.input:1
-msgid "Returns model input data for making predictions."
-msgstr ""
-
-#: 812643a2a76e48bfb333fb5872411a0c d3c6ffa1cde644049e3c64d53f360953 of
-#: pybroker.context.BaseContext.input:3 pybroker.context.ExecContext.input:3
-msgid "Name of the model for the input data."
-msgstr ""
-
-#: 390b51a23a1448f58f481c5296a89539 of pybroker.context.BaseContext.input:4
-msgid "Ticker symbol of the model for the input data."
-msgstr ""
-
-#: 8d00b29749af4543bbd4a8d8bde17619 d97197e81a834dc1ab43d9d3ba47411e of
-#: pybroker.context.BaseContext.input:6 pybroker.context.ExecContext.input:7
-msgid ""
-":class:`pandas.DataFrame` containing the input data, where each row "
-"represents a bar in the sequence up to the current bar. The rows are "
-"sorted in ascending chronological order."
-msgstr ""
-
-#: 1f15aab6e2eb4e4585865e699ab75e00 of
-#: pybroker.context.BaseContext.long_positions:1
-msgid "Retrieves all current long positions."
-msgstr ""
-
-#: e982ba7104b14371b8efe341ba935776 of
-#: pybroker.context.BaseContext.long_positions:3
-msgid ""
-"Ticker symbol used to filter positions. If ``None``, long positions for "
-"all symbols are returned. Defaults to ``None``."
-msgstr ""
-
-#: 54144290de2f400b887adc579936eaee of
-#: pybroker.context.BaseContext.long_positions:7
-msgid ""
-":class:`Iterator` of currently held long "
-":class:`pybroker.portfolio.Position` \\s."
-msgstr ""
-
-#: 5e1bf31c062d4d0e8d60d9e645c25bee of pybroker.context.BaseContext.loss_rate:1
-msgid "Running loss rate of trades."
-msgstr ""
-
-#: 2968c5695e584e48bf17cd9f09ecf62d 66a449970ada461798dae8d48c5bd201 of
-#: pybroker.context.BaseContext.model:1 pybroker.context.ExecContext.model:1
-msgid "Returns a trained model."
-msgstr ""
-
-#: 14ecb31c2d6842708a7021f955566521 c2f421422e504cbca6b89371806c4463 of
-#: pybroker.context.BaseContext.model:3 pybroker.context.ExecContext.model:3
-msgid ""
-"Name used to identify the model that was registered with "
-":meth:`pybroker.model.model`."
-msgstr ""
-
-#: 0087ff762c8844698c8f10b07866675d of pybroker.context.BaseContext.model:5
-msgid "Ticker symbol of the data that was used to train the model."
-msgstr ""
-
-#: d2e22473ec7c45078453e874d3c886d3 d4ebc432bc2e4357b091bfbc2c3ed9ea of
-#: pybroker.context.BaseContext.model:7 pybroker.context.ExecContext.model:8
-msgid "Instance of the trained model."
-msgstr ""
-
-#: c18c308a444a4287a66b318bea9654a0 of pybroker.context.BaseContext.orders:1
-msgid ""
-":class:`Iterator` of all :class:`pybroker.portfolio.Order`\\ s that have "
-"been placed and filled."
-msgstr ""
-
-#: 315bdbab634944719efd9504b10cb451 of pybroker.context.BaseContext.pos:1
-msgid ""
-"Retrieves a current long or short :class:`pybroker.portfolio.Position` "
-"for a ``symbol``."
-msgstr ""
-
-#: 9ca49aabf5ef46c295023bc8fb1f39e7 of pybroker.context.BaseContext.pos:4
-msgid "Ticker symbol of the position to return."
-msgstr ""
-
-#: a442e38ea11b4dc1a1b1a6227acd0e69 of pybroker.context.BaseContext.pos:5
-msgid "Specifies whether to return a ``long`` or ``short`` position."
-msgstr ""
-
-#: 5c02c7a082524e6cbc788da98e623573 a882c49589e843778b0cf2c603447dc3 of
-#: pybroker.context.BaseContext.pos:8 pybroker.context.ExecContext.long_pos:8
-#: pybroker.context.ExecContext.short_pos:8
-msgid ":class:`pybroker.portfolio.Position` if one exists, otherwise ``None``."
-msgstr ""
-
-#: d767fd54bf9444bbabf78d07fdff5634 of pybroker.context.BaseContext.positions:1
-msgid "Retrieves all current positions."
-msgstr ""
-
-#: 9af92b2273304f2180eae3716651c9ed of pybroker.context.BaseContext.positions:3
-msgid ""
-"Ticker symbol used to filter positions. If ``None``, positions for all "
-"symbols are returned. Defaults to ``None``."
-msgstr ""
-
-#: d619b3245fe5475fbb5a81fb37d3cc60 of pybroker.context.BaseContext.positions:5
-msgid ""
-"Type of positions to return. If ``None``, both ``long`` and ``short`` "
-"positions are returned."
-msgstr ""
-
-#: a8fbf18c65594310937be90a48d23346 of pybroker.context.BaseContext.positions:8
-msgid ""
-":class:`Iterator` of currently held :class:`pybroker.portfolio.Position` "
-"\\s."
-msgstr ""
-
-#: 7d26812fd28d47f9a829861c1db2503c deff5d6f5059473ea122bc6da499d3b2 of
-#: pybroker.context.BaseContext.preds:1 pybroker.context.ExecContext.preds:1
-msgid "Returns model predictions."
-msgstr ""
-
-#: 044df61802d9434c9c831e727e61d59c 9b29d3b0693e423e88d8f9d89f426b5a of
-#: pybroker.context.BaseContext.preds:3 pybroker.context.ExecContext.preds:3
-msgid "Name of the model that made the predictions."
-msgstr ""
-
-#: 8e90c48184784f6aa5cd60b03f66b934 of pybroker.context.BaseContext.preds:4
-msgid "Ticker symbol of the model that made the predictions."
-msgstr ""
-
-#: 47d59b67d75047b98b652f4b372553c4 7cdb544981c542f68ca1e9e7c0b5bbbd of
-#: pybroker.context.BaseContext.preds:6 pybroker.context.ExecContext.preds:7
-msgid ""
-":class:`numpy.ndarray` containing the sequence of model predictions up to"
-" the current bar. Sorted in ascending chronological order."
-msgstr ""
-
-#: 05eadba4522142d2897466b53edde7f1 of
-#: pybroker.context.BaseContext.short_positions:1
-msgid "Retrieves all current short positions."
-msgstr ""
-
-#: 7945e0b12f814bfe8eb2e922941ebe29 of
-#: pybroker.context.BaseContext.short_positions:3
-msgid ""
-"Ticker symbol used to filter positions. If ``None``, short positions for "
-"all symbols are returned. Defaults to ``None``."
-msgstr ""
-
-#: ecc4b406bb95405a8eb40ff3f1aca63f of
-#: pybroker.context.BaseContext.short_positions:7
-msgid ""
-":class:`Iterator` of currently held short "
-":class:`pybroker.portfolio.Position` \\s."
-msgstr ""
-
-#: 3600230ef514487cbcd5d33abecc221b of
-#: pybroker.context.BaseContext.total_equity:1
-msgid "Total equity currently held in the :class:`pybroker.portfolio.Portfolio`."
-msgstr ""
-
-#: f39aab3b2d6140fcaf7996da6f65e42c of
-#: pybroker.context.BaseContext.total_margin:1
-msgid ""
-"Total amount of margin currently held in the "
-":class:`pybroker.portfolio.Portfolio`."
-msgstr ""
-
-#: 96ebb8e62e1e486091bcb4bf492e3389 of
-#: pybroker.context.BaseContext.total_market_value:1
-msgid ""
-"Total market value currently held in the "
-":class:`pybroker.portfolio.Portfolio`. The market value is defined as the"
-" amount of equity held in cash and long positions added together with the"
-" unrealized PnL of all open short positions."
-msgstr ""
-
-#: 4be100769b944938908e5e51375c24f5 of pybroker.context.BaseContext.trades:1
-msgid ""
-":class:`Iterator` of all :class:`pybroker.portfolio.Trade`\\ s that have "
-"been completed."
-msgstr ""
-
-#: 8df6aca772114c4cb42508f0abae9675 of pybroker.context.BaseContext.win_rate:1
-msgid "Running win rate of trades."
-msgstr ""
-
-#: 1c6f6b5c35f444129df9e8c53280d675 c975a5301d5848398caa971c38214481 of
-#: pybroker.context.ExecContext:1 pybroker.context.PosSizeContext:1
-msgid "Bases: :py:class:`~pybroker.context.BaseContext`"
-msgstr ""
-
-#: a8dcd5b3026c43a59392d81bbcc378f3 of pybroker.context.ExecContext:1
+#: 14bea6a1d5ee45d4a265b4396fb0c18e of pybroker.context.ExecContext:1
 msgid ""
 "Contains context data during the execution of a "
 ":class:`pybroker.strategy.Strategy`. Includes data about the current bar,"
@@ -345,7 +38,7 @@ msgid ""
 " to set buy and sell signals for placing orders."
 msgstr ""
 
-#: 4c0c67602bdb4ec18a81ab217b574d2d of pybroker.context.ExecContext:6
+#: df3d53309b44485496b35d476e60e56a of pybroker.context.ExecContext:6
 msgid ""
 "The data contained in this class is for the latest bar that has already "
 "completed. Placing an order will be executed on a future bar specified by"
@@ -353,354 +46,785 @@ msgid ""
 ":attr:`pybroker.config.StrategyConfig.sell_delay`."
 msgstr ""
 
-#: bd10df54fc8d4cf3a2395e8176fd7070 of pybroker.context.ExecContext:13
+#: 99a9d3288f4f49deaa7e5681aa73ab24 9fbbfd9277ed4c31afeeee8a29e6c16f of
+#: pybroker.context.ExecContext:13 pybroker.context.RotationContext:33
+msgid ":class:`pybroker.config.StrategyConfig`."
+msgstr ""
+
+#: d16b6e87490245bdab6da41f50cee64a of pybroker.context.ExecContext:17
 msgid "Current ticker symbol of the execution."
 msgstr ""
 
-#: 4595397a84164d47b7b382d2760ec49a 75c255e7cfb34557ab46e82abdb91ec8 of
-#: pybroker.context.ExecContext:17 pybroker.context.ExecResult:18
+#: 5ef520f21940431aaea21f502930b521 76606f56099b480fbaf6b8038a283747 of
+#: pybroker.context.ExecContext:21 pybroker.context.ExecResult:18
 msgid "Fill price to use for a buy (long) order of ``symbol``."
 msgstr ""
 
-#: 35a64d6633984a25b9c837d68633afdf 6043f1ccdf14496e80625ed8904855d5 of
-#: pybroker.context.ExecContext:22 pybroker.context.ExecResult:51
+#: 6b551102ff0c4c37889076b61e7d5b65 91f4d738bc274233bacfd91120e7e26d of
+#: pybroker.context.ExecContext:26 pybroker.context.ExecResult:77
 msgid "Number of shares to buy of ``symbol``."
 msgstr ""
 
-#: 531ff57aa8c5494887966f7ff51b8643 of pybroker.context.ExecContext:26
+#: a00cb5ff03784c15946d719e6aadadb6 of pybroker.context.ExecContext:30
 msgid "Limit price to use for a buy (long) order of ``symbol``."
 msgstr ""
 
-#: 9feb38c60aca456e91200cb534ef0253 ba7c379eec8f4e2b9a9e40591daedc28 of
-#: pybroker.context.ExecContext:31 pybroker.context.ExecResult:24
+#: d27bce5220104de4bf3d60353f615549 d79b7031f61541508b90aad646a5e2bd of
+#: pybroker.context.ExecContext:35 pybroker.context.ExecResult:89
+msgid ""
+"Number of bars to retry an unfilled buy limit order after the first "
+"attempt. ``None`` for a single attempt, ``-1`` for indefinite "
+"persistence, or a positive integer for a limited number of retry bars."
+msgstr ""
+
+#: 40fcdc2937fe4d23be8652e06d2f1662 9d6bee3dd35b43448c6e015b75659d8a of
+#: pybroker.context.ExecContext:42 pybroker.context.ExecResult:24
 msgid "Fill price to use for a sell (short) order of ``symbol``."
 msgstr ""
 
-#: d19c587e78fb4ffa9fa4072ce96d71ff fe2e590fd29845608d2d7c1b529518da of
-#: pybroker.context.ExecContext:36 pybroker.context.ExecResult:63
+#: 5898e51e4e074ca8a4c113bcafad5991 c275d9c4e3cb4dbf8b5198283797919f of
+#: pybroker.context.ExecContext:47 pybroker.context.ExecResult:98
 msgid "Number of shares to sell of ``symbol``."
 msgstr ""
 
-#: 9f65552a127d45b0a09c882cdfe2db1c of pybroker.context.ExecContext:40
+#: 61d19fa4780d478f93e9a6e0a5c336cf of pybroker.context.ExecContext:51
 msgid "Limit price to use for a sell (short) order of ``symbol``."
 msgstr ""
 
-#: a50c5a895be34290a66cf55c56ea7574 ffabbf23b3b1414a9aa73c4490ec68f2 of
-#: pybroker.context.ExecContext:45 pybroker.context.ExecResult:44
+#: 147745905f9f47da8309b077110316dd 9cbf0304a4a54daaa2da9c915af9fedc of
+#: pybroker.context.ExecContext:56 pybroker.context.ExecResult:111
+msgid ""
+"Number of bars to retry an unfilled sell limit order after the first "
+"attempt. ``None`` for a single attempt, ``-1`` for indefinite "
+"persistence, or a positive integer for a limited number of retry bars."
+msgstr ""
+
+#: a8261aea172f4231b900ca2b5f0d6856 eaa496d0d9b540e28d7cfdacdffb1f53 of
+#: pybroker.context.ExecContext:63 pybroker.context.ExecResult:70
 msgid ""
 "Number of bars to hold a long or short position for, after which the "
 "position is automatically liquidated."
 msgstr ""
 
-#: 9900a5437f694c06b44b4dd20ce267ed of pybroker.context.ExecContext:50
+#: 05279491c14443aca2a9fbf9dc8fcaf4 0f99b8742ecb4e509c6d8c21db0236a7 of
+#: pybroker.context.ExecContext:68 pybroker.context.ExecResult:31
 msgid ""
-"Score used to rank ``symbol`` when ranking buy and sell signals. Orders "
-"are placed for symbols with the highest scores, where the number of "
-"positions held at any time in the :class:`pybroker.portfolio.Portfolio` "
-"is specified by :attr:`pybroker.config.StrategyConfig.max_long_positions`"
-" and :attr:`pybroker.config.StrategyConfig.max_short_positions` "
-"respectively. Long and short signals are ranked separately by ``score``."
+"Deprecated. Use ``long_score`` or ``short_score`` instead. When set, "
+"ranks buy and sell signals separately (higher wins each queue). Mutually "
+"exclusive with ``long_score`` and ``short_score``."
 msgstr ""
 
-#: cfd9f4d9e3a44b4aae8ac66a4cd4946d of pybroker.context.ExecContext:61
+#: 28cc1a16fa1f4efca1b3830f1c69f588 34a810b39fad482a87fbf6ad6714ea58 of
+#: pybroker.context.ExecContext:75 pybroker.context.ExecResult:40
+msgid ""
+"Score used to rank ``symbol`` when ranking buy and cover signals. Orders "
+"are placed for symbols with the highest ``long_score`` values, where the "
+"number of long positions held at any time in the "
+":class:`pybroker.portfolio.Portfolio` is specified by "
+":meth:`pybroker.strategy.Strategy.set_max_long_positions`. When rotation "
+"is enabled with :meth:`pybroker.strategy.Strategy.enable_rotation`, "
+"``long_score`` drives long rotation and orders set during an "
+":class:`pybroker.strategy.Execution` are ignored. Mutually exclusive with"
+" ``score``."
+msgstr ""
+
+#: 3552fc5f6b6d4663beb897d630adf718 b0569ae628d443458df9608861f3a68f of
+#: pybroker.context.ExecContext:88 pybroker.context.ExecResult:55
+msgid ""
+"Score used to rank ``symbol`` when ranking sell signals. Orders are "
+"placed for symbols with the highest ``short_score`` values, where the "
+"number of short positions held at any time in the "
+":class:`pybroker.portfolio.Portfolio` is specified by "
+":meth:`pybroker.strategy.Strategy.set_max_short_positions`. When rotation"
+" is enabled with :meth:`pybroker.strategy.Strategy.enable_rotation`, "
+"``short_score`` drives short rotation and orders set during an "
+":class:`pybroker.strategy.Execution` are ignored. Mutually exclusive with"
+" ``score``."
+msgstr ""
+
+#: 5a557b1e5bb545f3a59a002b169bc49b of pybroker.context.ExecContext:101
 msgid ""
 "``dict`` used to store custom data that persists for each bar during the "
 ":class:`pybroker.strategy.Strategy`\\ 's execution."
 msgstr ""
 
-#: a5a7017388d149598d4956fe77fea439 of pybroker.context.ExecContext:66
+#: 932c4094587548d582946dc8cd675c90 of pybroker.context.ExecContext:106
 msgid ""
 "Sets stop loss on a new :class:`pybroker.portfolio.Entry`, where value is"
 " measured in points from entry price."
 msgstr ""
 
-#: 017f9070a3384c738ddf0ede90874062 of pybroker.context.ExecContext:71
+#: 0f20e7e5afd744aca5b0181ce4f34e60 of pybroker.context.ExecContext:111
 msgid ""
 "Sets stop loss on a new :class:`pybroker.portfolio.Entry`, where value is"
 " measured in percentage from entry price."
 msgstr ""
 
-#: 4ee5c22ee8a541d4a9d569b918ee1cc4 of pybroker.context.ExecContext:77
+#: a053c1e3aa29488ea59ef54d05670284 of pybroker.context.ExecContext:117
 msgid "Limit price to use for the stop loss."
 msgstr ""
 
-#: a5b8670ceae249e3915927449c10e59e of pybroker.context.ExecContext:81
+#: d0ae01d5fa6a4c968456319a5cd0cb95 of pybroker.context.ExecContext:121
 msgid ""
 "Exit :class:`pybroker.common.PriceType` to use for the stop loss exit. If"
 " set, the stop is checked against the ``exit_price`` and exits at the "
 "``exit_price`` when triggered."
 msgstr ""
 
-#: 123214d4a1cb47fb9b06a208536f656a of pybroker.context.ExecContext:87
+#: 95adbe5c0de44e3aa36ad8b41214cb5c of pybroker.context.ExecContext:127
 msgid ""
 "Sets profit stop on a new :class:`pybroker.portfolio.Entry`, where value "
 "is measured in points from entry price."
 msgstr ""
 
-#: f79c0b55ddef4399be93e1fdc9690bf9 of pybroker.context.ExecContext:93
+#: 7783c086bc4942f58b3f2bf710a75226 of pybroker.context.ExecContext:133
 msgid ""
 "Sets profit stop on a new :class:`pybroker.portfolio.Entry`, where value "
 "is measured in percentage from entry price."
 msgstr ""
 
-#: 908695a55b6f4341b64871197670325a of pybroker.context.ExecContext:99
+#: 601d800d2b97499a9b9f38201a7841d8 of pybroker.context.ExecContext:139
 msgid "Limit price to use for the profit stop."
 msgstr ""
 
-#: 947cbe5d06634666b9084b169357ed26 of pybroker.context.ExecContext:103
+#: 9939f43d2ab443c4942b827587920916 of pybroker.context.ExecContext:143
 msgid ""
 "Exit :class:`pybroker.common.PriceType` to use for the profit stop exit. "
 "If set, the stop is checked against the ``exit_price`` and exits at the "
 "``exit_price`` when triggered."
 msgstr ""
 
-#: a0868e634c9c4b4aa78059de6b443724 of pybroker.context.ExecContext:109
+#: 193114e89a4145199fe6343281b6a3de of pybroker.context.ExecContext:149
 msgid ""
 "Sets a trailing stop loss on a new :class:`pybroker.portfolio.Entry`, "
 "where value is measured in points from entry price."
 msgstr ""
 
-#: 4292402bf05d444f8861a61b9de9c26f of pybroker.context.ExecContext:115
+#: 18d2ba7c2d8146eb9b1b051991d3bca6 of pybroker.context.ExecContext:155
 msgid ""
 "Sets a trailing stop loss on a new :class:`pybroker.portfolio.Entry`, "
 "where value is measured in percentage from entry price."
 msgstr ""
 
-#: a52211e5514046e7af5a388442289407 of pybroker.context.ExecContext:121
+#: bae8cab372c142e68b7e5e734d2ab57f of pybroker.context.ExecContext:161
 msgid "Limit price to use for the trailing stop loss."
 msgstr ""
 
-#: ec35a4b9cbf042d2a3e64ca0879351b6 of pybroker.context.ExecContext:125
+#: 7eae70444eb04f53a300e4a919a3d4e1 of pybroker.context.ExecContext:165
 msgid ""
 "Exit :class:`pybroker.common.PriceType` to use for the trailing stop "
 "exit. If set, the stop is checked against the ``exit_price`` and exits at"
 " the ``exit_price`` when triggered."
 msgstr ""
 
-#: c3e09af9fe1e48f2a46f94cda9c7871c of pybroker.context.ExecContext.bars:1
+#: 60e3478ce8c644a58a0ff2f28eedba38 of pybroker.context.ExecContext.bars:1
 msgid "Number of bars of data that have completed."
 msgstr ""
 
-#: b9b92a6d030c45e19ae78818614f2985 of
-#: pybroker.context.ExecContext.calc_target_shares:7
+#: 4264910ce78541c2a734115a2ffcc5e7 of
+#: pybroker.context.ExecContext.buying_power:1
+msgid ""
+"Available buying power for long and short orders given "
+":attr:`pybroker.config.StrategyConfig.leverage`."
+msgstr ""
+
+#: 1482f381a45d407a9fc4862c99bbc715 of
+#: pybroker.context.ExecContext.buying_power:4
+msgid ""
+"This is what the :class:`pybroker.portfolio.Portfolio` clamps orders "
+"against at fill time. :meth:`.calc_target_shares` sizes off deployable "
+"capital (equity multiplied by leverage) instead, so the two can differ "
+"once positions are open."
+msgstr ""
+
+#: 2d918240e12d4352bd2999e02a3f4b34 of
+#: pybroker.context.ExecContext.calc_target_shares:1
+msgid ""
+"Calculates the number of shares given a ``target_size`` allocation and "
+"share ``price``."
+msgstr ""
+
+#: ../../source/reference/pybroker.context.rst 0406eec5a6f748d485253976cbeb8600
+#: 0b15b3fd6d144ae4b071c2941754523b 28c898026e424d26867501f9055145a3
+#: 4ea4f37debd847688fa059fe6d48c8f3 509b1b1ae63c44adb8282e4cffe0fa6a
+#: 598f244cdac34c4ca08d0a11b079be34 5d90db55b6d44e989d95c075e527dc15
+#: 80ddfa22703a498b9d075db4cd02e585 857b3d4bfcff4b68a63673ca7d58d79b
+#: 97e4e6c50b2e40c6a65668f93763ad1c a9a0eb5e5c6c4f919be40af6f80acb25
+#: ad7968ef4af3442e9ca5c42736c03b60 bc8bd7051e6345af8b96759cca3a8b00
+#: e8d61a32b1ce4008877d070e1f98eb32 eb6066bd0aa347b09b89e54b17672ada
+#: f9ab55d654d24a78916f37840f6dde42
+msgid "Parameters"
+msgstr ""
+
+#: 84b1d01f585d4776aa446b6da9cd948e of
+#: pybroker.context.ExecContext.calc_target_shares:4
+#, python-format
+msgid ""
+"Proportion of deployable capital used to calculate the number of shares, "
+"where the max ``target_size`` is ``1``. For example, a ``target_size`` of"
+" ``0.1`` would represent 10% of deployable capital."
+msgstr ""
+
+#: b3d9275e761c4657bca8c7e5d0afbb74 of
+#: pybroker.context.ExecContext.calc_target_shares:8
 msgid ""
 "Share price used to calculate the number of shares. If ``None``, the "
 "share price of the ``ExecContext``\\ 's :attr:`.symbol` is used."
 msgstr ""
 
-#: 4dca530586ad41879d796647e4e173f8 of
+#: b26314943e184151816f3c9e8fef4080 of
+#: pybroker.context.ExecContext.calc_target_shares:11
+msgid ""
+"Capital used to calculate the number of shares. If ``None``, deployable "
+"capital is used, defined as portfolio equity multiplied by "
+":attr:`pybroker.config.StrategyConfig.leverage`. The resulting order is "
+"still capped by :attr:`.buying_power` when it is placed."
+msgstr ""
+
+#: ../../source/reference/pybroker.context.rst 38fe477fb71c476786db6cbd870920fe
+#: 3a89823bd0f142038fea63dc1d17ba65 3ae962c69f9a45e9a0f01203b7d8d807
+#: 548708b49b6741b8bd0ae0a94727f38b 5bfcaeef358146b494e68b7a383d0f24
+#: 87f6fa25f7664ff8aa5771d5db17eb38 a288b76936a6482ab81c486f1f7ad22c
+#: b277b15c63ec43329190dc583e1016fd b3d0c2b61e0b4ab1a37d5c5c29faaf96
+#: b7de34352eb447a9895efdde3a837c96 c45a194d59b84d33a8d8e8cb5525d2a2
+#: e084ef2db9994f98b67690124fa6521c fe7f367c51724e63b7b1d14e7784a42a
+msgid "Returns"
+msgstr ""
+
+#: c753007cf04747988ddbc14b627adb0f of
+#: pybroker.context.ExecContext.calc_target_shares:18
+msgid ""
+"Number of shares given ``target_size`` and share ``price``. If "
+":attr:`pybroker.config.StrategyConfig.enable_fractional_shares` is "
+"``True``, then a Decimal is returned."
+msgstr ""
+
+#: 2275c51b915d4d1fb5790b00a1753ec1 of
 #: pybroker.context.ExecContext.cancel_all_pending_orders:1
 msgid ""
 "Cancels all :class:`pybroker.scope.PendingOrder`\\ s for ``symbol``. When"
 " ``symbol`` is ``None``, all pending orders are canceled."
 msgstr ""
 
-#: eb7fdddade75488dab1d74ba7dc336ea of
+#: d8df72eed7a040e180ba48d9f27de8e9 of
 #: pybroker.context.ExecContext.cancel_pending_order:1
 msgid "Cancels a :class:`pybroker.scope.PendingOrder` with ``order_id``."
 msgstr ""
 
-#: a70ef6dc69cd464d936623991145f5f7 of
+#: 42a0ae5b63a741d2b830dd9cb8743fa5 of
 #: pybroker.context.ExecContext.cancel_stop:1
 msgid "Cancels a :class:`pybroker.portfolio.Stop` with ``stop_id``."
 msgstr ""
 
-#: 5c7889e39e2c4142b2b30d606cc4635b of
+#: 1d14d591ab1c4e89a5617b667a88a181 of
 #: pybroker.context.ExecContext.cancel_stops:1
 msgid "Cancels :class:`pybroker.portfolio.Stop`\\ s."
 msgstr ""
 
-#: fe02cb7922e44e86865122ae97d24229 of
+#: f147d1bfcea34007ae5517440277d604 of
 #: pybroker.context.ExecContext.cancel_stops:3
 msgid ""
 "Ticker symbol, :class:`pybroker.portfolio.Position`, or "
 ":class:`pybroker.portfolio.Entry` for which to cancel stops."
 msgstr ""
 
-#: 926e33b7e502445bb7e1ae2b98db9e9c of
+#: 8ea9fb6ccf3b402b9c43a503530220f9 of
 #: pybroker.context.ExecContext.cancel_stops:5
 msgid ":class:`pybroker.common.StopType`."
 msgstr ""
 
-#: 06fa5c1ef9f44512a27bd22c0149e127 of pybroker.context.ExecContext.close:1
+#: 0c0a539bcf644be3bf1748bfc6e1a8fb of pybroker.context.ExecContext.cash:1
+msgid "Total cash currently held in the :class:`pybroker.portfolio.Portfolio`."
+msgstr ""
+
+#: d63995dbe3a44807a6892ae5dd3edd1b of pybroker.context.ExecContext.close:1
 msgid "Current bar's close price."
 msgstr ""
 
-#: cc3ccb210817414fbd481b0eb2fa0618 of
+#: 959cdb8893254746b62801548d290d27 of
+#: pybroker.context.ExecContext.close_price:1
+msgid "Current bar's close price as a scalar."
+msgstr ""
+
+#: 5b21cf34cfdd4007bd5e5053bb0c4311 of
 #: pybroker.context.ExecContext.cover_all_shares:1
 msgid "Covers all short shares of :attr:`.ExecContext.symbol`."
 msgstr ""
 
-#: 1665315b80eb4c5d8f5de5a43acb314f of
+#: a3bede461d25492eaf99ecc3d545c744 of
 #: pybroker.context.ExecContext.cover_fill_price:1
 msgid ""
 "Alias for :attr:`.buy_fill_price`. When set, this causes the buy order to"
 " be placed before any sell orders."
 msgstr ""
 
-#: 5e2b4672aaad4bd5b817d87fc9938392 of
+#: c980d74c95454d38a02f5b2860277064 of
 #: pybroker.context.ExecContext.cover_limit_price:1
 msgid ""
 "Alias for :attr:`.buy_limit_price`. When set, this causes the buy order "
 "to be placed before any sell orders."
 msgstr ""
 
-#: db5168980f1749419fec5493f9bd7387 of
+#: 4b28e709045a4a6da4aecf3cbd85fb44 of
 #: pybroker.context.ExecContext.cover_shares:1
 msgid ""
 "Alias for :attr:`.buy_shares`. When set, this causes the buy order to be "
 "placed before any sell orders."
 msgstr ""
 
-#: f82f575055a14b9b8394f4778e4a2d39 of pybroker.context.ExecContext.dt:1
+#: ebc3e730433245449a9897f7a0172faf of pybroker.context.ExecContext.dt:1
 msgid "Current bar's date expressed as a ``datetime``."
 msgstr ""
 
-#: 1f201eec4ee24e9d86703ac9e3471578 of pybroker.context.ExecContext.foreign:1
+#: 8594d2795e6b4df28ba3c19e8b4c3dc9 of pybroker.context.ExecContext.foreign:1
 msgid "Retrieves bar data for another ticker symbol."
 msgstr ""
 
-#: e12c8c4687454a0fb37c36def9a1fbfd of pybroker.context.ExecContext.foreign:3
+#: 2bc51eb2284646bcb03c21e570e9dbbc of pybroker.context.ExecContext.foreign:3
 msgid "Ticker symbol of the bar data."
 msgstr ""
 
-#: 857a04c2b42342b3bf24a7a10b168ee7 of pybroker.context.ExecContext.foreign:4
+#: a33f3ccd847844d89074d485c4c8e17c of pybroker.context.ExecContext.foreign:4
 msgid ""
 "Name of the data column to retrieve. If ``None``, all data columns are "
 "returned in :class:`pybroker.common.BarData`."
 msgstr ""
 
-#: b46781fa426e4a559dda0c6f9a4eaebc of pybroker.context.ExecContext.foreign:7
+#: f178d6b2ab2c4925b8a9424e25a1a9d8 of pybroker.context.ExecContext.foreign:7
 msgid ""
 "If ``col`` is ``None``, a :class:`pybroker.common.BarData` instance "
 "containing data of all bars up to the current one. Otherwise, an "
 ":class:`numpy.ndarray` containing values of the column ``col``."
 msgstr ""
 
-#: 64bdd465492a4b769989037e5dd4df60 of pybroker.context.ExecContext.high:1
+#: a5bfd3abc9a640d38993cd3bc9727820 of
+#: pybroker.context.ExecContext.has_long_positions:1
+msgid "Returns whether any long positions are currently open."
+msgstr ""
+
+#: cb4ec01db4b147c4ab8e3759f01ae22f of
+#: pybroker.context.ExecContext.has_short_positions:1
+msgid "Returns whether any short positions are currently open."
+msgstr ""
+
+#: c5f109321a4d423fb58c45f113ae7043 of pybroker.context.ExecContext.high:1
 msgid "Current bar's high price."
 msgstr ""
 
-#: 22b326b98c7f45db9f1828d6c53d0c75 of pybroker.context.ExecContext.indicator:3
+#: b3c5a87d1d4e46aba28c76200cb2a641 of
+#: pybroker.context.ExecContext.high_price:1
+msgid "Current bar's high price as a scalar."
+msgstr ""
+
+#: e1d34243bfda4c32b05b76074e59bb25 of
+#: pybroker.context.ExecContext.hyperparam:1
+msgid "Returns a hyperparameter value for this execution."
+msgstr ""
+
+#: 415f5708587c4928b9cab765afd232a3 of
+#: pybroker.context.ExecContext.hyperparam:3
+msgid ""
+"The name must have been attached via ``hyperparams=[...]`` on "
+":meth:`pybroker.strategy.Strategy.add_execution`."
+msgstr ""
+
+#: 970b13de7e574650bc7aafb1372174ba of pybroker.context.ExecContext.indicator:1
+msgid "Returns indicator data."
+msgstr ""
+
+#: 1a9688b4f171478fb0b82a0c28c9ab0a of pybroker.context.ExecContext.indicator:3
 msgid ""
 "Name used to identify the indicator, registered with "
 ":meth:`pybroker.indicator.indicator`."
 msgstr ""
 
-#: 15bcff8893c649328451dfa09442bea2 of pybroker.context.ExecContext.indicator:5
+#: f5f5a7a3e9974213a426c15cca08b7c6 of pybroker.context.ExecContext.indicator:5
 msgid ""
 "Ticker symbol that was used to generate the indicator data. If ``None``, "
 "the ``ExecContext``\\ 's :attr:`.symbol` is used."
 msgstr ""
 
-#: db51e5510da74e46a53a749c3a70f01e of pybroker.context.ExecContext.indicator:8
+#: e2d624e27c4f4733aeb2327020049b40 of pybroker.context.ExecContext.indicator:8
 msgid ""
 ":class:`numpy.ndarray` of indicator values for all bars up to the current"
 " one, sorted in ascending chronological order."
 msgstr ""
 
-#: 68354332ecd0416d86116ae8e1153314 of pybroker.context.ExecContext.input:4
+#: aee5dc848d8c439e916335518b564c3e of pybroker.context.ExecContext.input:1
+msgid "Returns model input data for making predictions."
+msgstr ""
+
+#: a3071d3a62df4711911419d39d89fab4 of pybroker.context.ExecContext.input:3
+msgid "Name of the model for the input data."
+msgstr ""
+
+#: 796354ee6ae14475854268eebf33393a of pybroker.context.ExecContext.input:4
 msgid ""
 "Ticker symbol of the model for the input data. If ``None``, the "
 "``ExecContext``\\ 's :attr:`.symbol` is used."
 msgstr ""
 
-#: f54a90526f7b4ac49483c5e2d9bb8722 of pybroker.context.ExecContext.long_pos:1
+#: ce8b0e85e3ac4f0a869bbd4180bafe01 of pybroker.context.ExecContext.input:7
+msgid ""
+":class:`pandas.DataFrame` containing the input data, where each row "
+"represents a bar in the sequence up to the current bar. The rows are "
+"sorted in ascending chronological order."
+msgstr ""
+
+#: a6dc838edb944531993f2edf5972d9b1 of pybroker.context.ExecContext.interval:1
+msgid "Returns a read-only view of compressed bar data for ``interval``."
+msgstr ""
+
+#: c745fc03e4c44e06964573bc225843d5 of pybroker.context.ExecContext.interval:3
+msgid ""
+"``interval`` must match a value this execution declared with "
+"``intervals`` in :meth:`pybroker.strategy.Strategy.add_execution`. "
+"Intervals are scoped per execution: reading an interval that another "
+"execution declared raises ``ValueError``, the same way "
+":meth:`.hyperparam` is gated by the execution's ``hyperparams``. The same"
+" :class:`~pybroker.interval.TimeframeInterval` forms are supported:"
+msgstr ""
+
+#: 1dba190e8d3c4121bce522aaf2131e23 of pybroker.context.ExecContext.interval:11
+msgid ""
+"**Every-n-bars** (``int``): e.g. ``ctx.interval(5)`` for bars formed from"
+" every 5 base bars."
+msgstr ""
+
+#: fc0028b7e4a847d6afa5c14bb0ae5026 of pybroker.context.ExecContext.interval:14
+msgid ""
+"**Duration** (``str``): e.g. ``ctx.interval(\"5m\")`` for fixed-duration "
+"bins (digits plus unit letter)."
+msgstr ""
+
+#: ae3a3080715843cfa7535b719fd88c76 of pybroker.context.ExecContext.interval:17
+msgid ""
+"**Calendar** (``str``): e.g. ``ctx.interval(\"weekly\")`` for calendar "
+"weekly bars. Weeks start on Monday, months on the first of the month, "
+"quarters in January, April, July, and October, and years on January 1."
+msgstr ""
+
+#: dc34e0e150e947a69925d2631b2aa2ad of pybroker.context.ExecContext.interval:22
+msgid "For example::"
+msgstr ""
+
+#: 9eeb45772f084172bfbb4c3d879919a2 of pybroker.context.ExecContext.interval:38
+msgid ""
+"Compression interval declared for this execution with "
+":meth:`pybroker.strategy.Strategy.add_execution`."
+msgstr ""
+
+#: 1f076b9ad2ed49aca25bbe97a3b139c3 of pybroker.context.ExecContext.interval:41
+msgid ""
+":class:`pybroker.context.IntervalContext` exposing read-only OHLCV, "
+"indicators, and model outputs on the compressed bars."
+msgstr ""
+
+#: eec34c73a45a4ffd918868ca045a2d40 of pybroker.context.ExecContext.long_pos:1
 msgid ""
 "Retrieves a current long :class:`pybroker.portfolio.Position` for a "
 "``symbol``."
 msgstr ""
 
-#: 7fb2e0f1011f448d8dec3a772909ab75 of pybroker.context.ExecContext.long_pos:4
+#: 1fdead07d212405384e8cec44d31d6a5 ce5756f84b554921be1626adfd1d2939 of
+#: pybroker.context.ExecContext.long_pos:4
 #: pybroker.context.ExecContext.short_pos:4
 msgid ""
 "Ticker symbol of the position to return. If ``None``, the "
 "``ExecContext``\\ 's :attr:`.symbol` is used. Defaults to ``None``."
 msgstr ""
 
-#: bb41c48848ee4e0ab324bb9bef8f571f of pybroker.context.ExecContext.low:1
+#: 692a24f1a0a949dc8a4429b9cbbed97f b3775310128340638375d4713c4c01eb
+#: dd21e8b5129640ed8f889bea12a140ac of pybroker.context.ExecContext.long_pos:8
+#: pybroker.context.ExecContext.pos:8 pybroker.context.ExecContext.short_pos:8
+msgid ":class:`pybroker.portfolio.Position` if one exists, otherwise ``None``."
+msgstr ""
+
+#: 0925a212c05940408fc907780a829e0c of
+#: pybroker.context.ExecContext.long_positions:1
+msgid "Retrieves all current long positions."
+msgstr ""
+
+#: 702c22f3c9874064ad6bdc8a1be7c2d0 of
+#: pybroker.context.ExecContext.long_positions:3
+msgid ""
+"Ticker symbol used to filter positions. If ``None``, long positions for "
+"all symbols are returned. Defaults to ``None``."
+msgstr ""
+
+#: ca3f204127304df08a2ea277c5bed655 of
+#: pybroker.context.ExecContext.long_positions:7
+msgid ""
+":class:`Iterator` of currently held long "
+":class:`pybroker.portfolio.Position` \\s."
+msgstr ""
+
+#: 00da6a7da27f4e879b07102a4cff4295 of pybroker.context.ExecContext.loss_rate:1
+msgid "Running loss rate of trades."
+msgstr ""
+
+#: 193cd0d5120d48ba97c826ae61b6b0fa of pybroker.context.ExecContext.low:1
 msgid "Current bar's low price."
 msgstr ""
 
-#: 4a73ba6a840947b18f36ac26a2e29835 of pybroker.context.ExecContext.model:5
+#: 521a7580b6054851ab98afe343abcc5c of pybroker.context.ExecContext.low_price:1
+msgid "Current bar's low price as a scalar."
+msgstr ""
+
+#: f90c555112854351a387838b9b09cbb9 of
+#: pybroker.context.ExecContext.margin_loan:1
+msgid "Borrowed funds used for leveraged long and short positions."
+msgstr ""
+
+#: 9254bece188845ec8d43d4386ca59b78 of pybroker.context.ExecContext.model:1
+msgid "Returns a trained model."
+msgstr ""
+
+#: 88fba85c0ecb40818b6071761bf9a5aa of pybroker.context.ExecContext.model:3
+msgid ""
+"Name used to identify the model that was registered with "
+":func:`pybroker.model.model`."
+msgstr ""
+
+#: c82e82584ef049ce9a88d136062ba654 of pybroker.context.ExecContext.model:5
 msgid ""
 "Ticker symbol of the data that was used to train the model. If ``None``, "
 "the ``ExecContext``\\ 's :attr:`.symbol` is used."
 msgstr ""
 
-#: 404e12c9472e4a6297bf1b28419ba64a of pybroker.context.ExecContext.open:1
+#: 5590cc200d844909ac73c50c78debac2 of pybroker.context.ExecContext.model:8
+msgid "Instance of the trained model."
+msgstr ""
+
+#: 8db7360da43c4bf1b8e05c5ebfcb9e19 of
+#: pybroker.context.ExecContext.net_cash_balance:1
+msgid "Net cash balance (``cash - margin_loan``)."
+msgstr ""
+
+#: a42915ffc30e48cfacc4b1df3e52e65e of pybroker.context.ExecContext.open:1
 msgid "Current bar's open price."
 msgstr ""
 
-#: 7afda5edfb484d0ab3cbc62d1d58e987 of pybroker.context.ExecContext.preds:4
+#: 05760e4dfc4c4bb0928d82d38747b011 of
+#: pybroker.context.ExecContext.open_price:1
+msgid "Current bar's open price as a scalar."
+msgstr ""
+
+#: 318f2ce128cc4fbdb366f3f521b24814 of pybroker.context.ExecContext.orders:1
+msgid ""
+":class:`Iterator` of all :class:`pybroker.portfolio.Order`\\ s that have "
+"been placed and filled."
+msgstr ""
+
+#: 1fbeb33c95ed4a31b4bf11aa70d51c1a of pybroker.context.ExecContext.pos:1
+msgid ""
+"Retrieves a current long or short :class:`pybroker.portfolio.Position` "
+"for a ``symbol``."
+msgstr ""
+
+#: 1f6aa3db4ba8423eb47b5bccd1ba87e1 of pybroker.context.ExecContext.pos:4
+msgid "Ticker symbol of the position to return."
+msgstr ""
+
+#: f4eebd655fb5421682bf6bed13311c7a of pybroker.context.ExecContext.pos:5
+msgid "Specifies whether to return a ``long`` or ``short`` position."
+msgstr ""
+
+#: 7c615cde0711437aa48dc5a753e752fb of pybroker.context.ExecContext.positions:1
+msgid "Retrieves all current positions."
+msgstr ""
+
+#: 3ee1ce231e70495d915cbf84ccfcfce4 of pybroker.context.ExecContext.positions:3
+msgid ""
+"Ticker symbol used to filter positions. If ``None``, positions for all "
+"symbols are returned. Defaults to ``None``."
+msgstr ""
+
+#: 3f3d09e7b90349fb93241f7201ea6d62 of pybroker.context.ExecContext.positions:5
+msgid ""
+"Type of positions to return. If ``None``, both ``long`` and ``short`` "
+"positions are returned."
+msgstr ""
+
+#: 0f43e3fd2b214328b17b4ce3049e8cdb of pybroker.context.ExecContext.positions:8
+msgid ""
+":class:`Iterator` of currently held :class:`pybroker.portfolio.Position` "
+"\\s."
+msgstr ""
+
+#: 8b36dfbd68d74fee9515053d17ddb18a of pybroker.context.ExecContext.preds:1
+msgid "Returns model predictions."
+msgstr ""
+
+#: d86f06a0a7fc4e9abd6a55dac45e0696 of pybroker.context.ExecContext.preds:3
+msgid "Name of the model that made the predictions."
+msgstr ""
+
+#: ccb1feea066c4b2bbe47ec370faac5fb of pybroker.context.ExecContext.preds:4
 msgid ""
 "Ticker symbol of the model that made the predictions. If ``None``, the "
 "``ExecContext``\\ 's :attr:`.symbol` is used."
 msgstr ""
 
-#: 75f3a673ae8847309589ba4cabc8eb12 of
+#: 97ecaf4763754fd891dd1596610c5874 of pybroker.context.ExecContext.preds:7
+msgid ""
+":class:`numpy.ndarray` containing the sequence of model predictions up to"
+" the current bar. Sorted in ascending chronological order."
+msgstr ""
+
+#: 2fdd5531023743c99d54b512a82deb5a of
 #: pybroker.context.ExecContext.sell_all_shares:1
 msgid "Sells all long shares of :attr:`.ExecContext.symbol`."
 msgstr ""
 
-#: 3165dff9b2e0421e9ef03eb84b21d320 of pybroker.context.ExecContext.short_pos:1
+#: e0566ec6c19241188130e9a32f1f8d7b of
+#: pybroker.context.ExecContext.set_target_shares:1
+msgid "Sets orders to reach a target allocation for long or short exposure."
+msgstr ""
+
+#: dc8f44925dcd49358d7e9d0f3a06767d of
+#: pybroker.context.ExecContext.set_target_shares:3
+msgid ""
+"Calculates the number of shares needed to reach ``target`` using "
+":meth:`.calc_target_shares`."
+msgstr ""
+
+#: c8e9424333904afcbfda5423e2989ea3 of
+#: pybroker.context.ExecContext.set_target_shares:6
+msgid ""
+"Target allocation as a fraction of deployable capital, defined as "
+"portfolio equity multiplied by "
+":attr:`pybroker.config.StrategyConfig.leverage`. The max ``target`` is "
+"``1``."
+msgstr ""
+
+#: b23f87c3d92e484fbc6e31354f0a32e1 of
+#: pybroker.context.ExecContext.set_target_shares:10
+msgid ""
+"Exposure direction to rebalance. ``\"long\"`` sets :attr:`.buy_shares` or"
+" :attr:`.sell_shares`. ``\"short\"`` sets :attr:`.sell_shares` to "
+"increase short exposure or :attr:`.cover_shares` to decrease it."
+msgstr ""
+
+#: 65f62ff06b0e4606b669938867976ae6 of pybroker.context.ExecContext.short_pos:1
 msgid ""
 "Retrieves a current short :class:`pybroker.portfolio.Position` for a "
 "``symbol``."
 msgstr ""
 
-#: 258c4e2b9c5d4b19b2e63ae1caf2cc61 of pybroker.context.ExecContext.to_result:1
+#: 8189a6a323304dbaa50b0f16919ec16b of
+#: pybroker.context.ExecContext.short_positions:1
+msgid "Retrieves all current short positions."
+msgstr ""
+
+#: 28239433c26b4b14babb150119e6c1fb of
+#: pybroker.context.ExecContext.short_positions:3
+msgid ""
+"Ticker symbol used to filter positions. If ``None``, short positions for "
+"all symbols are returned. Defaults to ``None``."
+msgstr ""
+
+#: 50e1e8ca61224090b2753f5ae8bc4021 of
+#: pybroker.context.ExecContext.short_positions:7
+msgid ""
+":class:`Iterator` of currently held short "
+":class:`pybroker.portfolio.Position` \\s."
+msgstr ""
+
+#: 79537fdd37fc40368fd734769a5f9213 of pybroker.context.ExecContext.to_result:1
 msgid ""
 "Creates an :class:`.ExecResult` from the data set on "
 ":class:`.ExecContext`."
 msgstr ""
 
-#: dfa26e03f5ff4cc8a4fcac42b56b339c of pybroker.context.ExecContext.volume:1
+#: 3951718f6d6542c78afc7516d07862db of
+#: pybroker.context.ExecContext.total_equity:1
+msgid "Total equity currently held in the :class:`pybroker.portfolio.Portfolio`."
+msgstr ""
+
+#: 4922b93ed9ae42b28db2cb7143ae4afc of
+#: pybroker.context.ExecContext.total_margin:1
+msgid ""
+"Total amount of margin currently held in the "
+":class:`pybroker.portfolio.Portfolio`."
+msgstr ""
+
+#: 4d73c52759644e0b8ecd095e46dd208f of
+#: pybroker.context.ExecContext.total_market_value:1
+msgid ""
+"Total market value currently held in the "
+":class:`pybroker.portfolio.Portfolio`. The market value is defined as the"
+" amount of equity held in cash and long positions added together with the"
+" unrealized PnL of all open short positions."
+msgstr ""
+
+#: 50f0af368f04499f970bbde0d54ac280 of pybroker.context.ExecContext.trades:1
+msgid ""
+":class:`Iterator` of all :class:`pybroker.portfolio.Trade`\\ s that have "
+"been completed."
+msgstr ""
+
+#: ceacba50cf524ec68563092710956e36 of pybroker.context.ExecContext.volume:1
 msgid "Current bar's volume."
 msgstr ""
 
-#: d8a14a8a6d5c4328b9a27ee5b913e235 of pybroker.context.ExecContext.vwap:1
+#: 640fd02e790e40399d7e53713ddae720 of
+#: pybroker.context.ExecContext.volume_value:1
+msgid "Current bar's volume as a scalar."
+msgstr ""
+
+#: 383422407f3b440a8ab2a2f0808e3930 of pybroker.context.ExecContext.vwap:1
 msgid "Current bar's volume-weighted average price (VWAP)."
 msgstr ""
 
-#: f471808ae3d54793905ed20c89611569 of pybroker.context.ExecResult:1
+#: 0efea3b51bb24d4f9abdd20066d4b0ed of
+#: pybroker.context.ExecContext.vwap_value:1
+msgid "Current bar's VWAP as a scalar."
+msgstr ""
+
+#: cc56ae2670fd4bf69f24d9d18edd8261 of pybroker.context.ExecContext.win_rate:1
+msgid "Running win rate of trades."
+msgstr ""
+
+#: e17a88f3d1d84f04ac3f610fc92495a8 of pybroker.context.ExecResult:1
 msgid ""
 "Holds data that was set during the execution of a "
 ":class:`pybroker.strategy.Strategy`."
 msgstr ""
 
-#: c6f8146c51074815a7ed26297220555b of pybroker.context.ExecResult:6
+#: 8baa9d2e87df485b8646d9132ce27aa4 of pybroker.context.ExecResult:6
 msgid "Ticker symbol that was used for the execution."
 msgstr ""
 
-#: 011717bbf0d048b5950fec7874206890 09de14918561405b95232bc2b83311f6
-#: 143a1485ca5f4f25b4a7200262c4a21a 18bc348784a94b42aca932f65d8ebad3
-#: 24a6517090d44a63b6bc0ae919964854 2574d7c6f58e48eaacd73c0a6dc2fe40
-#: 4f78927766734db39e8832ec5473ffe9 69e53628052842f0b08cbbfc9048e452
-#: 69f73ad3a33c4c07ad932823402cebf0 6e3597eb0f74482a86c690e9f86343f1
-#: 700384e1924b4e92b462e6ec738e315d 91f37d70336048cf9d2f5ed24098d24b
-#: 9d3f804692b5454e933105d2b76772cb 9d517763dff64eb08d6eaba9db29cee0
-#: a81e4ff76e604145aa1c0c359696ae7a ae5bba442a9b4448a706b30238cfe26b
-#: b670acfc15b844c3bfc1fb373f1e9423 cda9c35460f24ed3962994a11757d77b
-#: dba4b1cab1934b25b543c787c95ef950 of pybroker.context.ExecResult
-#: pybroker.context.ExecSignal
+#: 017d97248e334cad9a9f573e450c70c4 034f25c4bb924970a1723953bcdbf3ab
+#: 244d881546d74b3cbdbe8fa0a4f6ec9d 30e63dc7f9b04992afb5948a9780a3f2
+#: 33a9b95e3bed42bf8e1744f55dbfd3a0 4a32472d503b40c0a4ef3b8fa27ed7b2
+#: 557a8eb4207a4fdca44234cb68e603ca 57f1bd8a55a34751a203b7f27b4a80c6
+#: 5d28ec10b9674b1ea2d2f26433919e43 61d3ba8466884b4eab9feb0df42ef2c9
+#: 7e7609a315404257b8be4f9bddbcab98 85c9de49d59b405e8bc02c33b82b3afc
+#: 8945baadd59741dead39c244428a0db8 a0bf8daf51f94a589285e5fdd12ed54a
+#: a2b5652958144829a4a93ffa36734d2d a71d527a0a124bc8a2ec185c225b0eb1
+#: a8e4215a6b064fae8145b680c18835de b07f5bc815e240d6836ab62796733d5b
+#: e4233ea9e72443e08ed27a4e2798786d e5074c747f1f46d49f9d425c80124318
+#: f02a61f2a1c4475096297ee0cb739b25 f54f4f9866aa4e3b9970e14ebbb931a6
+#: f6fa50e55ef94c2485ec39267ea29d90 fd54087fdf9948d6bbd6b4a386917ce7 of
+#: pybroker.context.ExecResult pybroker.context.RotationContext
 msgid "type"
 msgstr ""
 
-#: 77e40e5ecc8748e79ec176bb7fcc1042 of pybroker.context.ExecResult:8
-#: pybroker.context.ExecSignal:13
+#: e235cd78d30e41f59251968465756e69 of pybroker.context.ExecResult:8
 msgid "str"
 msgstr ""
 
-#: b23064e3ab2b4b9dbc1f2e5ef39079d0 of pybroker.context.ExecResult:12
+#: 5011fc0e64f4420a9f245b18a286d6fb of pybroker.context.ExecResult:12
 msgid "Timestamp of the bar that was used for the execution."
 msgstr ""
 
-#: 7f23793033b249a1ac09469ff5a2f976 of pybroker.context.ExecResult:14
+#: 5572cad1e172402b90ee89cbe06b8add of pybroker.context.ExecResult:14
 msgid "numpy.datetime64"
 msgstr ""
 
-#: 101b14db8a694da188ad4927e8833d5b d1230d4359a046c5a61b8e0c286fd821 of
+#: 2a14d52355bc4b3e9aec0b557e41a09c e7737e70c7ca41f79e0f2e06c5c8a97f of
 #: pybroker.context.ExecResult:20 pybroker.context.ExecResult:27
 msgid ""
 "int | float | numpy.floating | decimal.Decimal | "
@@ -708,166 +832,149 @@ msgid ""
 "| float | decimal.Decimal]"
 msgstr ""
 
-#: 41fe0cdeea9e4ba5a245a895e1d244e0 of pybroker.context.ExecResult:31
-msgid ""
-"Score used to rank ``symbol`` when ranking long and short signals. Orders"
-" are placed for symbols with the highest scores, where the number of "
-"positions held at any time in the :class:`pybroker.portfolio.Portfolio` "
-"is specified by :attr:`pybroker.config.StrategyConfig.max_long_positions`"
-" and :attr:`pybroker.config.StrategyConfig.max_short_positions` "
-"respectively. Buy and sell signals are ranked separately by ``score``."
-msgstr ""
-
-#: eb3f72852a2a453aaf24e00a5656d031 of pybroker.context.ExecResult:40
-#: pybroker.context.ExecSignal:27
+#: 3f5390049aef40ceb09cb23e9d10bac4 7feaa2409c8c4cfe98163c81f7d3a1eb
+#: b919fe9256c848878cde975f79d70921 of pybroker.context.ExecResult:36
+#: pybroker.context.ExecResult:51 pybroker.context.ExecResult:66
 msgid "float | None"
 msgstr ""
 
-#: 5cb45d9097aa44a189887587f97f95b8 of pybroker.context.ExecResult:47
-#: pybroker.context.ExecResult:99
+#: a583c6e496544a66978ae2c0256e18aa ad809f540ce046b7bad697aca11ce6fd
+#: b84dccff28e342c8bc359ef48b0c2c18 d14967b7a83a45eca630a13fe54b4c60 of
+#: pybroker.context.ExecResult:73 pybroker.context.ExecResult:94
+#: pybroker.context.ExecResult:116 pybroker.context.ExecResult:143
 msgid "int | None"
 msgstr ""
 
-#: 4639ff6596b44d9787e788c23bd0711d 62bbaa42fb1c41b89bedb0c364f6bb55
-#: 815fae8ebf0f4ac3b6eb7571db6bddcb b1b28792c4134ad780a35cfbb6bd2889 of
-#: pybroker.context.ExecResult:53 pybroker.context.ExecResult:59
-#: pybroker.context.ExecResult:65 pybroker.context.ExecResult:72
+#: 1e61ec0284504c5fabb9dbee5b06065a 530777be9bc947988964dc798a8f69c2
+#: 81ad1bbf62a44bf8ae385a20bea1a159 fb61bb95955b4bf58687aa69f1c98c4a of
+#: pybroker.context.ExecResult:79 pybroker.context.ExecResult:85
+#: pybroker.context.ExecResult:100 pybroker.context.ExecResult:107
 msgid "decimal.Decimal | None"
 msgstr ""
 
-#: 6f3f68cdbcba43e8b253d4e55bbf2447 of pybroker.context.ExecResult:57
+#: bbf4704f9b434658bf76eacc4ffcc1df of pybroker.context.ExecResult:83
 msgid "Limit price used for a buy (long) order of ``symbol``."
 msgstr ""
 
-#: a6a5f983d43240519848b00e090296c2 of pybroker.context.ExecResult:69
+#: a902fa0b38a74ca3a1cf0c0b0d56c77c of pybroker.context.ExecResult:104
 msgid "Limit price used for a sell (short) order of ``symbol``."
 msgstr ""
 
-#: 720fa1b1b7e245ab9f6f3c5f0afddf29 of pybroker.context.ExecResult:76
+#: b78aeaaf9d1e493495fe5d1500bcdc39 of pybroker.context.ExecResult:120
 msgid "Stops for long :class:`pybroker.portfolio.Entry`\\ s."
 msgstr ""
 
-#: 4d728d8489cc40e28c1a47ecaffc20d3 6b80f1d8b99d4bec96566cbd412f8cce of
-#: pybroker.context.ExecResult:78 pybroker.context.ExecResult:84
+#: 53b33dbac0524fe4b6882c301a1a1c6f 5f3bdfeece824c0e8813e1bfe0cc1521 of
+#: pybroker.context.ExecResult:122 pybroker.context.ExecResult:128
 msgid "frozenset[pybroker.portfolio.Stop] | None"
 msgstr ""
 
-#: 913dffde84cc491d9c9a6e8a83ee521c of pybroker.context.ExecResult:82
+#: 92e22b98f10e4650b204d46406e02681 of pybroker.context.ExecResult:126
 msgid "Stops for short :class:`pybroker.portfolio.Entry`\\ s."
 msgstr ""
 
-#: 275558c0296d46e0b05c9b8c6e825742 of pybroker.context.ExecResult:88
+#: 36b8c35b159e40419b2c0d47e225d026 of pybroker.context.ExecResult:132
 msgid ""
 "Whether ``buy_shares`` are used to cover a short position. If ``True``, "
 "the resulting buy order will be placed before sell orders."
 msgstr ""
 
-#: 3b5c22d6e2264c869c6b680a6cd20ae8 of pybroker.context.ExecResult:92
+#: 3735dd2354fb4187b9117b4caa912ded of pybroker.context.ExecResult:136
 msgid "bool"
 msgstr ""
 
-#: 3e308823533441debea745cf5e7826ea of pybroker.context.ExecResult:96
+#: 5a94318f57af4ee6b8a23c2e7b2a3786 of pybroker.context.ExecResult:140
 msgid "ID of :class:`pybroker.scope.PendingOrder` that was created."
 msgstr ""
 
-#: 1fa05e0749ce494e942a7e6c86818ebe of pybroker.context.ExecSignal:1
-msgid "Bases: :py:class:`~typing.NamedTuple`"
-msgstr ""
-
-#: dc320af760a04c74bd45a72631ef303b of pybroker.context.ExecSignal:1
-msgid "Holds data of a buy/sell signal."
-msgstr ""
-
-#: 183ddaae1c234386bf00d2302ec00cac of pybroker.context.ExecSignal:5
-msgid "Unique ID."
-msgstr ""
-
-#: f50c38be2e894e60b14a93fe2a173f3c of pybroker.context.ExecSignal:7
-msgid "int"
-msgstr ""
-
-#: e29f1506e7e04481922de7f151f7b5cd of pybroker.context.ExecSignal:11
-msgid "Ticker symbol."
-msgstr ""
-
-#: 3a3289020e594aa89a5e665be9c9be2f of pybroker.context.ExecSignal:17
+#: ca08c564035245988d8647ccd9273fad of pybroker.context.ExecResult:147
 msgid ""
-"Number of shares that was set by the :class:`pybroker.strategy.Strategy` "
-"execution."
+"Type of the :class:`pybroker.portfolio.Position` this order exits, either"
+" ``long`` or ``short``, or ``None`` when the order is not an exit. Set by"
+" :meth:`.ExecContext.sell_all_shares`, "
+":meth:`.ExecContext.cover_all_shares`, and "
+":meth:`.ExecContext.set_target_shares` with a target of zero. An order "
+"carrying this is clamped at fill time to the shares still held, so it can"
+" only ever close a position and never flip one."
 msgstr ""
 
-#: 40b7ba5e3d3b4310b625db574969ee95 of pybroker.context.ExecSignal:20
-msgid "int | float | decimal.Decimal"
+#: 6641dfe485e24718850000db9eadc706 of pybroker.context.ExecResult:155
+msgid "Literal['long', 'short'] | None"
 msgstr ""
 
-#: 05579ccdc59544459339470e7d0436d5 of pybroker.context.ExecSignal:24
-msgid "Score that was set by the :class:`pybroker.strategy.Strategy` execution."
+#: 477ffe5808ea4fa999b12df8b0ddef0d of pybroker.context.IntervalContext:1
+msgid "Read-only view of compressed bar data for a coarser interval."
 msgstr ""
 
-#: 2f9dc72aeaf34bb2a46fe70e10dce91c of pybroker.context.ExecSignal:31
-msgid ":class:`pybroker.common.BarData` for ``symbol``."
+#: 6018338106d04381beffada2d6ce7fb2 of
+#: pybroker.context.IntervalContext.indicator:1
+msgid "Returns indicator values on the compressed interval."
 msgstr ""
 
-#: e92f8ae9c2f1469f9e844c7fc16bfa15 of pybroker.context.ExecSignal:33
-msgid "pybroker.common.BarData"
+#: 186346c91f7a4ab28465a9eb98b51bf5 of pybroker.context.IntervalContext.input:1
+msgid "Returns model input data on the compressed interval."
 msgstr ""
 
-#: d3dbee4650554c40b57f8e853ee2af4b of pybroker.context.ExecSignal:37
-msgid "``buy`` or ``sell`` signal type."
+#: 99f41c88e59c41c4bb6bdd56a7da76b7 of pybroker.context.IntervalContext.model:1
+msgid "Returns a trained model on the compressed interval."
 msgstr ""
 
-#: a339a7e3804045ba9e106955357262a2 of pybroker.context.ExecSignal:39
-msgid "Literal['buy', 'sell']"
+#: af9fe3eb86d94f568dc4ee25ae63190b of pybroker.context.IntervalContext.preds:1
+msgid "Returns model predictions on the compressed interval."
 msgstr ""
 
-#: 5836ab90d6e240ef8a07215103fde863 of pybroker.context.PosSizeContext:1
+#: 05442cba92ac49b0a298a7f462eb1227 of pybroker.context.RotationContext:1
 msgid ""
-"Holds data for a position size handler set with "
-":meth:`pybroker.Strategy.set_pos_size_handler`. Used to set position "
-"sizes when placing orders from buy and sell signals."
+"Context passed to a rotation sizer set with "
+":meth:`pybroker.strategy.Strategy.enable_rotation`."
 msgstr ""
 
-#: 0b45aa1065ef4404b97c227c0eeb510c of pybroker.context.PosSizeContext:7
-msgid "``dict`` used to store custom data for all symbols."
+#: 560082773a204ae08597b0c3929005db of pybroker.context.RotationContext:6
+msgid ":class:`Mapping` of all ticker symbols to :class:`.ExecContext`\\ s."
 msgstr ""
 
-#: ad6f12b7b99644059316ea3b9694dae9 of
-#: pybroker.context.PosSizeContext.set_shares:1
-msgid "Sets the number of shares of an order for the buy or sell signal."
+#: 0f2b558d15814c9b9b040a8ae7a6f05f of pybroker.context.RotationContext:8
+msgid "Mapping[str, pybroker.context.ExecContext]"
 msgstr ""
 
-#: 7e431d2ba4584f2daae57da78221dd03 of
-#: pybroker.context.PosSizeContext.signals:1
+#: cb03c92d63fc47cfa369a6d6a89d1536 of pybroker.context.RotationContext:12
+msgid ":class:`pybroker.portfolio.Portfolio`."
+msgstr ""
+
+#: 6063bdb43e164d04822ed8dad95b4324 of pybroker.context.RotationContext:14
+msgid "pybroker.portfolio.Portfolio"
+msgstr ""
+
+#: 65a45df2469645af9c31e523548b9120 of pybroker.context.RotationContext:18
 msgid ""
-"Returns :class:`Iterator` of :class:`.ExecSignal`\\ s containing data for"
-" buy and sell signals."
+"Rankings computed from rankable :attr:`.ExecContext.long_score` values, "
+"where ``1`` is the highest score."
 msgstr ""
 
-#: 56f3f7b326da433ea02d37fa476b68aa of pybroker.context.set_exec_ctx_data:1
+#: 9bb178b5dac544e48e8e70b6ba75705e d0681ad76a264b52b88fdd08150e3c73 of
+#: pybroker.context.RotationContext:21 pybroker.context.RotationContext:29
+msgid "Mapping[str, int]"
+msgstr ""
+
+#: cdc2e7d1cd6d42a3b1bf9ffe99175319 of pybroker.context.RotationContext:25
+msgid ""
+"Rankings computed from rankable :attr:`.ExecContext.short_score` values, "
+"where ``1`` is the highest score."
+msgstr ""
+
+#: 098b07352d52428fac14244b4e015bbb of pybroker.context.RotationContext:35
+msgid "pybroker.config.StrategyConfig"
+msgstr ""
+
+#: 797d1642c60b4c018fd87fd36eecad00 of pybroker.context.set_exec_ctx_data:1
 msgid "Sets data on an :class:`.ExecContext` instance."
 msgstr ""
 
-#: bebace0e7b484a93891ff09013952b54 of pybroker.context.set_exec_ctx_data:3
+#: a198c115c88a4a758af6f4254d33f64c of pybroker.context.set_exec_ctx_data:3
 msgid ":class:`.ExecContext`."
 msgstr ""
 
-#: c9a59641cac64a08b4703d949deef226 of pybroker.context.set_exec_ctx_data:4
+#: f7b9fff0d01548bd910c1c5b21461e9e of pybroker.context.set_exec_ctx_data:4
 msgid "Current bar's date."
-msgstr ""
-
-#: af7e79f9205341fe9253528896d3722d of pybroker.context.set_pos_size_ctx_data:1
-msgid "Sets data on a :class:`.PosSizeContext` instance."
-msgstr ""
-
-#: ec4ba57d0d984ab5bfd9dfabcb7f9dbc of pybroker.context.set_pos_size_ctx_data:3
-msgid ":class:`.PosSizeContext`."
-msgstr ""
-
-#: 85347519f7c041b0adfdc4fd414bf484 of pybroker.context.set_pos_size_ctx_data:4
-msgid ":class:`.ExecResult`\\ s of buy signals."
-msgstr ""
-
-#: 6e8533442869439ba578887bfb2eabd0 of pybroker.context.set_pos_size_ctx_data:5
-msgid ":class:`.ExecResult`\\ s of sell signals."
 msgstr ""
 
