@@ -80,6 +80,7 @@ Key Features
 * `Parameter optimization <https://www.pybroker.com/en/latest/notebooks/12.%20Parameter%20Optimization.html>`_ with `Optuna <https://optuna.org/>`_ to select the best parameters and evaluate them out-of-sample.
 * `Caching <https://www.pybroker.com/en/latest/notebooks/1.%20Getting%20Started%20with%20Data%20Sources.html#Caching-Data>`_ of downloaded data, indicators, and models to speed up your development process.
 * `Parallelized <https://www.pybroker.com/en/latest/notebooks/11.%20Configuring%20Parallelization.html>`_ computations that enable faster performance.
+* :doc:`Agent Skills <agent-skills>` that help AI agents write trading strategies and backtests using PyBroker.
 
 With PyBroker, you will have the tools to build, test, and evaluate algorithmic trading strategies backed by machine learning.
 
@@ -142,6 +143,7 @@ To learn how to use PyBroker, see the notebooks under the *User Guide*:
    :caption: User Guide
 
    Installation <install>
+   Agent Skills <agent-skills>
    notebooks/1. Getting Started with Data Sources
    notebooks/2. Backtesting a Strategy
    notebooks/3. Evaluating with Bootstrap Metrics

@@ -47,6 +47,7 @@ release = "1.0"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    "myst_parser",
     "nbsphinx",
     "IPython.sphinxext.ipython_console_highlighting",
     "sphinx.ext.autodoc",
@@ -68,6 +69,8 @@ master_doc = "index"
 add_module_names = False
 autosummary_generate = True
 keep_warnings = False
+# Included SKILL.md bodies start at ## under an RST skill subtitle.
+suppress_warnings = ["myst.header"]
 
 python_version = ".".join(map(str, sys.version_info[0:2]))
 intersphinx_mapping = {
