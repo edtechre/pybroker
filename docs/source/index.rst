@@ -79,7 +79,7 @@ Key Features
 * More reliable trading metrics that use randomized `bootstrapping <https://en.wikipedia.org/wiki/Bootstrapping_(statistics)>`_ to provide more accurate results.
 * `Parameter optimization <https://www.pybroker.com/en/latest/notebooks/12.%20Parameter%20Optimization.html>`_ with `Optuna <https://optuna.org/>`_ to select the best parameters and evaluate them out-of-sample.
 * Caching of downloaded data, indicators, and models to speed up your development process.
-* Parallelized computations that enable faster performance.
+* `Parallelized <https://www.pybroker.com/en/latest/notebooks/11.%20Configuring%20Parallelization.html>`_ computations that enable faster performance.
 
 With PyBroker, you will have the tools to build, test, and evaluate algorithmic trading strategies backed by machine learning.
 
