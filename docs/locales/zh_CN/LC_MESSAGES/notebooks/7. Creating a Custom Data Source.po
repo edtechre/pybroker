@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-04 18:14-0700\n"
+"POT-Creation-Date: 2026-08-05 15:57-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -19,12 +19,12 @@ msgstr ""
 "Generated-By: Babel 2.18.0\n"
 
 #: ../../source/notebooks/7. Creating Custom Data Source.ipynb:9 a
-#: be0a23f2f5cc47509f69818b0706615d
+#: fb0bb8de41c44b51822db8e741b514fe
 msgid "Creating a Custom Data Source"
 msgstr "自定义数据"
 
-#: ../../source/notebooks/7. Creating Custom Data Source.ipynb:11 a
-#: f120753602754536802ccd2065650628
+#: ../../source/notebooks/7. 3c970f0e415244278076300201670f80 Creating Custom
+#: Data Source.ipynb:11 a
 msgid ""
 "**PyBroker** comes with pre-built `DataSources "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__"
@@ -45,11 +45,11 @@ msgstr ""
 " ``DataSource`` 类。"
 
 #: ../../source/notebooks/7. Creating Custom Data Source.ipynb:15 a
-#: e2c9da49eb4f431c8c941527e60ff9cd
+#: e2391654dd8744c48e87d4bb32614b78
 msgid "Extending DataSource"
 msgstr "扩展 DataSource"
 
-#: ../../source/notebooks/7. 586a5c413c3546caa720b12490c8072f Creating Custom
+#: ../../source/notebooks/7. 4880ec7102e149ab815ba1b389cd2299 Creating Custom
 #: Data Source.ipynb:17 a
 msgid ""
 "The following example implements a custom ``CSVDataSource`` to load data "
@@ -57,16 +57,16 @@ msgid ""
 "DataFrame "
 "<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__:"
 msgstr ""
-"以下示例实现了一个自定义的 ``CSVDataSource``，用于从 CSV 文件加载数据。它将名为 ``prices.csv`` "
-"的文件读取到 `Pandas DataFrame "
+"以下示例实现了一个自定义的 ``CSVDataSource``，用于从 CSV 文件加载数据。它将名为 ``prices.csv`` 的文件读取到"
+" `Pandas DataFrame "
 "<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__ "
 "中："
 
-#: ../../source/notebooks/7. 5843a67756e643cf9ea2f0faa880a829 Creating Custom
+#: ../../source/notebooks/7. 8b6c18d04e1947c784216297f85f4707 Creating Custom
 #: Data Source.ipynb:53 a
 msgid ""
 "To make the custom ``'rsi'`` column from the CSV file available to "
-"**PyBroker**, register it using ```pybroker.register_columns`` "
+"**PyBroker**, register it using `pybroker.register_columns "
 "<https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.register_columns>`__."
 " This allows **PyBroker** to use the custom column when processing the "
 "data."
@@ -76,23 +76,23 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.register_columns>`__"
 " 进行注册。这允许 **PyBroker** 在处理数据时使用这个自定义列。"
 
-#: ../../source/notebooks/7. Creating Custom Data Source.ipynb:55 a
-#: c637b419325a4b90ba92d154acc6976a
+#: ../../source/notebooks/7. 165749a9e648461787386c5f265c4a84 Creating Custom
+#: Data Source.ipynb:55 a
 msgid ""
 "When returning data from your custom ``DataSource``, it must include the "
 "columns expected by **PyBroker**: ``symbol``, ``date``, ``open``, "
 "``high``, ``low``, and ``close``."
 msgstr ""
-"从自定义 ``DataSource`` 返回数据时，必须包含 **PyBroker** 所需的列："
-"``symbol``、``date``、``open``、``high``、``low`` 和 ``close``。"
+"从自定义 ``DataSource`` 返回数据时，必须包含 **PyBroker** "
+"所需的列：``symbol``、``date``、``open``、``high``、``low`` 和 ``close``。"
 
-#: ../../source/notebooks/7. 9f74fdeeec274cf8a2b51150e608374b Creating Custom
-#: Data Source.ipynb:57 a
+#: ../../source/notebooks/7. Creating Custom Data Source.ipynb:57 a
+#: c995d70ae64841f9b3a32dde70454143
 msgid "Now we can query the CSV data from an instance of ``CSVDataSource``:"
 msgstr "现在我们可以从 ``CSVDataSource`` 的一个实例查询 CSV 数据："
 
-#: ../../source/notebooks/7. 1d4ab87470944475836bc35b14bbb8ff Creating Custom
-#: Data Source.ipynb:368 a
+#: ../../source/notebooks/7. Creating Custom Data Source.ipynb:368 a
+#: f435e75654494b238eac795259944c69
 msgid ""
 "To use ``CSVDataSource`` in a backtest, we create a new `Strategy "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy>`__"
@@ -102,11 +102,11 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy>`__"
 " 对象，并传入自定义的 ``DataSource``："
 
-#: ../../source/notebooks/7. 4dc74cd00322411cae1e498d8a7b9f32 Creating Custom
-#: Data Source.ipynb:655 a
+#: ../../source/notebooks/7. Creating Custom Data Source.ipynb:655 a
+#: d48d0252609b4c2495b88543c2c3a1d0
 msgid ""
 "Because we registered the custom ``rsi`` column with **PyBroker**, it can"
-" be accessed in the ```ExecContext`` "
+" be accessed in the `ExecContext "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
 " using ``ctx.rsi``."
 msgstr ""
@@ -114,16 +114,15 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
 " 中使用 ``ctx.rsi`` 来访问它。"
 
-#: ../../source/notebooks/7. Creating Custom Data Source.ipynb:667 a
-#: f00d55d2b88d4030a458217b577ab3a4
+#: ../../source/notebooks/7. 09f376871b5b4948b0cb31284336da32 Creating Custom
+#: Data Source.ipynb:667 a
 msgid "Using a Pandas DataFrame"
 msgstr "使用 Pandas DataFrame"
 
-#: ../../source/notebooks/7. 185a7c1236ba46449da86eeb1907e48e Creating Custom
+#: ../../source/notebooks/7. 0904e2e4cad44404b0ceab2334b985b7 Creating Custom
 #: Data Source.ipynb:669 a
 msgid ""
-"If you do not need the flexibility of implementing your own "
-"```DataSource`` "
+"If you do not need the flexibility of implementing your own `DataSource "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__,"
 " you can pass a `Pandas DataFrame "
 "<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__ "
@@ -135,7 +134,8 @@ msgstr ""
 "<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__ "
 "传递给 ``Strategy``。"
 
-#: ../../source/notebooks/7. 42e4734f39a346388390da28c8743550 Creating Custom
-#: Data Source.ipynb:671 a
+#: ../../source/notebooks/7. Creating Custom Data Source.ipynb:671 a
+#: c7a32bf8ddea41ed82a3223a07e26f52
 msgid "The earlier example can be re-implemented as follows:"
 msgstr "前面的示例可以按照以下方式重新实现："
+

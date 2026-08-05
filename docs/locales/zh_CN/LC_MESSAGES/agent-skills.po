@@ -1,0 +1,162 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-05 15:57-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/agent-skills.rst:2 66e5e6581bae4dbbbdca16364ea7074a
+msgid "Agent Skills"
+msgstr "智能体技能"
+
+#: ../../source/agent-skills.rst:4 577c998fa54a433597aeca959e86e3c6
+msgid ""
+"PyBroker ships `Agent Skills <https://agentskills.io/specification>`_ "
+"that give coding agents workflows for writing strategies, indicators, "
+"models, and backtests."
+msgstr ""
+"PyBroker 内置了 `智能体技能 <https://agentskills.io/specification>`_，"
+"为编程智能体提供编写策略、指标、模型和回测的工作流程。"
+
+#: ../../source/agent-skills.rst:9 a541a78491d14943b17e20685cd09a49
+msgid "Get the Skills Library"
+msgstr "获取技能库"
+
+#: ../../source/agent-skills.rst:11 ed83859e1b3b4b98b93898f913b3187a
+msgid ""
+"Public skills live under the ``skills/`` directory in the PyBroker `Git "
+"repository <https://github.com/edtechre/pybroker>`_. Each skill is "
+"contained in its own folder and defined by a standard ``SKILL.md`` file."
+msgstr ""
+"公开技能位于 PyBroker `Git 仓库 <https://github.com/edtechre/pybroker>`_ "
+"中的 ``skills/`` 目录下。每个技能都存放在各自的文件夹中，并由标准的 "
+"``SKILL.md`` 文件定义。"
+
+#: ../../source/agent-skills.rst:15 447dc3c8f75b49b88fb80048834560d5
+msgid ""
+"To access them, simply clone the PyBroker repository to your local "
+"machine:"
+msgstr "要获取这些技能，只需将 PyBroker 仓库克隆到本地机器："
+
+#: ../../source/agent-skills.rst:24 a742412237264cd6b695d6c6f1e4caa8
+msgid "Installation"
+msgstr "安装"
+
+#: ../../source/agent-skills.rst:27 30e9a3a21d0343e3b4716e97ec880c50
+msgid "Claude Code"
+msgstr "Claude Code"
+
+#: ../../source/agent-skills.rst:29 ab433984bed74e20b013f102b1d8eeba
+msgid ""
+"`Claude Code <https://code.claude.com/docs/en/skills>`_ automatically "
+"discovers skills placed inside a ``.claude/skills/`` folder in your "
+"project root. To install all PyBroker skills at once, you can symlink the"
+" entire contents of the repository's ``skills/`` directory:"
+msgstr ""
+"`Claude Code <https://code.claude.com/docs/en/skills>`_ 会自动发现放置在"
+"项目根目录下 ``.claude/skills/`` 文件夹中的技能。要一次性安装所有 "
+"PyBroker 技能，你可以将仓库 ``skills/`` 目录下的全部内容软链接过去："
+
+#: ../../source/agent-skills.rst:44 4a187ee4bd5b4c69bec31396f53cc064
+msgid ""
+"Claude Code will now automatically discover every skill and make their "
+"respective commands available in the terminal."
+msgstr "现在，Claude Code 将自动发现每个技能，并使其对应的命令在终端中可用。"
+
+#: ../../source/agent-skills.rst:48 62502e6bb58a423889b0dbb06e89a561
+msgid "OpenAI Codex"
+msgstr "OpenAI Codex"
+
+#: ../../source/agent-skills.rst:50 8ac6223cc6384e3e8b1601fa9ca57329
+msgid ""
+"`OpenAI Codex <https://learn.chatgpt.com/docs/build-skills>`_ discovers "
+"skills in ``.agents/skills/``. Symlink the PyBroker skills there:"
+msgstr ""
+"`OpenAI Codex <https://learn.chatgpt.com/docs/build-skills>`_ 会在 "
+"``.agents/skills/`` 中发现技能。将 PyBroker 技能软链接到该目录："
+
+#: ../../source/agent-skills.rst:62 96cb2b1745974336b8ffb27abacd08c9
+msgid "Cursor"
+msgstr "Cursor"
+
+#: ../../source/agent-skills.rst:64 bc947c7ba8154b3eaf6170142d159d39
+msgid ""
+"`Cursor <https://cursor.com/docs/skills>`_ discovers skills in "
+"``.cursor/skills/``. Install them the same way:"
+msgstr ""
+"`Cursor <https://cursor.com/docs/skills>`_ 会在 ``.cursor/skills/`` 中"
+"发现技能。使用相同的方式安装它们："
+
+#: ../../source/agent-skills.rst:77 13abdfb64bb1470aafaa9dc2b8f23855
+msgid "Claude Agent SDK"
+msgstr "Claude Agent SDK"
+
+#: ../../source/agent-skills.rst:79 c3bb48ac75c04d63b78e471a998dd85b
+msgid ""
+"The `Claude Agent SDK <https://code.claude.com/docs/en/agent-"
+"sdk/skills>`_ discovers skills from the same ``.claude/skills/`` symlinks"
+" created above, so it loads them on demand and invokes them automatically"
+" without any prompt assembly:"
+msgstr ""
+"`Claude Agent SDK <https://code.claude.com/docs/en/agent-sdk/skills>`_ "
+"会从上面创建的相同 ``.claude/skills/`` 软链接中发现技能，因此它可以按需"
+"加载这些技能，并自动调用它们，无需任何提示词拼装："
+
+#: ../../source/agent-skills.rst:115 382dd7a5e93a42ad81d33f53cdf92ea8
+msgid "Pydantic-AI"
+msgstr "Pydantic-AI"
+
+#: ../../source/agent-skills.rst:117 a6f8f92717674b8f8536c26340e221c5
+msgid ""
+"`Pydantic-AI <https://pydantic.dev/docs/ai/>`_ builds agents in pure "
+"Python. It does not search for skill directories automatically, so you "
+"point its `Skills <https://pydantic.dev/docs/ai/harness/skills/>`_ "
+"capability at the ``.agents/skills`` library created above:"
+msgstr ""
+"`Pydantic-AI <https://pydantic.dev/docs/ai/>`_ 使用纯 Python 构建智能体。"
+"它不会自动搜索技能目录，因此你需要将其 `Skills "
+"<https://pydantic.dev/docs/ai/harness/skills/>`_ 能力指向上面创建的 "
+"``.agents/skills`` 库："
+
+#: ../../source/agent-skills.rst:140 63b8fd7f47d0415ab7ab5cb08dc02b56
+msgid "Available Skills"
+msgstr "可用技能"
+
+#: ../../source/agent-skills.rst:145 67797395d59746518c5064116e8203ba
+msgid "pybroker-strategy-creator"
+msgstr "pybroker-strategy-creator"
+
+#: ../../../skills/pybroker-strategy-creator/SKILL.md:3
+#: 7b871951ae834b049f8f3b6f7e6d481f
+msgid ""
+"Create practical PyBroker strategy code from user intent while preserving"
+" backtest hygiene: no lookahead leakage, explicit sizing, clear risk "
+"controls, and locally valid PyBroker API usage."
+msgstr ""
+"根据用户意图生成实用的 PyBroker 策略代码，同时保持良好的回测规范：无"
+"前视泄漏、明确的仓位规模、清晰的风险控制，以及符合规范的 PyBroker API "
+"用法。"
+
+#: ../../source/agent-skills.rst:152 f29da275384f45be87bd19bbe7e66dac
+msgid ""
+"`See full SKILL.md on GitHub "
+"<https://github.com/edtechre/pybroker/blob/master/skills/pybroker-"
+"strategy-creator/SKILL.md>`_"
+msgstr ""
+"`在 GitHub 上查看完整的 SKILL.md "
+"<https://github.com/edtechre/pybroker/blob/master/skills/pybroker-"
+"strategy-creator/SKILL.md>`_"

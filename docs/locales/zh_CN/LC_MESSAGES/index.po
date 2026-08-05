@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-04 18:14-0700\n"
+"POT-Creation-Date: 2026-08-05 15:57-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -19,94 +19,111 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../source/index.rst:150 ../../source/install.rst:2
-#: 4e3b0cf92eed4864aa4f354692887f2d
+#: ../../source/index.rst:142 ../../source/install.rst:2
+#: d6c9747708a0494992d3cc1c95f87198
 msgid "Installation"
 msgstr "安装指导"
 
-#: ../../source/index.rst:150
+#: ../../source/index.rst:142
+msgid "Agent Skills"
+msgstr "智能体技能"
+
+#: ../../source/index.rst:142
 msgid "User Guide"
 msgstr "用户指南"
 
-#: ../../source/index.rst:178
+#: ../../source/index.rst:171
 msgid "Configuration Options"
 msgstr "配置选项"
 
-#: ../../source/index.rst:178
+#: ../../source/index.rst:171
 msgid "Reference"
 msgstr "参考"
 
-#: ../../source/index.rst:184
+#: ../../source/index.rst:177
 msgid "Indicators"
 msgstr "指标"
 
-#: ../../source/index.rst:189
+#: ../../source/index.rst:182
 msgid "Modules"
 msgstr "模块"
 
-#: ../../source/index.rst:194
+#: ../../source/index.rst:187
 msgid "Index"
 msgstr "索引"
 
-#: ../../source/index.rst:215
+#: ../../source/index.rst:204
+msgid "Benchmarking"
+msgstr "基准测试"
+
+#: ../../source/index.rst:204
 msgid "Changelog"
 msgstr "变更日志"
 
-#: ../../source/index.rst:215
+#: ../../source/index.rst:204
 msgid "License"
 msgstr "许可证"
 
-#: ../../source/index.rst:215
+#: ../../source/index.rst:204
 msgid "Other Information"
 msgstr "其他信息"
 
-#: ../../source/index.rst:-1 ../../source/index.rst:28
-#: bf5d0820511b439480835f03dabce361 cb46cbe1a6694a4495b07358d798dc14
+#: ../../source/index.rst:-1 ../../source/index.rst:21
+#: 6efc419741c5482c975bf9f35023d6f2 fc076898c07548869451946e559220c2
 msgid "PyBroker"
 msgstr "PyBroker"
 
-#: ../../source/index.rst:-1 ../../source/index.rst:67
-#: 7603a17f46f24f8f9e8c496f16c178c3 a2b517ba96644ae1b9a17695877e7e73
+#: ../../source/index.rst:-1 ../../source/index.rst:62
+#: 63be15777f9e44179e6151ea367699ad 81a5d7d087cf41e99d7d63c7eb76a1d6
 msgid "Algorithmic Trading in Python with Machine Learning"
 msgstr "利用 Python 和机器学习助力算法交易"
 
-#: ../../source/index.rst:-1 80652ba44a8b4938b4afc26dd5aee65c
+#: ../../source/index.rst:-1 169bdb52166545d9a517350c16d9f022
 msgid "XJpTXQaAdlEb2eAbndHa2ZmaUiOixSMaRusk-kKVKOQ"
 msgstr "XJpTXQaAdlEb2eAbndHa2ZmaUiOixSMaRusk-kKVKOQ"
 
-#: ../../source/index.rst:69 ac1bba63c0d949618bb5032a2e4e75d1
+#: ../../source/index.rst:64 14c450ec86784ec89c9e0dcdd7b3e0dd
 msgid ""
 "Are you looking to enhance your trading strategies with the power of "
-"Python and machine learning? Then you need to check out **PyBroker**! "
-"This Python framework is designed for developing algorithmic trading "
-"strategies, with a focus on strategies that use machine learning. With "
-"PyBroker, you can easily create and fine-tune trading rules, build "
-"powerful models, and gain valuable insights into your strategy's "
-"performance."
+"Python and machine learning? **PyBroker** is a Python framework designed "
+"for developing algorithmic trading strategies, with a focus on strategies"
+" that use machine learning. With PyBroker, you can easily create and "
+"fine-tune trading rules, build powerful models, and gain valuable "
+"insights into your strategy's performance."
 msgstr ""
-"你是否希望借助 Python 和机器学习的力量来优化你的交易策略？那么你需要了解一下 PyBroker！这个 Python "
-"框架专为开发算法交易策略而设计，尤其关注使用机器学习的策略。借助 "
+"你是否希望借助 Python 和机器学习的力量来提升你的交易策略？**PyBroker** "
+"是一个专为开发算法交易策略而设计的 Python 框架，尤其专注于使用机器学习的策略。借助 "
 "PyBroker，你可以轻松创建和微调交易规则，构建强大的模型，并深入了解你的策略表现。"
 
-#: ../../source/index.rst:77 98ae3731120a439ea4234d4cc33a6f10
+#: ../../source/index.rst:72 c2b06da303e34dc795714d550728d693
 msgid "Key Features"
 msgstr "重要特性"
 
-#: ../../source/index.rst:79 bacac164d62c4f5a9b27032e88ea72e4
+#: ../../source/index.rst:74 dcce44bbb0cb49c6b36b75fc4e1bc40d
 msgid ""
-"A super-fast backtesting engine built in `NumPy <https://numpy.org/>`_  "
+"A super-fast backtesting engine built in `NumPy <https://numpy.org/>`_ "
 "and accelerated with `Numba <https://numba.pydata.org/>`_."
 msgstr ""
 "一个基于 `NumPy <https://numpy.org/>`_ 并通过 `Numba "
 "<https://numba.pydata.org/>`_ 加速的超快回测引擎。"
 
-#: ../../source/index.rst:80 5b651938810b41fea0d07c954addc3e2
+#: ../../source/index.rst:75 44d12417e82b4f539ec4df61af00324c
 msgid ""
-"The ability to create and execute trading rules and models across "
-"multiple instruments with ease."
+"Easy creation of trading rules and models for executing across multiple "
+"instruments."
 msgstr "能轻松地在多个金融工具上创建和执行交易规则和模型。"
 
-#: ../../source/index.rst:81 94ffdc60fc7648b486db656d3e86d6ce
+#: ../../source/index.rst:76 d968a5af56de45f2984ad22a85e2decf
+msgid ""
+"Integration of trading signals across `multiple time intervals "
+"<https://www.pybroker.com/en/latest/notebooks/15.%20Multiple%20Time%20Intervals.html>`_,"
+" including daily, weekly, and monthly."
+msgstr ""
+"跨 `多个时间区间 "
+"<https://www.pybroker.com/en/latest/notebooks/15.%20Multiple%20Time%20Intervals.html>`_"
+" 整合交易信号，涵盖日线、周线和月线。"
+
+#: ../../source/index.rst:77 73b4ca77fa694a5ca8819187a07ecbf0
 msgid ""
 "Access to historical data from `Alpaca <https://alpaca.markets/>`_, "
 "`Yahoo Finance <https://finance.yahoo.com/>`_, `AKShare "
@@ -119,9 +136,9 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/notebooks/7.%20Creating%20a%20Custom%20Data%20Source.html>`_"
 " 来获取历史数据。"
 
-#: ../../source/index.rst:82 c924296b5a6a4be89b95794df974bf7c
+#: ../../source/index.rst:78 76e34c00298d4c95915187d64209641d
 msgid ""
-"The option to train and backtest models using `Walkforward Analysis "
+"Model training and backtesting using `Walkforward Analysis "
 "<https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html"
 "#Walkforward-Analysis>`_, which simulates how the strategy would perform "
 "during actual trading."
@@ -130,9 +147,9 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html"
 "#Walkforward-Analysis>`_, 来训练和回测模型，该方法模拟了策略在实际交易中的表现。"
 
-#: ../../source/index.rst:83 a01619ee63764074a561c3252eabf8b6
+#: ../../source/index.rst:79 47f57cd07cd2464ab361490a276c3b46
 msgid ""
-"More reliable trading metrics that use randomized `bootstrapping "
+"Reliable trading metrics that use randomized `bootstrapping "
 "<https://en.wikipedia.org/wiki/Bootstrapping_(statistics)>`_ to provide "
 "more accurate results."
 msgstr ""
@@ -140,26 +157,52 @@ msgstr ""
 "<https://en.wikipedia.org/wiki/Bootstrapping_(statistics)>`_ "
 "来提供更准确的策略回测结果。"
 
-#: ../../source/index.rst:84 4b7d805e6efe4c19857079df40eee1a3
+#: ../../source/index.rst:80 7b170fcf2dfd46f3a5768f2a2a408a65
 msgid ""
-"Caching of downloaded data, indicators, and models to speed up your "
-"development process."
-msgstr "缓存已下载的数据、指标和模型来加速你的开发过程。"
-
-#: ../../source/index.rst:85 11f8d615ebbe4317941f4d55eda2cf14
-msgid "Parallelized computations that enable faster performance."
-msgstr "用并行计算来获得更高的性能。"
-
-#: ../../source/index.rst:87 a3ff195688bf4f2fbf5cbc6f9b52b490
-msgid ""
-"With PyBroker, you'll have all the tools you need to create winning "
-"trading strategies backed by data and machine learning. Start using "
-"PyBroker today and take your trading to the next level!"
+"`Parameter optimization "
+"<https://www.pybroker.com/en/latest/notebooks/12.%20Parameter%20Optimization.html>`_"
+" with `Optuna <https://optuna.org/>`_ to select the best strategy "
+"parameters."
 msgstr ""
-"通过使用 PyBroker，你将拥有所有必要的工具来创建基于数据和机器学习支持的交易策略。从今天开始用 "
-"PyBroker，将你的交易提升到一个新的高度！"
+"通过 `参数优化 "
+"<https://www.pybroker.com/en/latest/notebooks/12.%20Parameter%20Optimization.html>`_"
+" 与 `Optuna <https://optuna.org/>`_ 选择最佳策略参数。"
 
-#: ../../source/install.rst:4 fc509d2503834dd0849032d377ea39c4
+#: ../../source/index.rst:81 8a558c0fb86442be988403cf9fc6b75f
+#, python-format
+msgid ""
+"`Caching "
+"<https://www.pybroker.com/en/latest/notebooks/1.%20Getting%20Started%20with%20Data%20Sources.html"
+"#Caching-Data>`_ of downloaded data, indicators, and models to speed up "
+"your development process."
+msgstr ""
+"`缓存 "
+"<https://www.pybroker.com/en/latest/notebooks/1.%20Getting%20Started%20with%20Data%20Sources.html"
+"#Caching-Data>`_ 已下载的数据、指标和模型，以加速你的开发过程。"
+
+#: ../../source/index.rst:82 d0ff8c78a6fb4d44bb67f848afaf43d5
+msgid ""
+"`Parallelized "
+"<https://www.pybroker.com/en/latest/notebooks/11.%20Configuring%20Parallelization.html>`_"
+" computation and training for faster performance."
+msgstr ""
+"`并行化 "
+"<https://www.pybroker.com/en/latest/notebooks/11.%20Configuring%20Parallelization.html>`_"
+" 计算和训练，获得更高的性能。"
+
+#: ../../source/index.rst:83 91f5eb11e7e941a894c216dae631b075
+msgid ""
+":doc:`Agent Skills <agent-skills>` that help AI agents write trading "
+"strategies and backtests using PyBroker."
+msgstr ":doc:`智能体技能 <agent-skills>`，帮助 AI 智能体使用 PyBroker 编写交易策略和回测。"
+
+#: ../../source/index.rst:86 a0bb216f0ab74bb08982bdbffad757e0
+msgid ""
+"With PyBroker, you will have the tools to build, test, and evaluate "
+"algorithmic trading strategies backed by machine learning."
+msgstr "借助 PyBroker，你将拥有构建、测试和评估基于机器学习的算法交易策略所需的全部工具。"
+
+#: ../../source/install.rst:4 054799b4d73448a1b71e5a809f771961
 msgid ""
 "PyBroker supports Python 3.11+ on Windows, Mac, and Linux. You can "
 "install PyBroker using ``pip``:"
@@ -167,33 +210,33 @@ msgstr ""
 "PyBroker 支持基于 Windows、Mac 和 Linux 的 Python 3.11 及以上版本，你可以通过 ``pip`` 来安装 "
 "PyBroker："
 
-#: ../../source/install.rst:11 1508d09bc24a4ce59f4f7278efcbb8db
+#: ../../source/install.rst:11 e7bcdf08970f43b2832293173259a9d9
 msgid "Or you can clone the Git repository with:"
 msgstr "或者你可以通过克隆源代码来进行安装："
 
-#: ../../source/index.rst:94 17c0f9d751c04d55984d4a797c54588e
+#: ../../source/index.rst:92 1c7fdcf296a242daa9d4507edcc71658
 msgid "A Quick Example"
 msgstr "快速开始示例"
 
-#: ../../source/index.rst:96 5ed49043d883462b9b9f582052466731
+#: ../../source/index.rst:94 baf42ef58df641368b5e2063ecd4cf07
 msgid ""
-"Get a glimpse of what backtesting with PyBroker looks like with these "
+"Here's a glimpse of what backtesting with PyBroker looks like with these "
 "code snippets:"
 msgstr "让我们一起来看下利用 PyBroker 来进行策略回测的代码示例"
 
-#: ../../source/index.rst:99 950d966392934ab09ec0e794d577c6a6
+#: ../../source/index.rst:97 0dcfcfd45d5a40fbbdf8c882e96a4c5f
 msgid "**Rule-based Strategy**::"
 msgstr "**基于规则的策略**"
 
-#: ../../source/index.rst:120 3622432cee624538a2c1fb336893875c
+#: ../../source/index.rst:114 472d9d3d995c4e7e9960078450473fec
 msgid "**Model-based Strategy**::"
 msgstr "**基于模型的策略**"
 
-#: ../../source/index.rst:148 ccea7a4f77804146a4c5a1d265ef05b8
+#: ../../source/index.rst:140 676ed8d03ea3467aa93abafd7fc259d5
 msgid "To learn how to use PyBroker, see the notebooks under the *User Guide*:"
 msgstr "如果想学习更多 PyBroker 的使用方式，请参考 *用户指南*："
 
-#: ../../source/index.rst:175 8e2719ba3fef44739cd0ddef2a952c91
+#: ../../source/index.rst:168 d5285968fbf74784a2dc4113199608bb
 msgid ""
 "`The notebooks above are also available on Github "
 "<https://github.com/edtechre/pybroker/tree/master/docs/source/notebooks>`_."
@@ -201,17 +244,17 @@ msgstr ""
 "`上述的教程也可以在 GitHub 上找到 "
 "<https://github.com/edtechre/pybroker/tree/master/docs/source/notebooks>`_。"
 
-#: ../../source/index.rst:200 083cd471cadc48a4bffd2f3fa0892972
+#: ../../source/index.rst:193 c71ab27ac4de48488d9daa14651496d7
 msgid "Recommended Reading"
 msgstr "推荐阅读"
 
-#: ../../source/index.rst:202 9b279cf2664d49ada91d1fbc0eff92e0
+#: ../../source/index.rst:195 b7e3d5d961344030a79d442eb45d59ea
 msgid ""
 "The following is a list of essential books that provide background "
 "information on quantitative finance and algorithmic trading:"
 msgstr "下面一系列书籍可以提供很多关于量化金融和算法交易的知识："
 
-#: ../../source/index.rst:205 86d111b4fe574aeda95b8c5009a94a74
+#: ../../source/index.rst:198 b44287d1187c40a9802e5c2bf092e305
 msgid ""
 "Lingjie Ma, `Quantitative Investing: From Theory to Industry "
 "<https://www.amazon.com/Quantitative-Investing-Industry-Lingjie-"
@@ -221,7 +264,7 @@ msgstr ""
 "<https://www.amazon.com/Quantitative-Investing-Industry-Lingjie-"
 "Ma/dp/3030472019/>`_"
 
-#: ../../source/index.rst:207 0c0412b9e5ed43499659283b405512a0
+#: ../../source/index.rst:200 21c1497613434bc28eb4515b60ae7dff
 msgid ""
 "Timothy Masters, `Testing and Tuning Market Trading Systems: Algorithms "
 "in C++ <https://www.amazon.com/Testing-Tuning-Market-Trading-"
@@ -231,7 +274,7 @@ msgstr ""
 "in C++ <https://www.amazon.com/Testing-Tuning-Market-Trading-"
 "Systems/dp/148424172X/>`_"
 
-#: ../../source/index.rst:209 cb2dd1ecfde74b53b4e114fb0e8cc04b
+#: ../../source/index.rst:202 7c67d4b9070f47ff80587f32da60c6d2
 msgid ""
 "Stefan Jansen, `Machine Learning for Algorithmic Trading, 2nd Edition "
 "<https://www.amazon.com/Machine-Learning-Algorithmic-Trading-"
@@ -241,26 +284,7 @@ msgstr ""
 "<https://www.amazon.com/Machine-Learning-Algorithmic-Trading-"
 "alternative/dp/1839217715/>`_"
 
-#: ../../source/index.rst:211 d0877fac3aa743088b36d0c1e6d512c4
-msgid ""
-"Ernest P. Chan, `Machine Trading: Deploying Computer Algorithms to "
-"Conquer the Markets <https://www.amazon.com/Machine-Trading-Deploying-"
-"Computer-Algorithms-ebook/dp/B01N7NKVG0/>`_"
-msgstr ""
-"Ernest P. Chan, `Machine Trading: Deploying Computer Algorithms to "
-"Conquer the Markets <https://www.amazon.com/Machine-Trading-Deploying-"
-"Computer-Algorithms-ebook/dp/B01N7NKVG0/>`_"
-
-#: ../../source/index.rst:213 28885d91017c4839b1b4ea5be1602cbb
-msgid ""
-"Perry J. Kaufman, `Trading Systems and Methods, 6th Edition "
-"<https://www.amazon.com/Trading-Systems-Methods-Wiley-"
-"ebook/dp/B08141BBXR/>`_"
-msgstr ""
-"Perry J. Kaufman, `Trading Systems and Methods, 6th Edition "
-"<https://www.amazon.com/Trading-Systems-Methods-Wiley-"
-"ebook/dp/B08141BBXR/>`_"
-
-#: ../../source/index.rst:223 90e7b355f2684371a78f630cfb48f77a
+#: ../../source/index.rst:213 79c4000fe26b4cc283ad8edd70a42ba0
 msgid "Contact"
 msgstr "联系我们"
+

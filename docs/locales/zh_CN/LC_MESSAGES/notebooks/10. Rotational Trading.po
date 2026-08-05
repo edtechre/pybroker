@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-04 18:14-0700\n"
+"POT-Creation-Date: 2026-08-05 15:57-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -18,12 +18,12 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../source/notebooks/10. Rotational Trading.ipynb:9
-#: c277482ccf934a15beb5fbebaa3c5d56
+#: ../../source/notebooks/10. 6866e168dc184b7390ca8e9ffea432ad Rotational
+#: Trading.ipynb:9
 msgid "Rotational Trading"
 msgstr "轮动交易"
 
-#: ../../source/notebooks/10. 50024937c38f49c7b1d8f6b779065237 Rotational
+#: ../../source/notebooks/10. 0c957913bdc24e438836d92866a9aabe Rotational
 #: Trading.ipynb:11
 msgid ""
 "Rotational trading involves buying top-performing assets and selling "
@@ -31,8 +31,8 @@ msgid ""
 "strategies."
 msgstr "轮动交易涉及购买表现最好的资产，同时出售表现不佳的资产。**PyBroker** 可用于回测此类策略。"
 
-#: ../../source/notebooks/10. 20fe7e0970ed4ffe9c19988357ebdcc9 Rotational
-#: Trading.ipynb:33
+#: ../../source/notebooks/10. 9e9ac5487e0e4e3cb82ac17bcaff993c Rotational
+#: Trading.ipynb:32
 msgid ""
 "Our strategy will involve ranking and buying stocks with the highest "
 "`price rate-of-change (ROC) "
@@ -45,44 +45,44 @@ msgstr ""
 "最高的股票进行排名和购买。首先，我们将使用 `TA-Lib <https://github.com/TA-Lib/ta-lib-"
 "python>`__ 定义一个 20 天的 ROC 指标："
 
-#: ../../source/notebooks/10. 1c8d38c6109e473ba964ee80dd412e3f Rotational
-#: Trading.ipynb:58
+#: ../../source/notebooks/10. Rotational Trading.ipynb:57
+#: df6b59e8da854f5797dfa9163da67f2f
 msgid "Next, let's define the rules of our strategy:"
 msgstr "接下来，让我们定义策略的规则："
 
-#: ../../source/notebooks/10. Rotational Trading.ipynb:60
-#: e6646bbe8fdd44bf94d8a4d38d8a3102
+#: ../../source/notebooks/10. 662ef97ebb124a18a5a8ef0d7db178e8 Rotational
+#: Trading.ipynb:59
 msgid "Buy the two stocks with the highest 20-day ROC."
 msgstr "购买 20 天涨幅（ROC）最高的两只股票。"
 
-#: ../../source/notebooks/10. 7060ec94479d4ec3a00678f02e54513e Rotational
-#: Trading.ipynb:61
-#, python-format
+#: ../../source/notebooks/10. 1b851a20aaa944dfbf6388de7434f096 Rotational
+#: Trading.ipynb:60
+#, no-python-format
 msgid "Allocate 50% of our capital to each stock."
 msgstr "将我们的资本的 50% 分配给每只股票。"
 
-#: ../../source/notebooks/10. Rotational Trading.ipynb:62
-#: d25988c437f54da5891f054b53479b30
+#: ../../source/notebooks/10. Rotational Trading.ipynb:61
+#: ea6bb08a2a764f8b807be18d35b707de
 msgid ""
 "If either of the stocks is no longer ranked among the top five 20-day "
 "ROCs, then we will liquidate that stock."
 msgstr "如果其中一只股票不再位于前五名的 20 天涨幅（ROC）中，则我们将清盘该股票。"
 
-#: ../../source/notebooks/10. 992f91a10edc4abfaf96ab7f67a092f7 Rotational
-#: Trading.ipynb:63
+#: ../../source/notebooks/10. Rotational Trading.ipynb:62
+#: f73cd1f519ce476e86733eee2e4ecc7e
 msgid "Trade these rules daily."
 msgstr "每天交易这些规则。"
 
-#: ../../source/notebooks/10. 64c151be01634052be5448e95cd40842 Rotational
-#: Trading.ipynb:65
+#: ../../source/notebooks/10. Rotational Trading.ipynb:64
+#: c98964c13a3b4f93933b7d06db50d79b
 msgid "Let’s set up our config for the above rules:"
 msgstr "让我们为上述规则设置配置："
 
-#: ../../source/notebooks/10. 31747be8af5549d190293b60e4d5af47 Rotational
-#: Trading.ipynb:86
+#: ../../source/notebooks/10. Rotational Trading.ipynb:85
+#: c499e910ca5d439a890261913ec1d277
 msgid ""
 "To implement the strategy, we write a ``rotate`` function that sets each "
-"stock's ```long_score`` "
+"stock's `long_score "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.long_score>`__"
 " to its 20-day ROC. **PyBroker** then ranks the stocks by their "
 "``long_score`` in descending order."
@@ -91,8 +91,8 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.long_score>`__"
 " 设置为其 20 天涨幅（ROC）。然后 **PyBroker** 会根据 ``long_score`` 对这些股票进行降序排名。"
 
-#: ../../source/notebooks/10. Rotational Trading.ipynb:108
-#: ad680eaad80541e3874a58db0f0d6e90
+#: ../../source/notebooks/10. Rotational Trading.ipynb:107
+#: caddae40dc804a59a3eb35401c5c4c2b
 msgid ""
 "Now that we have a method for scoring stocks by their ROC, we can use the"
 " `enable_rotation "
@@ -103,25 +103,26 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.enable_rotation>`__"
 " 方法来启用轮动交易。"
 
-#: ../../source/notebooks/10. 011fbe1d6c53466394a470aa0b1add24 Rotational
-#: Trading.ipynb:110
-#, python-format
+#: ../../source/notebooks/10. Rotational Trading.ipynb:109
+#: a11a3b7ddabb4b9fb4d6fbc87d9d890f
+#, no-python-format
 msgid ""
 "Setting ``worst_rank_held`` to ``5`` liquidates any currently held stock "
 "that falls outside the top five 20-day ROC rankings. Otherwise, "
 "**PyBroker** buys up to the top two ranked stocks, allocating 50% of the "
 "capital to each. This backtest uses a universe of 10 stocks:"
 msgstr ""
-"将 ``worst_rank_held`` 设置为 ``5`` 会清盘任何跌出前五名 20 天涨幅（ROC）排名之外的当前持仓股票。否则，"
-"**PyBroker** 会买入排名前两位的股票，将 50% 的资金分配给每只股票。这次回测将使用由 10 只股票组成的股票池："
+"将 ``worst_rank_held`` 设置为 ``5`` 会清盘任何跌出前五名 20 "
+"天涨幅（ROC）排名之外的当前持仓股票。否则，**PyBroker** 会买入排名前两位的股票，将 50% 的资金分配给每只股票。这次回测将使用由"
+" 10 只股票组成的股票池："
 
-#: ../../source/notebooks/10. 280cf3066ee9413489baec924c6b0331 Rotational
-#: Trading.ipynb:682
+#: ../../source/notebooks/10. 5683a5473ed643fb866fe2dca3c38154 Rotational
+#: Trading.ipynb:681
 msgid "Custom Position Sizing"
 msgstr "自定义仓位配置"
 
-#: ../../source/notebooks/10. 5aa43b1ee0fb49a692f9c06f57d7ebe0 Rotational
-#: Trading.ipynb:684
+#: ../../source/notebooks/10. 1cd8a0ca349a4bab87f430173406eb77 Rotational
+#: Trading.ipynb:683
 msgid ""
 "**PyBroker** will allocate our capital equally between positions by "
 "default. To customize this, we can pass a ``sizer`` function to "
@@ -140,10 +141,11 @@ msgstr ""
 " 调用 ``sizer``，使我们能够覆盖每笔入场的仓位规模。``long_ranks`` 属性包含每只股票的排名，其中 ``1`` "
 "表示排名最高。"
 
-#: ../../source/notebooks/10. 455c243e738f4e37bac6375b114761de Rotational
-#: Trading.ipynb:687
+#: ../../source/notebooks/10. 837aeb4094cc4621ab5535c1f667e966 Rotational
+#: Trading.ipynb:686
 #, python-format
 msgid ""
 "Let's reuse our strategy, but this time allocate 70% of our capital to "
 "the top-ranked stock and 30% to the second:"
 msgstr "让我们重用相同的策略，但这次将 70% 的资金分配给排名第一的股票，30% 分配给排名第二的股票："
+

@@ -1,0 +1,183 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-05 15:57-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/benchmarking.rst:2 caf14f4627264c30814b6d1b9033dea7
+msgid "Benchmarking with asv"
+msgstr "使用 asv 进行基准测试"
+
+#: ../../source/benchmarking.rst:4 41e0414a321f423793c56147fccd3f3d
+msgid ""
+"PyBroker uses `asv (Airspeed Velocity) <https://asv.readthedocs.io/>`_ to"
+" track backtest performance across commits. asv runs benchmarks, stores "
+"per-commit results under ``.asv/results/``, and produces an HTML "
+"dashboard for visual regression tracking."
+msgstr ""
+"PyBroker 使用 `asv（Airspeed Velocity） <https://asv.readthedocs.io/>`_ 跨"
+"提交跟踪回测性能。asv 运行基准测试，将每次提交的结果存储在 "
+"``.asv/results/`` 下，并生成用于可视化回归跟踪的 HTML 仪表盘。"
+
+#: ../../source/benchmarking.rst:9 53a83a11fbc74ea2bd83846c867ee2e7
+msgid ""
+"The benchmark suite lives in ``benchmarks/`` and is exercised in CI on "
+"every pull request via ``.github/workflows/asv-pr.yml`` (uses ``asv "
+"continuous origin/master HEAD`` and posts a sticky PR comment with the "
+"diff)."
+msgstr ""
+"基准测试套件位于 ``benchmarks/`` 目录下，并通过 "
+"``.github/workflows/asv-pr.yml`` 在每个 pull request 的 CI 中执行（使用 "
+"``asv continuous origin/master HEAD``，并在 PR 中发布一条置顶评论显示"
+"差异）。"
+
+#: ../../source/benchmarking.rst:15 8640bfd1cae843049f5dbcc8963cba76
+msgid "Installation"
+msgstr "安装"
+
+#: ../../source/benchmarking.rst:23 43dbd38b79074ee99bb9af4f7351998b
+msgid "Running"
+msgstr "运行"
+
+#: ../../source/benchmarking.rst:25 3dc11c9603484b7795c10b0fdf3fd15d
+msgid "Benchmark the current working tree:"
+msgstr "对当前工作树进行基准测试："
+
+#: ../../source/benchmarking.rst:32 b483b6707b4644eca27e3e465b3df09e
+msgid "Compare two commits:"
+msgstr "比较两次提交："
+
+#: ../../source/benchmarking.rst:39 39216303cc1742ce9ac26f2af63db67a
+msgid ""
+"The PR gate adds ``--factor 1.1 --no-stats --machine ci-ubuntu-latest`` "
+"and resolves the base as ``origin/<base branch>``:"
+msgstr ""
+"PR 门禁会附加 ``--factor 1.1 --no-stats --machine ci-ubuntu-latest``，"
+"并将基准解析为 ``origin/<base branch>``："
+
+#: ../../source/benchmarking.rst:46 df1781ba5c174644b5d29e9ff113e60e
+msgid "Generate and preview the HTML dashboard:"
+msgstr "生成并预览 HTML 仪表盘："
+
+#: ../../source/benchmarking.rst:54 29d8f84fa62045a4a6b12f7f6429eb11
+msgid "Benchmark Suite"
+msgstr "基准测试套件"
+
+#: ../../source/benchmarking.rst:56 4db7eca51ec24afba0d37d934fc02744
+msgid ""
+"The asv suite lives in ``benchmarks/`` across four modules. CI fails PRs "
+"on regressions greater than 1.1x unless the PR carries the ``bench-"
+"override`` label. New hot paths should add a benchmark."
+msgstr ""
+"asv 套件位于 ``benchmarks/`` 目录下，分布在四个模块中。对于超过 1.1 倍"
+"的性能回退，CI 会使 PR 失败，除非该 PR 带有 ``bench-override`` 标签。"
+"新增的热路径应当添加相应的基准测试。"
+
+#: ../../source/benchmarking.rst:60 22bfcce24e8a4d75b2abc1dc655f7a77
+msgid ""
+"``bench_backtest.py`` - end-to-end walkforward (warm, cold, scaled, "
+"models, intervals, slippage-free) plus microbenchmarks for the indicator "
+"and eval kernels, ``SymbolArrayStore``, lag prep, and the caches. Also "
+"tracks a hash of walkforward equity so numeric divergence is flagged."
+msgstr ""
+"``bench_backtest.py`` —— 端到端的向前分析基准（预热、冷启动、扩展规模、"
+"模型、时间区间、无滑点），以及针对指标和评估内核、``SymbolArrayStore``、"
+"滞后特征准备和缓存的微基准测试。同时还会跟踪向前分析权益曲线的哈希值，"
+"以便标记数值上的偏差。"
+
+#: ../../source/benchmarking.rst:64 d7442c52ae314a3cbb218aa1bea75bb4
+msgid "``bench_common.py`` - result-export quantize and interval compression."
+msgstr "``bench_common.py`` —— 结果导出的量化处理和时间区间压缩。"
+
+#: ../../source/benchmarking.rst:65 e8262c00fa784f2d8c2a53881a17837a
+msgid ""
+"``bench_data.py`` - data-source cache I/O and yfinance reshape, on pinned"
+" fixtures only."
+msgstr ""
+"``bench_data.py`` —— 数据源缓存 I/O 和 yfinance 数据重塑，仅针对固定"
+"版本的测试夹具。"
+
+#: ../../source/benchmarking.rst:67 581afc58eb27489685464c32c143f60a
+msgid ""
+"``bench_slippage.py`` - walkforward under the volume and volatility "
+"slippage models."
+msgstr "``bench_slippage.py`` —— 在成交量和波动率滑点模型下的向前分析。"
+
+#: ../../source/benchmarking.rst:70 373d4c3bf67f47ddb43efd6d4103102f
+msgid ""
+"Walkforward benches run on ``tests/testdata/daily_1.pkl`` (4 symbols, 2 "
+"years daily, 2020 rows), the fixture the test suite uses via "
+"``tests/fixtures.py``; larger scenarios use synthetic OHLCV. "
+"``WalkforwardCold`` and ``WalkforwardProperCold`` deliberately pay Numba "
+"JIT compile cost, so never add warmup to either."
+msgstr ""
+"向前分析基准测试运行在 ``tests/testdata/daily_1.pkl``（4 个品种，2 年"
+"日线数据，2020 行）之上，这与测试套件通过 ``tests/fixtures.py`` 使用的"
+"夹具相同；更大规模的场景则使用合成的 OHLCV 数据。``WalkforwardCold`` 和 "
+"``WalkforwardProperCold`` 刻意承担 Numba 的 JIT 编译开销，因此切勿为二者"
+"添加预热（warmup）。"
+
+#: ../../source/benchmarking.rst:77 a73b9d138af242a9b42ec388eda315a7
+msgid "Environment"
+msgstr "环境"
+
+#: ../../source/benchmarking.rst:79 d264570ac3674262ae4579f6306d91d8
+msgid ""
+"``asv.conf.json`` uses ``environment_type: virtualenv`` so each commit is"
+" benchmarked in a fresh virtualenv built from ``setup.cfg``. The install "
+"command is ``python -mpip install -e .``: no Poetry, no tox; just pip."
+msgstr ""
+"``asv.conf.json`` 使用 ``environment_type: virtualenv``，因此每次提交都"
+"会在根据 ``setup.cfg`` 新建的虚拟环境中进行基准测试。安装命令为 "
+"``python -mpip install -e .``：不使用 Poetry，也不使用 tox，只用 pip。"
+
+#: ../../source/benchmarking.rst:83 fba16c189e544f49a94493a872112711
+msgid ""
+"For local ad-hoc benchmarking you can switch the config to "
+"``environment_type: existing`` (uses the currently activated venv) to "
+"skip the per-commit env rebuild. Revert before committing if you edit "
+"``asv.conf.json``."
+msgstr ""
+"如果是本地临时性的基准测试，你可以将配置切换为 "
+"``environment_type: existing``（使用当前已激活的虚拟环境），以跳过针对"
+"每次提交重建环境的步骤。如果修改了 ``asv.conf.json``，请在提交前将其"
+"还原。"
+
+#: ../../source/benchmarking.rst:89 8302eb5a08054b9ba4f3a936546fed61
+msgid "Adding a Benchmark"
+msgstr "添加基准测试"
+
+#: ../../source/benchmarking.rst:91 8194a2d2ca5c4518940a9fd51d1e6586
+msgid ""
+"Create a new file under ``benchmarks/`` (or add a class to an existing "
+"one). asv picks up any class with ``time_``, ``peakmem_``, or ``track_`` "
+"methods. ``setup`` runs before each benchmark method, ``teardown`` after."
+msgstr ""
+"在 ``benchmarks/`` 目录下创建一个新文件（或在现有文件中添加一个类）。"
+"asv 会识别任何包含 ``time_``、``peakmem_`` 或 ``track_`` 方法的类。"
+"``setup`` 会在每个基准测试方法之前运行，``teardown`` 则在之后运行。"
+
+#: ../../source/benchmarking.rst:95 d64ef07008c44aeead39e3288e20797c
+msgid ""
+"See `the asv writing-benchmarks guide "
+"<https://asv.readthedocs.io/en/latest/writing_benchmarks.html>`_ for "
+"parametrized benchmarks, timeouts, and custom tracking metrics."
+msgstr ""
+"有关参数化基准测试、超时设置和自定义跟踪指标的更多信息，请参阅 `asv "
+"编写基准测试指南 "
+"<https://asv.readthedocs.io/en/latest/writing_benchmarks.html>`_。"

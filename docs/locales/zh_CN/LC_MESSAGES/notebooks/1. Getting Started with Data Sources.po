@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-04 18:14-0700\n"
+"POT-Creation-Date: 2026-08-05 15:57-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -18,41 +18,41 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../source/notebooks/1. 2e62123171104f5db3004127ced2442f Data Getting
+#: ../../source/notebooks/1. 015040d4147f4069ab898a2ba3fbc897 Data Getting
 #: Sources.ipynb:9 Started with
 msgid "Getting Started with Data Sources"
 msgstr "从数据源开始"
 
-#: ../../source/notebooks/1. 575f2de99a84481d824870e31669b892 Data Getting
+#: ../../source/notebooks/1. 321a525e5b044033bc7d9bb5acd5b3d1 Data Getting
 #: Sources.ipynb:11 Started with
 msgid ""
 "Welcome to **PyBroker**! The best place to start is by learning about the"
-" ```DataSource`` "
+" `DataSource "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__"
 " class. A ``DataSource`` fetches data from external providers, allowing "
 "you to backtest your trading strategies."
 msgstr ""
-"欢迎来到 **PyBroker**！最好的起点是了解 ```DataSource`` "
+"欢迎来到 **PyBroker**！最好的起点是了解 `DataSource "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__"
 " 类。``DataSource`` 从外部数据提供商获取数据，使你能够回测自己的交易策略。"
 
-#: ../../source/notebooks/1. 78639fb011a54241b20faaefbc88d3c3 Data Getting
+#: ../../source/notebooks/1. 659dfa55ff62425e99471c6b924e54c9 Data Getting
 #: Sources.ipynb:14 Started with
 msgid "Yahoo Finance"
 msgstr "雅虎财经"
 
-#: ../../source/notebooks/1. 87c34b335abd46599df5b3ce76d699c7 Data Getting
+#: ../../source/notebooks/1. 34c4c41efdb7414bbe53e076824327b6 Data Getting
 #: Sources.ipynb:16 Started with
 msgid ""
 "One of the built-in data sources in **PyBroker** is `Yahoo Finance "
-"<https://finance.yahoo.com>`__. To use it, import ```YFinance`` "
+"<https://finance.yahoo.com>`__. To use it, import `YFinance "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance>`__:"
 msgstr ""
-"**PyBroker** 内置的数据源之一是 `Yahoo Finance <https://finance.yahoo.com>`__。"
-"要使用它，请导入 ```YFinance`` "
+"**PyBroker** 内置的数据源之一是 `Yahoo Finance "
+"<https://finance.yahoo.com>`__。要使用它，请导入 `YFinance "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance>`__："
 
-#: ../../source/notebooks/1. 8ffec602888c408196f3a8f79423389c Data Getting
+#: ../../source/notebooks/1. 9a6d24d0d0e344878e9c490662d873c7 Data Getting
 #: Sources.ipynb:346 Started with
 msgid ""
 "The code above queries data for AAPL and MSFT, returning the results in a"
@@ -62,45 +62,45 @@ msgstr ""
 "上述代码查询了 AAPL 和 MSFT 股票的数据，并返回一个包含结果的 `Pandas DataFrame "
 "<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__。"
 
-#: ../../source/notebooks/1. 80bd0b7832ca4bebadeff5f3ccf63b6a Data Getting
-#: Sources.ipynb:349 Started with
+#: ../../source/notebooks/1. Data Getting Sources.ipynb:349 Started
+#: ee4b523e91d3496ab85343e61df5d434 with
 msgid "Caching Data"
 msgstr "缓存数据"
 
 #: ../../source/notebooks/1. Data Getting Sources.ipynb:351 Started
-#: df481d1effc14dcd8b4446964c8a2916 with
+#: bc19ef94470d4e159d9371a29057130d with
 msgid ""
 "To speed up data retrieval, you can cache your queries using "
 "**PyBroker**'s caching system. Enable caching by calling "
-"```pybroker.enable_data_source_cache('name')`` "
+"`pybroker.enable_data_source_cache('name') "
 "<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.enable_data_source_cache>`__,"
 " where ``name`` is the identifier for your cache:"
 msgstr ""
 "为加快数据获取速度，你可以使用 **PyBroker** 的缓存系统来缓存查询结果。通过调用 "
-"```pybroker.enable_data_source_cache('name')`` "
+"`pybroker.enable_data_source_cache('name') "
 "<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.enable_data_source_cache>`__"
 " 启用缓存，其中 ``name`` 是你的缓存标识符："
 
 #: ../../source/notebooks/1. Data Getting Sources.ipynb:399 Started
-#: df4b3a56dbe34fd49c9bddf73cdf2f08 with
+#: b4cd65893211449ba2a041480fb12876 with
 msgid ""
-"The next call to ```query`` "
+"The next call to `query "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource.query>`__"
 " caches the returned data to disk. Each unique combination of ticker "
 "symbol and date range is cached separately:"
 msgstr ""
-"下一次调用 ```query`` "
+"下一次调用 `query "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource.query>`__"
 " 时，会将返回的数据缓存到磁盘。每个唯一的股票代码和日期范围组合都会单独缓存："
 
-#: ../../source/notebooks/1. 7f48372454bb4841862941df464ab8e8 Data Getting
+#: ../../source/notebooks/1. 79b31593095546d5892e4e5ff66dc2eb Data Getting
 #: Sources.ipynb:723 Started with
 msgid ""
 "Calling ``query`` again with the same ticker symbols and date range "
 "returns the cached data:"
 msgstr "再次使用相同的股票代码和日期范围调用 ``查询`` 时，将返回缓存的数据："
 
-#: ../../source/notebooks/1. 2753831184c04abd8461842a6d1a4fb2 Data Getting
+#: ../../source/notebooks/1. 17b3f1e2a1e346d1ba44e0f9870a9471 Data Getting
 #: Sources.ipynb:1042 Started with
 msgid ""
 "You can clear the cache using `pybroker.clear_data_source_cache "
@@ -110,8 +110,8 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.clear_data_source_cache>`__"
 " 清除缓存："
 
-#: ../../source/notebooks/1. Data Getting Sources.ipynb:1063 Started
-#: efa2cd261f1744b0811f429854f866fe with
+#: ../../source/notebooks/1. 39737501a79844e6899338a0d5e3a9da Data Getting
+#: Sources.ipynb:1063 Started with
 msgid ""
 "Or disable caching altogether using `pybroker.disable_data_source_cache "
 "<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.disable_data_source_cache>`__:"
@@ -121,7 +121,7 @@ msgstr ""
 " 完全禁用缓存："
 
 #: ../../source/notebooks/1. Data Getting Sources.ipynb:1084 Started
-#: c0f60117078042109dd00d099a2f6301 with
+#: a356552c1170404b9361fc79e76619be with
 msgid ""
 "Note that these calls should be made after first calling "
 "`pybroker.enable_data_source_cache "
@@ -130,12 +130,12 @@ msgstr ""
 "请注意，在调用这些方法之前，应先调用 `pybroker.enable_data_source_cache "
 "<https://www.pybroker.com/en/latest/reference/pybroker.cache.html#pybroker.cache.enable_data_source_cache>`__。"
 
-#: ../../source/notebooks/1. 3a3cdb76ba4b40dda4c418300bfdcdd0 Data Getting
+#: ../../source/notebooks/1. 7cef2afaeba34525a019568db79ef768 Data Getting
 #: Sources.ipynb:1096 Started with
 msgid "Alpaca"
 msgstr "Alpaca"
 
-#: ../../source/notebooks/1. 47fc5a2cf9f14d8484ac2d275b0b3907 Data Getting
+#: ../../source/notebooks/1. 034bfd769b5b4eb1a601feba3ede7375 Data Getting
 #: Sources.ipynb:1098 Started with
 msgid ""
 "**PyBroker** also includes an `Alpaca <https://alpaca.markets/>`__ "
@@ -150,7 +150,7 @@ msgstr ""
 " 并提供你的 API 密钥和密钥："
 
 #: ../../source/notebooks/1. Data Getting Sources.ipynb:1122 Started
-#: f2e0986b19e94986a1102f74caeffab7 with
+#: bdc333233c1c4aed807d0e143a1daeb6 with
 msgid ""
 "You can query ``Alpaca`` for stock data using the same syntax as with "
 "Yahoo Finance, but Alpaca also supports querying data by different "
@@ -159,13 +159,13 @@ msgstr ""
 "你可以使用与 Yahoo Finance 相同的语法查询 ``Alpaca`` 的股票数据，但 Alpaca "
 "还支持按不同时间段查询数据。例如，要查询 1 分钟的数据："
 
-#: ../../source/notebooks/1. 415398b5a1874e199651b95395c9fb67 Data Getting
-#: Sources.ipynb:1450 Started with
+#: ../../source/notebooks/1. Data Getting Sources.ipynb:1450 Started
+#: a9898fd43f9d4ddf92db4922b8a7cf44 with
 msgid "Alpaca Crypto"
 msgstr "Alpaca Crypto"
 
-#: ../../source/notebooks/1. 2b1d0e14ae254f239e06878838f381ed Data Getting
-#: Sources.ipynb:1452 Started with
+#: ../../source/notebooks/1. Data Getting Sources.ipynb:1452 Started
+#: df037d53d9f94235a8fbdfa8cb636a60 with
 msgid ""
 "If you are interested in fetching cryptocurrency data, you can use "
 "`AlpacaCrypto "
@@ -173,15 +173,15 @@ msgid ""
 " Here's an example of how to query hourly data for BTC/USD:"
 msgstr ""
 "如果你想获取加密货币数据，可以使用 `AlpacaCrypto "
-"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.AlpacaCrypto>`__。"
-"以下是查询 BTC/USD 每小时数据的示例："
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.AlpacaCrypto>`__。以下是查询"
+" BTC/USD 每小时数据的示例："
 
-#: ../../source/notebooks/1. Data Getting Sources.ipynb:1794 Started
-#: e1a19219035348c2a3c115a351c00bfa with
+#: ../../source/notebooks/1. 0396290e0762485bb4c6355fcb0a3bff Data Getting
+#: Sources.ipynb:1794 Started with
 msgid "AKShare"
 msgstr "AKShare"
 
-#: ../../source/notebooks/1. 2223b031633a487e8e2f407e65a38e59 Data Getting
+#: ../../source/notebooks/1. 5185856c5008449fb591ad4074077cb4 Data Getting
 #: Sources.ipynb:1796 Started with
 msgid ""
 "**PyBroker** also supports an `AKShare "
@@ -192,11 +192,11 @@ msgid ""
 "market compared to Yahoo Finance."
 msgstr ""
 "**PyBroker** 还支持 `AKShare <https://github.com/akfamily/akshare>`__ "
-"``数据源``，用于获取**中国**股票数据。AKShare 是一个广泛使用的开源包，专门用于获取金融数据，"
-"尤其专注于中国市场。与 Yahoo Finance 相比，这个免费工具能为中国市场提供更高质量的数据。"
+"``数据源``，用于获取**中国**股票数据。AKShare 是一个广泛使用的开源包，专门用于获取金融数据，尤其专注于中国市场。与 Yahoo "
+"Finance 相比，这个免费工具能为中国市场提供更高质量的数据。"
 
-#: ../../source/notebooks/1. 64e8edda544043ae96ff20677266b76b Data Getting
-#: Sources.ipynb:1798 Started with
+#: ../../source/notebooks/1. Data Getting Sources.ipynb:1798 Started
+#: d00c2db01a4f4341b2788d0c227b254d with
 msgid ""
 "To use it, run ``pip install akshare`` and import the `AKShare "
 "<https://www.pybroker.com/en/latest/reference/pybroker.ext.data.html#pybroker.ext.data.AKShare>`__"
@@ -206,7 +206,7 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.ext.data.html#pybroker.ext.data.AKShare>`__"
 " 数据源："
 
-#: ../../source/notebooks/1. 680769a38fcf4fa281036059ce595315 Data Getting
+#: ../../source/notebooks/1. 35541cd118504542803e118430a75602 Data Getting
 #: Sources.ipynb:2178 Started with
 msgid ""
 "**NOTE**: If the above causes a ``Native library not available`` error "
@@ -218,29 +218,29 @@ msgstr ""
 " `see this issue for details on how to resolve it "
 "<https://github.com/edtechre/pybroker/issues/36#issuecomment-1605910339>`__。"
 
-#: ../../source/notebooks/1. 6b9e1ecfef894a12b127e037e8dec1fd Data Getting
+#: ../../source/notebooks/1. 134918ff7cf04391801c285b7bb28131 Data Getting
 #: Sources.ipynb:2190 Started with
 msgid "Custom Data Sources"
 msgstr "自定义数据源"
 
-#: ../../source/notebooks/1. 13e3f6bffd354636b7e137802b462ce2 Data Getting
+#: ../../source/notebooks/1. 9343d1d2c11241d69dd9ad10faa6d4eb Data Getting
 #: Sources.ipynb:2192 Started with
 msgid ""
 "If the built-in data sources do not cover your needs, **PyBroker** lets "
-"you implement your own ```DataSource`` "
+"you implement your own `DataSource "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__."
 " Examples include CSV files or external APIs. See `Creating a Custom Data"
 " Source "
 "<https://www.pybroker.com/en/latest/notebooks/7.%20Creating%20a%20Custom%20Data%20Source.html>`__"
 " for a full walkthrough."
 msgstr ""
-"如果内置的数据源无法满足你的需求，**PyBroker** 允许你实现自己的 ```DataSource`` "
-"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__。"
-"例如 CSV 文件或外部 API。完整示例请参阅 `创建自定义数据源 "
+"如果内置的数据源无法满足你的需求，**PyBroker** 允许你实现自己的 `DataSource "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__。例如"
+" CSV 文件或外部 API。完整示例请参阅 `创建自定义数据源 "
 "<https://www.pybroker.com/en/latest/notebooks/7.%20Creating%20a%20Custom%20Data%20Source.html>`__。"
 
-#: ../../source/notebooks/1. Data Getting Sources.ipynb:2194 Started
-#: d4e11bd842114649a27e7d87412c1271 with
+#: ../../source/notebooks/1. 82556821a29b426e9b3aea20251ca8c1 Data Getting
+#: Sources.ipynb:2194 Started with
 msgid ""
 "`In the next notebook, we'll take a look at how to use DataSources to "
 "backtest a simple trading strategy "
@@ -248,3 +248,4 @@ msgid ""
 msgstr ""
 "`在下一篇文章中，我们将研究如何使用 DataSources 对一个简单的交易策略进行回测 "
 "<https://www.pybroker.com/en/latest/notebooks/2.%20Backtesting%20a%20Strategy.html>`__。"
+
