@@ -6,6 +6,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import math
 import numpy as np
 import pytest
 import re
@@ -14,6 +15,7 @@ from pybroker.vect import (
     aroon_diff,
     aroon_down,
     aroon_up,
+    atr,
     close_minus_ma,
     cross,
     cubic_deviation,
@@ -127,6 +129,405 @@ def test_returnv(array, n, expected):
 def test_when_n_invalid_then_error(fnv, array, n, expected_msg):
     with pytest.raises(AssertionError, match=re.escape(expected_msg)):
         fnv(np.array(array), n)
+
+
+def _reference_atr(
+    high: np.ndarray, low: np.ndarray, close: np.ndarray, lookback: int
+) -> np.ndarray:
+    """Textbook ATR: rolling mean of true range, where true range is the
+    greatest of ``high - low``, ``abs(high - prev close)``, and
+    ``abs(low - prev close)``. Bar 0 has no previous close, so outputs start
+    once a full window of defined true ranges exists.
+    """
+    n = len(close)
+    tr = np.full(n, np.nan)
+    for i in range(1, n):
+        tr[i] = max(
+            high[i] - low[i],
+            abs(high[i] - close[i - 1]),
+            abs(low[i] - close[i - 1]),
+        )
+    out = np.full(n, np.nan)
+    for i in range(lookback, n):
+        out[i] = np.mean(tr[i - lookback + 1 : i + 1])
+    return out
+
+
+@pytest.mark.parametrize("lookback", [1, 2, 14, 99, 100])
+def test_atr_matches_reference(lookback):
+    n = 100
+    base = np.random.rand(n) * 10 + 10
+    spread = np.random.rand(n) + 0.1
+    high = base + spread
+    low = base - spread
+    close = base + (np.random.rand(n) - 0.5) * spread
+    result = atr(high, low, close, lookback)
+    assert np.allclose(
+        result, _reference_atr(high, low, close, lookback), equal_nan=True
+    )
+    assert np.all(np.isnan(result[:lookback]))
+    if lookback < n:
+        assert not np.any(np.isnan(result[lookback:]))
+
+
+def test_atr_when_prev_close_gaps_outside_bar_range():
+    high = np.array([10.0, 5.0, 30.0])
+    low = np.array([9.0, 4.0, 29.0])
+    close = np.array([9.5, 4.5, 29.5])
+    result = atr(high, low, close, 1)
+    assert np.isnan(result[0])
+    assert result[1] == 5.5
+    assert result[2] == 25.5
+
+
+def test_atr_when_empty_then_empty():
+    empty = np.array([])
+    assert not len(atr(empty, empty, empty, 5))
+
+
+@pytest.mark.parametrize(
+    "n, expected_msg",
+    [
+        (10, "n is greater than array length."),
+        (0, "n needs to be >= 1."),
+        (-1, "n needs to be >= 1."),
+    ],
+)
+def test_atr_when_n_invalid_then_error(n, expected_msg):
+    array = np.array([1.0, 2.0, 3.0])
+    with pytest.raises(AssertionError, match=re.escape(expected_msg)):
+        atr(array, array, array, n)
+
+
+def _brute_lowv(array: np.ndarray, n: int) -> np.ndarray:
+    out = np.full(len(array), np.nan)
+    for i in range(n, len(array) + 1):
+        out[i - 1] = np.min(array[i - n : i])
+    return out
+
+
+def _brute_highv(array: np.ndarray, n: int) -> np.ndarray:
+    out = np.full(len(array), np.nan)
+    for i in range(n, len(array) + 1):
+        out[i - 1] = np.max(array[i - n : i])
+    return out
+
+
+def _brute_sumv(array: np.ndarray, n: int) -> np.ndarray:
+    out = np.full(len(array), np.nan)
+    for i in range(n, len(array) + 1):
+        out[i - 1] = np.sum(array[i - n : i])
+    return out
+
+
+def _exact_sumv(array: np.ndarray, n: int) -> np.ndarray:
+    """Like :func:`._brute_sumv` but exact for finite windows.
+
+    ``np.sum`` adds left to right, so it drops low-order bits when a window
+    mixes magnitudes; ``math.fsum`` does not. Non-finite windows fall back to
+    ``np.sum`` because ``fsum`` raises on them.
+    """
+    out = np.full(len(array), np.nan)
+    for i in range(n, len(array) + 1):
+        window = array[i - n : i]
+        if np.all(np.isfinite(window)):
+            out[i - 1] = math.fsum(window)
+        else:
+            # inf + -inf is a legitimate NaN result here, not a test failure.
+            with np.errstate(invalid="ignore"):
+                out[i - 1] = np.sum(window)
+    return out
+
+
+# Inputs that a monotonic-deque or running-sum kernel is most likely to get
+# wrong: non-finite values interior to the series, runs that never evict, and
+# magnitudes far enough apart to cancel.
+_ADVERSARIAL_ARRAYS = [
+    [np.nan, 10, 20, 5, 30, 15, 25],
+    [1, np.nan, 3, 2, np.nan, 5, 0.5, 4, np.nan, 2],
+    [1, 2, 3, np.nan],
+    [np.nan, np.nan, np.nan],
+    [1, np.inf, 3, -np.inf, 2, 5],
+    [np.inf, np.inf, 1, 2],
+    [3, 3, 3, 3, 3],
+    [1, 2, 3, 4, 5, 6],
+    [6, 5, 4, 3, 2, 1],
+    [1, 1, 2, 2, 1, 1, 2, 2],
+    [1e16, 1, -1e16, 2, 1e16, 3],
+    [7],
+]
+
+
+class TestRollingWindowKernels:
+    @pytest.mark.parametrize(
+        "array, n",
+        [
+            ([3, 3, 4, 2, 5, 6, 1, 3], 3),
+            ([3, 3, 4, 2, 5, 6, 1, 3], 1),
+            ([4, 3, 2, 1], 4),
+            ([1], 1),
+        ],
+    )
+    def test_rolling_kernels_match_brute_force_fixtures(self, array, n):
+        arr = np.array(array, dtype=np.float64)
+        np.testing.assert_allclose(
+            lowv(arr, n), _brute_lowv(arr, n), rtol=0, atol=0, equal_nan=True
+        )
+        np.testing.assert_allclose(
+            highv(arr, n), _brute_highv(arr, n), rtol=0, atol=0, equal_nan=True
+        )
+        np.testing.assert_allclose(
+            sumv(arr, n), _brute_sumv(arr, n), rtol=0, atol=0, equal_nan=True
+        )
+
+    @pytest.mark.parametrize(
+        "length, window",
+        [
+            (100, 2),
+            (100, 20),
+            (100, 50),
+            (10_000, 2),
+            (10_000, 20),
+            (10_000, 50),
+            (10_000, 200),
+        ],
+    )
+    def test_rolling_kernels_match_brute_force_random(self, length, window):
+        rng = np.random.default_rng(42 + length + window)
+        arr = rng.standard_normal(length)
+        np.testing.assert_allclose(
+            lowv(arr, window),
+            _brute_lowv(arr, window),
+            rtol=0,
+            atol=0,
+            equal_nan=True,
+        )
+        np.testing.assert_allclose(
+            highv(arr, window),
+            _brute_highv(arr, window),
+            rtol=0,
+            atol=0,
+            equal_nan=True,
+        )
+        np.testing.assert_allclose(
+            sumv(arr, window),
+            _brute_sumv(arr, window),
+            rtol=1e-12,
+            atol=1e-12,
+            equal_nan=True,
+        )
+
+    @pytest.mark.parametrize("array", _ADVERSARIAL_ARRAYS)
+    def test_rolling_kernels_match_brute_force_when_non_finite(self, array):
+        arr = np.array(array, dtype=np.float64)
+        for n in range(1, len(arr) + 1):
+            np.testing.assert_allclose(
+                lowv(arr, n),
+                _brute_lowv(arr, n),
+                rtol=0,
+                atol=0,
+                equal_nan=True,
+                err_msg=f"lowv n={n}",
+            )
+            np.testing.assert_allclose(
+                highv(arr, n),
+                _brute_highv(arr, n),
+                rtol=0,
+                atol=0,
+                equal_nan=True,
+                err_msg=f"highv n={n}",
+            )
+            np.testing.assert_allclose(
+                sumv(arr, n),
+                _exact_sumv(arr, n),
+                rtol=0,
+                atol=0,
+                equal_nan=True,
+                err_msg=f"sumv n={n}",
+            )
+
+    @pytest.mark.parametrize("array", _ADVERSARIAL_ARRAYS)
+    def test_lowv_never_exceeds_highv(self, array):
+        arr = np.array(array, dtype=np.float64)
+        for n in range(1, len(arr) + 1):
+            low = np.asarray(lowv(arr, n))
+            high = np.asarray(highv(arr, n))
+            both = ~np.isnan(low) & ~np.isnan(high)
+            assert np.all(low[both] <= high[both]), f"n={n}"
+
+    def test_sumv_when_nan_then_later_windows_unaffected(self):
+        # A running accumulator cannot hold the NaN: nan - nan is nan, so one
+        # NaN would otherwise blank every remaining window.
+        arr = np.array([1.0, np.nan, 3.0, 2.0, 5.0], dtype=np.float64)
+        np.testing.assert_allclose(
+            sumv(arr, 1), arr, rtol=0, atol=0, equal_nan=True
+        )
+        np.testing.assert_allclose(
+            sumv(arr, 2),
+            [np.nan, np.nan, np.nan, 5.0, 7.0],
+            rtol=0,
+            atol=0,
+            equal_nan=True,
+        )
+
+    def test_sumv_when_mixed_magnitudes_then_exact(self):
+        arr = np.array([1e16, 1.0, -1e16, 2.0, 1e16, 3.0], dtype=np.float64)
+        assert sumv(arr, 1)[1] == 1.0
+        assert sumv(arr, 3)[2] == 1.0
+        assert sumv(arr, 5)[5] == 6.0
+
+    @pytest.mark.parametrize("n", [1, 2, 3, 5])
+    def test_rolling_kernels_when_composed_with_returnv(self, n):
+        # returnv emits a leading NaN by design, so composing it with these
+        # kernels is the most common way a NaN reaches them.
+        close = np.array(
+            [10.0, 11.0, 10.5, 12.0, 11.5, 13.0, 12.5, 14.0], dtype=np.float64
+        )
+        returns = returnv(close)
+        for fnv, brute in (
+            (lowv, _brute_lowv),
+            (highv, _brute_highv),
+            (sumv, _exact_sumv),
+        ):
+            actual = np.asarray(fnv(returns, n))
+            np.testing.assert_allclose(
+                actual, brute(returns, n), rtol=0, atol=0, equal_nan=True
+            )
+            # Only the warmup, not the whole series, may be NaN.
+            assert not np.isnan(actual[n:]).any()
+
+
+def _brute_stochastic(
+    high: np.ndarray,
+    low: np.ndarray,
+    close: np.ndarray,
+    lookback: int,
+    smoothing: int = 0,
+) -> np.ndarray:
+    """Pre-optimization reference for stochastic regression tests."""
+    n = len(close)
+    front_bad = lookback - 1
+    if front_bad > n:
+        front_bad = n
+    output = np.zeros(n)
+    for i in range(front_bad, n):
+        min_val = 1.0e60
+        max_val = -1.0e60
+        for j in range(lookback):
+            if high[i - j] > max_val:
+                max_val = high[i - j]
+            if low[i - j] < min_val:
+                min_val = low[i - j]
+        sto_0 = (close[i] - min_val) / (max_val - min_val + 1.0e-60)
+        if smoothing == 0:
+            output[i] = 100.0 * sto_0 - 50
+        else:
+            if i == front_bad:
+                sto_1 = sto_0
+                output[i] = 100.0 * sto_0 - 50
+            else:
+                sto_1 = 0.33333333 * sto_0 + 0.66666667 * sto_1
+                if smoothing == 1:
+                    output[i] = 100.0 * sto_1 - 50
+                else:
+                    if i == front_bad + 1:
+                        sto_2 = sto_1
+                        output[i] = 100.0 * sto_1 - 50
+                    else:
+                        sto_2 = 0.33333333 * sto_1 + 0.66666667 * sto_2
+                        output[i] = 100.0 * sto_2 - 50
+    return output
+
+
+class TestStochasticKernels:
+    @pytest.mark.parametrize(
+        "high, low, close, lookback, smoothing",
+        [
+            (
+                [10, 12, 11, 13, 12, 14],
+                [8, 9, 8, 10, 9, 11],
+                [9, 11, 10, 12, 11, 13],
+                3,
+                0,
+            ),
+            (
+                [10, 12, 11, 13, 12, 14],
+                [8, 9, 8, 10, 9, 11],
+                [9, 11, 10, 12, 11, 13],
+                5,
+                1,
+            ),
+            (
+                [10, 12, 11, 13, 12, 14],
+                [8, 9, 8, 10, 9, 11],
+                [9, 11, 10, 12, 11, 13],
+                5,
+                2,
+            ),
+        ],
+    )
+    def test_stochastic_matches_brute_force_fixtures(
+        self, high, low, close, lookback, smoothing
+    ):
+        high_arr = np.array(high, dtype=np.float64)
+        low_arr = np.array(low, dtype=np.float64)
+        close_arr = np.array(close, dtype=np.float64)
+        expected = _brute_stochastic(
+            high_arr, low_arr, close_arr, lookback, smoothing
+        )
+        result = stochastic(high_arr, low_arr, close_arr, lookback, smoothing)
+        np.testing.assert_allclose(result, expected, rtol=0, atol=0)
+
+    @pytest.mark.parametrize(
+        "length, lookback, smoothing",
+        [
+            (100, 5, 0),
+            (100, 20, 1),
+            (100, 50, 2),
+            (10_000, 5, 0),
+            (10_000, 20, 1),
+            (10_000, 200, 2),
+        ],
+    )
+    def test_stochastic_matches_brute_force_random(
+        self, length, lookback, smoothing
+    ):
+        rng = np.random.default_rng(42 + length + lookback + smoothing)
+        close = rng.standard_normal(length) + 100.0
+        high = close + rng.uniform(0.1, 2.0, length)
+        low = close - rng.uniform(0.1, 2.0, length)
+        expected = _brute_stochastic(high, low, close, lookback, smoothing)
+        result = stochastic(high, low, close, lookback, smoothing)
+        np.testing.assert_allclose(result, expected, rtol=0, atol=0)
+
+    def test_stochastic_empty_arrays(self):
+        high = np.array([], dtype=np.float64)
+        low = np.array([], dtype=np.float64)
+        close = np.array([], dtype=np.float64)
+        result = stochastic(high, low, close, 5, 0)
+        assert len(result) == 0
+
+    def test_stochastic_single_bar(self):
+        high = np.array([10.0])
+        low = np.array([8.0])
+        close = np.array([9.0])
+        result = stochastic(high, low, close, 5, 0)
+        np.testing.assert_array_equal(result, np.zeros(1))
+
+    def test_stochastic_lookback_greater_than_length(self):
+        high = np.array([10.0, 12.0, 11.0])
+        low = np.array([8.0, 9.0, 8.0])
+        close = np.array([9.0, 11.0, 10.0])
+        result = stochastic(high, low, close, 5, 1)
+        np.testing.assert_array_equal(result, np.zeros(3))
+
+    def test_stochastic_lookback_equals_length(self):
+        high = np.array([10.0, 12.0, 11.0, 13.0, 12.0])
+        low = np.array([8.0, 9.0, 8.0, 10.0, 9.0])
+        close = np.array([9.0, 11.0, 10.0, 12.0, 11.0])
+        expected = _brute_stochastic(high, low, close, 5, 0)
+        result = stochastic(high, low, close, 5, 0)
+        np.testing.assert_allclose(result, expected, rtol=0, atol=0)
 
 
 @pytest.mark.parametrize(
@@ -2873,50 +3274,4 @@ def test_indicator_does_not_look_ahead(fn_name):
         f"{fn_name} leaked the final bar into "
         f"{int(mismatch.sum())} earlier output(s), first at index "
         f"{int(np.argmax(mismatch))}"
-    )
-
-
-# Adapted from v2_preview's TestRollingWindowKernels: these two are
-# kernel-independent and pin the NaN semantics of the brute-force
-# lowv/highv/sumv. (The exact-summation and fsum-parity kernel tests do not
-# apply to the np.sum-based implementations here.)
-_ADVERSARIAL_ARRAYS = [
-    [np.nan, 10, 20, 5, 30, 15, 25],
-    [1, np.nan, 3, 2, np.nan, 5, 0.5, 4, np.nan, 2],
-    [1, 2, 3, np.nan],
-    [np.nan, np.nan, np.nan],
-    [1, np.inf, 3, -np.inf, 2, 5],
-    [np.inf, np.inf, 1, 2],
-    [3, 3, 3, 3, 3],
-    [1, 2, 3, 4, 5, 6],
-    [6, 5, 4, 3, 2, 1],
-    [1, 1, 2, 2, 1, 1, 2, 2],
-    [1e16, 1, -1e16, 2, 1e16, 3],
-    [7],
-]
-
-
-@pytest.mark.parametrize("array", _ADVERSARIAL_ARRAYS)
-def test_lowv_never_exceeds_highv(array):
-    arr = np.array(array, dtype=np.float64)
-    for n in range(1, len(arr) + 1):
-        low = np.asarray(lowv(arr, n))
-        high = np.asarray(highv(arr, n))
-        both = ~np.isnan(low) & ~np.isnan(high)
-        assert np.all(low[both] <= high[both]), f"n={n}"
-
-
-def test_sumv_when_nan_then_later_windows_unaffected():
-    # A running accumulator cannot hold the NaN: nan - nan is nan, so one
-    # NaN would otherwise blank every remaining window.
-    arr = np.array([1.0, np.nan, 3.0, 2.0, 5.0], dtype=np.float64)
-    np.testing.assert_allclose(
-        sumv(arr, 1), arr, rtol=0, atol=0, equal_nan=True
-    )
-    np.testing.assert_allclose(
-        sumv(arr, 2),
-        [np.nan, np.nan, np.nan, 5.0, 7.0],
-        rtol=0,
-        atol=0,
-        equal_nan=True,
     )

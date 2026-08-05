@@ -71,7 +71,7 @@ def rotate(ctx: ExecContext):
         ctx.score = ctx.indicator('roc_20')[-1]
 ```
 
-We liquidate the currently held stock if it is no longer ranked among the top five 20-day ROCs. Otherwise, we rank all stocks by their 20-day ROC and buy up to the top two ranked. For more information on ranking when placing buy orders, see the [Ranking and Position Sizing notebook](https://www.pybroker.com/en/latest/notebooks/4.%20Ranking%20and%20Position%20Sizing.html).
+We liquidate the currently held stock if it is no longer ranked among the top five 20-day ROCs. Otherwise, we rank all stocks by their 20-day ROC and buy up to the top two ranked. For more information on ranking when placing buy orders, see the [Ranking Long and Short Signals notebook](https://www.pybroker.com/en/latest/notebooks/4.%20Ranking%20Long%20and%20Short%20Signals.html).
 
 We will use the [set_before_exec](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_before_exec) method to execute our ranking with ``rank`` before running the ``rotate`` function. For this backtest, we will use a universe of 10 stocks:
 

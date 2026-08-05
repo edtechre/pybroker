@@ -1,0 +1,115 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-04 18:14-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/notebooks/17. 7a5fa2ee134245c8b5e5698c3277e5b9 Models.ipynb:9
+#: Multi-Symbol
+msgid "Multi-Symbol Models"
+msgstr "多品种模型"
+
+#: ../../source/notebooks/17. 0b7ddb81fdef4b29845258e3ee4293fb Models.ipynb:11
+#: Multi-Symbol
+msgid ""
+"The models trained so far have trained a separate instance for every "
+"ticker symbol. Symbols that share the same dynamics, such as stocks in a "
+"single industry, can instead be modeled jointly. This approach provides a"
+" single model with much more data to learn from."
+msgstr ""
+"到目前为止，我们训练的模型都是为每个股票代码单独训练一个实例。而对于具有相同动态特征的品种（例如同一行业的股票），"
+"则可以将其联合建模。这种方法能让单个模型获得更多可供学习的数据。"
+
+#: ../../source/notebooks/17. 5586d855c48f43dbbe901d0c2f9eb432 Models.ipynb:13
+#: Multi-Symbol
+msgid ""
+"**PyBroker v2** supports training one model across all symbols passed to "
+"`add_execution "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__,"
+" as shown in this notebook."
+msgstr ""
+"**PyBroker v2** 支持在传递给 `add_execution "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__"
+" 的所有品种上训练同一个模型，本文档将对此进行演示。"
+
+#: ../../source/notebooks/17. 24a3a39015c84727a05fd28298f6c14e Models.ipynb:65
+#: Multi-Symbol
+msgid "Training One Model on Multiple Symbols"
+msgstr "在多个品种上训练一个模型"
+
+#: ../../source/notebooks/17. Models.ipynb:67 Multi-Symbol
+#: f04f2b7f469a4dca8ee418d14fa28ea8
+msgid ""
+"This notebook repurposes the linear regression example from `Training a "
+"Model "
+"<https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html>`__."
+" Below, one shared `LinearRegression <https://scikit-"
+"learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html>`__"
+" model is trained with the `close_minus_ma "
+"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.close_minus_ma>`__"
+" indicator on four chip stocks:"
+msgstr ""
+"本文档复用了 `训练模型 "
+"<https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html>`__"
+" 中的线性回归示例。下面将使用 `close_minus_ma "
+"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.close_minus_ma>`__"
+" 指标，在四只芯片股上训练一个共享的 `LinearRegression <https://scikit-"
+"learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html>`__"
+" 模型："
+
+#: ../../source/notebooks/17. Models.ipynb:105 Multi-Symbol
+#: f2c52bee09ca4200be63e8b99d0537ea
+msgid ""
+"Registering the model with ``pooled=True`` via `model "
+"<https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model>`__"
+" trains it only once per execution. When you enable this, the training "
+"function replaces its single ``symbol`` argument with a tuple ``symbols``"
+" and receives their combined train and test splits."
+msgstr ""
+"通过 `model "
+"<https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model>`__"
+" 以 ``pooled=True`` 注册模型后，该模型在每次执行中只会训练一次。启用此选项后，训练函数会用一个 ``symbols`` "
+"元组替换原本单一的 ``symbol`` 参数，并接收这些品种合并后的训练集和测试集划分。"
+
+#: ../../source/notebooks/17. 057c18cb155744f0a6aa907944ce54a0 Models.ipynb:107
+#: Multi-Symbol
+msgid ""
+"During the strategy execution, the trained model is shared across "
+"symbols. Predictions are read with `ctx.preds "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.preds>`__,"
+" positions are sized with `set_target_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.set_target_shares>`__,"
+" and exits use `sell_all_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_all_shares>`__."
+" After `add_execution "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__,"
+" we run a `walkforward "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`__"
+" backtest:"
+msgstr ""
+"在策略执行过程中，已训练的模型会在各品种之间共享。使用 `ctx.preds "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.preds>`__"
+" 读取预测值，使用 `set_target_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.set_target_shares>`__"
+" 确定仓位大小，并使用 `sell_all_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_all_shares>`__"
+" 进行平仓。在调用 `add_execution "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__"
+" 之后，我们运行一次 `walkforward "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`__"
+" 回测："

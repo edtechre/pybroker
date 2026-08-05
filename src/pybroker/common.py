@@ -8,24 +8,56 @@ This code is licensed under Apache 2.0 with Commons Clause license
 
 import numpy as np
 import pandas as pd
-import os
 import re
+import warnings
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 from enum import Enum
-from joblib import Parallel
 from numpy.typing import NDArray
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
+    Iterable,
     Final,
     Literal,
     NamedTuple,
     Optional,
     Sequence,
+    TypeGuard,
     Union,
     cast,
 )
+
+if TYPE_CHECKING:
+    from pybroker.strategy import Execution
+
+SymbolSelector = Callable[[pd.DataFrame], Sequence[str]]
+"""Chooses which ticker symbols an execution trades, per walkforward window.
+
+Passed to :meth:`pybroker.strategy.Strategy.add_execution` in place of a fixed
+symbol list. Called once per walkforward window with the window's **training**
+:class:`pandas.DataFrame` — never with test data — and must return a non-empty
+sequence of unique symbols that the frame contains. Any sequence of ``str`` is
+accepted, including a ``list``, ``tuple``, :class:`pandas.Index`, or
+:class:`numpy.ndarray`, so ``ranked.nlargest(10).index`` works as written.
+
+Notes:
+    - A training window is required. :meth:`pybroker.strategy.Strategy.backtest`
+      and ``train_size=0`` raise :class:`ValueError`, since selecting from test
+      data would look ahead at the bars about to be traded.
+    - The candidate universe must come from a :class:`pandas.DataFrame` data
+      source; a :class:`pybroker.data.DataSource` cannot be used, because the
+      symbols to query are not known until a window is split.
+    - ``shuffle=True`` randomizes the training frame's row order, so a selector
+      that depends on bars being in date order should not be combined with it.
+    - When a window drops a symbol that is still held, the position is closed at
+      the first bar of the new test window using
+      :attr:`pybroker.config.StrategyConfig.exit_sell_fill_price` and
+      :attr:`pybroker.config.StrategyConfig.exit_cover_fill_price`. A symbol that
+      has no bars left at all is closed at its final bar instead.
+"""
+
 
 _tf_pattern: Final = re.compile(r"(\d+)([A-Za-z]+)")
 _tf_abbr: Final = {
@@ -34,6 +66,14 @@ _tf_abbr: Final = {
     "h": "hour",
     "d": "day",
     "w": "week",
+}
+_TF_UNITS: Final = frozenset(_tf_abbr.values())
+_TF_SECONDS: Final = {
+    "sec": 1,
+    "min": 60,
+    "hour": 60 * 60,
+    "day": 24 * 60 * 60,
+    "week": 7 * 24 * 60 * 60,
 }
 _CENTS: Final = Decimal(".01")
 
@@ -69,15 +109,27 @@ class TrainedModel(NamedTuple):
         name: Trained model name.
         instance: Trained model instance.
         predict_fn: :class:`Callable` that overrides calling the model's
-            default ``predict`` function.
+            default ``predict`` function. For models trained with ``lags``,
+            it is called with the lag feature matrix
+            (:class:`numpy.ndarray`) instead of a
+            :class:`pandas.DataFrame`.
         input_cols: Names of the columns to be used as input for the model when
             making predictions.
+        per_bar: If ``True``, predictions are made incrementally once per bar.
+        lag_columns: Names of the columns that lag features were built from at
+            training time, in feature block order. Reused when making
+            predictions so that the lag features match the ones the model was
+            trained on. ``None`` when the model was not trained with ``lags``.
     """
 
     name: str
     instance: Any
-    predict_fn: Optional[Callable[[Any, pd.DataFrame], NDArray]]
+    predict_fn: Optional[
+        Callable[[Any, Union[pd.DataFrame, NDArray]], NDArray]
+    ]
     input_cols: Optional[tuple[str]]
+    per_bar: bool = False
+    lag_columns: Optional[tuple[str, ...]] = None
 
 
 class DataCol(Enum):
@@ -266,6 +318,33 @@ class BarData:
         raise AttributeError(f"Attribute {attr!r} not found.")
 
 
+def bars_to_df(bar_data: BarData) -> pd.DataFrame:
+    """Converts a :class:`.BarData` instance to a
+    :class:`pandas.DataFrame`.
+
+    Args:
+        bar_data: :class:`.BarData` to convert.
+
+    Returns:
+        :class:`pandas.DataFrame` containing a column for every field in
+        ``bar_data``, including custom data fields. The ``volume`` and
+        ``vwap`` columns are included only when set.
+    """
+    data = {
+        DataCol.DATE.value: bar_data.date,
+        DataCol.OPEN.value: bar_data.open,
+        DataCol.HIGH.value: bar_data.high,
+        DataCol.LOW.value: bar_data.low,
+        DataCol.CLOSE.value: bar_data.close,
+    }
+    if bar_data.volume is not None:
+        data[DataCol.VOLUME.value] = bar_data.volume
+    if bar_data.vwap is not None:
+        data[DataCol.VWAP.value] = bar_data.vwap
+    data.update(bar_data._custom_col_data)
+    return pd.DataFrame(data)
+
+
 def to_datetime(
     date: Union[str, datetime, np.datetime64, pd.Timestamp],
 ) -> datetime:
@@ -274,10 +353,10 @@ def to_datetime(
         return date.to_pydatetime()
     elif isinstance(date, datetime):
         return date
-    elif isinstance(date, str):
-        return pd.to_datetime(date).to_pydatetime()
     elif isinstance(date, np.datetime64):
         return pd.Timestamp(date).to_pydatetime()
+    elif isinstance(date, str):
+        return pd.to_datetime(date).to_pydatetime()
     else:
         raise TypeError(f"Unsupported date type: {type(date)}")
 
@@ -309,16 +388,16 @@ def parse_timeframe(timeframe: str) -> list[tuple[int, str]]:
         ``hour``, ``day``, ``week``.
     """
     parts = _tf_pattern.findall(timeframe)
-    if not parts or len(parts) != len(timeframe.split()):
+    tokens = timeframe.split()
+    if not parts or len(parts) != len(tokens):
         raise ValueError("Invalid timeframe format.")
     result = []
-    units = frozenset(_tf_abbr.values())
     seen_units = set()
     for part in parts:
         unit = part[1].lower()
         if unit in _tf_abbr:
             unit = _tf_abbr[unit]
-        if unit not in units:
+        if unit not in _TF_UNITS:
             raise ValueError("Invalid timeframe format.")
         if unit in seen_units:
             raise ValueError("Invalid timeframe format.")
@@ -344,15 +423,8 @@ def to_seconds(timeframe: Optional[str]) -> int:
     """
     if not timeframe:
         return 0
-    seconds = {
-        "sec": 1,
-        "min": 60,
-        "hour": 60 * 60,
-        "day": 24 * 60 * 60,
-        "week": 7 * 24 * 60 * 60,
-    }
     return sum(
-        part[0] * seconds[part[1]] for part in parse_timeframe(timeframe)
+        part[0] * _TF_SECONDS[part[1]] for part in parse_timeframe(timeframe)
     )
 
 
@@ -365,11 +437,15 @@ def quantize(df: pd.DataFrame, col: str, round: bool) -> pd.Series:
     """
     if col not in df.columns:
         raise ValueError(f"Column {col!r} not found in DataFrame.")
-    df = df[~df[col].isna()]
-    values = df[col]
-    if round:
-        values = values.apply(lambda d: d.quantize(_CENTS, ROUND_HALF_UP))
-    return values.astype(float)
+    values = df[col].dropna()
+    if not round:
+        return values.astype(float)
+    raw = values.to_numpy(dtype=object, copy=False)
+    out = [float(val.quantize(_CENTS, ROUND_HALF_UP)) for val in raw]
+    # dtype is explicit: pandas infers ``object`` from an empty list, which
+    # would leave an all-null column (an unused limit_price, say) typed
+    # ``object`` in TestResult while a populated one is ``float64``.
+    return pd.Series(out, index=values.index, dtype=float)
 
 
 def verify_data_source_columns(df: pd.DataFrame):
@@ -401,17 +477,230 @@ def verify_date_range(start_date: datetime, end_date: datetime):
         )
 
 
-def default_parallel() -> Parallel:
-    """Returns a :class:`joblib.Parallel` instance with ``n_jobs`` equal to
-    the number of CPUs on the host machine.
-    """
-    return Parallel(n_jobs=os.cpu_count(), prefer="processes", backend="loky")
+def get_unique_sorted_dates_array(
+    dates: Union[pd.Series, NDArray[np.datetime64], Sequence[np.datetime64]],
+) -> NDArray[np.datetime64]:
+    """Returns sorted unique dates from a numpy date array or Series."""
+    if isinstance(dates, pd.Series):
+        arr = dates.to_numpy(copy=False)
+    else:
+        arr = np.asarray(dates, dtype="datetime64[ns]")
+    if arr.size == 0:
+        return arr
+    return np.unique(arr)
 
 
 def get_unique_sorted_dates(col: pd.Series) -> Sequence[np.datetime64]:
     """Returns sorted unique values from a DataFrame column of dates."""
-    result = col.unique()
-    # Index-like unique() results expose to_numpy(); ndarrays do not.
-    if hasattr(result, "to_numpy"):
-        result = result.to_numpy(copy=True)
-    return cast(Sequence[np.datetime64], np.sort(result))
+    return list(get_unique_sorted_dates_array(col))
+
+
+def _json_safe(value: Any) -> Any:
+    """Recursively converts a value to JSON-serializable Python types."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    if isinstance(value, float):
+        if np.isnan(value) or np.isinf(value):
+            return None
+        return value
+    if isinstance(value, Decimal):
+        # Decimal('NaN') and Decimal('Infinity') float() into raw nan/inf,
+        # which json.dumps(allow_nan=False) rejects -- so one non-finite
+        # Decimal made to_json_str() raise on an otherwise valid result.
+        if not value.is_finite():
+            return None
+        return float(value)
+    if value is pd.NaT:
+        # NaTType subclasses datetime, so it would otherwise reach the branch
+        # below and serialize as the string "NaT" rather than as null.
+        return None
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, pd.Timestamp):
+        return value.isoformat()
+    if isinstance(value, np.datetime64):
+        if pd.isna(value):
+            return None
+        return pd.Timestamp(value).isoformat()
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, np.floating):
+        if np.isnan(value) or np.isinf(value):
+            return None
+        return float(value)
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    if hasattr(value, "_asdict"):
+        return _json_safe(value._asdict())
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    return value
+
+
+def _dataframe_records(
+    df: pd.DataFrame,
+    *,
+    max_rows: Optional[int] = None,
+    reset_index: bool = True,
+) -> list[dict[str, Any]]:
+    """Converts a :class:`pandas.DataFrame` to JSON-safe record dicts."""
+    if df.empty:
+        return []
+    out = df.reset_index() if reset_index else df
+    if max_rows is not None:
+        out = out.head(max_rows)
+    return [_json_safe(record) for record in out.to_dict(orient="records")]
+
+
+def _is_symbol_selector(
+    symbols: Union[frozenset[str], SymbolSelector],
+) -> TypeGuard[SymbolSelector]:
+    """Returns whether ``symbols`` is a :class:`.SymbolSelector`."""
+    return callable(symbols) and not isinstance(symbols, (str, bytes))
+
+
+def _static_symbols(
+    symbols: Union[frozenset[str], SymbolSelector],
+) -> frozenset[str]:
+    """Returns ``symbols`` when fixed, or an empty ``frozenset`` for a
+    :class:`.SymbolSelector`, whose symbols are not known until a walkforward
+    window is split."""
+    if _is_symbol_selector(symbols):
+        return frozenset()
+    return cast(frozenset[str], symbols)
+
+
+def _ensure_range_index(df: pd.DataFrame) -> pd.DataFrame:
+    if (
+        isinstance(df.index, pd.RangeIndex)
+        and df.index.start == 0
+        and df.index.step == 1
+        and len(df.index) == len(df)
+    ):
+        return df
+    return df.reset_index(drop=True)
+
+
+def _selected_symbol_list(selected: Any) -> list[str]:
+    """Normalizes a :class:`.SymbolSelector` return value to ``list[str]``."""
+    if isinstance(selected, (str, bytes)) or not hasattr(selected, "__iter__"):
+        raise TypeError(
+            "symbol selector must return a sequence of symbols, "
+            f"received {type(selected)!r}."
+        )
+    result: list[str] = []
+    for sym in selected:
+        if not isinstance(sym, (str, np.str_)):
+            raise TypeError(
+                "symbol selector must return a sequence of symbols, "
+                f"received {type(sym)!r} in the returned sequence."
+            )
+        result.append(str(sym))
+    return result
+
+
+def _resolve_execution_symbols(
+    execution: "Execution",
+    selection_df: pd.DataFrame,
+) -> frozenset[str]:
+    """Resolves an :class:`pybroker.strategy.Execution`'s symbols against
+    ``selection_df``, running its :class:`.SymbolSelector` when it has one."""
+    if _is_symbol_selector(execution.symbols):
+        selected = _selected_symbol_list(execution.symbols(selection_df))
+        if not selected:
+            raise ValueError("symbol selector returned an empty list.")
+        if len(selected) != len(set(selected)):
+            seen: set[str] = set()
+            dupes = []
+            for sym in selected:
+                if sym in seen:
+                    dupes.append(sym)
+                seen.add(sym)
+            raise ValueError(
+                f"symbol selector returned duplicate symbols: {sorted(set(dupes))}."
+            )
+        loaded = set(selection_df[DataCol.SYMBOL.value].unique())
+        unknown = set(selected) - loaded
+        if unknown:
+            raise ValueError(
+                f"symbol selector returned unknown symbols: {sorted(unknown)}."
+            )
+        return frozenset(selected)
+    return cast(frozenset[str], execution.symbols)
+
+
+def _resolve_executions(
+    executions: set["Execution"],
+    selection_df: pd.DataFrame,
+) -> set["Execution"]:
+    r"""Resolves every :class:`pybroker.strategy.Execution`\ 's symbols against
+    ``selection_df``, verifying that no symbol is claimed twice."""
+    resolved: set["Execution"] = set()
+    seen_syms: set[str] = set()
+    for execution in executions:
+        syms = _resolve_execution_symbols(execution, selection_df)
+        overlap = seen_syms & syms
+        if overlap:
+            sym = sorted(overlap)[0]
+            raise ValueError(f"{sym} was already added to an execution.")
+        seen_syms.update(syms)
+        resolved.add(execution._replace(symbols=syms))
+    return resolved
+
+
+def _selected_symbols(
+    executions: Iterable["Execution"],
+    test_data: pd.DataFrame,
+    warn_unbacked: bool,
+) -> set[str]:
+    r"""Returns the symbols ``executions`` resolved to.
+
+    When ``warn_unbacked``, warns about symbols that ``test_data`` holds no bars
+    for. A :class:`.SymbolSelector` picks from training data, so it can name a
+    symbol that stops trading at the train/test boundary; that symbol would
+    otherwise run nothing and report nothing.
+    """
+    syms = {sym for e in executions for sym in _static_symbols(e.symbols)}
+    if warn_unbacked and syms and not test_data.empty:
+        unbacked = syms - set(test_data[DataCol.SYMBOL.value].unique())
+        if unbacked:
+            warnings.warn(
+                "Selected symbols have no data in this test window and will "
+                f"not be traded: {sorted(unbacked)}.",
+                stacklevel=3,
+            )
+    return syms
+
+
+def _selection_df(
+    executions: Iterable["Execution"],
+    train_data: pd.DataFrame,
+    test_data: pd.DataFrame,
+) -> pd.DataFrame:
+    """Returns the frame a :class:`.SymbolSelector` selects from.
+
+    Selection always reads training data. When a window has none, there is no
+    lookahead-free frame to select from, so this raises instead of silently
+    handing the selector the test bars it is about to trade.
+    """
+    if not train_data.empty:
+        return train_data
+    if any(_is_symbol_selector(e.symbols) for e in executions):
+        raise ValueError(
+            "Dynamic symbol selection requires a training window: selecting "
+            "from test data would look ahead at the bars being traded. Use "
+            "walkforward(train_size=...) with train_size > 0 instead of "
+            "backtest() or train_size=0."
+        )
+    return train_data

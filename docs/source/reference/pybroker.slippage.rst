@@ -5,4 +5,5 @@ pybroker.slippage module
    :members:
    :undoc-members:
    :show-inheritance:
-   :exclude-members: buy_shares, sell_shares, buy_fill_price, sell_fill_price
+   :exclude-members: col_scope, enable_fractional_shares, fill_price,
+      ind_scope, shares, side, sym_end_index, symbol

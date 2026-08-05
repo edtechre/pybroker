@@ -1,0 +1,338 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-04 18:14-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/notebooks/15. 535f7fd8a2474b69ad8d78678d97bde2
+#: Intervals.ipynb:9 Multiple Time
+msgid "Multiple Time Intervals"
+msgstr "多个时间区间"
+
+#: ../../source/notebooks/15. 6fee5b38be1a4d929445d5885f3f8f8d
+#: Intervals.ipynb:11 Multiple Time
+msgid ""
+"You may want to make trading decisions on a different timeframe than your"
+" underlying data source. For instance, you might choose to execute trades"
+" on daily bars after confirming the trend on weekly or monthly bars. "
+"**PyBroker v2** supports compressing backtest data into coarser intervals"
+" and making those compressed bars available to your strategy."
+msgstr ""
+"你可能希望以不同于底层数据源的时间框架来做出交易决策。例如，你可以选择在通过周线或月线确认趋势后，在日线上执行交易。**PyBroker "
+"v2** 支持将回测数据压缩为更粗粒度的时间区间，并让这些压缩后的 K 线可供你的策略使用。"
+
+#: ../../source/notebooks/15. 67470c3d89ea4ff8a796e5fde2787911
+#: Intervals.ipynb:23 Multiple Time
+msgid "Interval Types"
+msgstr "区间类型"
+
+#: ../../source/notebooks/15. Intervals.ipynb:25 Multiple Time
+#: e26fd07ed40344118620f6967deb8ebd
+msgid "You can define an interval using any of these three formats:"
+msgstr "你可以使用以下三种格式中的任意一种来定义时间区间："
+
+#: ../../source/notebooks/15. 6203a983e46c43bfafa75bebf2ce5739
+#: Intervals.ipynb:27 Multiple Time
+msgid ""
+"**Every-n-bars** (``int`` greater than ``1``): Compresses every ``n`` "
+"base bars into one bar. For example, using ``5`` on daily data produces "
+"one bar per five trading days."
+msgstr ""
+"**每 n 根 K 线** （大于 ``1`` 的 ``int``）：将每 ``n`` 根基础 K "
+"线压缩为一根 K 线。例如，在日线数据上使用 ``5`` 会每五个交易日生成一根 K 线。"
+
+#: ../../source/notebooks/15. 0c495f0325a849dc9d1698ae6f3f068e
+#: Intervals.ipynb:28 Multiple Time
+msgid ""
+"**Duration** (``str``): A fixed time span written as digits followed by a"
+" single unit letter (``s``, ``m``, ``h``, or ``d``). For example, "
+"``\"5m\"`` compresses 1-minute bars into 5-minute bars."
+msgstr ""
+"**时长** （``str``）：以数字加单个单位字母（``s``、``m``、``h`` 或 ``d``）表示的固定时间跨度。例如，``\"5m\"`` "
+"会将 1 分钟 K 线压缩为 5 分钟 K 线。"
+
+#: ../../source/notebooks/15. 2b64a9b129a04e489c187ee4355dbe05
+#: Intervals.ipynb:29 Multiple Time
+msgid ""
+"**Calendar** (``str``): Aligns exactly to standard calendar boundaries "
+"using one of the following options:"
+msgstr "**日历** （``str``）：使用以下选项之一，精确对齐到标准日历边界："
+
+#: ../../source/notebooks/15. Intervals.ipynb:32 Multiple Time
+#: bca38f90282444c9a060754d836c01e1
+msgid "Calendar String"
+msgstr "日历字符串"
+
+#: ../../source/notebooks/15. Intervals.ipynb:32 Multiple Time
+#: cd6d43a8f6c1480cbd36071b32e1bd23
+msgid "Boundary Alignment"
+msgstr "边界对齐"
+
+#: ../../source/notebooks/15. Intervals.ipynb:34 Multiple Time
+#: a6ed9d5b22b9420d87d0431dfaf24bc4
+msgid "``\"daily\"``"
+msgstr "``\"daily\"``"
+
+#: ../../source/notebooks/15. 1f0dac57a38b45e7ba8e4ab663091375
+#: Intervals.ipynb:34 Multiple Time
+msgid "Standard daily boundary."
+msgstr "标准的每日边界。"
+
+#: ../../source/notebooks/15. 8cd869c8a1b74219ade40d8f2f79848e
+#: Intervals.ipynb:35 Multiple Time
+msgid "``\"weekly\"``"
+msgstr "``\"weekly\"``"
+
+#: ../../source/notebooks/15. Intervals.ipynb:35 Multiple Time
+#: d294d2b30d3447238a346fec5ef6f4c4
+msgid "Starts on Monday."
+msgstr "从周一开始。"
+
+#: ../../source/notebooks/15. 8ee74968363b4682b31de9edb758b533
+#: Intervals.ipynb:36 Multiple Time
+msgid "``\"monthly\"``"
+msgstr "``\"monthly\"``"
+
+#: ../../source/notebooks/15. 9fcf29ea41e249019f4807202c896341
+#: Intervals.ipynb:36 Multiple Time
+msgid "Starts on the 1st of the month."
+msgstr "从每月 1 日开始。"
+
+#: ../../source/notebooks/15. 2d992a232d2a4260879f2db34fbc1cdb
+#: Intervals.ipynb:37 Multiple Time
+msgid "``\"quarterly\"``"
+msgstr "``\"quarterly\"``"
+
+#: ../../source/notebooks/15. 168a48931e3a462c9d04a6c5f4a9a8d0
+#: Intervals.ipynb:37 Multiple Time
+msgid "Begins in January, April, July, and October."
+msgstr "从 1 月、4 月、7 月和 10 月开始。"
+
+#: ../../source/notebooks/15. Intervals.ipynb:38 Multiple Time
+#: bd466d94eee940978bd5982286cd03bf
+msgid "``\"yearly\"``"
+msgstr "``\"yearly\"``"
+
+#: ../../source/notebooks/15. 2d9276c1c07b4f58bdec59618393f0a6
+#: Intervals.ipynb:38 Multiple Time
+msgid "Starts on January 1."
+msgstr "从 1 月 1 日开始。"
+
+#: ../../source/notebooks/15. 2697ee7110c749eb93bec64d91c29f0c
+#: Intervals.ipynb:41 Multiple Time
+msgid ""
+"Your chosen interval must always be strictly coarser than the bars being "
+"compressed. For example, if you fetch daily bars from `YFinance "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance>`__,"
+" ``\"weekly\"`` and ``\"monthly\"`` are valid intervals. Attempting to "
+"use ``\"daily\"`` or ``\"1h\"`` will raise a ``ValueError``."
+msgstr ""
+"你所选择的时间区间必须始终严格粗于被压缩的 K 线。例如，如果你从 `YFinance "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance>`__"
+" 获取日线数据，那么 ``\"weekly\"`` 和 ``\"monthly\"`` 都是有效的时间区间。尝试使用 ``\"daily\"`` 或 "
+"``\"1h\"`` 将引发 ``ValueError``。"
+
+#: ../../source/notebooks/15. Intervals.ipynb:43 Multiple Time
+#: da7689ba4e1b4d3dab14188a4f3f9c51
+msgid ""
+"Before using intervals in a strategy, let's build some intuition by "
+"compressing bars directly. We will start by downloading daily data:"
+msgstr "在策略中使用时间区间之前，让我们先通过直接压缩 K 线来建立一些直观认识。我们将从下载日线数据开始："
+
+#: ../../source/notebooks/15. Intervals.ipynb:315 Multiple Time
+#: b59f405f814d44d5aeadf4831f66e10c
+msgid "Compressing Bars"
+msgstr "压缩 K 线"
+
+#: ../../source/notebooks/15. Intervals.ipynb:317 Multiple Time
+#: a51e48e00c0344fdbfef459647345cff
+msgid ""
+"The `compress_bars "
+"<https://www.pybroker.com/en/latest/reference/pybroker.interval.html#pybroker.interval.compress_bars>`__"
+" function converts single-symbol OHLCV data (either a `Pandas DataFrame "
+"<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__ "
+"or `BarData "
+"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.BarData>`__)"
+" to a coarser interval, returning the result as a new `BarData "
+"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.BarData>`__"
+" object. Every compressed bar is timestamped with the date of the last "
+"base bar it contains."
+msgstr ""
+"`compress_bars "
+"<https://www.pybroker.com/en/latest/reference/pybroker.interval.html#pybroker.interval.compress_bars>`__"
+" 函数可将单品种的 OHLCV 数据（可以是 `Pandas DataFrame "
+"<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__ 或 "
+"`BarData "
+"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.BarData>`__）"
+"转换为更粗粒度的时间区间，并以新的 `BarData "
+"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.BarData>`__"
+" 对象形式返回结果。每根压缩后的 K 线都以其所包含的最后一根基础 K 线的日期作为时间戳。"
+
+#: ../../source/notebooks/15. Intervals.ipynb:320 Multiple Time
+#: f4f89d1cd21a4699bb81f587ec259593
+msgid ""
+"When grouping base bars into a compressed bar, the data is aggregated as "
+"follows:"
+msgstr "在将基础 K 线分组为压缩 K 线时，数据将按以下方式聚合："
+
+#: ../../source/notebooks/15. Intervals.ipynb:322 Multiple Time
+#: ca683b5b28984ed789df9adb0a74f893
+msgid "**Open:** Taken from the first base bar."
+msgstr "**开盘价：** 取自第一根基础 K 线。"
+
+#: ../../source/notebooks/15. 0c90ae6272814c41b8f4812b926bd58e
+#: Intervals.ipynb:323 Multiple Time
+msgid "**High / Low:** The highest high and lowest low."
+msgstr "**最高价 / 最低价：** 取最高价中的最高值和最低价中的最低值。"
+
+#: ../../source/notebooks/15. Intervals.ipynb:324 Multiple Time
+#: b0a4be95c2034b94895e53e299f1c1f0
+msgid "**Close:** Taken from the last base bar."
+msgstr "**收盘价：** 取自最后一根基础 K 线。"
+
+#: ../../source/notebooks/15. 4e070e88d8be4b43b350a35e0308d771
+#: Intervals.ipynb:325 Multiple Time
+msgid "**Volume:** The sum of the volumes."
+msgstr "**成交量：** 各成交量之和。"
+
+#: ../../source/notebooks/15. Intervals.ipynb:326 Multiple Time
+#: f41ff4d99d1a413b9a0332a12d9d87f7
+msgid "**VWAP:** The volume-weighted average."
+msgstr "**VWAP：** 成交量加权平均价。"
+
+#: ../../source/notebooks/15. 6ee1e199b6cf486ebfe0122140be7519
+#: Intervals.ipynb:327 Multiple Time
+msgid ""
+"**Custom columns:** The last value in the period (e.g., `YFinance "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance>`__'s"
+" ``adj_close``)."
+msgstr ""
+"**自定义列：** 取该周期内的最后一个值（例如 `YFinance "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance>`__"
+" 的 ``adj_close``）。"
+
+#: ../../source/notebooks/15. 37ff214747614950bde19a44b43e537f
+#: Intervals.ipynb:329 Multiple Time
+msgid ""
+"You must also supply the ``base_timeframe`` parameter to declare the "
+"spacing of your input bars (for example, ``\"1d\"`` for daily data)."
+msgstr ""
+"你还必须提供 ``base_timeframe`` 参数，以声明输入 K 线的间隔（例如，日线数据对应 ``\"1d\"``）。"
+
+#: ../../source/notebooks/15. Intervals.ipynb:331 Multiple Time
+#: bcfb5419169546599011aea36c39f29b
+msgid ""
+"Let's compress AMD into calendar weeks and view the result as a `Pandas "
+"DataFrame "
+"<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__ "
+"with `bars_to_df "
+"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.bars_to_df>`__:"
+msgstr ""
+"让我们将 AMD 压缩为日历周，并使用 `bars_to_df "
+"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.bars_to_df>`__"
+" 将结果显示为 `Pandas DataFrame "
+"<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__："
+
+#: ../../source/notebooks/15. 0c83d37b32294a6ea0b42dc7204f49e9
+#: Intervals.ipynb:511 Multiple Time
+msgid ""
+"Every-n-bars compression works the same way. In this example, every ``5``"
+" daily bars become one bar:"
+msgstr "每 n 根 K 线压缩的方式相同。在此示例中，每 ``5`` 根日线合并为一根 K 线："
+
+#: ../../source/notebooks/15. Intervals.ipynb:687 Multiple Time
+#: dfcfba7416504620a1ce4ffc0033d01c
+msgid "A Multi-Timeframe Strategy"
+msgstr "多时间框架策略"
+
+#: ../../source/notebooks/15. Intervals.ipynb:689 Multiple Time
+#: b7efcf34cb8949afad7c68795eef2b6f
+msgid ""
+"When building a backtest, you can declare higher timeframes by passing "
+"the ``intervals`` parameter to `add_execution "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__."
+" Your execution function can then read these compressed bars through "
+"`ctx.interval "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.interval>`__,"
+" which returns a read-only `IntervalContext "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.IntervalContext>`__."
+msgstr ""
+"在构建回测时，你可以通过向 `add_execution "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__"
+" 传递 ``intervals`` 参数来声明更高的时间框架。随后，你的执行函数便可通过 `ctx.interval "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.interval>`__"
+" 读取这些压缩后的 K 线，该方法会返回一个只读的 `IntervalContext "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.IntervalContext>`__。"
+
+#: ../../source/notebooks/15. 3122dff221e1437ea6805c9fd3fac911
+#: Intervals.ipynb:692 Multiple Time
+msgid ""
+"Both indicators and models attached to the execution are automatically "
+"computed on the base timeframe and across every declared interval. For "
+"example, an indicator with a ``period=10`` will instantly have a 10-week "
+"version available on the weekly bars, made accessible via the `indicator "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.IntervalContext.indicator>`__"
+" method on that context (``ctx.interval(\"weekly\").indicator(...)``)."
+msgstr ""
+"附加到该执行上的指标和模型都会自动在基础时间框架以及每个已声明的时间区间上计算。例如，一个 ``period=10`` "
+"的指标会立即在周线上提供对应的 10 周版本，可通过该上下文的 `indicator "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.IntervalContext.indicator>`__"
+" 方法访问（``ctx.interval(\"weekly\").indicator(...)``）。"
+
+#: ../../source/notebooks/15. 175e1964bce147ef8c20e8937919d27f
+#: Intervals.ipynb:694 Multiple Time
+msgid ""
+"To prevent look-ahead bias, `ctx.interval "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.interval>`__"
+" only ever exposes *completed* bars. The week or month that is currently "
+"forming is never visible, ensuring that future data cannot leak into your"
+" daily trading decisions."
+msgstr ""
+"为防止前视偏差，`ctx.interval "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.interval>`__"
+" 只会公开 *已完成* 的 K 线。当前正在形成的这一周或这一月永远不可见，从而确保未来数据不会泄漏到你的每日交易决策中。"
+
+#: ../../source/notebooks/15. Intervals.ipynb:696 Multiple Time
+#: af2ddb5988884ed6b732b5cbb0d091cf
+msgid ""
+"To demonstrate this, we will execute trades on daily bars and assign a "
+"specific job to each higher timeframe:"
+msgstr "为了演示这一点，我们将在日线上执行交易，并为每个更高的时间框架分配特定任务："
+
+#: ../../source/notebooks/15. 9e69a49bcdf74401a2ff87ea7e72f95e
+#: Intervals.ipynb:698 Multiple Time
+msgid ""
+"**Monthly (Regime):** Only enter when the last completed monthly close is"
+" higher than the close from three months ago."
+msgstr "**月线（市场状态）：** 仅当最后一根已完成的月线收盘价高于三个月前的收盘价时才建仓。"
+
+#: ../../source/notebooks/15. 0d9349d15ed24f4f8bf745fb5c2fadb5
+#: Intervals.ipynb:699 Multiple Time
+msgid ""
+"**Weekly (Trend):** Only enter when the last completed weekly close is "
+"above its 10-week moving average, and exit when it falls below that "
+"average."
+msgstr ""
+"**周线（趋势）：** 仅当最后一根已完成的周线收盘价高于其 10 周移动平均线时才建仓，跌破该均线时平仓。"
+
+#: ../../source/notebooks/15. 466655fa97be4f4bab71a9d8ffe27dbe
+#: Intervals.ipynb:700 Multiple Time
+msgid ""
+"**Daily (Timing):** Enter on the first daily close that crosses above the"
+" weekly moving average:"
+msgstr "**日线（择时）：** 在第一根上穿周线移动平均线的日线收盘时建仓："

@@ -20,8 +20,11 @@ Submodules
    pybroker.eval
    pybroker.ext.data
    pybroker.indicator
+   pybroker.interval
    pybroker.log
    pybroker.model
+   pybroker.optimize
+   pybroker.parallel
    pybroker.portfolio
    pybroker.scope
    pybroker.slippage

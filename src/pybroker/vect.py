@@ -19,6 +19,146 @@ def _verify_input(array: NDArray[np.float64], n: int):
 
 
 @njit(cache=True)
+def _rolling_sum_njit(
+    array: NDArray[np.float64], window: int
+) -> NDArray[np.float64]:
+    """Rolling window sum in O(n), matching ``np.sum`` over each window.
+
+    Non-finite values are counted rather than accumulated. Carrying them in the
+    running total would be permanent: ``nan - nan`` and ``inf - inf`` are both
+    ``nan``, so a single one would poison every later window. The finite part
+    uses Neumaier compensation, because a plain add-then-subtract accumulator
+    loses the low-order bits of every value it has ever seen, which a
+    per-window sum never does.
+    """
+    n = len(array)
+    out = np.full(n, np.nan)
+    total = 0.0
+    comp = 0.0
+    nan_count = 0
+    pos_inf_count = 0
+    neg_inf_count = 0
+    for i in range(n):
+        value = array[i]
+        if np.isnan(value):
+            nan_count += 1
+        elif np.isinf(value):
+            if value > 0:
+                pos_inf_count += 1
+            else:
+                neg_inf_count += 1
+        else:
+            t = total + value
+            if abs(total) >= abs(value):
+                comp += (total - t) + value
+            else:
+                comp += (value - t) + total
+            total = t
+        if i >= window:
+            dropped = array[i - window]
+            if np.isnan(dropped):
+                nan_count -= 1
+            elif np.isinf(dropped):
+                if dropped > 0:
+                    pos_inf_count -= 1
+                else:
+                    neg_inf_count -= 1
+            else:
+                t = total - dropped
+                if abs(total) >= abs(dropped):
+                    comp += (total - t) - dropped
+                else:
+                    comp += (-dropped - t) + total
+                total = t
+        if i >= window - 1:
+            if nan_count > 0 or (pos_inf_count > 0 and neg_inf_count > 0):
+                out[i] = np.nan
+            elif pos_inf_count > 0:
+                out[i] = np.inf
+            elif neg_inf_count > 0:
+                out[i] = -np.inf
+            else:
+                out[i] = total + comp
+    return out
+
+
+@njit(cache=True)
+def _rolling_min_njit(
+    array: NDArray[np.float64], window: int
+) -> NDArray[np.float64]:
+    """Rolling window minimum in O(n), matching ``np.min`` over each window.
+
+    ``NaN`` is counted rather than pushed onto the deque. Every comparison
+    against ``NaN`` is False, so a ``NaN`` pushed here would never be evicted
+    by value: it would both mask the true extreme and block the eviction of
+    stale entries, letting a window report a value it does not contain.
+    """
+    n = len(array)
+    out = np.full(n, np.nan)
+    deq = np.empty(n, dtype=np.int64)
+    head = 0
+    tail = 0
+    nan_count = 0
+    for i in range(n):
+        if np.isnan(array[i]):
+            nan_count += 1
+        else:
+            while head < tail and deq[head] <= i - window:
+                head += 1
+            while head < tail and array[deq[tail - 1]] >= array[i]:
+                tail -= 1
+            deq[tail] = i
+            tail += 1
+        if i >= window and np.isnan(array[i - window]):
+            nan_count -= 1
+        if i >= window - 1:
+            while head < tail and deq[head] <= i - window:
+                head += 1
+            if nan_count > 0 or head == tail:
+                out[i] = np.nan
+            else:
+                out[i] = array[deq[head]]
+    return out
+
+
+@njit(cache=True)
+def _rolling_max_njit(
+    array: NDArray[np.float64], window: int
+) -> NDArray[np.float64]:
+    """Rolling window maximum in O(n), matching ``np.max`` over each window.
+
+    See :func:`._rolling_min_njit` for why ``NaN`` is counted rather than
+    pushed onto the deque.
+    """
+    n = len(array)
+    out = np.full(n, np.nan)
+    deq = np.empty(n, dtype=np.int64)
+    head = 0
+    tail = 0
+    nan_count = 0
+    for i in range(n):
+        if np.isnan(array[i]):
+            nan_count += 1
+        else:
+            while head < tail and deq[head] <= i - window:
+                head += 1
+            while head < tail and array[deq[tail - 1]] <= array[i]:
+                tail -= 1
+            deq[tail] = i
+            tail += 1
+        if i >= window and np.isnan(array[i - window]):
+            nan_count -= 1
+        if i >= window - 1:
+            while head < tail and deq[head] <= i - window:
+                head += 1
+            if nan_count > 0 or head == tail:
+                out[i] = np.nan
+            else:
+                out[i] = array[deq[head]]
+    return out
+
+
+@njit(cache=True)
 def lowv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
     """Calculates the lowest values for every ``n`` period in ``array``.
 
@@ -33,11 +173,7 @@ def lowv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
     if not len(array):
         return np.array(tuple())
     _verify_input(array, n)
-    out_len = len(array)
-    out = np.array([np.nan for _ in range(out_len)])
-    for i in range(n, out_len + 1):
-        out[i - 1] = np.min(array[i - n : i])
-    return out
+    return _rolling_min_njit(array, n)
 
 
 @njit(cache=True)
@@ -55,11 +191,7 @@ def highv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
     if not len(array):
         return np.array(tuple())
     _verify_input(array, n)
-    out_len = len(array)
-    out = np.array([np.nan for _ in range(out_len)])
-    for i in range(n, out_len + 1):
-        out[i - 1] = np.max(array[i - n : i])
-    return out
+    return _rolling_max_njit(array, n)
 
 
 @njit(cache=True)
@@ -76,11 +208,7 @@ def sumv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
     if not len(array):
         return np.array(tuple())
     _verify_input(array, n)
-    out_len = len(array)
-    out = np.array([np.nan for _ in range(out_len)])
-    for i in range(n, out_len + 1):
-        out[i - 1] = np.sum(array[i - n : i])
-    return out
+    return _rolling_sum_njit(array, n)
 
 
 @njit(cache=True)
@@ -199,6 +327,39 @@ def _atr(
                 term = close[i - 1] - low[i]
             total += term
     return total / lookback
+
+
+@njit(cache=True)
+def atr(
+    high: NDArray[np.float64],
+    low: NDArray[np.float64],
+    close: NDArray[np.float64],
+    lookback: int,
+) -> NDArray[np.float64]:
+    """Computes Average True Range (ATR).
+
+    True range is the greatest of ``high - low``, ``abs(high - previous
+    close)``, and ``abs(low - previous close)``.
+
+    Args:
+        high: High prices.
+        low: Low prices.
+        close: Close prices.
+        lookback: Number of lookback bars.
+
+    Returns:
+        :class:`numpy.ndarray` of the ``lookback``-bar averages of true range.
+        The first ``lookback`` values are ``NaN``, since the true range of the
+        first bar has no previous close.
+    """
+    assert len(high) == len(low) and len(high) == len(close)
+    if not len(close):
+        return np.array(tuple())
+    _verify_input(close, lookback)
+    out = np.full(len(close), np.nan)
+    for i in range(lookback, len(close)):
+        out[i] = _atr(i, lookback, high, low, close)
+    return out
 
 
 @njit(cache=True)
@@ -404,19 +565,16 @@ def stochastic(
     assert lookback > 0
     assert smoothing == 0 or smoothing == 1 or smoothing == 2
     n = len(close)
+    if lookback > n:
+        return np.zeros(n)
     front_bad = lookback - 1
-    if front_bad > n:
-        front_bad = n
+    min_vals = lowv(low, lookback)
+    max_vals = highv(high, lookback)
     output = np.zeros(n)
     for i in range(front_bad, n):
-        min_val = 1.0e60
-        max_val = -1.0e60
-        for j in range(lookback):
-            if high[i - j] > max_val:
-                max_val = high[i - j]
-            if low[i - j] < min_val:
-                min_val = low[i - j]
-        sto_0 = (close[i] - min_val) / (max_val - min_val + 1.0e-60)
+        sto_0 = (close[i] - min_vals[i]) / (
+            max_vals[i] - min_vals[i] + 1.0e-60
+        )
         if smoothing == 0:
             output[i] = 100.0 * sto_0 - 50
         else:

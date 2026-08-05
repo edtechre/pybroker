@@ -9,11 +9,15 @@ This code is licensed under Apache 2.0 with Commons Clause license
 import datetime
 import logging
 import numpy as np
+import threading
 import time
+from contextlib import contextmanager
 from pybroker.common import Day, IndicatorSymbol, ModelSymbol, to_datetime
 from decimal import Decimal
 from progressbar import ProgressBar
-from typing import Iterable, Optional, Sequence, Sized
+from typing import Iterable, Iterator, Optional, Sequence, Sized
+
+_LOGGER = logging.getLogger("pybroker")
 
 
 class Logger:
@@ -33,9 +37,29 @@ class Logger:
         self._bootstrap_start_time: Optional[float] = None
         self._progress_bar_disabled = False
         self._disabled = False
+        self._suppress_local = threading.local()
+
+    def __getstate__(self) -> dict:
+        """Returns picklable state, for shipping the scope to a worker.
+
+        A live :class:`ProgressBar` holds the caller's output stream, which is
+        not picklable, and a worker has no business advancing the caller's
+        progress bar in any case. Thread-local suppression state is likewise
+        unpicklable and per-process; the worker gets a fresh one from
+        :meth:`__setstate__`.
+        """
+        return {
+            **self.__dict__,
+            "_progress_bar": None,
+            "_suppress_local": None,
+        }
+
+    def __setstate__(self, state: dict) -> None:
+        self.__dict__.update(state)
+        self._suppress_local = threading.local()
 
     def _start_progress_bar(self, message: str, total_count: int):
-        if self._disabled:
+        if self._is_disabled():
             return
         if self._progress_bar_disabled:
             print(message, flush=True)
@@ -47,7 +71,7 @@ class Logger:
     def _update_progress_bar(self, count: int):
         if (
             self._progress_bar is None
-            or self._disabled
+            or self._is_disabled()
             or self._progress_bar_disabled
         ):
             return
@@ -64,6 +88,27 @@ class Logger:
     def enable(self):
         """Enables logging."""
         self._disabled = False
+
+    @contextmanager
+    def _suppress(self) -> Iterator[None]:
+        """Silences this thread's output until the context exits.
+
+        Thread-local rather than a shared flag: parallel trial evaluation on
+        a threading backend suppresses several trials against one Logger at
+        once, and saving/restoring a shared flag from each thread races --
+        the last thread to finish restores a value another thread saved,
+        which can leave logging off for good. The global state set by
+        :meth:`disable` and :meth:`enable` is untouched.
+        """
+        previous = getattr(self._suppress_local, "count", 0)
+        self._suppress_local.count = previous + 1
+        try:
+            yield
+        finally:
+            self._suppress_local.count = previous
+
+    def _is_disabled(self) -> bool:
+        return self._disabled or getattr(self._suppress_local, "count", 0) > 0
 
     def disable_progress_bar(self):
         """Disables logging a progress bar."""
@@ -84,6 +129,11 @@ class Logger:
         end_date: datetime.datetime,
         timeframe: str,
     ):
+        if not self._info_enabled():
+            # Gated before formatting, like the debug_* methods: sorting the
+            # whole symbol universe per call is wasted work when the output
+            # is discarded.
+            return
         self._info(
             "Loading:\n"
             f"{start_date} to {end_date}\n"
@@ -101,12 +151,14 @@ class Logger:
         end_date: datetime.datetime,
         timeframe: str,
     ):
+        if not self._info_enabled():
+            return
         self._info(
             "Loaded:\n"
             f"namespace={self._scope.data_source_cache_ns}\n"
-            f"{start_date} to {end_date}\n",
-            f"timeframe: {timeframe}\n",
-            f"{sorted(symbols)}",
+            f"{start_date} to {end_date}\n"
+            f"timeframe: {timeframe}\n"
+            f"{sorted(symbols)}"
         )
 
     def info_invalidate_data_source_cache(self):
@@ -136,12 +188,16 @@ class Logger:
         self._start_progress_bar("Computing indicators...", len(ind_syms))
 
     def info_indicator_data_start(self, ind_syms: Iterable[IndicatorSymbol]):
+        if not self._info_enabled():
+            return
         self._info(f"Indicators: {sorted(ind_syms)}")
 
     def loaded_indicator_data(self):
         self._out("Loaded cached indicator data.\n")
 
     def info_loaded_indicator_data(self, ind_syms: Iterable[IndicatorSymbol]):
+        if not self._info_enabled():
+            return
         self._info(
             f"Loaded:\n"
             f"namespace={self._scope.indicator_cache_ns}\n"
@@ -171,12 +227,16 @@ class Logger:
         self._train_split_start_time = time.time()
 
     def info_train_split_start(self, model_syms: Iterable[ModelSymbol]):
+        if not self._info_enabled():
+            return
         self._info(f"Models: {sorted(model_syms)}")
 
     def loaded_models(self):
         self._out("Loaded cached models.\n")
 
     def info_loaded_models(self, model_syms: Iterable[ModelSymbol]):
+        if not self._info_enabled():
+            return
         self._info(
             f"Loaded:\n"
             f"namespace={self._scope.model_cache_ns}\n"
@@ -237,7 +297,9 @@ class Logger:
         self._info(f"Backtest between times: {between_time}")
 
     def info_walkforward_on_days(self, days: tuple[int]):
-        self._info(f"Backtest on days: {map(lambda d: Day(d).name, days)}")
+        # Materialized: interpolating the map object prints
+        # "<map object at 0x...>" instead of the day names.
+        self._info(f"Backtest on days: {[Day(d).name for d in days]}")
 
     def walkforward_completed(self):
         if self._walkforward_start_time is None:
@@ -248,10 +310,41 @@ class Logger:
         )
         self._walkforward_start_time = None
 
-    def calc_bootstrap_metrics_start(self, samples, sample_size):
+    def optimize_start(
+        self,
+        n_trials: int,
+        sampler: str,
+        *,
+        grid_size: Optional[int] = None,
+        windows: int = 1,
+    ):
+        total = n_trials * windows
+        if windows > 1:
+            if grid_size is not None and n_trials < grid_size:
+                msg = (
+                    f"Optimizing: {windows} windows, {n_trials} of "
+                    f"{grid_size} trials per window ({total} total, {sampler})"
+                )
+            else:
+                msg = (
+                    f"Optimizing: {windows} windows, {n_trials} trials "
+                    f"per window ({total} total, {sampler})"
+                )
+        elif grid_size is not None and n_trials < grid_size:
+            msg = f"Optimizing: {n_trials} of {grid_size} trials ({sampler})"
+        else:
+            msg = f"Optimizing: {n_trials} trials ({sampler})"
+        self._out(msg)
+
+    def info_optimize_search_space(self, hyperparams: Sequence[str]):
+        self._info("Searched hyperparams: %s", list(hyperparams))
+
+    def info_optimize_sequential_trials(self, sampler: str):
+        self._info(f"Running {sampler} trials sequentially.")
+
+    def calc_bootstrap_metrics_start(self, samples, bars):
         self._out(
-            f"Calculating bootstrap metrics: sample_size={sample_size}, "
-            f"samples={samples}..."
+            f"Calculating bootstrap metrics: bars={bars}, samples={samples}..."
         )
         self._bootstrap_start_time = time.time()
 
@@ -273,6 +366,8 @@ class Logger:
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
+        if not self._debug_enabled():
+            return
         order = self._format_order(
             date=date,
             symbol=symbol,
@@ -292,6 +387,8 @@ class Logger:
         cash: Decimal,
         clamped_shares: Decimal,
     ):
+        if not self._debug_enabled():
+            return
         order = self._format_order(
             date=date,
             symbol=symbol,
@@ -312,6 +409,8 @@ class Logger:
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
+        if not self._debug_enabled():
+            return
         order = self._format_order(
             date=date,
             symbol=symbol,
@@ -329,6 +428,8 @@ class Logger:
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
+        if not self._debug_enabled():
+            return
         order = self._format_order(
             date=date,
             symbol=symbol,
@@ -346,6 +447,8 @@ class Logger:
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
+        if not self._debug_enabled():
+            return
         order = self._format_order(
             date=date,
             symbol=symbol,
@@ -363,6 +466,8 @@ class Logger:
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
+        if not self._debug_enabled():
+            return
         order = self._format_order(
             date=date,
             symbol=symbol,
@@ -380,6 +485,8 @@ class Logger:
         fill_price: Decimal,
         limit_price: Optional[Decimal],
     ):
+        if not self._debug_enabled():
+            return
         order = self._format_order(
             date=date,
             symbol=symbol,
@@ -389,16 +496,44 @@ class Logger:
         )
         self._debug(f"Unfilled sell order:\n{order}")
 
+    def debug_timeout_order(
+        self,
+        date: np.datetime64,
+        pending_order,
+    ):
+        if not self._debug_enabled():
+            return
+        self._debug(
+            f"Timed out pending {pending_order.type} order:\n"
+            f"date={to_datetime(date)}\n"
+            f"symbol={pending_order.symbol}\n"
+            f"shares={pending_order.shares}\n"
+            f"limit_price={pending_order.limit_price}\n"
+            f"timeout_bars={pending_order.timeout_bars}\n"
+        )
+
     def debug_schedule_order(self, date: np.datetime64, exec_result):
+        if not self._debug_enabled():
+            return
         self._debug(f"Scheduling order: {date}\n{exec_result}")
 
     def debug_unscheduled_order(self, exec_result):
+        if not self._debug_enabled():
+            return
         self._debug(f"Unscheduled order:\n{exec_result}")
 
-    def warn_bootstrap_sample_size(self, n: int, sample_size: int):
-        self._warn(
-            f"Returns length {n} < sample size {sample_size}.\n"
-            "Setting number of bootstraps to 1."
+    def debug_position_limit_reached(
+        self,
+        symbol: str,
+        pos_type: str,
+        held: int,
+        max_positions: int,
+    ):
+        if not self._debug_enabled():
+            return
+        self._debug(
+            f"Discarded {pos_type} order for {symbol}: holding {held} of "
+            f"max {max_positions} {pos_type} positions."
         )
 
     def debug_enable_data_source_cache(self, ns: str, cache_dir: str):
@@ -433,24 +568,35 @@ class Logger:
         self._debug(f"Cleared model cache: {cache_dir}")
 
     def _out(self, msg: str, *args):
-        if self._disabled:
+        if self._is_disabled():
             return
         print(msg, *args, flush=True)
 
+    def _debug_enabled(self) -> bool:
+        return not self._is_disabled() and _LOGGER.isEnabledFor(logging.DEBUG)
+
+    def _info_enabled(self) -> bool:
+        return not self._is_disabled() and _LOGGER.isEnabledFor(logging.INFO)
+
+    def _warn_enabled(self) -> bool:
+        return not self._is_disabled() and _LOGGER.isEnabledFor(
+            logging.WARNING
+        )
+
     def _info(self, msg: str, *args):
-        if self._disabled:
+        if not self._info_enabled():
             return
-        logging.info(msg, *args)
+        _LOGGER.info(msg, *args)
 
     def _debug(self, msg: str, *args):
-        if self._disabled:
+        if not self._debug_enabled():
             return
-        logging.debug(msg, *args)
+        _LOGGER.debug(msg, *args)
 
     def _warn(self, msg: str, *args):
-        if self._disabled:
+        if not self._warn_enabled():
             return
-        logging.warning(msg, *args)
+        _LOGGER.warning(msg, *args)
 
     def _format_order(
         self,

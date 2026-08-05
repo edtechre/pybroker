@@ -79,4 +79,4 @@ These confidence levels were obtained using per-bar returns from the backtest's 
 
 We can observe that the bootstrapped max drawdown of ```-10.46%``` at a ```99.9%``` confidence level is worse than the ```-4.55%``` we saw in our original results. This highlights the importance of using randomized tests to evaluate the performance of your trading strategy.
 
-[In the next notebook, we will discuss how to incorporate ranking and position sizing in your trading strategies](https://www.pybroker.com/en/latest/notebooks/4.%20Ranking%20and%20Position%20Sizing.html).
+[In the next notebook, we will discuss how to incorporate ranking long and short signals in your trading strategies](https://www.pybroker.com/en/latest/notebooks/4.%20Ranking%20Long%20and%20Short%20Signals.html).

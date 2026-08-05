@@ -5,4 +5,4 @@ pybroker.model module
    :members:
    :undoc-members:
    :show-inheritance:
-   :exclude-members: input_cols
+   :exclude-members: input_cols, lag_columns

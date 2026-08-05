@@ -33,7 +33,9 @@ from pybroker.scope import (
     PendingOrderScope,
     PredictionScope,
     StaticScope,
+    IntervalScope,
 )
+from pybroker.interval import IntervalData
 from pybroker.vect import highv, lowv, sumv
 from typing import NamedTuple
 
@@ -57,6 +59,24 @@ def get_fixture(request, param):
     if isinstance(param, LazyFixture):
         return request.getfixturevalue(param.name)
     return param
+
+
+@pytest.fixture()
+def minute_bars_df():
+    dates = pd.date_range("2020-01-06 09:30", periods=390 * 5, freq="1min")
+    n = len(dates)
+    close = np.linspace(100, 110, n)
+    return pd.DataFrame(
+        {
+            "date": dates,
+            "symbol": ["SPY"] * n,
+            "open": close,
+            "high": close + 0.5,
+            "low": close - 0.5,
+            "close": close,
+            "volume": np.ones(n),
+        }
+    )
 
 
 @pytest.fixture()
@@ -85,7 +105,7 @@ def dates(data_source_df):
 def scope():
     scope = StaticScope.instance()
     yield scope
-    StaticScope.__instance = None
+    StaticScope.set_instance(None)
 
 
 @pytest.fixture()
@@ -212,6 +232,16 @@ def ind_scope(ind_data, dates):
 
 
 @pytest.fixture()
+def declared_intervals():
+    return frozenset()
+
+
+@pytest.fixture()
+def interval_scope(ind_scope):
+    return IntervalScope(IntervalData(), ind_scope)
+
+
+@pytest.fixture()
 def input_scope(col_scope, ind_scope, trained_models):
     return ModelInputScope(col_scope, ind_scope, trained_models)
 
@@ -233,6 +263,9 @@ def pending_orders():
             shares=Decimal(100),
             limit_price=None,
             fill_price=PriceType.MIDDLE,
+            exec_bar=5,
+            timeout_bars=None,
+            stops=None,
         ),
         PendingOrder(
             id=2,
@@ -243,6 +276,9 @@ def pending_orders():
             shares=Decimal(200),
             limit_price=Decimal(99),
             fill_price=PriceType.AVERAGE,
+            exec_bar=6,
+            timeout_bars=None,
+            stops=None,
         ),
     )
 
@@ -259,12 +295,15 @@ def pending_order_scope(pending_orders):
             shares=order.shares,
             limit_price=order.limit_price,
             fill_price=order.fill_price,
+            exec_bar=order.exec_bar,
+            timeout_bars=order.timeout_bars,
+            stops=order.stops,
         )
     return scope
 
 
 @pytest.fixture()
-def setup_enabled_model_cache(tmp_path):
+def setup_enabled_model_cache(scope, tmp_path):
     enable_model_cache("test", tmp_path)
     yield
     clear_model_cache()
@@ -272,7 +311,7 @@ def setup_enabled_model_cache(tmp_path):
 
 
 @pytest.fixture(params=[True, False])
-def setup_model_cache(tmp_path, request):
+def setup_model_cache(scope, tmp_path, request):
     if request.param:
         enable_model_cache("test", tmp_path)
     else:
@@ -284,7 +323,7 @@ def setup_model_cache(tmp_path, request):
 
 
 @pytest.fixture()
-def setup_enabled_ds_cache(tmp_path):
+def setup_enabled_ds_cache(scope, tmp_path):
     enable_data_source_cache("test", tmp_path)
     yield
     clear_data_source_cache()
@@ -292,7 +331,7 @@ def setup_enabled_ds_cache(tmp_path):
 
 
 @pytest.fixture(params=[True, False])
-def setup_ds_cache(tmp_path, request):
+def setup_ds_cache(scope, tmp_path, request):
     if request.param:
         enable_data_source_cache("test", tmp_path)
     else:
@@ -304,7 +343,7 @@ def setup_ds_cache(tmp_path, request):
 
 
 @pytest.fixture()
-def setup_enabled_ind_cache(tmp_path):
+def setup_enabled_ind_cache(scope, tmp_path):
     enable_indicator_cache("test", tmp_path)
     yield
     clear_indicator_cache()
@@ -312,7 +351,7 @@ def setup_enabled_ind_cache(tmp_path):
 
 
 @pytest.fixture(params=[True, False])
-def setup_ind_cache(tmp_path, request):
+def setup_ind_cache(scope, tmp_path, request):
     if request.param:
         enable_indicator_cache("test", tmp_path)
     else:

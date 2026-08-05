@@ -10,8 +10,8 @@ Use this index to choose the smallest relevant reference file before writing or 
   Topics: Backtesting a Strategy; Defining Strategy Rules; Adding a Second Execution; Running a Backtest; Filtering Backtest Data.
 - `wiki-03-evaluating-with-bootstrap-metrics.md` - Evaluating With Bootstrap Metrics; 5 code cells.
   Topics: Evaluating with Bootstrap Metrics; Confidence Intervals; Maximum Drawdown.
-- `wiki-04-ranking-and-position-sizing.md` - Ranking And Position Sizing; 8 code cells.
-  Topics: Ranking and Position Sizing; Ranking Ticker Symbols; Setting Position Sizes.
+- `wiki-04-ranking-long-and-short-signals.md` - Ranking Long And Short Signals; code cells from the notebook.
+  Topics: Ranking Long and Short Signals; Scoring Ticker Symbols; Ranking Short Signals.
 - `wiki-05-writing-indicators.md` - Writing Indicators; 15 code cells.
   Topics: Writing Indicators; Using the Indicator in a Strategy; Vectorized Helpers; Computing Multiple Indicators; Using TA-Lib; Built-In Indicators.
 - `wiki-06-training-a-model.md` - Training A Model; 13 code cells.
@@ -25,7 +25,7 @@ Use this index to choose the smallest relevant reference file before writing or 
 - `wiki-10-rotational-trading.md` - Rotational Trading; 7 code cells.
   Topics: Rotational Trading.
 - `wiki-faqs.md` - FAQs; 15 code cells.
-  Topics: FAQs; How to...; ... get your version of PyBroker?; ... get data for another symbol?; ... set a limit price?; ... set the fill price?.
+  Topics: FAQs; How to...; See your version of PyBroker; Get data for another symbol; Set a limit price; Set the fill price; Get current positions; Use custom column data; Place an order more than one bar ahead; Cancel pending orders; Persist data across bars; Exit a position; Process multiple symbols at once; Annualize the Sharpe Ratio; Get and set a global parameter; Set a target allocation; Record position bars.
 
 ## API And Pattern References
 
@@ -37,7 +37,7 @@ Use this index to choose the smallest relevant reference file before writing or 
 - Data downloads, caches, Alpaca/YFinance, or DataFrame inputs: read `wiki-01-getting-started-with-data-sources.md`.
 - Core Strategy/ExecContext order logic: read `wiki-02-backtesting-a-strategy.md` and `pybroker-patterns.md`.
 - Metrics, randomized bootstrap, or result inspection: read `wiki-03-evaluating-with-bootstrap-metrics.md`.
-- Ranking, scores, max positions, or position sizing: read `wiki-04-ranking-and-position-sizing.md`.
+- Ranking long/short signals, scores, or max positions: read `wiki-04-ranking-long-and-short-signals.md`.
 - Built-in or custom indicators: read `wiki-05-writing-indicators.md`.
 - ML models, prediction inputs, caching, or walkforward training: read `wiki-06-training-a-model.md`.
 - Custom DataSource, CSV, DataFrame, or custom columns: read `wiki-07-creating-a-custom-data-source.md`.

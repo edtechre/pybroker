@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-27 18:02+0800\n"
+"POT-Creation-Date: 2026-08-04 18:14-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -16,37 +16,35 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.12.1\n"
+"Generated-By: Babel 2.18.0\n"
 
-#: ../../source/notebooks/8. Applying Stops.ipynb:9
-#: d4e6621161f549e081bcbf1cb495078f
+#: ../../source/notebooks/8. 17d118ac76cb46c8abcdccc40b16363a Applying
+#: Stops.ipynb:9
 msgid "Applying Stops"
 msgstr "应用止损"
 
-#: ../../source/notebooks/8. 73e879c4e70441cc9a4a43dcb315f409 Applying
-#: Stops.ipynb:11
+#: ../../source/notebooks/8. Applying Stops.ipynb:11
+#: a624d366c52245d884d39f62ed5960ea
 msgid ""
-"Stops are used to automatically buy or sell a security once it reaches a "
-"specified price level. They can be useful for limiting potential losses "
-"by allowing traders to exit bad trades automatically, as well as for "
-"taking profits by selling a security automatically when it reaches a "
-"certain price level."
-msgstr "止损是用于在证券达到指定价格水平时自动买入或卖出的工具。它们对于通过让交易者自动退出糟糕的交易来限制潜在损失非常有用，同时也可以在证券达到某个价格水平时自动卖出以获利。"
+"Stops automatically buy or sell a security once it reaches a specified "
+"price level. They help limit potential losses by exiting bad trades, as "
+"well as lock in profits by selling when a security reaches a target "
+"price."
+msgstr ""
+"止损可在证券达到指定价格水平时自动买入或卖出。它们既能通过退出糟糕的交易来限制潜在损失，也能在证券达到目标价格时卖出以锁定利润。"
 
-#: ../../source/notebooks/8. 1e8d0d9b954748cabfd4c47aeaa8868f Applying
+#: ../../source/notebooks/8. 8a9028528e9e4f348978067dbd71021c Applying
 #: Stops.ipynb:13
-msgid ""
-"**PyBroker** supports the simulation of stops, which is explained in "
-"detail in this notebook:"
-msgstr "**PyBroker** 支持止损的模拟，本笔记本将详细介绍这一特性："
+msgid "This notebook explains how to simulate stops in **PyBroker**:"
+msgstr "本笔记本将介绍如何在 **PyBroker** 中模拟止损："
 
-#: ../../source/notebooks/8. Applying Stops.ipynb:40
-#: cc32fdccf2ab4854b3ecefcc7e6780b7
+#: ../../source/notebooks/8. 8e3b38fd10e94999b8932b4eb114499b Applying
+#: Stops.ipynb:40
 msgid "Stop Loss"
 msgstr "止损"
 
-#: ../../source/notebooks/8. 725b043434c14caebd685432c9130a63 Applying
-#: Stops.ipynb:42
+#: ../../source/notebooks/8. Applying Stops.ipynb:42
+#: a892fa31ef104900b0e79b2a793f3c03
 msgid ""
 "A stop loss order is used to automatically exit a trade once the "
 "security's price reaches or falls below a specified level. For example, "
@@ -54,131 +52,89 @@ msgid ""
 "below the entry price:"
 msgstr "止损单用于在证券价格达到或跌破指定水平时自动退出交易。例如，以下代码展示了一个在入场价格下跌 ``20%`` 处设置的止损单示例："
 
-#: ../../source/notebooks/8. 4a11abeffc01400a86012762daa70490 Applying
-#: Stops.ipynb:314
+#: ../../source/notebooks/8. 0783938863fb4c5488084e2eec1b4b27 Applying
+#: Stops.ipynb:368
 msgid "Take Profit"
 msgstr "锁定利润"
 
-#: ../../source/notebooks/8. 3b77e22fe55e4bbabf4151b6033d5a43 Applying
-#: Stops.ipynb:316
+#: ../../source/notebooks/8. 34fd4e89415a425d822042aac29d0c6a Applying
+#: Stops.ipynb:370
 msgid ""
-"Similarly, a take profit order can be used to lock in profits on a trade."
-" The following code adds a take profit order at ``10%`` above the entry "
-"price:"
-msgstr "类似地，可以使用获利单来锁定交易的利润。以下代码在入场价格上涨 ``10%`` 处添加了一个获利单："
+"A take profit order can be used to lock in profits on a trade. The "
+"following code adds a take profit order at ``10%`` above the entry price:"
+msgstr "可以使用获利单来锁定交易的利润。以下代码在入场价格上涨 ``10%`` 处添加了一个获利单："
 
-#: ../../source/notebooks/8. 26b1529af1864a3c8938413f8c1d3d54 Applying
-#: Stops.ipynb:789
+#: ../../source/notebooks/8. 5c6738a85b2c4feabd7a571ccf129f3f Applying
+#: Stops.ipynb:870
 msgid "Trailing Stop"
 msgstr "移动止损"
 
-#: ../../source/notebooks/8. 9e93db587c0047dd91e508a1458b0540 Applying
-#: Stops.ipynb:791
+#: ../../source/notebooks/8. 1e0c91c370a6482c9e5c323517e913d7 Applying
+#: Stops.ipynb:872
 msgid ""
-"A trailing stop is an order that is used to exit a trade once the "
-"instrument's price falls a certain percentage or cash amount below its "
-"highest market price. Here is an example of setting a trailing stop at "
-"``20%`` below the highest market price:"
-msgstr "移动止损单用于在证券价格跌破最高市场价格的一定百分比或现金金额时退出交易。以下是在最高市场价格下跌 ``20%`` 处设置移动止损的示例："
+"A trailing stop order automatically exits a trade once the instrument's "
+"price falls a specified percentage or cash amount below its highest "
+"market price. The following example sets a trailing stop at 20% below the"
+" highest market price:"
+msgstr "移动止损单会在证券价格跌破最高市场价格达到指定百分比或现金金额时自动退出交易。以下示例展示了在最高市场价格下跌 20% 处设置移动止损："
 
-#: ../../source/notebooks/8. 96b7428999b04213aafbffcef6f62b63 Applying
-#: Stops.ipynb:1264
+#: ../../source/notebooks/8. 9454d2203d7349638c18ecac7afcfa6f Applying
+#: Stops.ipynb:1372
 msgid "Setting a Limit Price"
 msgstr "设定限价"
 
-#: ../../source/notebooks/8. 6c3e3a860226442ea06b76787f85bc62 Applying
-#: Stops.ipynb:1266
+#: ../../source/notebooks/8. 17827be5716f4657adf106c93f6dd3c1 Applying
+#: Stops.ipynb:1374
 msgid ""
 "A stop order can be combined with a limit price to ensure that the order "
 "is executed only at a specific price level. Below shows an example of "
 "placing a limit price on a stop order:"
 msgstr "止损单可以与限价结合使用，以确保订单仅在特定价格水平执行。下面是在止损单上设置限价的示例："
 
-#: ../../source/notebooks/8. 966b2381076e489ea9639ed3ae7ceb57 Applying
-#: Stops.ipynb:1602
+#: ../../source/notebooks/8. Applying Stops.ipynb:1725
+#: b916c4fb00e845e386135e98d0cdf52c
 msgid "Canceling a Stop"
 msgstr "取消止损"
 
-#: ../../source/notebooks/8. 3712b61317924acdb4b7b97f4de550fc Applying
-#: Stops.ipynb:1604
+#: ../../source/notebooks/8. Applying Stops.ipynb:1727
+#: f72ac8d267b34c83b7fd61a72eb9bbe1
 msgid "The following code shows an example of canceling a stop order:"
 msgstr "以下代码展示了取消止损单的示例："
 
-#: ../../source/notebooks/8. Applying Stops.ipynb:1852
-#: f6a50a7094b144208d18093d29c2a140
+#: ../../source/notebooks/8. Applying Stops.ipynb:1982
+#: ac1c7b4da1de487e8d5749176d1165c1
 msgid "Setting the Stop Exit Price"
 msgstr "设定限价"
 
-#: ../../source/notebooks/8. Applying Stops.ipynb:1854
-#: a2e800d2830e43f994d70d41d58e5f87
+#: ../../source/notebooks/8. Applying Stops.ipynb:1984
+#: a133a8fcffc544119124ab0aac397e87
 msgid ""
-"By default, stops are checked against the bar's low and high prices, and "
-"they are exited at the stop's threshold (e.g., -2%) on the same bar when "
-"the stop is triggered."
-msgstr ""
+"By default, **PyBroker** checks stops against the bar's low and high "
+"prices and exits the trade at the stop's threshold (e.g., -2%) on the "
+"same bar the stop triggers."
+msgstr "默认情况下，**PyBroker** 会根据 K 线的最低价和最高价检查止损，并在止损触发的同一根 K 线上按止损的阈值（例如 -2%）退出交易。"
 
-#: ../../source/notebooks/8. 5bee39ff8a164f0cbaed6f5466ac3eaa Applying
-#: Stops.ipynb:1856
+#: ../../source/notebooks/8. Applying Stops.ipynb:1986
+#: e5728b2b0b12499b98a37d6bec23cc57
 msgid ""
-"To set a custom exit price, the \"exit_price\" fields for each stop type "
-"can be used. When these fields are set, the stop will be checked against "
-"the ``exit_price``, and it will exit at the ``exit_price`` when "
-"triggered. For example, the code below sets the `stop_trailing_exit_price"
-" "
+"To set a custom exit price, you can use the ``exit_price`` fields "
+"available for each stop type. When configured, **PyBroker** checks the "
+"stop against the ``exit_price`` and uses that price for the exit when "
+"triggered. The following code sets ```stop_trailing_exit_price`` "
 "<https://www.pybroker.com/en/dev/reference/pybroker.context.html#pybroker.context.ExecContext.stop_trailing_exit_price>`__"
-" to the open price on the bar that triggers the stop:"
+" to the open price of the bar that triggers the stop:"
 msgstr ""
+"要设置自定义退出价格，可以使用每种止损类型提供的 ``exit_price`` 字段。配置后，**PyBroker** 会根据 "
+"``exit_price`` 检查止损，并在触发时使用该价格退出。以下代码将 `stop_trailing_exit_price "
+"<https://www.pybroker.com/en/dev/reference/pybroker.context.html#pybroker.context.ExecContext.stop_trailing_exit_price>`__"
+" 设置为触发止损的 K 线的开盘价："
 
-#: ../../source/notebooks/8. 6cd815007b294308b0264ea8caa02c5b Applying
-#: Stops.ipynb:2192
+#: ../../source/notebooks/8. 9e4ff69f49ae45f187d368ab20c23ac8 Applying
+#: Stops.ipynb:2337
 msgid ""
-"`For more information on the various attributes that can be used to set "
-"stops in PyBroker, you can refer to the ExecContext reference "
-"documentation. "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
+"For more details on the attributes available for configuring stops, see "
+"the ```ExecContext`` reference documentation "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__."
 msgstr ""
-"`要了解有关在 PyBroker 中设置止损的各种属性的更多信息，你可以查阅 ExecContext 参考文档。 "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
-
-#~ msgid ""
-#~ "A stop loss order is used to "
-#~ "automatically exit a trade once the "
-#~ "security's price reaches or falls below"
-#~ " a specified level. For example, the"
-#~ " following code shows an example of"
-#~ " a stop loss order set at "
-#~ "``20%`` below the entry price:"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "A trailing stop is an order that"
-#~ " is used to exit a trade once"
-#~ " the instrument's price falls a "
-#~ "certain percentage or cash amount below"
-#~ " its highest market price. Here is"
-#~ " an example of setting a trailing "
-#~ "stop at ``20%`` below the highest "
-#~ "market price:"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "A stop loss order is used to "
-#~ "automatically exit a trade once the "
-#~ "security’s price reaches or falls below"
-#~ " a specified level. For example, the"
-#~ " following code shows an example of"
-#~ " a stop loss order set at "
-#~ "``20%`` below the entry price:"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "A trailing stop is an order that"
-#~ " is used to exit a trade once"
-#~ " the instrument’s price falls a "
-#~ "certain percentage or cash amount below"
-#~ " its highest market price. Here is"
-#~ " an example of setting a trailing "
-#~ "stop at ``20%`` below the highest "
-#~ "market price:"
-#~ msgstr ""
-
+"有关配置止损可用属性的更多详情，请参阅 `ExecContext 参考文档 "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__。"

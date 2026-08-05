@@ -17,7 +17,9 @@ from pybroker.common import PriceType
 from pybroker.indicator import IndicatorSymbol
 from pybroker.model import model
 from pybroker.scope import (
+    ModelInputScope,
     PriceScope,
+    column_scope_from_frame,
     enable_logging,
     enable_progress_bar,
     disable_logging,
@@ -25,8 +27,14 @@ from pybroker.scope import (
     get_signals,
     param,
     register_columns,
+    slice_symbol_array_store_by_dates,
+    symbol_array_store_from_frame,
+    symbol_array_store_from_flat_frame,
+    symbol_array_store_from_indexed_df,
+    sym_exec_dates_from_store,
     unregister_columns,
 )
+from pybroker.common import DataCol
 from unittest.mock import Mock
 
 
@@ -148,6 +156,22 @@ class TestStaticScope:
             ind_names
         )
 
+    def test_freeze_data_cols_caches_all_data_cols(self, scope):
+        scope.custom_data_cols = set()
+        register_columns("adj_close")
+        scope.freeze_data_cols()
+        cached = scope.all_data_cols
+        scope.custom_data_cols.add("ignored")
+        assert scope.all_data_cols == cached
+        assert scope._bar_data_cols is not None
+        assert "adj_close" in scope._bar_data_cols
+        scope.unfreeze_data_cols()
+        scope.custom_data_cols.add("extra")
+        assert "extra" in scope.all_data_cols
+        assert scope._all_data_cols is None
+        scope.custom_data_cols = set()
+        unregister_columns("adj_close")
+
 
 class TestColumnScope:
     def _assert_length(self, values, end_index, data_source_df, sym):
@@ -255,6 +279,32 @@ class TestIndicatorScope:
         ):
             ind_scope.fetch(sym, name)
 
+    def test_fetch_value(self, ind_scope, symbol, ind_data, ind_name):
+        end_index = 10
+        result = ind_scope.fetch_value(symbol, ind_name, end_index)
+        expected = ind_data[IndicatorSymbol(ind_name, symbol)].values[
+            end_index - 1
+        ]
+        assert result == float(expected)
+
+    def test_fetch_value_when_cached(
+        self, ind_scope, symbol, ind_data, ind_name
+    ):
+        end_index = 10
+        ind_scope.fetch_value(symbol, ind_name, end_index)
+        result = ind_scope.fetch_value(symbol, ind_name, end_index)
+        expected = ind_data[IndicatorSymbol(ind_name, symbol)].values[
+            end_index - 1
+        ]
+        assert result == float(expected)
+
+    def test_fetch_value_when_not_found_then_error(self, ind_scope):
+        with pytest.raises(
+            ValueError,
+            match=re.escape("Indicator 'foo' not found for SPY."),
+        ):
+            ind_scope.fetch_value("SPY", "foo", 1)
+
 
 class TestModelInputScope:
     def test_fetch(
@@ -324,6 +374,28 @@ class TestModelInputScope:
     ):
         with pytest.raises(ValueError, match=re.escape(expected_msg)):
             input_scope.fetch(sym, name)
+
+    def test_fetch_model_input_only_fetches_input_cols(
+        self, scope, col_scope, ind_scope, trained_models, symbol
+    ):
+        scope.custom_data_cols = set()
+        register_columns("unused_custom")
+        scope.freeze_data_cols()
+        fetch_calls: list[str] = []
+        original_fetch = col_scope.fetch
+
+        def tracking_fetch(sym, col, end_index=None):
+            fetch_calls.append(col)
+            return original_fetch(sym, col, end_index)
+
+        col_scope.fetch = tracking_fetch  # type: ignore[method-assign]
+        input_scope = ModelInputScope(col_scope, ind_scope, trained_models)
+        input_scope.fetch_model_input(symbol, MODEL_NAME)
+        fetched_cols = set(fetch_calls)
+        assert "unused_custom" not in fetched_cols
+        assert {"date", "hhv", "llv", "sumv"}.issubset(fetched_cols)
+        scope.unfreeze_data_cols()
+        unregister_columns("unused_custom")
 
 
 class TestPredictionScope:
@@ -452,6 +524,31 @@ class TestPriceScope:
         price_scope = PriceScope(col_scope, {"SPY": 2}, round_fill_price)
         assert price_scope.fetch("SPY", price) == expected_price
 
+    def test_fetch_bar_ohlc(self):
+        df = pd.DataFrame(
+            {
+                "date": [
+                    np.datetime64("2020-02-03"),
+                    np.datetime64("2020-02-04"),
+                    np.datetime64("2020-02-05"),
+                ],
+                "symbol": ["SPY"] * 3,
+                "open": [100, 200, 300],
+                "high": [500, 400, 500],
+                "low": [200, 100, 200],
+                "close": [250, 300, 400],
+            }
+        )
+        from pybroker.scope import ColumnScope
+
+        col_scope = ColumnScope(df.set_index(["symbol", "date"]))
+        price_scope = PriceScope(col_scope, {"SPY": 2}, True)
+        date = np.datetime64("2020-02-04")
+        close, low, high = price_scope.fetch_bar_ohlc("SPY", date)
+        assert close == 300.0
+        assert low == 100.0
+        assert high == 400.0
+
 
 class TestPendingOrderScope:
     def test_remove(self, pending_orders, pending_order_scope):
@@ -486,6 +583,50 @@ class TestPendingOrderScope:
             [pending_orders[0]]
         )
         assert not tuple(pending_order_scope.orders("FOO"))
+
+
+def test_symbol_array_store_from_frame_matches_indexed(
+    data_source_df,
+):
+    """Flat-frame store build matches legacy MultiIndex path."""
+    sym_col = "symbol"
+    date_col = "date"
+    reference = symbol_array_store_from_indexed_df(
+        data_source_df.set_index([sym_col, date_col]).sort_index()
+    )
+    built = symbol_array_store_from_frame(data_source_df)
+    assert built.symbols == reference.symbols
+    for sym in reference.symbols:
+        ref_cols = reference.sym_arrays[sym]
+        built_cols = built.sym_arrays[sym]
+        assert set(built_cols.keys()) == set(ref_cols.keys())
+        for col in ref_cols:
+            assert np.array_equal(built_cols[col], ref_cols[col])
+
+
+def test_sym_exec_dates_from_store_is_sorted(data_source_df):
+    """Symbol order must not depend on frozenset (string hash) iteration.
+
+    This mapping's insertion order decides which symbol trades first on each
+    bar when calendars are ragged, so an unsorted walk makes a
+    capital-constrained backtest depend on PYTHONHASHSEED.
+    """
+    store = symbol_array_store_from_frame(data_source_df)
+    result = sym_exec_dates_from_store(store)
+    assert list(result) == sorted(store.symbols)
+
+
+def test_column_scope_from_frame_fetch_parity(data_source_df, symbols):
+    """column_scope_from_frame fetch matches indexed ColumnScope."""
+    from pybroker.scope import ColumnScope
+
+    flat_scope = column_scope_from_frame(data_source_df)
+    indexed_scope = ColumnScope(data_source_df.set_index(["symbol", "date"]))
+    for sym in symbols:
+        for col in ("open", "high", "low", "close", "volume"):
+            flat_vals = flat_scope.fetch(sym, col)
+            indexed_vals = indexed_scope.fetch(sym, col)
+            assert np.array_equal(flat_vals, indexed_vals)
 
 
 def test_get_signals(
@@ -526,3 +667,318 @@ def test_clear_params(scope):
     assert scope._params == {"alpha": 0.1, "beta": 0.2}
     scope.clear_params()
     assert scope._params == {}
+
+
+def test_slice_symbol_array_store_by_dates(data_source_df):
+    store = symbol_array_store_from_frame(data_source_df)
+    sym = "SPY"
+    all_dates = store.sym_arrays[sym]["date"]
+    selected = all_dates[::2]
+    sliced = slice_symbol_array_store_by_dates(store, selected)
+    assert sym in sliced.symbols
+    np.testing.assert_array_equal(
+        sliced.sym_arrays[sym]["date"],
+        selected,
+    )
+    assert len(sliced.sym_arrays[sym]["close"]) == len(selected)
+
+
+def test_slice_symbol_array_store_by_dates_when_empty_selection(
+    data_source_df,
+):
+    store = symbol_array_store_from_frame(data_source_df)
+    sliced = slice_symbol_array_store_by_dates(
+        store, np.array([], dtype="datetime64[ns]")
+    )
+    assert not sliced.symbols
+
+
+def test_slice_symbol_array_store_by_dates_non_contiguous(data_source_df):
+    store = symbol_array_store_from_frame(data_source_df)
+    sym = "SPY"
+    all_dates = store.sym_arrays[sym]["date"]
+    selected = np.sort(all_dates[[0, 2, 5, 9]])
+    sliced = slice_symbol_array_store_by_dates(store, selected)
+    np.testing.assert_array_equal(sliced.sym_arrays[sym]["date"], selected)
+    assert len(sliced.sym_arrays[sym]["close"]) == len(selected)
+
+
+def _symbol_array_store_from_flat_frame_reference(
+    df: pd.DataFrame,
+    sym_col: str = DataCol.SYMBOL.value,
+    date_col: str = DataCol.DATE.value,
+    symbols: frozenset[str] | None = None,
+):
+    """Pre-optimization flat-frame store build for regression tests."""
+    from pybroker.scope import SymbolArrayStore
+    from pybroker.interval import _find_bin_starts_ends
+
+    if df.empty:
+        return SymbolArrayStore(frozenset(), {})
+    sym_values = df[sym_col].astype(str).to_numpy()
+    date_arr = df[date_col].to_numpy(dtype="datetime64[ns]", copy=False)
+    unique_syms, sym_ids = np.unique(sym_values, return_inverse=True)
+    order = np.lexsort((date_arr, sym_ids.astype(np.int64)))
+    sorted_sym_ids = sym_ids[order].astype(np.int64)
+    starts, ends = _find_bin_starts_ends(sorted_sym_ids)
+    sym_arrays: dict[str, dict[str, np.ndarray]] = {}
+    data_cols = [col for col in df.columns if col != sym_col]
+    col_arrays = {col: df[col].to_numpy(copy=True)[order] for col in data_cols}
+    sorted_dates = date_arr[order]
+    for bin_idx in range(len(starts)):
+        sym_key = str(unique_syms[sorted_sym_ids[starts[bin_idx]]])
+        if symbols is not None and sym_key not in symbols:
+            continue
+        start = int(starts[bin_idx])
+        end = int(ends[bin_idx]) + 1
+        sym_arrays[sym_key] = {
+            col: col_arrays[col][start:end] for col in data_cols
+        }
+        if date_col not in sym_arrays[sym_key]:
+            sym_arrays[sym_key][date_col] = np.asarray(
+                sorted_dates[start:end], copy=True
+            )
+    return SymbolArrayStore(frozenset(sym_arrays.keys()), sym_arrays)
+
+
+def _synthetic_flat_ohlcv(n_symbols: int, n_days: int) -> pd.DataFrame:
+    dates = pd.date_range("2020-01-02", periods=n_days, freq="B")
+    frames: list[pd.DataFrame] = []
+    for i in range(n_symbols):
+        sym = f"SYM{i:02d}"
+        close = np.linspace(100.0 + i, 150.0 + i, n_days)
+        frames.append(
+            pd.DataFrame(
+                {
+                    DataCol.SYMBOL.value: [sym] * n_days,
+                    DataCol.DATE.value: dates,
+                    DataCol.OPEN.value: close,
+                    DataCol.HIGH.value: close + 1.0,
+                    DataCol.LOW.value: close - 1.0,
+                    DataCol.CLOSE.value: close,
+                    DataCol.VOLUME.value: np.ones(n_days) * 1_000_000,
+                }
+            )
+        )
+    return pd.concat(frames, ignore_index=True)
+
+
+class TestSymbolArrayStoreNumba:
+    @pytest.mark.parametrize("n_symbols,n_days", [(1, 1), (4, 504), (10, 500)])
+    def test_flat_frame_matches_reference(self, n_symbols, n_days):
+        df = _synthetic_flat_ohlcv(n_symbols, n_days)
+        reference = _symbol_array_store_from_flat_frame_reference(df)
+        built = symbol_array_store_from_flat_frame(df)
+        assert built.symbols == reference.symbols
+        for sym in reference.symbols:
+            for col in reference.sym_arrays[sym]:
+                np.testing.assert_array_equal(
+                    built.sym_arrays[sym][col],
+                    reference.sym_arrays[sym][col],
+                )
+
+    def test_symbols_filter(self):
+        df = _synthetic_flat_ohlcv(4, 100)
+        built = symbol_array_store_from_flat_frame(
+            df, symbols=frozenset({"SYM00"})
+        )
+        assert built.symbols == frozenset({"SYM00"})
+        assert len(built.sym_arrays["SYM00"]["close"]) == 100
+
+    def test_empty_frame(self):
+        df = pd.DataFrame(
+            columns=[
+                DataCol.SYMBOL.value,
+                DataCol.DATE.value,
+                DataCol.CLOSE.value,
+            ]
+        )
+        built = symbol_array_store_from_flat_frame(df)
+        assert not built.symbols
+        assert built.sym_arrays == {}
+
+
+def _slice_symbol_array_store_by_dates_reference(store, selected_dates):
+    """Pre-optimization per-symbol mask slice for regression tests."""
+    from pybroker.scope import SymbolArrayStore, _dates_in_target_mask
+
+    if not store.symbols:
+        return SymbolArrayStore(frozenset(), {})
+    date_col = DataCol.DATE.value
+    target = np.asarray(selected_dates, dtype="datetime64[ns]")
+    if len(target) == 0:
+        return SymbolArrayStore(frozenset(), {})
+    sym_arrays: dict[str, dict[str, np.ndarray]] = {}
+    for sym in store.symbols:
+        sym_data = store.sym_arrays[sym]
+        dates = sym_data.get(date_col)
+        if dates is None or len(dates) == 0:
+            continue
+        mask = _dates_in_target_mask(
+            np.asarray(dates, dtype="datetime64[ns]"), target
+        )
+        if not mask.any():
+            continue
+        sym_arrays[sym] = {col: arr[mask] for col, arr in sym_data.items()}
+    return SymbolArrayStore(frozenset(sym_arrays.keys()), sym_arrays)
+
+
+def _assert_stores_equal(left, right):
+    assert left.symbols == right.symbols
+    for sym in left.symbols:
+        for col in left.sym_arrays[sym]:
+            np.testing.assert_array_equal(
+                left.sym_arrays[sym][col],
+                right.sym_arrays[sym][col],
+            )
+
+
+class TestSliceStoreNumba:
+    @pytest.mark.parametrize(
+        "n_symbols,n_days", [(1, 1), (4, 504), (10, 1260)]
+    )
+    def test_every_other_date_matches_reference(self, n_symbols, n_days):
+        df = _synthetic_flat_ohlcv(n_symbols, n_days)
+        store = symbol_array_store_from_flat_frame(df)
+        sym = "SYM00"
+        selected = store.sym_arrays[sym]["date"][::2]
+        reference = _slice_symbol_array_store_by_dates_reference(
+            store, selected
+        )
+        sliced = slice_symbol_array_store_by_dates(store, selected)
+        _assert_stores_equal(reference, sliced)
+
+    @pytest.mark.parametrize("n_symbols,n_days", [(4, 504), (10, 1260)])
+    def test_scattered_dates_matches_reference(self, n_symbols, n_days):
+        df = _synthetic_flat_ohlcv(n_symbols, n_days)
+        store = symbol_array_store_from_flat_frame(df)
+        sym = "SYM00"
+        all_dates = store.sym_arrays[sym]["date"]
+        selected = np.sort(all_dates[[0, 2, 5, 9, 50, 100, 200]])
+        reference = _slice_symbol_array_store_by_dates_reference(
+            store, selected
+        )
+        sliced = slice_symbol_array_store_by_dates(store, selected)
+        _assert_stores_equal(reference, sliced)
+
+    @pytest.mark.parametrize("window", [63, 126, 252])
+    def test_contiguous_window_blocks_match_reference(self, window):
+        n_days = 1260
+        df = _synthetic_flat_ohlcv(10, n_days)
+        store = symbol_array_store_from_flat_frame(df)
+        sym = "SYM00"
+        all_dates = store.sym_arrays[sym]["date"]
+        for start in (0, 252, 504, 756):
+            selected = all_dates[start : start + window]
+            reference = _slice_symbol_array_store_by_dates_reference(
+                store, selected
+            )
+            sliced = slice_symbol_array_store_by_dates(store, selected)
+            _assert_stores_equal(reference, sliced)
+
+    def test_unsorted_target_fallback_matches_reference(self):
+        df = _synthetic_flat_ohlcv(4, 200)
+        store = symbol_array_store_from_flat_frame(df)
+        sym = "SYM00"
+        all_dates = store.sym_arrays[sym]["date"]
+        selected = all_dates[[10, 3, 7, 1, 15]]
+        reference = _slice_symbol_array_store_by_dates_reference(
+            store, selected
+        )
+        sliced = slice_symbol_array_store_by_dates(store, selected)
+        _assert_stores_equal(reference, sliced)
+
+    def test_empty_target(self):
+        df = _synthetic_flat_ohlcv(2, 50)
+        store = symbol_array_store_from_flat_frame(df)
+        sliced = slice_symbol_array_store_by_dates(
+            store, np.array([], dtype="datetime64[ns]")
+        )
+        assert not sliced.symbols
+
+    def test_single_date_single_symbol(self):
+        df = _synthetic_flat_ohlcv(1, 30)
+        store = symbol_array_store_from_flat_frame(df)
+        selected = store.sym_arrays["SYM00"]["date"][[5]]
+        reference = _slice_symbol_array_store_by_dates_reference(
+            store, selected
+        )
+        sliced = slice_symbol_array_store_by_dates(store, selected)
+        _assert_stores_equal(reference, sliced)
+        assert len(sliced.sym_arrays["SYM00"]["close"]) == 1
+
+
+def test_resolve_lag_cols_when_loader_has_no_recorded_columns(scope):
+    """A pretrained loader has no training pass to record lag columns, so its
+    default must be resolved the way a trainer's is -- data columns only --
+    rather than from whatever load_fn happened to return."""
+    from pybroker.common import TrainedModel
+    from pybroker.model import _lag_feature_cols
+    from pybroker.scope import _resolve_lag_cols
+
+    class _Source:
+        lags = 2
+        pooled = False
+        indicators = ("myind",)
+        lag_cols = ()
+
+    class _Input(dict):
+        @property
+        def columns(self):
+            return tuple(self.keys())
+
+    model_input = _Input(
+        {
+            "date": None,
+            "open": None,
+            "high": None,
+            "low": None,
+            "close": None,
+            "volume": None,
+            "myind": None,
+        }
+    )
+    trained = TrainedModel(
+        name="pre",
+        instance=None,
+        predict_fn=None,
+        input_cols=None,
+        per_bar=False,
+        lag_columns=None,
+    )
+    expected = _lag_feature_cols(
+        model_input, pooled=False, indicators=("myind",)
+    )
+    assert (
+        _resolve_lag_cols(_Source(), trained, "pre", model_input) == expected
+    )
+    assert "myind" not in expected
+
+
+def test_resolve_lag_cols_rejects_all_indicator_input_cols(scope):
+    """An empty resolution must raise, never build a zero-width matrix.
+
+    An empty tuple is not None, so every ``if lag_cols is not None:`` consumer
+    passes it through and hands the estimator a feature matrix of width 0 --
+    a silently different shape than the model was fitted on. A loader whose
+    recorded input columns are all indicators reaches exactly this.
+    """
+    from pybroker.common import TrainedModel
+    from pybroker.scope import _resolve_lag_cols
+
+    class _Source:
+        lags = 2
+        pooled = False
+        indicators = ("myind", "otherind")
+        lag_cols = ()
+
+    trained = TrainedModel(
+        name="pre",
+        instance=None,
+        predict_fn=None,
+        input_cols=("myind", "otherind"),
+        per_bar=False,
+        lag_columns=None,
+    )
+    with pytest.raises(ValueError, match="lag_cols"):
+        _resolve_lag_cols(_Source(), trained, "pre")

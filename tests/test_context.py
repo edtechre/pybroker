@@ -16,10 +16,8 @@ from pybroker.common import PriceType, StopType, to_datetime
 from pybroker.config import StrategyConfig
 from pybroker.context import (
     ExecContext,
-    ExecResult,
-    PosSizeContext,
+    IntervalContext,
     set_exec_ctx_data,
-    set_pos_size_ctx_data,
 )
 from pybroker.portfolio import Order, Portfolio, Position, Trade
 
@@ -67,6 +65,7 @@ def orders(dates, symbols):
             intent="buy_to_open",
             shares=Decimal(200),
             limit_price=None,
+            market_price=Decimal(10),
             fill_price=Decimal(10),
             fees=Decimal(0),
         ),
@@ -80,6 +79,7 @@ def orders(dates, symbols):
             intent="sell_to_open",
             shares=Decimal(100),
             limit_price=Decimal(100),
+            market_price=Decimal("101.1"),
             fill_price=Decimal("101.1"),
             fees=Decimal(0),
         ),
@@ -112,6 +112,8 @@ def trades(dates, symbols):
 def ctx(
     col_scope,
     ind_scope,
+    interval_scope,
+    declared_intervals,
     input_scope,
     pred_scope,
     pending_order_scope,
@@ -128,6 +130,8 @@ def ctx(
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
+        interval_scope=interval_scope,
+        declared_intervals=declared_intervals,
         input_scope=input_scope,
         pred_scope=pred_scope,
         pending_order_scope=pending_order_scope,
@@ -143,6 +147,8 @@ def ctx(
 def ctx_with_pos(
     col_scope,
     ind_scope,
+    interval_scope,
+    declared_intervals,
     input_scope,
     pred_scope,
     pending_order_scope,
@@ -166,6 +172,8 @@ def ctx_with_pos(
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
+        interval_scope=interval_scope,
+        declared_intervals=declared_intervals,
         input_scope=input_scope,
         pred_scope=pred_scope,
         pending_order_scope=pending_order_scope,
@@ -181,6 +189,8 @@ def ctx_with_pos(
 def ctx_with_orders(
     col_scope,
     ind_scope,
+    interval_scope,
+    declared_intervals,
     input_scope,
     pred_scope,
     pending_order_scope,
@@ -195,14 +205,15 @@ def ctx_with_orders(
 ):
     portfolio.orders = deque(orders)
     portfolio.trades = deque(trades)
-    portfolio.win_rate = 1
-    portfolio.lose_rate = 0
+    portfolio._wins = Decimal(len(portfolio.trades))
     ctx = ExecContext(
         symbol=symbol,
         config=StrategyConfig(max_long_positions=5),
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
+        interval_scope=interval_scope,
+        declared_intervals=declared_intervals,
         input_scope=input_scope,
         pred_scope=pred_scope,
         pending_order_scope=pending_order_scope,
@@ -262,6 +273,10 @@ def test_portfolio_field(ctx, portfolio, field, port_field):
     assert getattr(ctx, field) == getattr(portfolio, port_field)
 
 
+def test_buying_power(ctx, portfolio):
+    assert ctx.buying_power == portfolio._available_buying_power()
+
+
 def test_sell_all_shares(ctx_with_pos):
     ctx_with_pos.sell_all_shares()
     assert ctx_with_pos.sell_shares == 200
@@ -306,6 +321,23 @@ def test_model_when_not_found_then_error(ctx, symbol):
 
 def test_indicator(ctx, end_index):
     assert len(ctx.indicator("hhv")) == end_index
+
+
+def test_interval_when_not_declared_then_error(ctx):
+    with pytest.raises(
+        ValueError, match=re.escape("add_execution(..., intervals=[...])")
+    ):
+        ctx.interval("weekly")
+
+
+def test_interval_context_read_only(
+    interval_scope, trained_models, sym_end_index
+):
+    interval_ctx = IntervalContext(
+        "SPY", "weekly", interval_scope, sym_end_index, trained_models
+    )
+    with pytest.raises(AttributeError, match="read-only"):
+        interval_ctx.buy_shares = 100
 
 
 def test_indicator_when_not_found_then_error(ctx, symbol):
@@ -453,6 +485,23 @@ def test_foreign_with_empty_col(
     verify_bar_data(ctx.foreign(foreign))
 
 
+def test_foreign_col_after_bar_data(ctx, foreign, data_source_df, end_index):
+    ctx.foreign(foreign)
+    df = data_source_df[data_source_df["symbol"] == foreign]
+    close = ctx.foreign(foreign, "close")
+    assert (close == df["close"].values[:end_index]).all()
+
+
+def test_scalar_prices(ctx, data_source_df, symbol, end_index):
+    df = data_source_df[data_source_df["symbol"] == symbol]
+    assert ctx.open_price == df["open"].values[end_index - 1]
+    assert ctx.high_price == df["high"].values[end_index - 1]
+    assert ctx.low_price == df["low"].values[end_index - 1]
+    assert ctx.close_price == df["close"].values[end_index - 1]
+    assert ctx.close_price == ctx.close[-1]
+    assert ctx.volume_value == df["volume"].values[end_index - 1]
+
+
 def test_long_positions(ctx_with_pos, symbol):
     positions = tuple(ctx_with_pos.long_positions(symbol))
     assert len(positions) == 1
@@ -473,6 +522,33 @@ def test_short_positions_when_empty(ctx, symbol):
     assert not len(tuple(ctx.short_positions(symbol)))
 
 
+def test_has_long_positions_when_empty(ctx):
+    assert not ctx.has_long_positions()
+
+
+def test_has_short_positions_when_empty(ctx):
+    assert not ctx.has_short_positions()
+
+
+def test_has_long_and_short_positions(ctx_with_pos):
+    assert ctx_with_pos.has_long_positions()
+    assert ctx_with_pos.has_short_positions()
+
+
+def test_has_long_positions_when_long_only(ctx, portfolio, symbol):
+    portfolio.long_positions = {symbol: Position(symbol, 200, "long")}
+    portfolio.short_positions = {}
+    assert ctx.has_long_positions()
+    assert not ctx.has_short_positions()
+
+
+def test_has_short_positions_when_short_only(ctx, portfolio, symbol):
+    portfolio.long_positions = {}
+    portfolio.short_positions = {symbol: Position(symbol, 100, "short")}
+    assert not ctx.has_long_positions()
+    assert ctx.has_short_positions()
+
+
 def test_calc_target_shares(ctx):
     assert ctx.calc_target_shares(0.5, 33.50) == 50_000 // 33.5
 
@@ -480,6 +556,8 @@ def test_calc_target_shares(ctx):
 def test_calc_target_shares_when_enable_fractional_shares(
     col_scope,
     ind_scope,
+    interval_scope,
+    declared_intervals,
     input_scope,
     pred_scope,
     pending_order_scope,
@@ -495,6 +573,8 @@ def test_calc_target_shares_when_enable_fractional_shares(
         portfolio=portfolio,
         col_scope=col_scope,
         ind_scope=ind_scope,
+        interval_scope=interval_scope,
+        declared_intervals=declared_intervals,
         input_scope=input_scope,
         pred_scope=pred_scope,
         pending_order_scope=pending_order_scope,
@@ -515,13 +595,202 @@ def test_calc_target_shares_when_negative_then_zero(ctx):
     assert ctx.calc_target_shares(1, 20, -2_000) == 0
 
 
+def test_calc_target_shares_when_leverage_2(
+    col_scope,
+    ind_scope,
+    interval_scope,
+    declared_intervals,
+    input_scope,
+    pred_scope,
+    pending_order_scope,
+    trained_models,
+    sym_end_index,
+    session,
+    symbol,
+    date,
+):
+    portfolio = Portfolio(100_000, leverage=2.0)
+    leveraged_ctx = ExecContext(
+        symbol=symbol,
+        config=StrategyConfig(leverage=2.0),
+        portfolio=portfolio,
+        col_scope=col_scope,
+        ind_scope=ind_scope,
+        interval_scope=interval_scope,
+        declared_intervals=declared_intervals,
+        input_scope=input_scope,
+        pred_scope=pred_scope,
+        pending_order_scope=pending_order_scope,
+        models=trained_models,
+        sym_end_index=sym_end_index,
+        session=session,
+    )
+    set_exec_ctx_data(leveraged_ctx, date)
+    cash_ctx = ExecContext(
+        symbol=symbol,
+        config=StrategyConfig(),
+        portfolio=Portfolio(100_000),
+        col_scope=col_scope,
+        ind_scope=ind_scope,
+        interval_scope=interval_scope,
+        declared_intervals=declared_intervals,
+        input_scope=input_scope,
+        pred_scope=pred_scope,
+        pending_order_scope=pending_order_scope,
+        models=trained_models,
+        sym_end_index=sym_end_index,
+        session=session,
+    )
+    set_exec_ctx_data(cash_ctx, date)
+    price = 33.50
+    leveraged_shares = leveraged_ctx.calc_target_shares(1.0, price)
+    cash_shares = cash_ctx.calc_target_shares(1.0, price)
+    assert leveraged_shares == 2 * cash_shares
+
+
+def test_calc_target_shares_when_leverage_1_unchanged(ctx):
+    assert ctx.calc_target_shares(0.5, 33.50) == 50_000 // 33.5
+
+
+def test_set_target_shares_when_short_leverage_2(
+    col_scope,
+    ind_scope,
+    interval_scope,
+    declared_intervals,
+    input_scope,
+    pred_scope,
+    pending_order_scope,
+    trained_models,
+    sym_end_index,
+    session,
+    symbol,
+    date,
+):
+    portfolio = Portfolio(100_000, leverage=2.0)
+    ctx = ExecContext(
+        symbol=symbol,
+        config=StrategyConfig(leverage=2.0),
+        portfolio=portfolio,
+        col_scope=col_scope,
+        ind_scope=ind_scope,
+        interval_scope=interval_scope,
+        declared_intervals=declared_intervals,
+        input_scope=input_scope,
+        pred_scope=pred_scope,
+        pending_order_scope=pending_order_scope,
+        models=trained_models,
+        sym_end_index=sym_end_index,
+        session=session,
+    )
+    set_exec_ctx_data(ctx, date)
+    ctx.set_target_shares(1.0, dir="short")
+    assert ctx.sell_shares == ctx.calc_target_shares(1.0)
+    assert ctx.cover_shares is None
+
+
+def test_set_target_shares_when_no_position(ctx):
+    target = 0.5
+    ctx.set_target_shares(target, dir="long")
+    assert ctx.buy_shares == ctx.calc_target_shares(target)
+    assert ctx.sell_shares is None
+
+
+def test_set_target_shares_when_underweight(ctx, symbol, portfolio):
+    target = 0.2
+    target_shares = ctx.calc_target_shares(target)
+    portfolio.long_positions = {
+        symbol: Position(symbol, target_shares - 100, "long")
+    }
+    ctx.set_target_shares(target, dir="long")
+    assert ctx.buy_shares == 100
+    assert ctx.sell_shares is None
+
+
+def test_set_target_shares_when_overweight(ctx, symbol, portfolio):
+    target = 0.2
+    target_shares = ctx.calc_target_shares(target)
+    portfolio.long_positions = {
+        symbol: Position(symbol, target_shares + 100, "long")
+    }
+    ctx.set_target_shares(target, dir="long")
+    assert ctx.sell_shares == 100
+    assert ctx.buy_shares is None
+
+
+def test_set_target_shares_when_at_target(ctx, symbol, portfolio):
+    target = 0.2
+    target_shares = ctx.calc_target_shares(target)
+    portfolio.long_positions = {
+        symbol: Position(symbol, target_shares, "long")
+    }
+    ctx.set_target_shares(target, dir="long")
+    assert ctx.buy_shares is None
+    assert ctx.sell_shares is None
+
+
+def test_set_target_shares_when_negative_then_error(ctx):
+    with pytest.raises(
+        ValueError, match=re.escape("target cannot be negative.")
+    ):
+        ctx.set_target_shares(-0.1, dir="long")
+
+
+def test_set_target_shares_when_zero(ctx, symbol, portfolio):
+    portfolio.long_positions = {symbol: Position(symbol, 500, "long")}
+    ctx.set_target_shares(0, dir="long")
+    assert ctx.sell_shares == 500
+    assert ctx.buy_shares is None
+
+
+def test_set_target_shares_when_invalid_dir_then_error(ctx):
+    with pytest.raises(
+        ValueError, match=re.escape('dir must be "long" or "short".')
+    ):
+        ctx.set_target_shares(0.5, dir="invalid")  # type: ignore[arg-type]
+
+
+def test_set_target_shares_when_short_no_position(ctx):
+    target = 0.5
+    ctx.set_target_shares(target, dir="short")
+    assert ctx.sell_shares == ctx.calc_target_shares(target)
+    assert ctx.cover_shares is None
+
+
+def test_set_target_shares_when_short_underweight(ctx, symbol, portfolio):
+    target = 0.2
+    target_shares = ctx.calc_target_shares(target)
+    portfolio.short_positions = {
+        symbol: Position(symbol, target_shares - 100, "short")
+    }
+    ctx.set_target_shares(target, dir="short")
+    assert ctx.sell_shares == 100
+    assert ctx.cover_shares is None
+
+
+def test_set_target_shares_when_short_overweight(ctx, symbol, portfolio):
+    target = 0.2
+    target_shares = ctx.calc_target_shares(target)
+    portfolio.short_positions = {
+        symbol: Position(symbol, target_shares + 100, "short")
+    }
+    ctx.set_target_shares(target, dir="short")
+    assert ctx.cover_shares == 100
+    assert ctx.sell_shares is None
+
+
+def test_buying_power_when_short_position(ctx, symbol, portfolio, date):
+    portfolio.sell(date, symbol, Decimal(500), Decimal(100))
+    assert ctx.buying_power == portfolio._available_buying_power()
+    assert ctx.buying_power < Decimal(100_000)
+
+
 def test_to_result_when_buy(ctx, symbol, date):
     ctx.buy_fill_price = PriceType.AVERAGE
     ctx.sell_fill_price = PriceType.HIGH
     ctx.buy_shares = 20
     ctx.buy_limit_price = 99.99
     ctx.hold_bars = 2
-    ctx.score = 7
+    ctx.long_score = 7
     result = ctx.to_result()
     assert result.symbol == symbol
     assert result.date == date
@@ -529,7 +798,7 @@ def test_to_result_when_buy(ctx, symbol, date):
     assert result.buy_shares == 20
     assert result.buy_limit_price == Decimal("99.99")
     assert result.hold_bars == 2
-    assert result.score == 7
+    assert result.long_score == 7
     assert len(result.long_stops) == 1
     assert result.short_stops is None
     stop = next(iter(result.long_stops))
@@ -549,7 +818,7 @@ def test_to_result_when_sell(ctx, symbol, date):
     ctx.sell_shares = 20
     ctx.sell_limit_price = 110.11
     ctx.hold_bars = 2
-    ctx.score = 7
+    ctx.short_score = 7
     result = ctx.to_result()
     assert result.symbol == symbol
     assert result.date == date
@@ -557,7 +826,7 @@ def test_to_result_when_sell(ctx, symbol, date):
     assert result.sell_shares == 20
     assert result.sell_limit_price == Decimal("110.11")
     assert result.hold_bars == 2
-    assert result.score == 7
+    assert result.short_score == 7
     assert len(result.short_stops) == 1
     assert result.long_stops is None
     stop = next(iter(result.short_stops))
@@ -579,6 +848,73 @@ def test_to_result_when_buy_shares_and_sell_shares_then_error(ctx):
         match=re.escape(
             "For each symbol, only one of buy_shares or sell_shares can be "
             "set per bar."
+        ),
+    ):
+        ctx.to_result()
+
+
+def test_to_result_when_buy_long_score(ctx, symbol, date):
+    ctx.buy_fill_price = PriceType.AVERAGE
+    ctx.buy_shares = 20
+    ctx.long_score = 7
+    result = ctx.to_result()
+    assert result.long_score == 7
+    assert result.short_score is None
+    assert result.score is None
+
+
+def test_to_result_when_sell_short_score(ctx, symbol, date):
+    ctx.sell_fill_price = PriceType.HIGH
+    ctx.sell_shares = 20
+    ctx.short_score = 3
+    result = ctx.to_result()
+    assert result.short_score == 3
+    assert result.long_score is None
+    assert result.score is None
+
+
+@pytest.mark.parametrize(
+    "extra_attr, extra_value",
+    [
+        ("long_score", 1),
+        ("short_score", 1),
+    ],
+)
+def test_to_result_when_score_and_side_score_then_error(
+    ctx, extra_attr, extra_value
+):
+    ctx.buy_shares = 100
+    ctx.score = 5
+    setattr(ctx, extra_attr, extra_value)
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "score cannot be set when long_score or short_score is set."
+        ),
+    ):
+        ctx.to_result()
+
+
+def test_score_deprecated(ctx):
+    with pytest.warns(
+        DeprecationWarning, match="ExecContext.score is deprecated"
+    ):
+        ctx.score = 7
+    assert ctx.score == 7
+    ctx.buy_shares = 100
+    result = ctx.to_result()
+    assert result.score == 7
+
+
+def test_to_result_when_rotation_enabled_and_score_then_error(ctx):
+    ctx.rotation_enabled = True
+    ctx.score = 5
+    ctx.buy_shares = 100
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "score cannot be used with rotation enabled; use long_score or "
+            "short_score instead."
         ),
     ):
         ctx.to_result()
@@ -865,16 +1201,20 @@ def test_set_exec_ctx_data(ctx, sym_end_index):
     ctx.sell_shares = 200
     ctx.sell_limit_price = 80
     ctx.hold_bars = 5
-    ctx.score = 45.5
+    ctx.long_score = 10.0
+    ctx.short_score = 5.0
     ctx.stop_loss = 10
     ctx.stop_loss_pct = 20
     ctx.stop_loss_limit = 99
+    ctx.stop_loss_exit_price = PriceType.CLOSE
     ctx.stop_profit = 20
     ctx.stop_profit_pct = 30
     ctx.stop_profit_limit = 99.99
+    ctx.stop_profit_exit_price = PriceType.LOW
     ctx.stop_trailing = 100
     ctx.stop_trailing_pct = 15
     ctx.stop_trailing_limit = 80.8
+    ctx.stop_trailing_exit_price = PriceType.HIGH
     set_exec_ctx_data(ctx, date)
     assert ctx.dt == to_datetime(date)
     assert ctx.bars == sym_end_index[ctx.symbol]
@@ -889,119 +1229,68 @@ def test_set_exec_ctx_data(ctx, sym_end_index):
     assert ctx.sell_limit_price is None
     assert ctx.hold_bars is None
     assert ctx.score is None
+    assert ctx.long_score is None
+    assert ctx.short_score is None
     assert ctx.stop_loss is None
     assert ctx.stop_loss_pct is None
     assert ctx.stop_loss_limit is None
+    assert ctx.stop_loss_exit_price is None
     assert ctx.stop_profit is None
     assert ctx.stop_profit_pct is None
     assert ctx.stop_profit_limit is None
+    assert ctx.stop_profit_exit_price is None
     assert ctx.stop_trailing is None
     assert ctx.stop_trailing_pct is None
     assert ctx.stop_trailing_limit is None
+    assert ctx.stop_trailing_exit_price is None
 
 
-def test_set_pos_ctx_data(
-    date,
-    portfolio,
-    col_scope,
-    ind_scope,
-    input_scope,
-    pred_scope,
-    pending_order_scope,
-    trained_models,
-    sym_end_index,
-):
-    buy_results = [
-        ExecResult(
-            symbol="SPY",
-            date=date,
-            buy_shares=100,
-            buy_fill_price=99,
-            buy_limit_price=99,
-            sell_shares=None,
-            sell_fill_price=None,
-            sell_limit_price=None,
-            hold_bars=None,
-            score=1,
-            long_stops=None,
-            short_stops=None,
+def test_to_result_buy_timeout_bars(ctx, symbol, date):
+    ctx.buy_shares = 100
+    ctx.buy_limit_price = 50
+    ctx.buy_timeout_bars = 10
+    result = ctx.to_result()
+    assert result.buy_timeout_bars == 10
+    assert result.sell_timeout_bars is None
+
+
+def test_to_result_sell_timeout_bars(ctx, symbol, date):
+    ctx.sell_shares = 200
+    ctx.sell_limit_price = 60
+    ctx.sell_timeout_bars = -1
+    result = ctx.to_result()
+    assert result.sell_timeout_bars == -1
+    assert result.buy_timeout_bars is None
+
+
+def test_timeout_bars_reset_each_bar(ctx):
+    ctx.buy_shares = 100
+    ctx.buy_timeout_bars = 5
+    ctx.to_result()
+    set_exec_ctx_data(ctx, ctx._curr_date)
+    assert ctx.buy_timeout_bars is None
+    assert ctx.sell_timeout_bars is None
+
+
+@pytest.mark.parametrize(
+    "attr, value",
+    [
+        ("stop_loss_exit_price", PriceType.LOW),
+        ("stop_profit_exit_price", PriceType.HIGH),
+        ("stop_trailing_exit_price", PriceType.LOW),
+    ],
+)
+def test_to_result_when_stop_attr_without_shares_then_error(ctx, attr, value):
+    # These used to fall through the guard and be silently discarded, unlike
+    # every other stop attribute.
+    setattr(ctx, attr, value)
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "Either buy_shares or sell_shares must be set when a stop is set."
         ),
-        ExecResult(
-            symbol="AAPL",
-            date=date,
-            buy_shares=200,
-            buy_fill_price=90,
-            buy_limit_price=90,
-            sell_shares=None,
-            sell_fill_price=None,
-            sell_limit_price=None,
-            hold_bars=None,
-            score=2,
-            long_stops=None,
-            short_stops=None,
-        ),
-    ]
-    sell_results = [
-        ExecResult(
-            symbol="TSLA",
-            date=date,
-            buy_shares=None,
-            buy_fill_price=None,
-            buy_limit_price=None,
-            sell_shares=100,
-            sell_fill_price=80,
-            sell_limit_price=80,
-            hold_bars=None,
-            score=1,
-            long_stops=None,
-            short_stops=None,
-        ),
-    ]
-    sessions = {"SPY": {}, "AAPL": {}, "TSLA": {"foo": 1}}
-    ctx = PosSizeContext(
-        StrategyConfig(max_long_positions=1),
-        portfolio,
-        col_scope,
-        ind_scope,
-        input_scope,
-        pred_scope,
-        pending_order_scope,
-        trained_models,
-        sessions,
-        sym_end_index,
-    )
-    set_pos_size_ctx_data(ctx, buy_results, sell_results)
-    assert ctx.sessions == sessions
-    buy_signals = list(ctx.signals("buy"))
-    assert len(buy_signals) == 1
-    assert buy_signals[0].id == 0
-    assert buy_signals[0].symbol == "SPY"
-    assert buy_signals[0].shares == 100
-    assert buy_signals[0].score == 1
-    assert buy_signals[0].type == "buy"
-    assert buy_signals[0].bar_data is not None
-    sell_signals = list(ctx.signals("sell"))
-    assert len(sell_signals) == 1
-    assert sell_signals[0].id == 2
-    assert sell_signals[0].symbol == "TSLA"
-    assert sell_signals[0].shares == 100
-    assert sell_signals[0].score == 1
-    assert sell_signals[0].type == "sell"
-    assert sell_signals[0].bar_data is not None
-    all_signals = list(ctx.signals())
-    assert len(all_signals) == 2
-    assert all_signals[0].id == buy_signals[0].id
-    assert all_signals[0].symbol == buy_signals[0].symbol
-    assert all_signals[0].shares == buy_signals[0].shares
-    assert all_signals[0].score == buy_signals[0].score
-    assert all_signals[0].type == buy_signals[0].type
-    assert all_signals[0].bar_data is not None
-    assert all_signals[1].id == sell_signals[0].id
-    assert all_signals[1].symbol == sell_signals[0].symbol
-    assert all_signals[1].shares == sell_signals[0].shares
-    assert all_signals[1].score == sell_signals[0].score
-    assert all_signals[1].type == sell_signals[0].type
-    assert all_signals[1].bar_data is not None
+    ):
+        ctx.to_result()
 
 
 def test_cancel_pending_order(ctx, pending_orders):

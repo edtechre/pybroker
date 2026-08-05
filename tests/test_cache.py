@@ -210,3 +210,54 @@ def test_l1_cache_lru_evicts_oldest(scope, cache_dir):
         assert cache.get("a") == 1
         disk_get.assert_called_once()
     cache.close()
+
+
+@pytest.mark.usefixtures("setup_teardown")
+def test_l1_cache_reads_legacy_repr_key(scope, cache_dir):
+    from datetime import datetime
+
+    from pybroker.cache import IndicatorCacheKey, _L1Cache
+
+    cache = _L1Cache(
+        directory=str(cache_dir / "legacy") if cache_dir else None
+    )
+    key = IndicatorCacheKey(
+        symbol="AAPL",
+        tf_seconds=86400,
+        start_date=datetime(2020, 1, 1),
+        end_date=datetime(2022, 1, 1),
+        between_time=None,
+        days=None,
+        ind_name="hhv20",
+    )
+    cache._l1.clear()
+    super(_L1Cache, cache).set(repr(key), "legacy_value")
+    assert cache.get(key) == "legacy_value"
+    with mock.patch("diskcache.Cache.get") as disk_get:
+        assert cache.get(key) == "legacy_value"
+        disk_get.assert_not_called()
+    cache.close()
+
+
+@pytest.mark.usefixtures("setup_teardown")
+def test_l1_cache_delete_evicts_legacy_key(scope, cache_dir):
+    from datetime import datetime
+
+    from pybroker.cache import IndicatorCacheKey, _L1Cache
+
+    cache = _L1Cache(
+        directory=str(cache_dir / "legacy_del") if cache_dir else None
+    )
+    key = IndicatorCacheKey(
+        symbol="AAPL",
+        tf_seconds=86400,
+        start_date=datetime(2020, 1, 1),
+        end_date=datetime(2022, 1, 1),
+        between_time=None,
+        days=None,
+        ind_name="hhv20",
+    )
+    cache.set(key, "value")
+    cache.delete(key)
+    assert cache.get(key) is None
+    cache.close()

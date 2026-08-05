@@ -39,12 +39,16 @@ class StrategyConfig:
             - ``DEFAULT``: Long and short positions.
             - ``LONG_ONLY``: Long-only positions.
             - ``SHORT_ONLY``: Short-only positions.
-        max_long_positions: Maximum number of long positions that can be held
-            at any time in :class:`pybroker.portfolio.Portfolio`. Unlimited
-            when ``None``. Defaults to ``None``.
-        max_short_positions: Maximum number of short positions that can be
-            held at any time in :class:`pybroker.portfolio.Portfolio`.
-            Unlimited when ``None``. Defaults to ``None``.
+        max_long_positions: Deprecated. Use
+            :meth:`pybroker.strategy.Strategy.set_max_long_positions`.
+            Maximum number of long positions that can be held at any time in
+            :class:`pybroker.portfolio.Portfolio`. Unlimited when ``None``.
+            Defaults to ``None``.
+        max_short_positions: Deprecated. Use
+            :meth:`pybroker.strategy.Strategy.set_max_short_positions`.
+            Maximum number of short positions that can be held at any time in
+            :class:`pybroker.portfolio.Portfolio`. Unlimited when ``None``.
+            Defaults to ``None``.
         buy_delay: Number of bars before placing an order for a buy signal. The
             default value of ``1`` places a buy order on the next bar. Must be
             > ``0``.
@@ -53,8 +57,6 @@ class StrategyConfig:
             Must be > ``0``.
         bootstrap_samples: Number of samples used to compute boostrap metrics.
             Defaults to ``10_000``.
-        bootstrap_sample_size: Size of each random sample used to compute
-            bootstrap metrics. Defaults to ``1_000``.
         exit_on_last_bar: Whether to automatically exit any open positions
             on the last bar of data available for a symbol. Defaults to
             ``False``.
@@ -66,7 +68,9 @@ class StrategyConfig:
             :attr:`pybroker.common.PriceType.MIDDLE`.
         bars_per_year: Number of observations per year that will be used to
             annualize evaluation metrics. For example, a value of ``252`` would
-            be used to annualize the Sharpe Ratio for daily returns.
+            be used to annualize the Sharpe Ratio for daily returns. Also sets
+            the accrual period for :attr:`.interest_rate`, and is therefore
+            required when ``interest_rate`` is set.
         return_signals: When ``True``, then bar data, indicator data, and model
             predictions are returned with
             :class:`pybroker.strategy.TestResult`. Defaults to ``False``.
@@ -75,6 +79,26 @@ class StrategyConfig:
         round_test_result: When ``True``, round values in
             :class:`pybroker.strategy.TestResult` up to the nearest cent.
             Defaults to ``True``.
+        leverage: Account leverage multiplier for buying power on long and
+            short positions. Default ``1.0`` uses cash-only buying.
+            ``2.0`` allows positions up to 2x equity. Must be ``>= 1.0``.
+        interest_rate: Annual interest rate, in percent, applied to net cash
+            balance (``cash - margin_loan``). Charges interest when net cash
+            is negative and credits interest when net cash is positive.
+            Accrues once per bar at ``interest_rate / bars_per_year``, so
+            :attr:`.bars_per_year` is required when this is set.
+            Defaults to ``0`` (disabled).
+        record_portfolio_bars: When ``True``, append full
+            :class:`pybroker.portfolio.PortfolioBar` snapshots to
+            :attr:`pybroker.portfolio.Portfolio.bars` on every bar. When
+            ``False`` (default), per-bar metrics are stored in a compact
+            buffer used for :class:`pybroker.strategy.TestResult` and
+            :class:`pybroker.eval.EvalMetrics`.
+        record_position_bars: When ``True``, append full
+            :class:`pybroker.portfolio.PositionBar` snapshots to
+            :attr:`pybroker.portfolio.Portfolio.position_bars` on every bar.
+            When ``False`` (default), :attr:`pybroker.strategy.TestResult.positions`
+            is empty.
     """
 
     initial_cash: float = field(default=100_000)
@@ -90,7 +114,6 @@ class StrategyConfig:
     buy_delay: int = field(default=1)
     sell_delay: int = field(default=1)
     bootstrap_samples: int = field(default=10_000)
-    bootstrap_sample_size: int = field(default=1_000)
     exit_on_last_bar: bool = field(default=False)
     exit_cover_fill_price: Union[
         PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
@@ -102,3 +125,7 @@ class StrategyConfig:
     return_signals: bool = field(default=False)
     return_stops: bool = field(default=False)
     round_test_result: bool = field(default=True)
+    leverage: float = field(default=1.0)
+    interest_rate: float = field(default=0.0)
+    record_portfolio_bars: bool = field(default=False)
+    record_position_bars: bool = field(default=False)

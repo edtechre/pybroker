@@ -6,6 +6,7 @@ pybroker.strategy module
    :undoc-members:
    :show-inheritance:
    :exclude-members: fn, id, indicator_names, model_names, symbols, end_date,
-      orders, portfolio_bars, position_bars, start_date, test_data, train_data,
-      bootstrap, metrics, metrics_df, portfolio, positions, trades, signals,
-      stops, args, kwargs
+      orders, start_date, test_data, train_data, bootstrap, metrics,
+      metrics_df, portfolio, positions, trades, signals, stops, intervals,
+      hyperparam_names, args, kwargs, max_long_positions, max_short_positions,
+      worst_rank_held

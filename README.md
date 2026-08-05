@@ -33,7 +33,7 @@ take your trading to the next level!
 
 ## Installation
 
-PyBroker supports Python 3.10+ on Windows, Mac, and Linux. You can install
+PyBroker supports Python 3.11+ on Windows, Mac, and Linux. You can install
 PyBroker using ``pip``:
 
 ```bash
@@ -80,7 +80,7 @@ snippets:
    import pybroker
    from pybroker import Alpaca, Strategy
 
-   def train_fn(train_data, test_data, ticker):
+   def train_fn(symbol, train_data, test_data):
       # Train the model using indicators stored in train_data.
       ...
       return trained_model
@@ -109,7 +109,7 @@ snippets:
 - [Getting Started with Data Sources](https://www.pybroker.com/en/latest/notebooks/1.%20Getting%20Started%20with%20Data%20Sources.html)
 - [Backtesting a Strategy](https://www.pybroker.com/en/latest/notebooks/2.%20Backtesting%20a%20Strategy.html)
 - [Evaluating with Bootstrap Metrics](https://www.pybroker.com/en/latest/notebooks/3.%20Evaluating%20with%20Bootstrap%20Metrics.html)
-- [Ranking and Position Sizing](https://www.pybroker.com/en/latest/notebooks/4.%20Ranking%20and%20Position%20Sizing.html)
+- [Ranking Long and Short Signals](https://www.pybroker.com/en/latest/notebooks/4.%20Ranking%20Long%20and%20Short%20Signals.html)
 - [Writing Indicators](https://www.pybroker.com/en/latest/notebooks/5.%20Writing%20Indicators.html)
 - [Training a Model](https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html)
 - [Creating a Custom Data Source](https://www.pybroker.com/en/latest/notebooks/7.%20Creating%20a%20Custom%20Data%20Source.html)

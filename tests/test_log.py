@@ -6,9 +6,27 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import datetime
 import logging
+import threading
+from decimal import Decimal
+from unittest.mock import patch
+
+import numpy as np
+
 from .fixtures import *  # noqa: F401
 from pybroker.log import Logger
+from pybroker.scope import PendingOrder
+
+
+def _order_kwargs():
+    return {
+        "date": np.datetime64("2020-01-01"),
+        "symbol": "AAPL",
+        "shares": Decimal("10"),
+        "fill_price": Decimal("100"),
+        "limit_price": None,
+    }
 
 
 class TestLogger:
@@ -20,7 +38,6 @@ class TestLogger:
         logger.info_indicator_data_start([])
         logger.debug_compute_indicators(is_parallel=False)
         logger.loaded_indicator_data()
-        logger.warn_bootstrap_sample_size(10, 100)
         assert capsys.readouterr() == ("", "")
         assert not caplog.record_tuples
         logger.enable()
@@ -28,11 +45,44 @@ class TestLogger:
         logger.info_indicator_data_start([])
         logger.debug_compute_indicators(is_parallel=False)
         logger.loaded_indicator_data()
-        logger.warn_bootstrap_sample_size(10, 100)
         captured = capsys.readouterr()
         assert captured.out
         assert captured.err == ""
-        assert len(caplog.record_tuples) == 3
+        assert len(caplog.record_tuples) == 2
+
+    def test_suppress_silences_only_this_thread(scope, capsys):
+        logger = Logger(scope)
+        with logger._suppress():
+            logger.loaded_indicator_data()
+            assert logger._is_disabled()
+        assert not logger._is_disabled()
+        assert not logger._disabled
+        logger.loaded_indicator_data()
+        assert capsys.readouterr().out
+
+    def test_suppress_concurrent_threads_leave_logger_enabled(scope):
+        # A shared save/restore flag races here: with both threads inside
+        # _suppress at once, one saves the other's "disabled" as its previous
+        # state and restores it on exit, leaving the logger silenced for good.
+        logger = Logger(scope)
+        inside = threading.Barrier(3, timeout=5)
+        release = threading.Barrier(3, timeout=5)
+
+        def suppressed():
+            with logger._suppress():
+                inside.wait()
+                release.wait()
+
+        threads = [threading.Thread(target=suppressed) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        inside.wait()
+        # Both threads are suppressed; the main thread is not.
+        assert not logger._is_disabled()
+        release.wait()
+        for thread in threads:
+            thread.join(timeout=5)
+        assert not logger._is_disabled()
 
     def test_enable_and_disable_progress_bar(scope, capsys):
         logger = Logger(scope)
@@ -46,3 +96,99 @@ class TestLogger:
         captured = capsys.readouterr()
         assert captured.out
         assert captured.err == ""
+
+    def test_debug_order_skips_when_debug_disabled(self, scope, caplog):
+        caplog.set_level(logging.WARNING, logger="pybroker")
+        logger = Logger(scope)
+        with patch("pybroker.log.to_datetime") as mock_to_datetime:
+            logger.debug_place_buy_order(**_order_kwargs())
+        assert not caplog.record_tuples
+        mock_to_datetime.assert_not_called()
+
+    def test_debug_order_emits_when_debug_enabled(self, scope, caplog):
+        caplog.set_level(logging.DEBUG, logger="pybroker")
+        logger = Logger(scope)
+        logger.debug_place_buy_order(**_order_kwargs())
+        assert len(caplog.record_tuples) == 1
+        assert caplog.record_tuples[0][0] == "pybroker"
+        assert caplog.record_tuples[0][1] == logging.DEBUG
+        assert "Placing buy order" in caplog.record_tuples[0][2]
+
+    def test_debug_timeout_respects_disable(self, scope, caplog):
+        caplog.set_level(logging.DEBUG, logger="pybroker")
+        logger = Logger(scope)
+        pending_order = PendingOrder(
+            id=1,
+            type="buy",
+            symbol="AAPL",
+            created=np.datetime64("2020-01-01"),
+            exec_date=np.datetime64("2020-01-02"),
+            shares=Decimal("10"),
+            limit_price=Decimal("100"),
+            fill_price=Decimal("100"),
+            exec_bar=1,
+            timeout_bars=5,
+            stops=None,
+        )
+        logger.disable()
+        with patch("pybroker.log.to_datetime") as mock_to_datetime:
+            logger.debug_timeout_order(
+                date=np.datetime64("2020-01-01"),
+                pending_order=pending_order,
+            )
+        assert not caplog.record_tuples
+        mock_to_datetime.assert_not_called()
+
+    def test_info_loaded_bar_data_message(self, scope, caplog):
+        caplog.set_level(logging.INFO, logger="pybroker")
+        scope.data_source_cache_ns = "test-ns"
+        logger = Logger(scope)
+        start_date = datetime.datetime(2020, 1, 1)
+        end_date = datetime.datetime(2020, 12, 31)
+        logger.info_loaded_bar_data(
+            symbols=["AAPL", "MSFT"],
+            start_date=start_date,
+            end_date=end_date,
+            timeframe="1d",
+        )
+        assert len(caplog.record_tuples) == 1
+        message = caplog.record_tuples[0][2]
+        assert "namespace=test-ns" in message
+        assert "2020-01-01 00:00:00 to 2020-12-31 00:00:00" in message
+        assert "timeframe: 1d" in message
+        assert "['AAPL', 'MSFT']" in message
+
+
+def test_info_walkforward_on_days_prints_day_names(scope, caplog):
+    """The day names, not '<map object at 0x...>'."""
+    import logging
+
+    from pybroker.common import Day
+
+    logger = scope.logger
+    with caplog.at_level(logging.INFO, logger="pybroker"):
+        logger.info_walkforward_on_days((Day.MON.value, Day.FRI.value))
+    assert any(
+        "MON" in r.message and "FRI" in r.message for r in caplog.records
+    )
+    assert not any("map object" in r.message for r in caplog.records)
+
+
+def test_disabled_info_methods_do_not_consume_iterables(scope):
+    """Formatting is gated like debug_*: sorting the whole symbol universe
+    per call is wasted work when the output is discarded -- and a consumed
+    one-shot iterable is a silent behavior change besides."""
+    logger = scope.logger
+    logger.disable()
+    try:
+        consumed = []
+
+        def gen():
+            consumed.append(True)
+            yield "SPY"
+
+        logger.info_indicator_data_start(gen())
+        logger.info_train_split_start(gen())
+        assert not consumed
+    finally:
+        logger.enable()

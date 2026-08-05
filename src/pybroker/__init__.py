@@ -30,11 +30,12 @@ from pybroker.common import (
     PositionMode as PositionMode,
     PriceType as PriceType,
     StopType as StopType,
+    SymbolSelector as SymbolSelector,
 )
 from pybroker.context import (
     ExecContext as ExecContext,
-    ExecSignal as ExecSignal,
-    PosSizeContext as PosSizeContext,
+    RotationContext as RotationContext,
+    IntervalContext as IntervalContext,
 )
 from pybroker.config import StrategyConfig as StrategyConfig
 from pybroker.data import (
@@ -45,6 +46,13 @@ from pybroker.data import (
 from pybroker.eval import (
     EvalMetrics as EvalMetrics,
     BootstrapResult as BootstrapResult,
+)
+from pybroker.optimize import (
+    Hyperparam as Hyperparam,
+    OptimizeResult as OptimizeResult,
+    WindowOptimizeResult as WindowOptimizeResult,
+    hyperparam as hyperparam,
+    make_objective as make_objective,
 )
 from pybroker.indicator import (
     Indicator as Indicator,
@@ -76,9 +84,25 @@ from pybroker.scope import (
     register_columns as register_columns,
     unregister_columns as unregister_columns,
 )
-from pybroker.slippage import RandomSlippageModel as RandomSlippageModel
+from pybroker.slippage import (
+    FixedSlippageModel as FixedSlippageModel,
+    SlippageContext as SlippageContext,
+    SlippageModel as SlippageModel,
+    VolatilitySlippageModel as VolatilitySlippageModel,
+    VolumeSlippageModel as VolumeSlippageModel,
+)
+from pybroker.parallel import (
+    ParallelConfig as ParallelConfig,
+    get_parallel_config as get_parallel_config,
+    set_parallel as set_parallel,
+)
 from pybroker.strategy import Strategy as Strategy, TestResult as TestResult
+from pybroker.interval import (
+    TimeframeInterval as TimeframeInterval,
+    compress_bars as compress_bars,
+)
 from pybroker.vect import (
+    atr as atr,
     cross as cross,
     highv as highv,
     lowv as lowv,
@@ -86,8 +110,4 @@ from pybroker.vect import (
     sumv as sumv,
 )
 
-# Temporary fix for regression in Numba 0.57.0
-# https://github.com/numba/numba/issues/8940
-from numba.np.unsafe import ndarray
-
-__version__ = "1.2.15"
+__version__ = "2.0.0"

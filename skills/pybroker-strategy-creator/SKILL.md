@@ -49,7 +49,7 @@ Create practical PyBroker strategy code from user intent while preserving backte
 - `references/wiki-01-getting-started-with-data-sources.md`: Yahoo Finance, Alpaca, Alpaca Crypto, AKShare, data caching, and data source setup.
 - `references/wiki-02-backtesting-a-strategy.md`: defining execution rules, adding executions, running backtests, and filtering data.
 - `references/wiki-03-evaluating-with-bootstrap-metrics.md`: evaluation metrics, confidence intervals, bootstrap metrics, and drawdown.
-- `references/wiki-04-ranking-and-position-sizing.md`: ranking symbols, score usage, max positions, and position sizing.
+- `references/wiki-04-ranking-long-and-short-signals.md`: ranking long/short signals by score and max positions.
 - `references/wiki-05-writing-indicators.md`: custom indicators, vector helpers, TA-Lib, built-in indicators, and indicator sets.
 - `references/wiki-06-training-a-model.md`: model training, model predictions, caching, and walkforward analysis.
 - `references/wiki-07-creating-a-custom-data-source.md`: extending `DataSource`, DataFrame inputs, CSV inputs, and custom columns.

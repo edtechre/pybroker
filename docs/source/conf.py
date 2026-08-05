@@ -15,6 +15,27 @@ nitpick_ignore = [
     ("py:class", "pandas.core.frame.DataFrame"),
     ("py:class", "pandas.core.series.Series"),
     ("py:class", "pandas._libs.tslibs.timestamps.Timestamp"),
+    # optuna exposes internal module paths in type annotations, and its
+    # docs register optuna.Study only under optuna.study.Study.
+    ("py:class", "optuna.study.study.Study"),
+    ("py:class", "optuna.trial._trial.Trial"),
+    ("py:class", "optuna.Study"),
+    # Annotations are written with import aliases (np., pd., bare Decimal /
+    # datetime / "Stop"), which napoleon copies verbatim into attribute
+    # types where they cannot resolve.
+    ("py:class", "np.ndarray"),
+    ("py:class", "np.datetime64"),
+    ("py:class", "np.floating"),
+    ("py:class", "pd.DataFrame"),
+    ("py:class", "pd.Series"),
+    ("py:class", "Decimal"),
+    ("py:class", "datetime"),
+    ("py:class", "'Stop'"),
+    # Private classes referenced by type annotations are not documented.
+    ("py:class", "BaseSampler"),
+    ("py:class", "pybroker.scope._StoreBacking"),
+    ("py:class", "_ExecutionsHost"),
+    ("py:class", "_OptimizeTrialHost"),
 ]
 
 project = "PyBroker"
@@ -55,6 +76,7 @@ intersphinx_mapping = {
     "pandas": ("https://pandas.pydata.org/docs/", None),
     "diskcache": ("https://grantjenks.com/docs/diskcache/", None),
     "joblib": ("https://joblib.readthedocs.io/en/latest/", None),
+    "optuna": ("https://optuna.readthedocs.io/en/stable/", None),
 }
 
 # -- Options for HTML output -------------------------------------------------

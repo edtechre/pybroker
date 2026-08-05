@@ -1,0 +1,143 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-04 18:14-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/notebooks/18. 90ddc2c826144c6db9885e102652c804 Dynamic
+#: Selection.ipynb:9 Symbol
+msgid "Dynamic Symbol Selection"
+msgstr "动态品种选择"
+
+#: ../../source/notebooks/18. 5039ca167cb843d6bd127d80b3fea056 Dynamic
+#: Selection.ipynb:11 Symbol
+msgid ""
+"Every strategy so far has traded a fixed list of ticker symbols chosen "
+"before the backtest began. Instead, we may want a strategy to target "
+"whichever symbols look best right now. These could be the most liquid "
+"names, or the ones with the highest momentum or value."
+msgstr ""
+"到目前为止，每个策略交易的都是在回测开始前就已选定的固定股票代码列表。而我们有时希望策略能够瞄准当下表现最好的品种，"
+"例如流动性最高的品种，或者动量或价值最高的品种。"
+
+#: ../../source/notebooks/18. 519ce2d777b24f74904521335c965f08 Dynamic
+#: Selection.ipynb:13 Symbol
+msgid ""
+"**PyBroker v2** supports dynamic symbol selection with a `SymbolSelector "
+"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.SymbolSelector>`__,"
+" as shown in this notebook."
+msgstr ""
+"**PyBroker v2** 通过 `SymbolSelector "
+"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.SymbolSelector>`__"
+" 支持动态品种选择，本文档将对此进行演示。"
+
+#: ../../source/notebooks/18. 0039adf603294669959348bd3757b58e Dynamic
+#: Selection.ipynb:25 Symbol
+msgid "Loading the Candidate Universe"
+msgstr "加载候选品种池"
+
+#: ../../source/notebooks/18. Dynamic Selection.ipynb:27 Symbol
+#: af1ee8a0888c4a948da635851827f35f
+msgid ""
+"Below, twenty liquid large-caps are downloaded from `YFinance "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance>`__:"
+msgstr ""
+"下面将从 `YFinance "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance>`__"
+" 下载二十只流动性良好的大盘股："
+
+#: ../../source/notebooks/18. 56bad8b490334663a9d82d83973163df Dynamic
+#: Selection.ipynb:321 Symbol
+msgid "Selecting Symbols by Liquidity"
+msgstr "按流动性选择品种"
+
+#: ../../source/notebooks/18. Dynamic Selection.ipynb:323 Symbol
+#: f12498a89ce54f0394be7f48767cc15c
+msgid ""
+"Dynamic symbol selection is done with a `SymbolSelector "
+"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.SymbolSelector>`__,"
+" which can be any callable that takes a `Pandas DataFrame "
+"<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__ "
+"and returns a sequence of symbols. Pass it to `add_execution "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__"
+" in place of a fixed symbol list."
+msgstr ""
+"动态品种选择通过 `SymbolSelector "
+"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.SymbolSelector>`__"
+" 实现，它可以是任意接受 `Pandas DataFrame "
+"<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__ "
+"并返回品种序列的可调用对象。将其传递给 `add_execution "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__"
+" 即可替代固定的品种列表。"
+
+#: ../../source/notebooks/18. 404a59b28c6949c6ae55f24e900a5cb5 Dynamic
+#: Selection.ipynb:325 Symbol
+msgid ""
+"The example below ranks the universe by average dollar volume and keeps "
+"the top three symbols:"
+msgstr "下面的示例按平均成交额对品种池进行排名，并保留排名前三的品种："
+
+#: ../../source/notebooks/18. 763d4c81c1144b8a98092358602512e0 Dynamic
+#: Selection.ipynb:353 Symbol
+msgid "Running the Strategy"
+msgstr "运行策略"
+
+#: ../../source/notebooks/18. Dynamic Selection.ipynb:355 Symbol
+#: c8bf15171a974ddeb924137c60f7c961
+msgid ""
+"The example below implements a simple breakout strategy. It buys when a "
+"symbol closes above its previous 20-day high, calculated using `highv "
+"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.highv>`__,"
+" and it sells when the symbol closes below its previous 20-day low, "
+"calculated using `lowv "
+"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.lowv>`__."
+" Those values are registered as `indicators "
+"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.indicator>`__"
+" and read in the execution with `ctx.indicator "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.indicator>`__."
+" The strategy splits capital equally across the top three selected stocks"
+" with `set_target_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.set_target_shares>`__,"
+" and exits with `sell_all_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_all_shares>`__:"
+msgstr ""
+"下面的示例实现了一个简单的突破策略：当某品种收盘价高于其此前 20 日高点（使用 `highv "
+"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.highv>`__"
+" 计算）时买入，当收盘价低于其此前 20 日低点（使用 `lowv "
+"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.lowv>`__"
+" 计算）时卖出。这些数值被注册为 `indicators "
+"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.indicator>`__，"
+"并在执行函数中通过 `ctx.indicator "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.indicator>`__"
+" 读取。该策略使用 `set_target_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.set_target_shares>`__"
+" 将资金平均分配到所选的前三只股票上，并使用 `sell_all_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.sell_all_shares>`__"
+" 平仓："
+
+#: ../../source/notebooks/18. Dynamic Selection.ipynb:397 Symbol
+#: af63eebdd52a4935937d10b0319b35db
+msgid ""
+"For each `walkforward "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`__"
+" window, the ``top_dollar_volume`` selector runs on the train split and "
+"selects the top three stocks to trade in the subsequent test split:"
+msgstr ""
+"对于每个 `walkforward "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`__"
+" 窗口，``top_dollar_volume`` 选择器会在训练集划分上运行，并选出排名前三的股票，用于在后续的测试集划分中进行交易："

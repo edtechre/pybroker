@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-02 21:23+0800\n"
+"POT-Creation-Date: 2026-08-04 18:14-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -16,15 +16,15 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.12.1\n"
+"Generated-By: Babel 2.18.0\n"
 
 #: ../../source/notebooks/7. Creating Custom Data Source.ipynb:9 a
-#: a4471a319f34420d95dd7a176497f09d
+#: be0a23f2f5cc47509f69818b0706615d
 msgid "Creating a Custom Data Source"
 msgstr "自定义数据"
 
-#: ../../source/notebooks/7. 218c34a4c494467887404b89164a9095 Creating Custom
-#: Data Source.ipynb:11 a
+#: ../../source/notebooks/7. Creating Custom Data Source.ipynb:11 a
+#: f120753602754536802ccd2065650628
 msgid ""
 "**PyBroker** comes with pre-built `DataSources "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__"
@@ -32,141 +32,110 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance>`__,"
 " `Alpaca "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.Alpaca>`__,"
-" and `AKShare <https://github.com/akfamily/akshare>`__, which you can use"
-" right away without any additional setup. But if you have a specific need"
-" or want to use a different data source, **PyBroker** also allows you to "
-"create your own ``DataSource`` class."
+" and `AKShare <https://github.com/akfamily/akshare>`__ that you can use "
+"right away. If you have specific needs or want to use a different data "
+"provider, you can create your own ``DataSource`` class."
 msgstr ""
 "**PyBroker** 自带了为 `Yahoo Finance "
-"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__"
-"、`Alpaca "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__、`Alpaca"
+" "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.Alpaca>`__"
-" 和 `AKShare "
-"<https://github.com/akfamily/akshare>`__"
-" 构建的 `DataSource "
-"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__"
-"，你可以立即使用，无需进行任何额外设置。"
-"但是，如果你有特定需求或想使用其他数据源，**PyBroker** 也允许你创建自己的 ``DataSource`` 类。"
+" 和 `AKShare <https://github.com/akfamily/akshare>`__ 构建的 `DataSource "
+"<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__，你可以立即使用。如果你有特定需求或想使用其他数据提供商，你可以创建自己的"
+" ``DataSource`` 类。"
 
-#: ../../source/notebooks/7. 1d5cf91391d943f9889d2a59955bd0d5 Creating Custom
-#: Data Source.ipynb:15 a
+#: ../../source/notebooks/7. Creating Custom Data Source.ipynb:15 a
+#: e2c9da49eb4f431c8c941527e60ff9cd
 msgid "Extending DataSource"
 msgstr "扩展 DataSource"
 
-#: ../../source/notebooks/7. Creating Custom Data Source.ipynb:17 a
-#: d750b3d04e21411b9e3c0df0f7f63ec0
+#: ../../source/notebooks/7. 586a5c413c3546caa720b12490c8072f Creating Custom
+#: Data Source.ipynb:17 a
 msgid ""
-"In the example code provided below, a new ``DataSource`` called "
-"``CSVDataSource`` is implemented, which loads data from a CSV file. The "
-"``CSVDataSource`` reads a file named ``prices.csv`` into a `Pandas "
+"The following example implements a custom ``CSVDataSource`` to load data "
+"from a CSV file. It reads a file named ``prices.csv`` into a `Pandas "
 "DataFrame "
-"<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__, "
-"and then returns the data from this DataFrame based on the input "
-"parameters provided:"
+"<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__:"
 msgstr ""
-"在下面提供的示例代码中，实现了一个名为 ``CSVDataSource`` 的新数据源，"
-"它从 CSV 文件加载数据。``CSVDataSource`` 读取名为 ``prices.csv`` 的文件到 `Pandas DataFrame "
-"<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__"
-" 中，然后根据提供的输入参数从这个 DataFrame 返回数据："
+"以下示例实现了一个自定义的 ``CSVDataSource``，用于从 CSV 文件加载数据。它将名为 ``prices.csv`` "
+"的文件读取到 `Pandas DataFrame "
+"<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__ "
+"中："
 
-#: ../../source/notebooks/7. Creating Custom Data Source.ipynb:53 a
-#: ab49b10603f3449890313859387dabf4
+#: ../../source/notebooks/7. 5843a67756e643cf9ea2f0faa880a829 Creating Custom
+#: Data Source.ipynb:53 a
 msgid ""
 "To make the custom ``'rsi'`` column from the CSV file available to "
-"**PyBroker**, we register it using `pybroker.register_columns "
+"**PyBroker**, register it using ```pybroker.register_columns`` "
 "<https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.register_columns>`__."
-" This allows **PyBroker** to use this custom column when it processes the"
-" data."
+" This allows **PyBroker** to use the custom column when processing the "
+"data."
 msgstr ""
-"为了使 CSV 文件中自定义的 ``'rsi'`` 列对 **PyBroker** 可用，"
-"我们使用 `pybroker.register_columns "
+"为了使 CSV 文件中自定义的 ``'rsi'`` 列对 **PyBroker** 可用，我们使用 "
+"`pybroker.register_columns "
 "<https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.register_columns>`__"
 " 进行注册。这允许 **PyBroker** 在处理数据时使用这个自定义列。"
 
 #: ../../source/notebooks/7. Creating Custom Data Source.ipynb:55 a
-#: a39ccbeeeaa1421789163a7e3cb9527c
+#: c637b419325a4b90ba92d154acc6976a
 msgid ""
-"It's important to note that when returning the data from your custom "
-"DataSource, it must include the following columns: ``symbol``, ``date``, "
-"``open``, ``high``, ``low``, and ``close``, as these columns are expected"
-" by **PyBroker**."
+"When returning data from your custom ``DataSource``, it must include the "
+"columns expected by **PyBroker**: ``symbol``, ``date``, ``open``, "
+"``high``, ``low``, and ``close``."
 msgstr ""
-"需要注意的是，在从自定义 DataSource 返回数据时，"
-"必须包含以下列：``symbol``、``date``、``open``、``high``、``low`` 和 ``close``"
-"，因为 **PyBroker** 需要这些列。"
+"从自定义 ``DataSource`` 返回数据时，必须包含 **PyBroker** 所需的列："
+"``symbol``、``date``、``open``、``high``、``low`` 和 ``close``。"
 
-#: ../../source/notebooks/7. 995ff972e8dd47db820a7885488840a1 Creating Custom
+#: ../../source/notebooks/7. 9f74fdeeec274cf8a2b51150e608374b Creating Custom
 #: Data Source.ipynb:57 a
 msgid "Now we can query the CSV data from an instance of ``CSVDataSource``:"
-msgstr ""
-"现在我们可以从 ``CSVDataSource`` 的一个实例查询 CSV 数据："
+msgstr "现在我们可以从 ``CSVDataSource`` 的一个实例查询 CSV 数据："
 
-#: ../../source/notebooks/7. 4c597f90caba483bb073b0541e840ec6 Creating Custom
+#: ../../source/notebooks/7. 1d4ab87470944475836bc35b14bbb8ff Creating Custom
 #: Data Source.ipynb:368 a
 msgid ""
 "To use ``CSVDataSource`` in a backtest, we create a new `Strategy "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy>`__"
-" object and pass the custom ``DataSource``:"
+" object and pass it the custom ``DataSource``:"
 msgstr ""
 "要在回测中使用 ``CSVDataSource``，我们创建一个新的 `Strategy "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy>`__"
 " 对象，并传入自定义的 ``DataSource``："
 
-#: ../../source/notebooks/7. Creating Custom Data Source.ipynb:615 a
-#: be292acb4f0245e48e659be329df2c79
+#: ../../source/notebooks/7. 4dc74cd00322411cae1e498d8a7b9f32 Creating Custom
+#: Data Source.ipynb:655 a
 msgid ""
-"Note that because we registered the custom ``rsi`` column with "
-"**PyBroker**, it can be accessed in the `ExecContext "
+"Because we registered the custom ``rsi`` column with **PyBroker**, it can"
+" be accessed in the ```ExecContext`` "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
 " using ``ctx.rsi``."
 msgstr ""
-"请注意，因为我们已经使用 **PyBroker** 注册了自定义的 ``rsi`` 列，所以可以在 `ExecContext "
+"因为我们已经使用 **PyBroker** 注册了自定义的 ``rsi`` 列，所以可以在 `ExecContext "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext>`__"
 " 中使用 ``ctx.rsi`` 来访问它。"
 
-#: ../../source/notebooks/7. 193c965d24504f25973aa95b93f0d63a Creating Custom
-#: Data Source.ipynb:627 a
+#: ../../source/notebooks/7. Creating Custom Data Source.ipynb:667 a
+#: f00d55d2b88d4030a458217b577ab3a4
 msgid "Using a Pandas DataFrame"
 msgstr "使用 Pandas DataFrame"
 
-#: ../../source/notebooks/7. 3b431fde999e43ad9d716a371f6c6895 Creating Custom
-#: Data Source.ipynb:629 a
+#: ../../source/notebooks/7. 185a7c1236ba46449da86eeb1907e48e Creating Custom
+#: Data Source.ipynb:669 a
 msgid ""
-"If you do not need the flexibility of implementing your own `DataSource "
+"If you do not need the flexibility of implementing your own "
+"```DataSource`` "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__,"
-" then you can pass a `Pandas DataFrame "
+" you can pass a `Pandas DataFrame "
 "<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__ "
 "to a ``Strategy`` instead."
 msgstr ""
 "如果你不需要实现自己的 `DataSource "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.DataSource>`__"
-" 的灵活性，那么可以将 `Pandas DataFrame "
-"<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__"
-" 传递给 **策略**。"
+" 的灵活性，可以将 `Pandas DataFrame "
+"<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__ "
+"传递给 ``Strategy``。"
 
-#: ../../source/notebooks/7. 5dd7dccfb070431c94355dfdb4733294 Creating Custom
-#: Data Source.ipynb:631 a
-msgid "To demonstrate, the earlier example can be re-implemented as follows:"
-msgstr ""
-"为了演示，可以按照以下方式重新实现前面的示例："
-
-#~ msgid ""
-#~ "It's important to note that when "
-#~ "returning the data from your custom "
-#~ "DataSource, it must include the "
-#~ "following columns: ``symbol``, ``date``, "
-#~ "``open``, ``high``, ``low``, and ``close``,"
-#~ " as these columns are expected by "
-#~ "**PyBroker**."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "It’s important to note that when "
-#~ "returning the data from your custom "
-#~ "DataSource, it must include the "
-#~ "following columns: ``symbol``, ``date``, "
-#~ "``open``, ``high``, ``low``, and ``close``,"
-#~ " as these columns are expected by "
-#~ "**PyBroker**."
-#~ msgstr ""
-
+#: ../../source/notebooks/7. 42e4734f39a346388390da28c8743550 Creating Custom
+#: Data Source.ipynb:671 a
+msgid "The earlier example can be re-implemented as follows:"
+msgstr "前面的示例可以按照以下方式重新实现："

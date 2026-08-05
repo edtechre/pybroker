@@ -7,6 +7,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import warnings
 import numpy as np
 import pandas as pd
 from pybroker.common import (
@@ -19,7 +20,7 @@ from pybroker.common import (
     to_decimal,
 )
 from pybroker.config import StrategyConfig
-from pybroker.model import TrainedModel
+from pybroker.model import ModelLoader, TrainedModel
 from pybroker.portfolio import Entry, Order, Portfolio, Position, Stop, Trade
 from pybroker.scope import (
     ColumnScope,
@@ -29,6 +30,12 @@ from pybroker.scope import (
     PendingOrderScope,
     PredictionScope,
     StaticScope,
+    IntervalScope,
+)
+from pybroker.interval import (
+    TimeframeInterval,
+    model_interval_name,
+    normalize_interval,
 )
 from collections import deque
 from dataclasses import dataclass, field
@@ -42,40 +49,467 @@ from typing import (
     Literal,
     Mapping,
     MutableMapping,
-    NamedTuple,
     Optional,
     Union,
 )
 
 
-class BaseContext:
-    """Base context class.
+_SCORE_DEPRECATION = (
+    "ExecContext.score is deprecated; use long_score or short_score instead."
+)
+
+
+@dataclass
+class ExecResult:
+    r"""Holds data that was set during the execution of a
+    :class:`pybroker.strategy.Strategy`.
 
     Attributes:
-        config: :class:`pybroker.config.StrategyConfig`.
+        symbol: Ticker symbol that was used for the execution.
+        date: Timestamp of the bar that was used for the execution.
+        buy_fill_price: Fill price to use for a buy (long) order of ``symbol``.
+        sell_fill_price: Fill price to use for a sell (short) order of
+            ``symbol``.
+        score: Deprecated. Use ``long_score`` or ``short_score`` instead.
+            When set, ranks buy and sell signals separately (higher wins each
+            queue). Mutually exclusive with ``long_score`` and
+            ``short_score``.
+        long_score: Score used to rank ``symbol`` when ranking buy and cover
+            signals. Orders are placed for symbols with the highest
+            ``long_score`` values, where the number of long positions held at
+            any time in the :class:`pybroker.portfolio.Portfolio` is specified
+            by :meth:`pybroker.strategy.Strategy.set_max_long_positions`.
+            When rotation is enabled with
+            :meth:`pybroker.strategy.Strategy.enable_rotation`, ``long_score``
+            drives long rotation and orders set during an
+            :class:`pybroker.strategy.Execution` are ignored.
+            Mutually exclusive with ``score``.
+        short_score: Score used to rank ``symbol`` when ranking sell signals.
+            Orders are placed for symbols with the highest ``short_score``
+            values, where the number of short positions held at any time in
+            the :class:`pybroker.portfolio.Portfolio` is specified by
+            :meth:`pybroker.strategy.Strategy.set_max_short_positions`.
+            When rotation is enabled with
+            :meth:`pybroker.strategy.Strategy.enable_rotation`, ``short_score``
+            drives short rotation and orders set during an
+            :class:`pybroker.strategy.Execution` are ignored.
+            Mutually exclusive with ``score``.
+        hold_bars: Number of bars to hold a long or short position for, after
+            which the position is automatically liquidated.
+        buy_shares: Number of shares to buy of ``symbol``.
+        buy_limit_price: Limit price used for a buy (long) order of ``symbol``.
+        buy_timeout_bars: Number of bars to retry an unfilled buy limit order
+            after the first attempt. ``None`` for a single attempt, ``-1`` for
+            indefinite persistence, or a positive integer for a limited number
+            of retry bars.
+        sell_shares: Number of shares to sell of ``symbol``.
+        sell_limit_price: Limit price used for a sell (short) order of
+            ``symbol``.
+        sell_timeout_bars: Number of bars to retry an unfilled sell limit order
+            after the first attempt. ``None`` for a single attempt, ``-1`` for
+            indefinite persistence, or a positive integer for a limited number
+            of retry bars.
+        long_stops: Stops for long :class:`pybroker.portfolio.Entry`\ s.
+        short_stops: Stops for short :class:`pybroker.portfolio.Entry`\ s.
+        cover: Whether ``buy_shares`` are used to cover a short position. If
+            ``True``, the resulting buy order will be placed before sell
+            orders.
+        pending_order_id: ID of :class:`pybroker.scope.PendingOrder` that was
+            created.
+        exit_pos_type: Type of the :class:`pybroker.portfolio.Position` this
+            order exits, either ``long`` or ``short``, or ``None`` when the
+            order is not an exit. Set by :meth:`.ExecContext.sell_all_shares`,
+            :meth:`.ExecContext.cover_all_shares`, and
+            :meth:`.ExecContext.set_target_shares` with a target of zero. An
+            order carrying this is clamped at fill time to the shares still
+            held, so it can only ever close a position and never flip one.
     """
+
+    symbol: str
+    date: np.datetime64
+    buy_fill_price: Union[
+        int,
+        float,
+        np.floating,
+        Decimal,
+        PriceType,
+        Callable[[str, BarData], Union[int, float, Decimal]],
+    ]
+    sell_fill_price: Union[
+        int,
+        float,
+        np.floating,
+        Decimal,
+        PriceType,
+        Callable[[str, BarData], Union[int, float, Decimal]],
+    ]
+    score: Optional[float]
+    long_score: Optional[float]
+    short_score: Optional[float]
+    hold_bars: Optional[int]
+    buy_shares: Optional[Decimal]
+    buy_limit_price: Optional[Decimal]
+    buy_timeout_bars: Optional[int]
+    sell_shares: Optional[Decimal]
+    sell_limit_price: Optional[Decimal]
+    sell_timeout_bars: Optional[int]
+    long_stops: Optional[frozenset[Stop]]
+    short_stops: Optional[frozenset[Stop]]
+    cover: bool = field(default=False)
+    pending_order_id: Optional[int] = field(default=None)
+    exit_pos_type: Optional[Literal["long", "short"]] = field(default=None)
+
+
+class IntervalContext:
+    """Read-only view of compressed bar data for a coarser interval."""
+
+    _symbol: str
+    _interval: TimeframeInterval
+    _interval_scope: IntervalScope
+    _sym_end_index: Mapping[str, int]
+    _models: Mapping[ModelSymbol, TrainedModel]
+    _scope: StaticScope
+
+    _READ_ONLY_ATTRS: frozenset[str] = frozenset(
+        {
+            "buy_fill_price",
+            "buy_shares",
+            "buy_limit_price",
+            "sell_fill_price",
+            "sell_shares",
+            "sell_limit_price",
+            "hold_bars",
+            "score",
+            "long_score",
+            "short_score",
+            "stop_loss",
+            "stop_loss_pct",
+            "stop_loss_limit",
+            "stop_loss_exit_price",
+            "stop_profit",
+            "stop_profit_pct",
+            "stop_profit_limit",
+            "stop_profit_exit_price",
+            "stop_trailing",
+            "stop_trailing_pct",
+            "stop_trailing_limit",
+            "stop_trailing_exit_price",
+        }
+    )
 
     def __init__(
         self,
+        symbol: str,
+        interval: TimeframeInterval,
+        interval_scope: IntervalScope,
+        sym_end_index: Mapping[str, int],
+        models: Mapping[ModelSymbol, TrainedModel],
+    ):
+        object.__setattr__(self, "_symbol", symbol)
+        object.__setattr__(self, "_interval", normalize_interval(interval))
+        object.__setattr__(self, "_interval_scope", interval_scope)
+        object.__setattr__(self, "_sym_end_index", sym_end_index)
+        object.__setattr__(self, "_models", models)
+        object.__setattr__(self, "_scope", StaticScope.instance())
+
+    @property
+    def bars(self) -> int:
+        end_index = self._sym_end_index[self._symbol]
+        idx = self._interval_scope.completed_index(
+            self._symbol, self._interval, end_index
+        )
+        return 0 if idx < 0 else idx + 1
+
+    @property
+    def dates(self) -> NDArray[np.datetime64]:
+        return self._fetch(DataCol.DATE.value)
+
+    @property
+    def open(self) -> NDArray[np.float64]:
+        return self._fetch(DataCol.OPEN.value)
+
+    @property
+    def high(self) -> NDArray[np.float64]:
+        return self._fetch(DataCol.HIGH.value)
+
+    @property
+    def low(self) -> NDArray[np.float64]:
+        return self._fetch(DataCol.LOW.value)
+
+    @property
+    def close(self) -> NDArray[np.float64]:
+        return self._fetch(DataCol.CLOSE.value)
+
+    @property
+    def volume(self) -> NDArray[np.float64]:
+        return self._fetch(DataCol.VOLUME.value)
+
+    def indicator(self, name: str) -> NDArray[np.float64]:
+        """Returns indicator values on the compressed interval."""
+        end_index = self._sym_end_index[self._symbol]
+        return self._interval_scope.fetch_indicator(
+            self._symbol, self._interval, name, end_index
+        )
+
+    def model(self, name: str) -> Any:
+        """Returns a trained model on the compressed interval."""
+        model_sym = ModelSymbol(
+            model_interval_name(name, self._interval), self._symbol
+        )
+        if model_sym not in self._models:
+            raise ValueError(self._missing_model_error(name))
+        return self._models[model_sym].instance
+
+    def _missing_model_error(self, name: str) -> str:
+        """Returns the error message for a model missing on this interval."""
+        if not self._scope.has_model_source(name):
+            return f"Model {name!r} not found for {self._symbol}."
+        if isinstance(self._scope.get_model_source(name), ModelLoader):
+            return (
+                f"Pretrained model {name!r} is not trained per interval. "
+                f"Access it on the base timeframe with ctx.model({name!r}) / "
+                f"ctx.preds({name!r})."
+            )
+        return f"Model {name!r} not found for {self._symbol}."
+
+    def input(self, model_name: str) -> pd.DataFrame:
+        """Returns model input data on the compressed interval."""
+        end_index = self._sym_end_index[self._symbol]
+        return self._interval_scope.fetch_input(
+            self._symbol, self._interval, model_name, end_index
+        )
+
+    def preds(self, model_name: str) -> NDArray:
+        """Returns model predictions on the compressed interval."""
+        end_index = self._sym_end_index[self._symbol]
+        return self._interval_scope.fetch_preds(
+            self._symbol, self._interval, model_name, end_index
+        )
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name in self._READ_ONLY_ATTRS:
+            raise AttributeError(
+                f"IntervalContext is read-only; set {name!r} on the base "
+                "ExecContext instead."
+            )
+        object.__setattr__(self, name, value)
+
+    def _fetch(self, col: str) -> NDArray:
+        end_index = self._sym_end_index[self._symbol]
+        return self._interval_scope.fetch_bar(
+            self._symbol, self._interval, col, end_index
+        )
+
+    def __getattr__(self, attr: str) -> NDArray:
+        if attr in self._scope.custom_data_cols:
+            end_index = self._sym_end_index[self._symbol]
+            return self._interval_scope.fetch_bar(
+                self._symbol, self._interval, attr, end_index
+            )
+        raise AttributeError(f"Attribute {attr!r} not found.")
+
+
+class ExecContext:
+    r"""Contains context data during the execution of a
+    :class:`pybroker.strategy.Strategy`. Includes data about the current bar,
+    portfolio positions, and other relevant context. This class is also used to
+    set buy and sell signals for placing orders.
+
+    The data contained in this class is for the latest bar that has already
+    completed. Placing an order will be executed on a future bar specified by
+    :attr:`pybroker.config.StrategyConfig.buy_delay` and
+    :attr:`pybroker.config.StrategyConfig.sell_delay`.
+
+    Attributes:
+        config: :class:`pybroker.config.StrategyConfig`.
+        symbol: Current ticker symbol of the execution.
+        buy_fill_price: Fill price to use for a buy (long) order of
+            ``symbol``.
+        buy_shares: Number of shares to buy of ``symbol``.
+        buy_limit_price: Limit price to use for a buy (long) order of
+            ``symbol``.
+        buy_timeout_bars: Number of bars to retry an unfilled buy limit order
+            after the first attempt. ``None`` for a single attempt, ``-1`` for
+            indefinite persistence, or a positive integer for a limited number
+            of retry bars.
+        sell_fill_price: Fill price to use for a sell (short) order of
+            ``symbol``.
+        sell_shares: Number of shares to sell of ``symbol``.
+        sell_limit_price: Limit price to use for a sell (short) order of
+            ``symbol``.
+        sell_timeout_bars: Number of bars to retry an unfilled sell limit order
+            after the first attempt. ``None`` for a single attempt, ``-1`` for
+            indefinite persistence, or a positive integer for a limited number
+            of retry bars.
+        hold_bars: Number of bars to hold a long or short position for, after
+            which the position is automatically liquidated.
+        score: Deprecated. Use ``long_score`` or ``short_score`` instead.
+            When set, ranks buy and sell signals separately (higher wins each
+            queue). Mutually exclusive with ``long_score`` and
+            ``short_score``.
+        long_score: Score used to rank ``symbol`` when ranking buy and cover
+            signals. Orders are placed for symbols with the highest
+            ``long_score`` values, where the number of long positions held at
+            any time in the :class:`pybroker.portfolio.Portfolio` is specified
+            by :meth:`pybroker.strategy.Strategy.set_max_long_positions`.
+            When rotation is enabled with
+            :meth:`pybroker.strategy.Strategy.enable_rotation`, ``long_score``
+            drives long rotation and orders set during an
+            :class:`pybroker.strategy.Execution` are ignored.
+            Mutually exclusive with ``score``.
+        short_score: Score used to rank ``symbol`` when ranking sell signals.
+            Orders are placed for symbols with the highest ``short_score``
+            values, where the number of short positions held at any time in
+            the :class:`pybroker.portfolio.Portfolio` is specified by
+            :meth:`pybroker.strategy.Strategy.set_max_short_positions`.
+            When rotation is enabled with
+            :meth:`pybroker.strategy.Strategy.enable_rotation`, ``short_score``
+            drives short rotation and orders set during an
+            :class:`pybroker.strategy.Execution` are ignored.
+            Mutually exclusive with ``score``.
+        session: ``dict`` used to store custom data that persists for each
+            bar during the :class:`pybroker.strategy.Strategy`\ 's execution.
+        stop_loss: Sets stop loss on a new :class:`pybroker.portfolio.Entry`,
+            where value is measured in points from entry price.
+        stop_loss_pct: Sets stop loss on a new
+            :class:`pybroker.portfolio.Entry`, where value is measured in
+            percentage from entry price.
+        stop_loss_limit: Limit price to use for the stop loss.
+        stop_loss_exit_price: Exit :class:`pybroker.common.PriceType` to use
+            for the stop loss exit. If set, the stop is checked against the
+            ``exit_price`` and exits at the ``exit_price`` when triggered.
+        stop_profit: Sets profit stop on a new
+            :class:`pybroker.portfolio.Entry`, where value is measured in
+            points from entry price.
+        stop_profit_pct: Sets profit stop on a new
+            :class:`pybroker.portfolio.Entry`, where value is measured in
+            percentage from entry price.
+        stop_profit_limit: Limit price to use for the profit stop.
+        stop_profit_exit_price: Exit :class:`pybroker.common.PriceType` to use
+            for the profit stop exit. If set, the stop is checked against the
+            ``exit_price`` and exits at the ``exit_price`` when triggered.
+        stop_trailing: Sets a trailing stop loss on a new
+            :class:`pybroker.portfolio.Entry`, where value is measured in
+            points from entry price.
+        stop_trailing_pct: Sets a trailing stop loss on a new
+            :class:`pybroker.portfolio.Entry`, where value is measured in
+            percentage from entry price.
+        stop_trailing_limit: Limit price to use for the trailing stop loss.
+        stop_trailing_exit_price: Exit :class:`pybroker.common.PriceType` to
+            use for the trailing stop exit. If set, the stop is checked against
+            the ``exit_price`` and exits at the ``exit_price`` when triggered.
+    """
+
+    # Process-global and never reset. TestResult.stops.stop_id therefore
+    # differs by a constant offset between identical runs in one process --
+    # cosmetic, and everything else in the result is unaffected. It must stay
+    # global: Portfolio._add_stops raises on a duplicate id and sorts by id to
+    # make same-bar stop precedence deterministic, so resetting it per run
+    # would collide for anyone holding contexts across runs.
+    _stop_id: int = 0
+
+    def __init__(
+        self,
+        symbol: str,
         config: StrategyConfig,
         portfolio: Portfolio,
         col_scope: ColumnScope,
         ind_scope: IndicatorScope,
+        interval_scope: IntervalScope,
+        declared_intervals: frozenset[TimeframeInterval],
         input_scope: ModelInputScope,
         pred_scope: PredictionScope,
         pending_order_scope: PendingOrderScope,
         models: Mapping[ModelSymbol, TrainedModel],
         sym_end_index: Mapping[str, int],
+        session: MutableMapping,
+        run_hyperparams: Optional[Mapping[str, Any]] = None,
+        allowed_hyperparam_names: frozenset[str] = frozenset(),
+        rotation_enabled: bool = False,
     ):
         self.config = config
+        self.rotation_enabled = rotation_enabled
         self._portfolio = portfolio
         self._col_scope = col_scope
         self._ind_scope = ind_scope
+        self._interval_scope = interval_scope
+        self._declared_intervals = declared_intervals
         self._input_scope = input_scope
         self._pred_scope = pred_scope
         self._models = models
         self._sym_end_index = sym_end_index
         self._pending_order_scope = pending_order_scope
+        self._run_hyperparams: Mapping[str, Any] = run_hyperparams or {}
+        self._allowed_hyperparam_names = allowed_hyperparam_names
+        self._scope = StaticScope.instance()
+        self._curr_date: Optional[np.datetime64] = None
+        self._dt: Optional[datetime] = None
+        self._foreign: dict[str, pd.DataFrame] = {}
+        self._interval: dict[TimeframeInterval, IntervalContext] = {}
+
+        self.symbol: str = symbol
+        self.buy_fill_price: Optional[
+            Union[
+                int,
+                float,
+                np.floating,
+                Decimal,
+                PriceType,
+                Callable[[str, BarData], Union[int, float, Decimal]],
+            ]
+        ] = None
+        self.buy_shares: Optional[Union[int, float, Decimal]] = None
+        self.buy_limit_price: Optional[Union[int, float, Decimal]] = None
+        self.buy_timeout_bars: Optional[int] = None
+        self.sell_fill_price: Optional[
+            Union[
+                int,
+                float,
+                np.floating,
+                Decimal,
+                PriceType,
+                Callable[[str, BarData], Union[int, float, Decimal]],
+            ]
+        ] = None
+        self.sell_shares: Optional[Union[int, float, Decimal]] = None
+        self.sell_limit_price: Optional[Union[int, float, Decimal]] = None
+        self.sell_timeout_bars: Optional[int] = None
+        self.hold_bars: Optional[int] = None
+        self._score: Optional[float] = None
+        self.long_score: Optional[float] = None
+        self.short_score: Optional[float] = None
+        self.session = session
+
+        self.stop_loss: Optional[Union[int, float, Decimal]] = None
+        self.stop_loss_pct: Optional[Union[int, float, Decimal]] = None
+        self.stop_loss_limit: Optional[Union[int, float, Decimal]] = None
+        self.stop_loss_exit_price: Optional[PriceType] = None
+        self.stop_profit: Optional[Union[int, float, Decimal]] = None
+        self.stop_profit_pct: Optional[Union[int, float, Decimal]] = None
+        self.stop_profit_limit: Optional[Union[int, float, Decimal]] = None
+        self.stop_profit_exit_price: Optional[PriceType] = None
+        self.stop_trailing: Optional[Union[int, float, Decimal]] = None
+        self.stop_trailing_pct: Optional[Union[int, float, Decimal]] = None
+        self.stop_trailing_limit: Optional[Union[int, float, Decimal]] = None
+        self.stop_trailing_exit_price: Optional[PriceType] = None
+
+        self._cover: bool = False
+        self._exiting_pos: bool = False
+        # Position whose stops an exit helper asked to disarm. Held until
+        # to_result emits the order, since rotation discards orders set by an
+        # execution function and a portfolio mutation cannot be taken back.
+        self._exit_stop_pos: Optional[Position] = None
+
+    @property
+    def score(self) -> Optional[float]:
+        """Deprecated ranking field; prefer :attr:`long_score` / :attr:`short_score`."""
+        return self._score
+
+    @score.setter
+    def score(self, value: Optional[float]) -> None:
+        if value is not None:
+            warnings.warn(_SCORE_DEPRECATION, DeprecationWarning, stacklevel=2)
+        self._score = value
 
     @property
     def total_equity(self) -> Decimal:
@@ -97,6 +531,28 @@ class BaseContext:
         :class:`pybroker.portfolio.Portfolio`.
         """
         return self._portfolio.margin
+
+    @property
+    def buying_power(self) -> Decimal:
+        """Available buying power for long and short orders given
+        :attr:`pybroker.config.StrategyConfig.leverage`.
+
+        This is what the :class:`pybroker.portfolio.Portfolio` clamps orders
+        against at fill time. :meth:`.calc_target_shares` sizes off deployable
+        capital (equity multiplied by leverage) instead, so the two can differ
+        once positions are open.
+        """
+        return self._portfolio._available_buying_power()
+
+    @property
+    def margin_loan(self) -> Decimal:
+        """Borrowed funds used for leveraged long and short positions."""
+        return self._portfolio.margin_loan
+
+    @property
+    def net_cash_balance(self) -> Decimal:
+        """Net cash balance (``cash - margin_loan``)."""
+        return self._portfolio._net_cash_balance()
 
     @property
     def total_market_value(self) -> Decimal:
@@ -231,455 +687,25 @@ class BaseContext:
         """
         return self.positions(symbol, "short")
 
+    def has_long_positions(self) -> bool:
+        """Returns whether any long positions are currently open."""
+        return bool(self._portfolio.long_positions)
+
+    def has_short_positions(self) -> bool:
+        """Returns whether any short positions are currently open."""
+        return bool(self._portfolio.short_positions)
+
     def _verify_pos_type(self, pos_type: str):
         if pos_type != "short" and pos_type != "long":
             raise ValueError(f"Unknown pos_type: {pos_type!r}.")
 
-    def calc_target_shares(
-        self, target_size: float, price: float, cash: Optional[float] = None
-    ) -> Union[Decimal, int]:
-        r"""Calculates the number of shares given a ``target_size`` allocation
-        and share ``price``.
-
-        Args:
-            target_size: Proportion of cash used to calculate the number of
-                shares, where the max ``target_size`` is ``1``. For example, a
-                ``target_size`` of ``0.1`` would represent 10% of cash.
-            price: Share price used to calculate the number of shares.
-            cash: Cash used to calculate the number of shares. If
-                ``None``, then the :class:`pybroker.portfolio.Portfolio` equity
-                is used to calculate the number of shares.
-
-        Returns:
-            Number of shares given ``target_size`` and share ``price``. If
-            :attr:`pybroker.config.StrategyConfig.enable_fractional_shares` is
-            ``True``, then a Decimal is returned.
-        """
-        shares = (
-            (to_decimal(cash) if cash is not None else self._portfolio.equity)
-            * to_decimal(target_size)
-            / to_decimal(price)
-        )
-        if self.config.enable_fractional_shares:
-            return shares.max(0)
-        return max(int(shares), 0)
-
-    def model(self, name: str, symbol: str) -> Any:
-        r"""Returns a trained model.
-
-        Args:
-            name: Name used to identify the model that was registered with
-                :func:`pybroker.model.model`.
-            symbol: Ticker symbol of the data that was used to train the model.
-
-        Returns:
-            Instance of the trained model.
-        """
-        model_sym = ModelSymbol(name, symbol)
-        if model_sym not in self._models:
-            raise ValueError(f"Model {name!r} not found for {symbol}.")
-        return self._models[model_sym].instance
-
-    def indicator(self, name: str, symbol: str) -> NDArray[np.float64]:
-        r"""Returns indicator data.
-
-        Args:
-            name: Name used to identify the indicator that was registered with
-                :meth:`pybroker.indicator.indicator`.
-            symbol: Ticker symbol that was used to generate the indicator data.
-
-        Returns:
-            :class:`numpy.ndarray` of indicator data for all bars up to the
-            current one, sorted in ascending chronological order.
-        """
-        end_index = self._sym_end_index[symbol]
-        return self._ind_scope.fetch(symbol, name, end_index)
-
-    def input(self, model_name: str, symbol: str) -> pd.DataFrame:
-        r"""Returns model input data for making predictions.
-
-        Args:
-            model_name: Name of the model for the input data.
-            symbol: Ticker symbol of the model for the input data.
-
-        Returns:
-            :class:`pandas.DataFrame` containing the input data, where each row
-            represents a bar in the sequence up to the current bar. The rows
-            are sorted in ascending chronological order.
-        """
-        end_index = self._sym_end_index[symbol]
-        return self._input_scope.fetch(symbol, model_name, end_index)
-
-    def preds(self, model_name: str, symbol: str) -> NDArray:
-        r"""Returns model predictions.
-
-        Args:
-            model_name: Name of the model that made the predictions.
-            symbol: Ticker symbol of the model that made the predictions.
-
-        Returns:
-            :class:`numpy.ndarray` containing the sequence of model predictions
-            up to the current bar. Sorted in ascending chronological order.
-        """
-        end_index = self._sym_end_index[symbol]
-        return self._pred_scope.fetch(symbol, model_name, end_index)
-
-
-@dataclass
-class ExecResult:
-    r"""Holds data that was set during the execution of a
-    :class:`pybroker.strategy.Strategy`.
-
-    Attributes:
-        symbol: Ticker symbol that was used for the execution.
-        date: Timestamp of the bar that was used for the execution.
-        buy_fill_price: Fill price to use for a buy (long) order of ``symbol``.
-        sell_fill_price: Fill price to use for a sell (short) order of
-            ``symbol``.
-        score: Score used to rank ``symbol`` when ranking long and short
-            signals. Orders are placed for symbols with the highest scores,
-            where the number of positions held at any time in the
-            :class:`pybroker.portfolio.Portfolio` is specified by
-            :attr:`pybroker.config.StrategyConfig.max_long_positions` and
-            :attr:`pybroker.config.StrategyConfig.max_short_positions`
-            respectively. Buy and sell signals are ranked separately by
-            ``score``.
-        hold_bars: Number of bars to hold a long or short position for, after
-            which the position is automatically liquidated.
-        buy_shares: Number of shares to buy of ``symbol``.
-        buy_limit_price: Limit price used for a buy (long) order of ``symbol``.
-        sell_shares: Number of shares to sell of ``symbol``.
-        sell_limit_price: Limit price used for a sell (short) order of
-            ``symbol``.
-        long_stops: Stops for long :class:`pybroker.portfolio.Entry`\ s.
-        short_stops: Stops for short :class:`pybroker.portfolio.Entry`\ s.
-        cover: Whether ``buy_shares`` are used to cover a short position. If
-            ``True``, the resulting buy order will be placed before sell
-            orders.
-        pending_order_id: ID of :class:`pybroker.scope.PendingOrder` that was
-            created.
-    """
-
-    symbol: str
-    date: np.datetime64
-    buy_fill_price: Union[
-        int,
-        float,
-        np.floating,
-        Decimal,
-        PriceType,
-        Callable[[str, BarData], Union[int, float, Decimal]],
-    ]
-    sell_fill_price: Union[
-        int,
-        float,
-        np.floating,
-        Decimal,
-        PriceType,
-        Callable[[str, BarData], Union[int, float, Decimal]],
-    ]
-    score: Optional[float]
-    hold_bars: Optional[int]
-    buy_shares: Optional[Decimal]
-    buy_limit_price: Optional[Decimal]
-    sell_shares: Optional[Decimal]
-    sell_limit_price: Optional[Decimal]
-    long_stops: Optional[frozenset[Stop]]
-    short_stops: Optional[frozenset[Stop]]
-    cover: bool = field(default=False)
-    pending_order_id: Optional[int] = field(default=None)
-
-
-class ExecSignal(NamedTuple):
-    """Holds data of a buy/sell signal.
-
-    Attributes:
-        id: Unique ID.
-        symbol: Ticker symbol.
-        shares: Number of shares that was set by the
-            :class:`pybroker.strategy.Strategy` execution.
-        score: Score that was set by the
-            :class:`pybroker.strategy.Strategy` execution.
-        bar_data: :class:`pybroker.common.BarData` for ``symbol``.
-        type: ``buy`` or ``sell`` signal type.
-    """
-
-    id: int
-    symbol: str
-    shares: Union[int, float, Decimal]
-    score: Optional[float]
-    bar_data: BarData
-    type: Literal["buy", "sell"]
-
-
-class PosSizeContext(BaseContext):
-    r"""Holds data for a position size handler set with
-    :meth:`pybroker.strategy.Strategy.set_pos_size_handler`. Used to set
-    position sizes
-    when placing orders from buy and sell signals.
-
-    Attributes:
-        sessions: ``dict`` used to store custom data for all symbols.
-    """
-
-    def __init__(
-        self,
-        config: StrategyConfig,
-        portfolio: Portfolio,
-        col_scope: ColumnScope,
-        ind_scope: IndicatorScope,
-        input_scope: ModelInputScope,
-        pred_scope: PredictionScope,
-        pending_order_scope: PendingOrderScope,
-        models: Mapping[ModelSymbol, TrainedModel],
-        sessions: Mapping[str, Mapping],
-        sym_end_index: Mapping[str, int],
-    ):
-        super().__init__(
-            config=config,
-            portfolio=portfolio,
-            col_scope=col_scope,
-            ind_scope=ind_scope,
-            input_scope=input_scope,
-            pred_scope=pred_scope,
-            pending_order_scope=pending_order_scope,
-            models=models,
-            sym_end_index=sym_end_index,
-        )
-        self.sessions = sessions
-        self._signal_shares: dict[int, Union[int, float, Decimal]] = {}
-        self._buy_results: Optional[list[ExecResult]] = None
-        self._sell_results: Optional[list[ExecResult]] = None
-        self._max_long_positions = config.max_long_positions
-        self._max_short_positions = config.max_short_positions
-
-    def signals(
-        self, signal_type: Optional[Literal["buy", "sell"]] = None
-    ) -> Iterator[ExecSignal]:
-        r"""Returns :class:`Iterator` of :class:`.ExecSignal`\ s containing
-        data for buy and sell signals.
-        """
-        if signal_type is not None:
-            if signal_type != "buy" and signal_type != "sell":
-                raise ValueError(f"Unknown signal_type: {signal_type!r}.")
-        if (
-            signal_type is None or signal_type == "buy"
-        ) and self._buy_results is not None:
-            for i, result in enumerate(self._buy_results):
-                if result.buy_shares is None:
-                    raise ValueError("buy_shares is None on a buy ExecResult.")
-                yield ExecSignal(
-                    id=i,
-                    symbol=result.symbol,
-                    shares=result.buy_shares,
-                    score=result.score,
-                    bar_data=self._col_scope.bar_data_from_data_columns(
-                        result.symbol, self._sym_end_index[result.symbol]
-                    ),
-                    type="buy",
-                )
-                if (
-                    self._max_long_positions is not None
-                    and i + 1 == self._max_long_positions
-                ):
-                    break
-        if (
-            signal_type is None or signal_type == "sell"
-        ) and self._sell_results is not None:
-            id_offset = (
-                len(self._buy_results) if self._buy_results is not None else 0
-            )
-            for i, result in enumerate(self._sell_results):
-                if result.sell_shares is None:
-                    raise ValueError(
-                        "sell_shares is None on a sell ExecResult."
-                    )
-                yield ExecSignal(
-                    id=i + id_offset,
-                    symbol=result.symbol,
-                    shares=result.sell_shares,
-                    score=result.score,
-                    bar_data=self._col_scope.bar_data_from_data_columns(
-                        result.symbol, self._sym_end_index[result.symbol]
-                    ),
-                    type="sell",
-                )
-                if (
-                    self._max_short_positions is not None
-                    and i + 1 == self._max_short_positions
-                ):
-                    break
-
-    def set_shares(
-        self, signal: ExecSignal, shares: Union[int, float, Decimal]
-    ):
-        """Sets the number of shares of an order for the buy or sell signal."""
-        self._signal_shares[signal.id] = shares
-
-
-def set_pos_size_ctx_data(
-    ctx: PosSizeContext,
-    buy_results: Optional[list[ExecResult]],
-    sell_results: Optional[list[ExecResult]],
-):
-    r"""Sets data on a :class:`.PosSizeContext` instance.
-
-    Args:
-        ctx: :class:`.PosSizeContext`.
-        buy_results: :class:`.ExecResult`\ s of buy signals.
-        sell_results: :class:`.ExecResult`\ s of sell signals.
-    """
-    ctx._signal_shares.clear()
-    ctx._buy_results = buy_results
-    ctx._sell_results = sell_results
-
-
-class ExecContext(BaseContext):
-    r"""Contains context data during the execution of a
-    :class:`pybroker.strategy.Strategy`. Includes data about the current bar,
-    portfolio positions, and other relevant context. This class is also used to
-    set buy and sell signals for placing orders.
-
-    The data contained in this class is for the latest bar that has already
-    completed. Placing an order will be executed on a future bar specified by
-    :attr:`pybroker.config.StrategyConfig.buy_delay` and
-    :attr:`pybroker.config.StrategyConfig.sell_delay`.
-
-    Attributes:
-        symbol: Current ticker symbol of the execution.
-        buy_fill_price: Fill price to use for a buy (long) order of
-            ``symbol``.
-        buy_shares: Number of shares to buy of ``symbol``.
-        buy_limit_price: Limit price to use for a buy (long) order of
-            ``symbol``.
-        sell_fill_price: Fill price to use for a sell (short) order of
-            ``symbol``.
-        sell_shares: Number of shares to sell of ``symbol``.
-        sell_limit_price: Limit price to use for a sell (short) order of
-            ``symbol``.
-        hold_bars: Number of bars to hold a long or short position for, after
-            which the position is automatically liquidated.
-        score: Score used to rank ``symbol`` when ranking buy and sell signals.
-            Orders are placed for symbols with the highest scores, where the
-            number of positions held at any time in the
-            :class:`pybroker.portfolio.Portfolio` is specified by
-            :attr:`pybroker.config.StrategyConfig.max_long_positions` and
-            :attr:`pybroker.config.StrategyConfig.max_short_positions`
-            respectively. Long and short signals are ranked separately by
-            ``score``.
-        session: ``dict`` used to store custom data that persists for each
-            bar during the :class:`pybroker.strategy.Strategy`\ 's execution.
-        stop_loss: Sets stop loss on a new :class:`pybroker.portfolio.Entry`,
-            where value is measured in points from entry price.
-        stop_loss_pct: Sets stop loss on a new
-            :class:`pybroker.portfolio.Entry`, where value is measured in
-            percentage from entry price.
-        stop_loss_limit: Limit price to use for the stop loss.
-        stop_loss_exit_price: Exit :class:`pybroker.common.PriceType` to use
-            for the stop loss exit. If set, the stop is checked against the
-            ``exit_price`` and exits at the ``exit_price`` when triggered.
-        stop_profit: Sets profit stop on a new
-            :class:`pybroker.portfolio.Entry`, where value is measured in
-            points from entry price.
-        stop_profit_pct: Sets profit stop on a new
-            :class:`pybroker.portfolio.Entry`, where value is measured in
-            percentage from entry price.
-        stop_profit_limit: Limit price to use for the profit stop.
-        stop_profit_exit_price: Exit :class:`pybroker.common.PriceType` to use
-            for the profit stop exit. If set, the stop is checked against the
-            ``exit_price`` and exits at the ``exit_price`` when triggered.
-        stop_trailing: Sets a trailing stop loss on a new
-            :class:`pybroker.portfolio.Entry`, where value is measured in
-            points from entry price.
-        stop_trailing_pct: Sets a trailing stop loss on a new
-            :class:`pybroker.portfolio.Entry`, where value is measured in
-            percentage from entry price.
-        stop_trailing_limit: Limit price to use for the trailing stop loss.
-        stop_trailing_exit_price: Exit :class:`pybroker.common.PriceType` to
-            use for the trailing stop exit. If set, the stop is checked against
-            the ``exit_price`` and exits at the ``exit_price`` when triggered.
-    """
-
-    _stop_id: int = 0
-
-    def __init__(
-        self,
-        symbol: str,
-        config: StrategyConfig,
-        portfolio: Portfolio,
-        col_scope: ColumnScope,
-        ind_scope: IndicatorScope,
-        input_scope: ModelInputScope,
-        pred_scope: PredictionScope,
-        pending_order_scope: PendingOrderScope,
-        models: Mapping[ModelSymbol, TrainedModel],
-        sym_end_index: Mapping[str, int],
-        session: MutableMapping,
-    ):
-        super().__init__(
-            config=config,
-            portfolio=portfolio,
-            col_scope=col_scope,
-            ind_scope=ind_scope,
-            input_scope=input_scope,
-            pred_scope=pred_scope,
-            pending_order_scope=pending_order_scope,
-            models=models,
-            sym_end_index=sym_end_index,
-        )
-        self._scope = StaticScope.instance()
-        self._curr_date: Optional[np.datetime64] = None
-        self._dt: Optional[datetime] = None
-        self._foreign: dict[str, pd.DataFrame] = {}
-
-        self.symbol: str = symbol
-        self.buy_fill_price: Optional[
-            Union[
-                int,
-                float,
-                np.floating,
-                Decimal,
-                PriceType,
-                Callable[[str, BarData], Union[int, float, Decimal]],
-            ]
-        ] = None
-        self.buy_shares: Optional[Union[int, float, Decimal]] = None
-        self.buy_limit_price: Optional[Union[int, float, Decimal]] = None
-        self.sell_fill_price: Optional[
-            Union[
-                int,
-                float,
-                np.floating,
-                Decimal,
-                PriceType,
-                Callable[[str, BarData], Union[int, float, Decimal]],
-            ]
-        ] = None
-        self.sell_shares: Optional[Union[int, float, Decimal]] = None
-        self.sell_limit_price: Optional[Union[int, float, Decimal]] = None
-        self.hold_bars: Optional[int] = None
-        self.score: Optional[float] = None
-        self.session = session
-
-        self.stop_loss: Optional[Union[int, float, Decimal]] = None
-        self.stop_loss_pct: Optional[Union[int, float, Decimal]] = None
-        self.stop_loss_limit: Optional[Union[int, float, Decimal]] = None
-        self.stop_loss_exit_price: Optional[PriceType] = None
-        self.stop_profit: Optional[Union[int, float, Decimal]] = None
-        self.stop_profit_pct: Optional[Union[int, float, Decimal]] = None
-        self.stop_profit_limit: Optional[Union[int, float, Decimal]] = None
-        self.stop_profit_exit_price: Optional[PriceType] = None
-        self.stop_trailing: Optional[Union[int, float, Decimal]] = None
-        self.stop_trailing_pct: Optional[Union[int, float, Decimal]] = None
-        self.stop_trailing_limit: Optional[Union[int, float, Decimal]] = None
-        self.stop_trailing_exit_price: Optional[PriceType] = None
-
-        self._cover: bool = False
-        self._exiting_pos: bool = False
-
     def _verify_symbol(self):
         if self.symbol is None:
             raise ValueError("symbol is not set.")
+
+    def _bar_value(self, col: str) -> Optional[float]:
+        end_index = self._sym_end_index[self.symbol]
+        return self._col_scope.fetch_value(self.symbol, col, end_index)
 
     @property
     def bars(self) -> int:
@@ -708,7 +734,6 @@ class ExecContext(BaseContext):
     @property
     def open(self) -> NDArray[np.float64]:
         """Current bar's open price."""
-        self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
             self.symbol,
             DataCol.OPEN.value,
@@ -718,7 +743,6 @@ class ExecContext(BaseContext):
     @property
     def high(self) -> NDArray[np.float64]:
         """Current bar's high price."""
-        self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
             self.symbol,
             DataCol.HIGH.value,
@@ -728,7 +752,6 @@ class ExecContext(BaseContext):
     @property
     def low(self) -> NDArray[np.float64]:
         """Current bar's low price."""
-        self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
             self.symbol,
             DataCol.LOW.value,
@@ -738,7 +761,6 @@ class ExecContext(BaseContext):
     @property
     def close(self) -> NDArray[np.float64]:
         """Current bar's close price."""
-        self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
             self.symbol,
             DataCol.CLOSE.value,
@@ -748,7 +770,6 @@ class ExecContext(BaseContext):
     @property
     def volume(self) -> Optional[NDArray[np.float64]]:
         """Current bar's volume."""
-        self._verify_symbol()
         return self._col_scope.fetch(
             self.symbol,
             DataCol.VOLUME.value,
@@ -758,12 +779,53 @@ class ExecContext(BaseContext):
     @property
     def vwap(self) -> Optional[NDArray[np.float64]]:
         """Current bar's volume-weighted average price (VWAP)."""
-        self._verify_symbol()
         return self._col_scope.fetch(
             self.symbol,
             DataCol.VWAP.value,
             self._sym_end_index[self.symbol],
         )
+
+    @property
+    def open_price(self) -> float:
+        """Current bar's open price as a scalar."""
+        value = self._bar_value(DataCol.OPEN.value)
+        if value is None:
+            raise ValueError("open price not found.")
+        return value
+
+    @property
+    def high_price(self) -> float:
+        """Current bar's high price as a scalar."""
+        value = self._bar_value(DataCol.HIGH.value)
+        if value is None:
+            raise ValueError("high price not found.")
+        return value
+
+    @property
+    def low_price(self) -> float:
+        """Current bar's low price as a scalar."""
+        value = self._bar_value(DataCol.LOW.value)
+        if value is None:
+            raise ValueError("low price not found.")
+        return value
+
+    @property
+    def close_price(self) -> float:
+        """Current bar's close price as a scalar."""
+        value = self._bar_value(DataCol.CLOSE.value)
+        if value is None:
+            raise ValueError("close price not found.")
+        return value
+
+    @property
+    def volume_value(self) -> Optional[float]:
+        """Current bar's volume as a scalar."""
+        return self._bar_value(DataCol.VOLUME.value)
+
+    @property
+    def vwap_value(self) -> Optional[float]:
+        """Current bar's VWAP as a scalar."""
+        return self._bar_value(DataCol.VWAP.value)
 
     @property
     def cover_fill_price(
@@ -834,7 +896,7 @@ class ExecContext(BaseContext):
                 f"sell_all_shares failed: No long position for {self.symbol}"
             )
         self.sell_shares = pos.shares
-        self._portfolio.remove_stops(pos)
+        self._exit_stop_pos = pos
         self._exiting_pos = True
 
     def cover_all_shares(self):
@@ -845,7 +907,7 @@ class ExecContext(BaseContext):
                 f"cover_all_shares failed: No short position for {self.symbol}"
             )
         self.cover_shares = pos.shares
-        self._portfolio.remove_stops(pos)
+        self._exit_stop_pos = pos
         self._exiting_pos = True
 
     def foreign(
@@ -864,19 +926,83 @@ class ExecContext(BaseContext):
             Otherwise, an :class:`numpy.ndarray` containing values of the
             column ``col``.
         """
-        if symbol in self._foreign:
-            return self._foreign[symbol]
-        if symbol not in self._sym_end_index:
-            raise ValueError(f"Symbol {symbol!r} not found.")
-        end_index = self._sym_end_index[symbol]
         if col is None:
+            if symbol in self._foreign:
+                return self._foreign[symbol]
+            if symbol not in self._sym_end_index:
+                raise ValueError(f"Symbol {symbol!r} not found.")
+            end_index = self._sym_end_index[symbol]
             bar_data = self._col_scope.bar_data_from_data_columns(
                 symbol, end_index
             )
             self._foreign[symbol] = bar_data
             return bar_data
-        else:
-            return self._col_scope.fetch(symbol, col, end_index)
+        if symbol not in self._sym_end_index:
+            raise ValueError(f"Symbol {symbol!r} not found.")
+        end_index = self._sym_end_index[symbol]
+        return self._col_scope.fetch(symbol, col, end_index)
+
+    def interval(self, interval: TimeframeInterval) -> IntervalContext:
+        r"""Returns a read-only view of compressed bar data for ``interval``.
+
+        ``interval`` must match a value this execution declared with
+        ``intervals`` in
+        :meth:`pybroker.strategy.Strategy.add_execution`. Intervals are
+        scoped per execution: reading an interval that another execution
+        declared raises ``ValueError``, the same way :meth:`.hyperparam` is
+        gated by the execution's ``hyperparams``. The same
+        :class:`~pybroker.interval.TimeframeInterval` forms are supported:
+
+        - **Every-n-bars** (``int``): e.g. ``ctx.interval(5)`` for bars
+          formed from every 5 base bars.
+
+        - **Duration** (``str``): e.g. ``ctx.interval("5m")`` for
+          fixed-duration bins (digits plus unit letter).
+
+        - **Calendar** (``str``): e.g. ``ctx.interval("weekly")`` for
+          calendar weekly bars. Weeks start on Monday, months on the first
+          of the month, quarters in January, April, July, and October, and
+          years on January 1.
+
+        For example::
+
+            strategy.add_execution(
+                exec_fn,
+                "SPY",
+                indicators=[sma20],
+                intervals=["weekly", "5m"],
+            )
+            strategy.walkforward(windows=1, timeframe="1m")
+
+            def exec_fn(ctx):
+                weekly = ctx.interval("weekly")
+                five_min = ctx.interval("5m")
+                if len(weekly.close) > 0:
+                    wk_sma = weekly.indicator("sma20")
+
+        Args:
+            interval: Compression interval declared for this execution with
+                :meth:`pybroker.strategy.Strategy.add_execution`.
+
+        Returns:
+            :class:`pybroker.context.IntervalContext` exposing read-only
+            OHLCV, indicators, and model outputs on the compressed bars.
+        """
+        interval = normalize_interval(interval)
+        if interval not in self._declared_intervals:
+            raise ValueError(
+                f"Interval {interval!r} was not declared for this execution. "
+                "Add it with add_execution(..., intervals=[...])."
+            )
+        if interval not in self._interval:
+            self._interval[interval] = IntervalContext(
+                symbol=self.symbol,
+                interval=interval,
+                interval_scope=self._interval_scope,
+                sym_end_index=self._sym_end_index,
+                models=self._models,
+            )
+        return self._interval[interval]
 
     def model(self, name: str, symbol: Optional[str] = None) -> Any:
         r"""Returns a trained model.
@@ -891,7 +1017,26 @@ class ExecContext(BaseContext):
             Instance of the trained model.
         """
         symbol = self._get_symbol(symbol)
-        return super().model(name, symbol)
+        model_sym = ModelSymbol(name, symbol)
+        if model_sym not in self._models:
+            raise ValueError(f"Model {name!r} not found for {symbol}.")
+        return self._models[model_sym].instance
+
+    def hyperparam(self, name: str) -> Any:
+        r"""Returns a hyperparameter value for this execution.
+
+        The name must have been attached via ``hyperparams=[...]`` on
+        :meth:`pybroker.strategy.Strategy.add_execution`.
+        """
+        if name not in self._allowed_hyperparam_names:
+            raise ValueError(
+                f"Hyperparam {name!r} is not attached to this execution."
+            )
+        if name not in self._run_hyperparams:
+            raise KeyError(
+                f"Hyperparam {name!r} is not in the run hyperparams dict."
+            )
+        return self._run_hyperparams[name]
 
     def indicator(
         self, name: str, symbol: Optional[str] = None
@@ -909,7 +1054,8 @@ class ExecContext(BaseContext):
             current one, sorted in ascending chronological order.
         """
         symbol = self._get_symbol(symbol)
-        return super().indicator(name, symbol)
+        end_index = self._sym_end_index[symbol]
+        return self._ind_scope.fetch(symbol, name, end_index)
 
     def input(
         self, model_name: str, symbol: Optional[str] = None
@@ -927,7 +1073,8 @@ class ExecContext(BaseContext):
             are sorted in ascending chronological order.
         """
         symbol = self._get_symbol(symbol)
-        return super().input(model_name, symbol)
+        end_index = self._sym_end_index[symbol]
+        return self._input_scope.fetch(symbol, model_name, end_index)
 
     def preds(self, model_name: str, symbol: Optional[str] = None) -> NDArray:
         r"""Returns model predictions.
@@ -942,7 +1089,8 @@ class ExecContext(BaseContext):
             up to the current bar. Sorted in ascending chronological order.
         """
         symbol = self._get_symbol(symbol)
-        return super().preds(model_name, symbol)
+        end_index = self._sym_end_index[symbol]
+        return self._pred_scope.fetch(symbol, model_name, end_index)
 
     def long_pos(
         self,
@@ -1002,23 +1150,113 @@ class ExecContext(BaseContext):
         and share ``price``.
 
         Args:
-            target_size: Proportion of cash used to calculate the number of
-                shares, where the max ``target_size`` is ``1``. For example, a
-                ``target_size`` of ``0.1`` would represent 10% of cash.
+            target_size: Proportion of deployable capital used to calculate the
+                number of shares, where the max ``target_size`` is ``1``. For
+                example, a ``target_size`` of ``0.1`` would represent 10% of
+                deployable capital.
             price: Share price used to calculate the number of shares. If
                 ``None``, the share price of the ``ExecContext``\ 's
                 :attr:`.symbol` is used.
-            cash: Cash used to calculate the number of number of shares. If
-                ``None``, then the :class:`pybroker.portfolio.Portfolio` equity
-                is used to calculate the number of shares.
+            cash: Capital used to calculate the number of shares. If ``None``,
+                deployable capital is used, defined as portfolio equity
+                multiplied by
+                :attr:`pybroker.config.StrategyConfig.leverage`. The resulting
+                order is still capped by :attr:`.buying_power` when it is
+                placed.
 
         Returns:
             Number of shares given ``target_size`` and share ``price``. If
             :attr:`pybroker.config.StrategyConfig.enable_fractional_shares` is
             ``True``, then a Decimal is returned.
         """
-        price = self.close[-1] if price is None else price
-        return super().calc_target_shares(target_size, price, cash)
+        price = self.close_price if price is None else price
+        price_dec = to_decimal(price)
+        if not price_dec.is_finite() or price_dec <= 0:
+            # Raised consistently for both share modes. Integer shares used to
+            # raise "cannot convert NaN to integer" naming nothing, while
+            # fractional shares returned 0 -- which set_target_shares then read
+            # as a legitimate target and used to liquidate the whole position.
+            raise ValueError(
+                f"Cannot size an order for {self.symbol!r} on "
+                f"{self._curr_date}: price is {price!r}."
+            )
+        if cash is not None:
+            base = to_decimal(cash)
+        else:
+            base = self._portfolio.equity * to_decimal(self.config.leverage)
+        shares = base * to_decimal(target_size) / price_dec
+        if self.config.enable_fractional_shares:
+            return shares.max(0)
+        return max(int(shares), 0)
+
+    def set_target_shares(
+        self,
+        target: float,
+        *,
+        dir: Literal["long", "short"],
+    ):
+        r"""Sets orders to reach a target allocation for long or short exposure.
+
+        Calculates the number of shares needed to reach ``target`` using
+        :meth:`.calc_target_shares`.
+
+        Args:
+            target: Target allocation as a fraction of deployable capital,
+                defined as portfolio equity multiplied by
+                :attr:`pybroker.config.StrategyConfig.leverage`.
+                The max ``target`` is ``1``.
+            dir: Exposure direction to rebalance. ``"long"`` sets
+                :attr:`.buy_shares` or :attr:`.sell_shares`. ``"short"`` sets
+                :attr:`.sell_shares` to increase short exposure or
+                :attr:`.cover_shares` to decrease it.
+        """
+        if target < 0:
+            raise ValueError("target cannot be negative.")
+        if dir not in ("long", "short"):
+            raise ValueError('dir must be "long" or "short".')
+        price = to_decimal(self.close_price)
+        if not price.is_finite() or price <= 0:
+            # An unpriceable bar -- a halt, a vendor gap -- cannot size an
+            # order. Skipping places nothing this bar and the target is simply
+            # restated on the next priceable one, mirroring how capture_bar
+            # holds a position at its last mark through such a bar. Raising
+            # here aborted the whole run mid-backtest, and the old fractional
+            # path was worse still: calc_target_shares returned 0, which was
+            # read as a legitimate target and liquidated the position.
+            return
+        target_shares = self.calc_target_shares(target)
+        if dir == "long":
+            pos = self.long_pos()
+            if pos is None:
+                self.buy_shares = target_shares
+            elif pos.shares < target_shares:
+                self.buy_shares = target_shares - pos.shares
+            elif pos.shares > target_shares:
+                self.sell_shares = pos.shares - target_shares
+                self._exit_target_pos(pos, target_shares)
+            return
+        pos = self.short_pos()
+        if pos is None:
+            self.sell_shares = target_shares
+        elif pos.shares < target_shares:
+            self.sell_shares = target_shares - pos.shares
+        elif pos.shares > target_shares:
+            self.cover_shares = pos.shares - target_shares
+            self._exit_target_pos(pos, target_shares)
+
+    def _exit_target_pos(
+        self, pos: Position, target_shares: Union[Decimal, int]
+    ):
+        """Disarms ``pos``'s stops when a target of zero closes it out.
+
+        Mirrors :meth:`.sell_all_shares`. Without this, a stop firing on the
+        bar the exit order fills would close the position first, leaving the
+        scheduled order to open a position in the opposite direction.
+        """
+        if target_shares > 0:
+            return
+        self._exit_stop_pos = pos
+        self._exiting_pos = True
 
     def cancel_pending_order(self, order_id: int) -> bool:
         """Cancels a :class:`pybroker.scope.PendingOrder` with ``order_id``."""
@@ -1291,6 +1529,34 @@ class ExecContext(BaseContext):
         else:
             return None, frozenset(stops)
 
+    def _is_noop_bar(self) -> bool:
+        if self.buy_shares is not None or self.sell_shares is not None:
+            return False
+        return (
+            self.hold_bars is None
+            and self.buy_fill_price is None
+            and self.sell_fill_price is None
+            and self.buy_limit_price is None
+            and self.sell_limit_price is None
+            and self.buy_timeout_bars is None
+            and self.sell_timeout_bars is None
+            and self._score is None
+            and self.long_score is None
+            and self.short_score is None
+            and self.stop_loss is None
+            and self.stop_loss_pct is None
+            and self.stop_loss_limit is None
+            and self.stop_loss_exit_price is None
+            and self.stop_profit is None
+            and self.stop_profit_pct is None
+            and self.stop_profit_limit is None
+            and self.stop_profit_exit_price is None
+            and self.stop_trailing is None
+            and self.stop_trailing_pct is None
+            and self.stop_trailing_limit is None
+            and self.stop_trailing_exit_price is None
+        )
+
     def to_result(self) -> Optional[ExecResult]:
         """Creates an :class:`.ExecResult` from the data set on
         :class:`.ExecContext`.
@@ -1299,6 +1565,8 @@ class ExecContext(BaseContext):
             raise ValueError("curr_date is not set.")
         if self.symbol is None:
             raise ValueError("symbol is not set.")
+        if self._is_noop_bar():
+            return None
         if self.buy_shares is None:
             if self.buy_limit_price is not None:
                 raise ValueError(
@@ -1328,9 +1596,12 @@ class ExecContext(BaseContext):
                 or self.stop_profit is not None
                 or self.stop_profit_pct is not None
                 or self.stop_profit_limit is not None
+                or self.stop_loss_exit_price is not None
+                or self.stop_profit_exit_price is not None
                 or self.stop_trailing is not None
                 or self.stop_trailing_pct is not None
                 or self.stop_trailing_limit is not None
+                or self.stop_trailing_exit_price is not None
             ):
                 raise ValueError(
                     "Either buy_shares or sell_shares must be set when a stop "
@@ -1345,6 +1616,17 @@ class ExecContext(BaseContext):
             raise ValueError(
                 "For each symbol, only one of buy_shares or sell_shares can be"
                 " set per bar."
+            )
+        if self._score is not None and (
+            self.long_score is not None or self.short_score is not None
+        ):
+            raise ValueError(
+                "score cannot be set when long_score or short_score is set."
+            )
+        if self.rotation_enabled and self._score is not None:
+            raise ValueError(
+                "score cannot be used with rotation enabled; use long_score or "
+                "short_score instead."
             )
         if not self.buy_shares and not self.sell_shares:
             return None
@@ -1373,26 +1655,59 @@ class ExecContext(BaseContext):
             if self.sell_limit_price is not None
             else None
         )
+        for label, limit in (
+            ("buy_limit_price", buy_limit_price),
+            ("sell_limit_price", sell_limit_price),
+        ):
+            if limit is not None and not limit.is_finite():
+                # A NaN limit -- typically arithmetic on a halted bar's NaN
+                # close -- can never fill (every comparison against it is
+                # False), and Decimal raises a bare InvalidOperation the
+                # moment the portfolio's limit check touches it, aborting the
+                # run with an error naming neither the symbol nor the bar.
+                raise ValueError(
+                    f"{label} is {limit} for {self.symbol!r} on "
+                    f"{self._curr_date}. Check for NaN prices before "
+                    "computing limit prices."
+                )
         sell_shares = (
             to_decimal(self.sell_shares)
             if self.sell_shares is not None
             else None
         )
         long_stops, short_stops = self._get_stops()
+        exit_pos_type: Optional[Literal["long", "short"]] = None
+        if self._exit_stop_pos is not None and (
+            buy_shares is not None or sell_shares is not None
+        ):
+            # Record that this order exits a position, but leave its stops
+            # armed. Disarming here -- or in sell_all_shares/cover_all_shares
+            # -- strands the position unprotected whenever the order is later
+            # discarded, times out, or never fills against its limit. The
+            # order is instead clamped to the shares still held when it fills,
+            # so a stop firing first simply leaves nothing to sell rather than
+            # flipping the position to the opposite side.
+            exit_pos_type = self._exit_stop_pos.type
+            self._exit_stop_pos = None
         return ExecResult(
             symbol=self.symbol,
             date=self._curr_date,
             buy_fill_price=buy_fill_price,
             sell_fill_price=sell_fill_price,
-            score=self.score,
+            score=self._score,
+            long_score=self.long_score,
+            short_score=self.short_score,
             hold_bars=self.hold_bars,
             buy_shares=buy_shares,
             buy_limit_price=buy_limit_price,
+            buy_timeout_bars=self.buy_timeout_bars,
             sell_shares=sell_shares,
             sell_limit_price=sell_limit_price,
+            sell_timeout_bars=self.sell_timeout_bars,
             long_stops=long_stops,
             short_stops=short_stops,
             cover=self._cover,
+            exit_pos_type=exit_pos_type,
         )
 
     def __getattr__(self, attr):
@@ -1405,6 +1720,29 @@ class ExecContext(BaseContext):
         raise AttributeError(f"Attribute {attr!r} not found.")
 
 
+@dataclass(frozen=True)
+class RotationContext:
+    r"""Context passed to a rotation sizer set with
+    :meth:`pybroker.strategy.Strategy.enable_rotation`.
+
+    Attributes:
+        ctxs: :class:`Mapping` of all ticker symbols to :class:`.ExecContext`\ s.
+        portfolio: :class:`pybroker.portfolio.Portfolio`.
+        long_ranks: Rankings computed from rankable :attr:`.ExecContext.long_score`
+            values, where ``1`` is the highest score.
+        short_ranks: Rankings computed from rankable
+            :attr:`.ExecContext.short_score` values, where ``1`` is the highest
+            score.
+        config: :class:`pybroker.config.StrategyConfig`.
+    """
+
+    ctxs: Mapping[str, ExecContext]
+    portfolio: Portfolio
+    long_ranks: Mapping[str, int]
+    short_ranks: Mapping[str, int]
+    config: StrategyConfig
+
+
 def set_exec_ctx_data(ctx: ExecContext, date: np.datetime64):
     """Sets data on an :class:`.ExecContext` instance.
 
@@ -1415,22 +1753,31 @@ def set_exec_ctx_data(ctx: ExecContext, date: np.datetime64):
     ctx._curr_date = date
     ctx._dt = None
     ctx._foreign.clear()
+    ctx._interval.clear()
     ctx._cover = False
     ctx._exiting_pos = False
+    ctx._exit_stop_pos = None
     ctx.buy_fill_price = None
     ctx.buy_shares = None
     ctx.buy_limit_price = None
+    ctx.buy_timeout_bars = None
     ctx.sell_fill_price = None
     ctx.sell_shares = None
     ctx.sell_limit_price = None
+    ctx.sell_timeout_bars = None
     ctx.hold_bars = None
-    ctx.score = None
+    ctx._score = None
+    ctx.long_score = None
+    ctx.short_score = None
     ctx.stop_loss = None
     ctx.stop_loss_pct = None
     ctx.stop_loss_limit = None
+    ctx.stop_loss_exit_price = None
     ctx.stop_profit = None
     ctx.stop_profit_pct = None
     ctx.stop_profit_limit = None
+    ctx.stop_profit_exit_price = None
     ctx.stop_trailing = None
     ctx.stop_trailing_pct = None
     ctx.stop_trailing_limit = None
+    ctx.stop_trailing_exit_price = None

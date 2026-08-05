@@ -6,7 +6,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
-import itertools
+import sys
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Final, Iterable, Optional, Union
@@ -72,14 +72,14 @@ class DataSourceCacheMixin:
             ``Iterable[str]`` of symbols for which no cached data was
             found.
         """
-        df = pd.DataFrame()
         scope = StaticScope.instance()
         cache = scope.data_source_cache
         if cache is None:
-            return df, symbols
+            return pd.DataFrame(), symbols
         start_date = to_datetime(start_date)
         end_date = to_datetime(end_date)
         tf_seconds = to_seconds(timeframe)
+        cached_frames: list[pd.DataFrame] = []
         uncached_syms = []
         cached_syms = []
         for sym in symbols:
@@ -90,13 +90,14 @@ class DataSourceCacheMixin:
                 end_date=end_date,
                 adjust=adjust,
             )
-            cached = cache.get(repr(cache_key))
+            cached = cache.get(cache_key)
             scope.logger.debug_get_data_source_cache(cache_key)
             if cached is None:
                 uncached_syms.append(sym)
             else:
                 cached_syms.append(sym)
-                df = pd.concat([df, cached])
+                cached_frames.append(cached)
+        df = pd.concat(cached_frames) if cached_frames else pd.DataFrame()
         if not uncached_syms:
             scope.logger.loaded_bar_data()
         scope.logger.info_loaded_bar_data(
@@ -144,8 +145,7 @@ class DataSourceCacheMixin:
         start_date = to_datetime(start_date)
         end_date = to_datetime(end_date)
         tf_seconds = to_seconds(timeframe)
-        for sym in data[DataCol.SYMBOL.value].unique():
-            df = data[data[DataCol.SYMBOL.value] == sym]
+        for sym, sym_df in data.groupby(DataCol.SYMBOL.value, sort=False):
             cache_key = DataSourceCacheKey(
                 symbol=sym,
                 tf_seconds=tf_seconds,
@@ -153,7 +153,7 @@ class DataSourceCacheMixin:
                 end_date=end_date,
                 adjust=adjust,
             )
-            cache.set(repr(cache_key), df)
+            cache.set(cache_key, sym_df)
             scope.logger.debug_set_data_source_cache(cache_key)
 
 
@@ -238,10 +238,14 @@ class DataSource(ABC, DataSourceCacheMixin):
         ):
             self._logger.info_invalidate_data_source_cache()
             self._scope.data_source_cache.clear()
-            return self.query(symbols, start_date, end_date, timeframe)
+            # ``adjust`` rides along: dropping it here re-fetched UNADJUSTED
+            # data for a request that asked for adjusted prices, and cached
+            # it under the adjust=None key -- silently, since the frame is
+            # otherwise well-formed.
+            return self.query(symbols, start_date, end_date, timeframe, adjust)
         verify_data_source_columns(df)
         self.set_cached(timeframe, start_date, end_date, adjust, df)
-        df = pd.concat((cached_df, df))
+        df = pd.concat((cached_df, df), ignore_index=True)
         if not df.empty:
             df = df.sort_values(by=[DataCol.DATE.value, DataCol.SYMBOL.value])
         self._logger.download_bar_data_completed()
@@ -384,7 +388,7 @@ class Alpaca(DataSource):
             adjustment=adj_enum,
             feed=None,
         )
-        df = self._api.get_stock_bars(request).df  # type: ignore[union-attr]
+        df = self._api.get_stock_bars(request).df
         if df.columns.empty:
             return pd.DataFrame(
                 columns=[
@@ -546,6 +550,11 @@ class YFinance(DataSource):
             progress=show_yf_progress_bar,
             auto_adjust=self.auto_adjust,
         )
+        if show_yf_progress_bar:
+            # yfinance's progress bar leaves its final newline unflushed on
+            # stderr; flush before the caller logs to stdout, or the newline
+            # surfaces as a stray stderr block in notebook output.
+            sys.stderr.flush()
         if df.columns.empty:
             columns = [
                 DataCol.SYMBOL.value,
@@ -562,33 +571,53 @@ class YFinance(DataSource):
         if df.empty:
             return df
         df = df.reset_index()
-        result = pd.DataFrame()
         if len(symbols) == 1:
-            result[DataCol.DATE.value] = df["Date"].values
-            result[DataCol.SYMBOL.value] = tuple(
-                itertools.repeat(next(iter(symbols)), len(df["Close"].values))
+            sym = next(iter(symbols))
+            if isinstance(df.columns, pd.MultiIndex):
+                # yfinance returns symbol-keyed MultiIndex columns even for a
+                # single symbol, which would make each df[col] a DataFrame.
+                df.columns = df.columns.get_level_values(0)
+            result = pd.DataFrame(
+                {
+                    DataCol.DATE.value: df["Date"].values,
+                    DataCol.SYMBOL.value: sym,
+                    DataCol.OPEN.value: df["Open"].values,
+                    DataCol.HIGH.value: df["High"].values,
+                    DataCol.LOW.value: df["Low"].values,
+                    DataCol.CLOSE.value: df["Close"].values,
+                    DataCol.VOLUME.value: df["Volume"].values,
+                }
             )
-            result[DataCol.OPEN.value] = df["Open"].values
-            result[DataCol.HIGH.value] = df["High"].values
-            result[DataCol.LOW.value] = df["Low"].values
-            result[DataCol.CLOSE.value] = df["Close"].values
-            result[DataCol.VOLUME.value] = df["Volume"].values
             if not self.auto_adjust:
                 result[self.ADJ_CLOSE] = df["Adj Close"].values
         else:
             df.columns = df.columns.to_flat_index()
-            for sym in symbols:
-                sym_df = pd.DataFrame()
-                sym_df[DataCol.DATE.value] = df[("Date", "")].values
-                sym_df[DataCol.SYMBOL.value] = tuple(
-                    itertools.repeat(sym, len(df[("Close", sym)].values))
+            sym_list = list(symbols)
+            n = len(df)
+            result_data: dict[str, Any] = {
+                DataCol.DATE.value: np.tile(
+                    df[("Date", "")].values, len(sym_list)
+                ),
+                DataCol.SYMBOL.value: np.repeat(sym_list, n),
+                DataCol.OPEN.value: np.concatenate(
+                    [df[("Open", sym)].values for sym in sym_list]
+                ),
+                DataCol.HIGH.value: np.concatenate(
+                    [df[("High", sym)].values for sym in sym_list]
+                ),
+                DataCol.LOW.value: np.concatenate(
+                    [df[("Low", sym)].values for sym in sym_list]
+                ),
+                DataCol.CLOSE.value: np.concatenate(
+                    [df[("Close", sym)].values for sym in sym_list]
+                ),
+                DataCol.VOLUME.value: np.concatenate(
+                    [df[("Volume", sym)].values for sym in sym_list]
+                ),
+            }
+            if not self.auto_adjust:
+                result_data[self.ADJ_CLOSE] = np.concatenate(
+                    [df[("Adj Close", sym)].values for sym in sym_list]
                 )
-                sym_df[DataCol.OPEN.value] = df[("Open", sym)].values
-                sym_df[DataCol.HIGH.value] = df[("High", sym)].values
-                sym_df[DataCol.LOW.value] = df[("Low", sym)].values
-                sym_df[DataCol.CLOSE.value] = df[("Close", sym)].values
-                sym_df[DataCol.VOLUME.value] = df[("Volume", sym)].values
-                if not self.auto_adjust:
-                    sym_df[self.ADJ_CLOSE] = df[("Adj Close", sym)].values
-                result = pd.concat((result, sym_df))
+            result = pd.DataFrame(result_data)
         return result

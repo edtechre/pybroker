@@ -6,19 +6,37 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
-import functools
 import itertools
 import numpy as np
 import operator as op
 import pandas as pd
 import pybroker.vect as vect
 from pybroker.cache import CacheDateFields, IndicatorCacheKey
-from pybroker.common import BarData, DataCol, IndicatorSymbol, default_parallel
+from pybroker.common import BarData, DataCol, IndicatorSymbol
+from pybroker.optimize import (
+    _find_hyperparam_names,
+    _hyperparam_specs_from_kwargs,
+    _resolve_hyperparams,
+    build_run_hyperparams,
+)
+from pybroker.parallel import parallel
 from pybroker.eval import iqr, relative_entropy
-from pybroker.scope import StaticScope
+from pybroker.scope import (
+    StaticScope,
+    SymbolArrayStore,
+    run_with_scope,
+    sym_data_from_store,
+    symbol_array_store_from_frame,
+)
+from pybroker.interval import (
+    IntervalData,
+    CompressedBars,
+    compressed_bars_to_bar_data,
+    parse_indicator_interval_name,
+    validate_source_name,
+)
 from pybroker.vect import highv, lowv, returnv
 from collections import defaultdict
-from dataclasses import asdict
 from joblib import delayed
 from numpy.typing import NDArray
 from typing import (
@@ -33,7 +51,6 @@ from typing import (
 
 
 def _to_bar_data(df: pd.DataFrame) -> BarData:
-    df = df.reset_index()
     required_cols = (
         DataCol.DATE,
         DataCol.OPEN,
@@ -41,6 +58,8 @@ def _to_bar_data(df: pd.DataFrame) -> BarData:
         DataCol.LOW,
         DataCol.CLOSE,
     )
+    if not all(col.value in df.columns for col in required_cols):
+        df = df.reset_index()
     for col in required_cols:
         if col.value not in df.columns:
             raise ValueError(
@@ -48,20 +67,20 @@ def _to_bar_data(df: pd.DataFrame) -> BarData:
             )
     return BarData(
         **{
-            col.value: df[col.value].to_numpy(copy=True)
+            col.value: df[col.value].to_numpy(copy=False)
             for col in required_cols
         },
         **{
             col.value: (
-                df[col.value].to_numpy(copy=True)
+                df[col.value].to_numpy(copy=False)
                 if col.value in df.columns
                 else None
             )
             for col in (DataCol.VOLUME, DataCol.VWAP)
         },  # type: ignore[arg-type]
         **{
-            col: df[col].to_numpy(copy=True) if col in df.columns else None
-            for col in StaticScope.instance().custom_data_cols
+            col: df[col].to_numpy(copy=False) if col in df.columns else None
+            for col in sorted(StaticScope.instance().custom_data_cols)
         },  # type: ignore[arg-type]
     )
 
@@ -82,8 +101,12 @@ class Indicator:
         kwargs: dict[str, Any],
     ):
         self.name = name
-        self._fn = functools.partial(fn, **kwargs)
+        self._fn = fn
         self._kwargs = kwargs
+
+    @property
+    def hyperparam_names(self) -> frozenset[str]:
+        return _find_hyperparam_names(self._kwargs)
 
     def relative_entropy(self, data: Union[BarData, pd.DataFrame]) -> float:
         """Generates indicator data with ``data`` and computes its relative
@@ -99,11 +122,28 @@ class Indicator:
         """
         return iqr(self(data).values)
 
-    def __call__(self, data: Union[BarData, pd.DataFrame]) -> pd.Series:
+    def __call__(
+        self,
+        data: Union[BarData, pd.DataFrame],
+        hyperparams: Optional[dict[str, Any]] = None,
+    ) -> pd.Series:
         """Computes indicator values."""
         if isinstance(data, pd.DataFrame):
             data = _to_bar_data(data)
-        values = self._fn(data)
+        if self.hyperparam_names:
+            effective = (
+                hyperparams
+                if hyperparams is not None
+                else build_run_hyperparams(
+                    _hyperparam_specs_from_kwargs(self._kwargs)
+                )
+            )
+            resolved = _resolve_hyperparams(self._kwargs, effective)
+            values = self._fn(data, **resolved)
+        elif self._kwargs:
+            values = self._fn(data, **self._kwargs)
+        else:
+            values = self._fn(data)
         if isinstance(values, pd.Series):
             values = values.to_numpy()
         if len(values.shape) != 1:
@@ -119,29 +159,99 @@ class Indicator:
         return f"Indicator({self.name!r}, {self._kwargs})"
 
 
-def indicator(
-    name: str, fn: Callable[..., NDArray[np.float64]], **kwargs
-) -> Indicator:
-    r"""Creates an :class:`.Indicator` instance and registers it globally with
-    ``name``.
+def _compressed_to_bar_data(bars):
+    if not isinstance(bars, CompressedBars):
+        raise TypeError(f"Expected CompressedBars, received {type(bars)!r}.")
+    return compressed_bars_to_bar_data(bars)
 
-    Args:
-        name: Name for referencing the indicator globally.
-        fn: ``Callable[[BarData, ...], NDArray[float]]`` used to compute the
-            series of indicator values.
-        \**kwargs: Additional arguments to pass to ``fn``.
 
-    Returns:
-        :class:`.Indicator` instance.
+def _indicator_args(
+    ind_name: str,
+    sym: str,
+    sym_cols: Mapping[str, Optional[NDArray]],
+    sym_interval_data: Optional[IntervalData],
+    custom_data_cols: Iterable[str],
+    default_data_cols: frozenset[str],
+) -> dict[str, Any]:
+    _, token = parse_indicator_interval_name(ind_name)
+    if token is not None:
+        if sym_interval_data is None or (sym, token) not in (
+            sym_interval_data.compressed
+        ):
+            raise ValueError(
+                f"Timeframe indicator {ind_name!r} requires compressed data "
+                f"for {sym!r} on interval {token!r}. Declare it with "
+                "add_execution(..., intervals=[...]) on the execution that "
+                f"owns {sym!r}."
+            )
+        key = (sym, token)
+        bars = sym_interval_data.compressed[key].bars
+        return {
+            "symbol": sym,
+            "ind_name": ind_name,
+            "date": bars.dates,
+            "open": bars.open,
+            "high": bars.high,
+            "low": bars.low,
+            "close": bars.close,
+            "volume": bars.volume,
+            "vwap": bars.vwap,
+            "custom_col_data": bars.custom,
+        }
+    return {
+        "symbol": sym,
+        "ind_name": ind_name,
+        "custom_col_data": {col: sym_cols[col] for col in custom_data_cols},
+        **{col: sym_cols[col] for col in default_data_cols},
+    }
+
+
+def _interval_data_by_symbol(
+    interval_data: Optional[IntervalData],
+) -> dict[str, IntervalData]:
+    """Groups ``interval_data`` by symbol so workers only receive their own
+    compressed data. ``CompressedSymbolData`` values are shared by reference.
     """
-    scope = StaticScope.instance()
-    indicator = Indicator(name, fn, kwargs)
-    scope.set_indicator(indicator)
-    return indicator
+    if interval_data is None:
+        return {}
+    grouped: dict[str, dict] = defaultdict(dict)
+    for key, data in interval_data.compressed.items():
+        grouped[key[0]][key] = data
+    return {
+        sym: IntervalData(compressed=compressed)
+        for sym, compressed in grouped.items()
+    }
 
 
-def _decorate_indicator_fn(ind_name: str):
-    fn = StaticScope.instance().get_indicator(ind_name).__call__
+def _run_indicators_for_symbol(
+    sym: str,
+    ind_names: tuple[str, ...],
+    sym_cols: Mapping[str, Optional[NDArray]],
+    sym_interval_data: Optional[IntervalData],
+    fns: Mapping[str, Callable[..., tuple[IndicatorSymbol, pd.Series]]],
+    custom_data_cols: tuple[str, ...],
+    default_data_cols: frozenset[str],
+) -> tuple[tuple[IndicatorSymbol, pd.Series], ...]:
+    return tuple(
+        fns[ind_name](
+            **_indicator_args(
+                ind_name,
+                sym,
+                sym_cols,
+                sym_interval_data,
+                custom_data_cols,
+                default_data_cols,
+            )
+        )
+        for ind_name in ind_names
+    )
+
+
+def _decorate_indicator_fn(
+    ind_name: str, hyperparams: Optional[dict[str, Any]] = None
+):
+    base_name, _ = parse_indicator_interval_name(ind_name)
+    fn = StaticScope.instance().get_indicator(base_name).__call__
 
     def decorated_indicator_fn(
         symbol: str,
@@ -165,21 +275,110 @@ def _decorate_indicator_fn(ind_name: str):
             vwap=vwap,
             **custom_col_data,
         )
-        series = fn(bar_data)
+        series = fn(bar_data, hyperparams=hyperparams)
         return IndicatorSymbol(ind_name, symbol), series
 
     return decorated_indicator_fn
 
 
+def indicator(
+    name: str, fn: Callable[..., NDArray[np.float64]], **kwargs
+) -> Indicator:
+    r"""Creates an :class:`.Indicator` instance and registers it globally with
+    ``name``.
+
+    Args:
+        name: Name for referencing the indicator globally.
+        fn: ``Callable[[BarData, ...], NDArray[float]]`` used to compute the
+            series of indicator values.
+        \**kwargs: Additional arguments to pass to ``fn``.
+
+    Returns:
+        :class:`.Indicator` instance.
+    """
+    validate_source_name(name, "indicator")
+    scope = StaticScope.instance()
+    ind = Indicator(name, fn, kwargs)
+    scope.set_indicator(ind)
+    return ind
+
+
 class IndicatorsMixin:
     """Mixin implementing indicator related functionality."""
+
+    def _indicator_memo_store(
+        self,
+    ) -> dict[tuple[str, str, tuple[tuple[str, Any], ...]], pd.Series]:
+        store = getattr(self, "_indicator_memo", None)
+        if store is None:
+            store = {}
+            self._indicator_memo = store
+        return store
+
+    def _memo_key(
+        self,
+        ind_name: str,
+        symbol: str,
+        hyperparams: Optional[dict[str, Any]],
+    ) -> Optional[tuple[str, str, tuple[tuple[str, Any], ...]]]:
+        base_name, _ = parse_indicator_interval_name(ind_name)
+        ind = StaticScope.instance().get_indicator(base_name)
+        if not ind.hyperparam_names:
+            return None
+        if hyperparams is None:
+            subset = build_run_hyperparams(
+                _hyperparam_specs_from_kwargs(ind._kwargs)
+            )
+        else:
+            subset = {n: hyperparams[n] for n in ind.hyperparam_names}
+        return (
+            ind_name,
+            symbol,
+            tuple(sorted(subset.items())),
+        )
+
+    def _get_memoized_indicator(
+        self,
+        ind_sym: IndicatorSymbol,
+        hyperparams: Optional[dict[str, Any]],
+    ) -> Optional[pd.Series]:
+        if getattr(self, "_indicator_memo_max", 0) == 0:
+            return None
+        key = self._memo_key(ind_sym.ind_name, ind_sym.symbol, hyperparams)
+        if key is None:
+            return None
+        return self._indicator_memo_store().get(key)
+
+    def _set_memoized_indicator(
+        self,
+        ind_sym: IndicatorSymbol,
+        series: pd.Series,
+        hyperparams: Optional[dict[str, Any]],
+    ) -> None:
+        memo_max = getattr(self, "_indicator_memo_max", 0)
+        if memo_max == 0:
+            return
+        key = self._memo_key(ind_sym.ind_name, ind_sym.symbol, hyperparams)
+        if key is None:
+            return
+        memo = self._indicator_memo_store()
+        if len(memo) >= memo_max:
+            oldest = next(iter(memo))
+            del memo[oldest]
+            StaticScope.instance().logger.debug_compute_indicators(
+                is_parallel=False
+            )
+        memo[key] = series
 
     def compute_indicators(
         self,
         df: pd.DataFrame,
         indicator_syms: Iterable[IndicatorSymbol],
         cache_date_fields: Optional[CacheDateFields],
-        disable_parallel: bool,
+        parallel_indicators: bool,
+        interval_data: Optional[IntervalData] = None,
+        symbol_store: Optional[SymbolArrayStore] = None,
+        hyperparams: Optional[dict[str, Any]] = None,
     ) -> dict[IndicatorSymbol, pd.Series]:
         """Computes indicator data for the provided
         :class:`pybroker.common.IndicatorSymbol` pairs.
@@ -191,10 +390,17 @@ class IndicatorsMixin:
                 to compute.
             cache_date_fields: Date fields used to key cache data. Pass
                 ``None`` to disable caching.
-            disable_parallel: If ``True``, indicator data is computed
-                serially for all :class:`pybroker.common.IndicatorSymbol`
-                pairs. If ``False``, indicator data is computed in parallel
-                using multiple processes.
+            parallel_indicators: If ``True``, indicator data is
+                computed in parallel using multiple processes. If ``False``,
+                indicator data is computed serially for all
+                :class:`pybroker.common.IndicatorSymbol` pairs.
+            interval_data: Optional compressed interval data.
+            symbol_store: Optional pre-built :class:`pybroker.scope.SymbolArrayStore` to
+                avoid rebuilding per-symbol arrays from ``df``.
+            hyperparams: Optional hyperparameter overrides for indicators
+                that declare hyperparameters. During
+                :meth:`pybroker.optimize.OptimizeMixin.optimize`, results are
+                memoized in memory.
 
         Returns:
             ``dict`` mapping each :class:`pybroker.common.IndicatorSymbol` pair
@@ -204,8 +410,18 @@ class IndicatorsMixin:
             return {}
         scope = StaticScope.instance()
         indicator_data, uncached_ind_syms = self._get_cached_indicators(
-            indicator_syms, cache_date_fields
+            indicator_syms, cache_date_fields, hyperparams
         )
+        memo_hits: list[IndicatorSymbol] = []
+        still_uncached: list[IndicatorSymbol] = []
+        for ind_sym in uncached_ind_syms:
+            memo_series = self._get_memoized_indicator(ind_sym, hyperparams)
+            if memo_series is not None:
+                indicator_data[ind_sym] = memo_series
+                memo_hits.append(ind_sym)
+            else:
+                still_uncached.append(ind_sym)
+        uncached_ind_syms = still_uncached
         if not uncached_ind_syms:
             scope.logger.loaded_indicator_data()
             scope.logger.info_loaded_indicator_data(indicator_syms)
@@ -214,26 +430,26 @@ class IndicatorsMixin:
             scope.logger.info_loaded_indicator_data(indicator_data.keys())
         scope.logger.indicator_data_start(uncached_ind_syms)
         scope.logger.info_indicator_data_start(uncached_ind_syms)
-        needed_syms = {sym for _, sym in uncached_ind_syms}
-        sym_data: dict[str, dict[str, Optional[NDArray]]] = {}
-        for sym, group in df.groupby(
-            DataCol.SYMBOL.value, sort=False, observed=True
-        ):
-            if sym not in needed_syms:
-                continue
-            sym_data[sym] = {
-                col: (
-                    group[col].to_numpy(copy=True)
-                    if col in group.columns
-                    else None
-                )
-                for col in scope.all_data_cols
-            }
+        needed_syms = frozenset(sym for _, sym in uncached_ind_syms)
+        if symbol_store is None:
+            symbol_store = symbol_array_store_from_frame(
+                df, symbols=needed_syms
+            )
+        sym_data = sym_data_from_store(symbol_store, scope.ordered_data_cols)
         for i, (ind_sym, series) in enumerate(
-            self._run_indicators(sym_data, uncached_ind_syms, disable_parallel)
+            self._run_indicators(
+                sym_data,
+                uncached_ind_syms,
+                parallel_indicators,
+                interval_data,
+                hyperparams,
+            )
         ):
             indicator_data[ind_sym] = series
-            self._set_cached_indicator(series, ind_sym, cache_date_fields)
+            self._set_memoized_indicator(ind_sym, series, hyperparams)
+            self._set_cached_indicator(
+                series, ind_sym, cache_date_fields, hyperparams
+            )
             scope.logger.indicator_data_loading(i + 1)
         return indicator_data
 
@@ -241,23 +457,28 @@ class IndicatorsMixin:
         self,
         indicator_syms: Iterable[IndicatorSymbol],
         cache_date_fields: Optional[CacheDateFields],
+        hyperparams: Optional[dict[str, Any]] = None,
     ) -> tuple[dict[IndicatorSymbol, pd.Series], list[IndicatorSymbol]]:
         indicator_syms = sorted(indicator_syms)
         indicator_data: dict[IndicatorSymbol, pd.Series] = {}
         if cache_date_fields is None:
-            return indicator_data, indicator_syms
+            return indicator_data, list(indicator_syms)
         scope = StaticScope.instance()
         if scope.indicator_cache is None:
-            return indicator_data, indicator_syms
+            return indicator_data, list(indicator_syms)
         uncached_ind_syms = []
         for ind_sym in indicator_syms:
-            cache_key = IndicatorCacheKey(
+            base_name, _ = parse_indicator_interval_name(ind_sym.ind_name)
+            if scope.get_indicator(base_name).hyperparam_names:
+                uncached_ind_syms.append(ind_sym)
+                continue
+            cache_key = IndicatorCacheKey.from_date_fields(
                 symbol=ind_sym.symbol,
                 ind_name=ind_sym.ind_name,
-                **asdict(cache_date_fields),
+                fields=cache_date_fields,
             )
             scope.logger.debug_get_indicator_cache(cache_key)
-            data = scope.indicator_cache.get(repr(cache_key))
+            data = scope.indicator_cache.get(cache_key)
             if data is not None:
                 indicator_data[ind_sym] = data
             else:
@@ -269,57 +490,78 @@ class IndicatorsMixin:
         series: pd.Series,
         ind_sym: IndicatorSymbol,
         cache_date_fields: Optional[CacheDateFields],
+        hyperparams: Optional[dict[str, Any]] = None,
     ):
         if cache_date_fields is None:
             return
         scope = StaticScope.instance()
         if scope.indicator_cache is None:
             return
-        cache_key = IndicatorCacheKey(
+        base_name, _ = parse_indicator_interval_name(ind_sym.ind_name)
+        if scope.get_indicator(base_name).hyperparam_names:
+            return
+        cache_key = IndicatorCacheKey.from_date_fields(
             symbol=ind_sym.symbol,
             ind_name=ind_sym.ind_name,
-            **asdict(cache_date_fields),
+            fields=cache_date_fields,
         )
         scope.logger.debug_set_indicator_cache(cache_key)
-        scope.indicator_cache.set(repr(cache_key), series)
+        scope.indicator_cache.set(cache_key, series)
 
     def _run_indicators(
         self,
         sym_data: Mapping[str, Mapping[str, Optional[NDArray]]],
         ind_syms: Collection[IndicatorSymbol],
-        disable_parallel: bool,
+        parallel_indicators: bool,
+        interval_data: Optional[IntervalData] = None,
+        hyperparams: Optional[dict[str, Any]] = None,
     ) -> Iterable[tuple[IndicatorSymbol, pd.Series]]:
-        fns = {}
+        fns: dict[str, Callable[..., tuple[IndicatorSymbol, pd.Series]]] = {}
         for ind_name, _ in ind_syms:
             if ind_name in fns:
                 continue
-            fns[ind_name] = _decorate_indicator_fn(ind_name)
+            fns[ind_name] = _decorate_indicator_fn(ind_name, hyperparams)
         scope = StaticScope.instance()
+        custom_data_cols = tuple(sorted(scope.custom_data_cols))
+        default_data_cols = scope.default_data_cols
+        ind_names_by_sym: dict[str, list[str]] = defaultdict(list)
+        for ind_name, sym in ind_syms:
+            ind_names_by_sym[sym].append(ind_name)
+        symbols_with_work = tuple(ind_names_by_sym.keys())
+        tf_by_sym = _interval_data_by_symbol(interval_data)
 
-        def args_fn(ind_name, sym):
-            return {
-                "symbol": sym,
-                "ind_name": ind_name,
-                "custom_col_data": {
-                    col: sym_data[sym][col] for col in scope.custom_data_cols
-                },
-                **{col: sym_data[sym][col] for col in scope.default_data_cols},
-            }
+        def args_for(sym: str) -> tuple:
+            ind_names = tuple(ind_names_by_sym[sym])
+            return (
+                sym,
+                ind_names,
+                sym_data[sym],
+                tf_by_sym.get(sym),
+                {ind_name: fns[ind_name] for ind_name in ind_names},
+                custom_data_cols,
+                default_data_cols,
+            )
 
-        if disable_parallel or len(ind_syms) == 1:
+        if not parallel_indicators or len(symbols_with_work) == 1:
             scope.logger.debug_compute_indicators(is_parallel=False)
             return tuple(
-                fns[ind_name](**args_fn(ind_name, sym))
-                for ind_name, sym in ind_syms
+                result
+                for sym in symbols_with_work
+                for result in _run_indicators_for_symbol(*args_for(sym))
             )
-        else:
-            scope.logger.debug_compute_indicators(is_parallel=True)
-
-            with default_parallel() as parallel:
-                return parallel(
-                    delayed(fns[ind_name])(**args_fn(ind_name, sym))
-                    for ind_name, sym in ind_syms
+        scope.logger.debug_compute_indicators(is_parallel=True)
+        with parallel() as pool:
+            # Ship the caller's StaticScope, as the model trainers do. A
+            # worker process starts with an empty one, so an indicator calling
+            # pybroker.param() would read None there and silently compute
+            # different values than the same run does sequentially.
+            batches = pool(
+                delayed(run_with_scope)(
+                    scope, _run_indicators_for_symbol, *args_for(sym)
                 )
+                for sym in symbols_with_work
+            )
+        return tuple(result for batch in batches for result in batch)
 
 
 class IndicatorSet(IndicatorsMixin):
@@ -351,15 +593,15 @@ class IndicatorSet(IndicatorsMixin):
         self._ind_names.clear()
 
     def __call__(
-        self, df: pd.DataFrame, disable_parallel: bool = False
+        self, df: pd.DataFrame, parallel_indicators: bool = False
     ) -> pd.DataFrame:
         """Computes indicator data.
 
         Args:
             df: :class:`pandas.DataFrame` of input data.
-            disable_parallel: If ``True``, indicator data is computed serially.
-                If ``False``, indicator data is computed in parallel using
-                multiple processes. Defaults to ``False``.
+            parallel_indicators: If ``True``, indicator data is
+                computed in parallel using multiple processes. If ``False``,
+                indicator data is computed serially. Defaults to ``False``.
 
         Returns:
             :class:`pandas.DataFrame` containing the computed indicator data.
@@ -371,37 +613,55 @@ class IndicatorSet(IndicatorsMixin):
                 columns=[DataCol.DATE.value, DataCol.SYMBOL.value]
                 + list(self._ind_names)
             )
-        syms = df[DataCol.SYMBOL.value].unique()
+        # The store normalizes its keys with astype(str), so read the symbols
+        # the same way: a categorical or numeric symbol column would otherwise
+        # produce keys that do not exist in the store.
+        syms = df[DataCol.SYMBOL.value].astype(str).unique()
         ind_syms = tuple(
             itertools.starmap(
                 IndicatorSymbol, itertools.product(self._ind_names, syms)
             )
         )
+        symbol_store = symbol_array_store_from_frame(df)
         ind_dict = self.compute_indicators(
             df=df,
             indicator_syms=ind_syms,
             cache_date_fields=None,
-            disable_parallel=disable_parallel,
+            parallel_indicators=parallel_indicators,
+            symbol_store=symbol_store,
         )
         sym_dict: dict[str, dict[str, pd.Series]] = defaultdict(dict)
         for ind_sym, series in ind_dict.items():
             sym_dict[ind_sym.symbol][ind_sym.ind_name] = series
-        date_by_sym = {
-            sym: group[DataCol.DATE.value]
-            for sym, group in df.groupby(
-                DataCol.SYMBOL.value, sort=False, observed=True
-            )
+        sym_col = DataCol.SYMBOL.value
+        date_col = DataCol.DATE.value
+        n_rows = len(df)
+        sym_out = np.empty(n_rows, dtype=object)
+        date_out = np.empty(n_rows, dtype="datetime64[ns]")
+        ind_out = {
+            ind_name: np.full(n_rows, np.nan, dtype=np.float64)
+            for ind_name in self._ind_names
         }
-        data: dict[str, list] = defaultdict(list)
-        for sym, ind_series in sym_dict.items():
-            dates = date_by_sym[sym]
-            data[DataCol.SYMBOL.value].extend(
-                itertools.repeat(sym, len(dates))
-            )
-            data[DataCol.DATE.value].extend(dates)
-            for ind_name, series in ind_series.items():
-                data[ind_name].extend(series.values)
-        return pd.DataFrame.from_dict(data)
+        offset = 0
+        for sym in sorted(sym_dict.keys()):
+            sym_arrays = symbol_store.sym_arrays[sym]
+            dates = sym_arrays[date_col]
+            n = len(dates)
+            sym_out[offset : offset + n] = sym
+            date_out[offset : offset + n] = dates
+            for ind_name, series in sym_dict[sym].items():
+                ind_out[ind_name][offset : offset + n] = series.to_numpy()
+            offset += n
+        return pd.DataFrame(
+            {
+                sym_col: sym_out,
+                date_col: date_out,
+                **{
+                    ind_name: ind_out[ind_name]
+                    for ind_name in sorted(self._ind_names)
+                },
+            }
+        )
 
 
 def highest(name: str, field: str, period: int) -> Indicator:
@@ -682,6 +942,25 @@ def cubic_trend(
         )
 
     return indicator(name, _cubic_trend)
+
+
+def atr(name: str, lookback: int) -> Indicator:
+    """Average True Range (ATR).
+
+    Args:
+        name: Indicator name.
+        lookback: Number of lookback bars.
+
+    Returns:
+        Average True Range :class:`.Indicator`.
+    """
+
+    def _atr(data: BarData):
+        return vect.atr(
+            high=data.high, low=data.low, close=data.close, lookback=lookback
+        )
+
+    return indicator(name, _atr)
 
 
 def adx(name: str, lookback: int) -> Indicator:

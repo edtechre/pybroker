@@ -6,14 +6,23 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import itertools
 import numpy as np
 import pandas as pd
 import pytest
+import re
 from collections import deque
 from decimal import Decimal
-from pybroker.common import FeeMode, PositionMode, PriceType, StopType
+from pybroker.common import (
+    FeeMode,
+    PositionMode,
+    PriceType,
+    StopType,
+    to_decimal,
+)
 from pybroker.portfolio import Portfolio, Stop
 from pybroker.scope import ColumnScope, PriceScope
+from pybroker.slippage import FixedSlippageModel, SlippageModel
 
 SYMBOL_1 = "SPY"
 SYMBOL_2 = "AAPL"
@@ -43,6 +52,7 @@ def assert_order(
     intent=None,
     shares=None,
     limit_price=None,
+    market_price=None,
     fill_price=None,
     fees=None,
 ):
@@ -54,6 +64,10 @@ def assert_order(
     assert order.intent == intent
     assert order.shares == shares
     assert order.limit_price == limit_price
+    if market_price is None:
+        assert order.market_price == fill_price
+    else:
+        assert order.market_price == market_price
     assert order.fill_price == fill_price
     assert order.fees == fees
 
@@ -409,6 +423,7 @@ def test_buy_when_existing_short_and_not_enough_cash():
     entry_limit = Decimal("4.9")
     exit_price = Decimal(200)
     exit_limit = Decimal(201)
+    short_shares = Decimal(20)
     short_order = portfolio.sell(
         DATE_1, SYMBOL_1, SHARES_1, entry_price, entry_limit
     )
@@ -416,7 +431,7 @@ def test_buy_when_existing_short_and_not_enough_cash():
     buy_order = portfolio.buy(
         DATE_2, SYMBOL_1, SHARES_1, exit_price, exit_limit
     )
-    expected_pnl = (entry_price - exit_price) * SHARES_1
+    expected_pnl = (entry_price - exit_price) * short_shares
     assert_order(
         order=short_order,
         date=DATE_1,
@@ -424,7 +439,7 @@ def test_buy_when_existing_short_and_not_enough_cash():
         type="sell",
         limit_price=entry_limit,
         fill_price=5,
-        shares=SHARES_1,
+        shares=short_shares,
         fees=0,
         intent="sell_to_open",
     )
@@ -435,7 +450,7 @@ def test_buy_when_existing_short_and_not_enough_cash():
         type="buy",
         limit_price=exit_limit,
         fill_price=exit_price,
-        shares=SHARES_1,
+        shares=short_shares,
         fees=0,
         intent="buy_to_close",
     )
@@ -458,7 +473,7 @@ def test_buy_when_existing_short_and_not_enough_cash():
         exit_date=DATE_2,
         entry=entry_price,
         exit=exit_price,
-        shares=SHARES_1,
+        shares=short_shares,
         pnl=expected_pnl,
         return_pct=expected_return_pct,
         agg_pnl=expected_pnl,
@@ -1100,7 +1115,7 @@ def test_short(fill_price, limit_price):
     )
     assert_portfolio(
         portfolio=portfolio,
-        cash=CASH,
+        cash=CASH - SHARES_1 * fill_price,
         pnl=0,
         symbols={SYMBOL_1},
         orders=[order],
@@ -1146,7 +1161,7 @@ def test_short_when_existing_short_position():
     )
     assert_portfolio(
         portfolio=portfolio,
-        cash=CASH,
+        cash=CASH - SHARES_1 * FILL_PRICE_3 - SHARES_2 * FILL_PRICE_4,
         pnl=0,
         symbols={SYMBOL_1},
         orders=[order_1, order_2],
@@ -1205,7 +1220,7 @@ def test_short_when_multiple_positions():
     )
     assert_portfolio(
         portfolio=portfolio,
-        cash=CASH,
+        cash=CASH - SHARES_1 * FILL_PRICE_3 - SHARES_2 * FILL_PRICE_4,
         pnl=0,
         symbols={SYMBOL_1, SYMBOL_2},
         orders=[order_1, order_2],
@@ -1275,7 +1290,7 @@ def test_short_when_existing_long_position():
     )
     assert_portfolio(
         portfolio=portfolio,
-        cash=CASH + (FILL_PRICE_3 - FILL_PRICE_1) * SHARES_1,
+        cash=CASH + expected_pnl - expected_shares * FILL_PRICE_3,
         pnl=expected_pnl,
         symbols={SYMBOL_1},
         orders=[buy_order, short_order],
@@ -1334,7 +1349,7 @@ def test_short_when_not_filled_max_positions():
     assert order_2 is None
     assert_portfolio(
         portfolio=portfolio,
-        cash=CASH,
+        cash=CASH - SHARES_1 * FILL_PRICE_3,
         pnl=0,
         symbols={SYMBOL_1},
         orders=[order_1],
@@ -1465,7 +1480,7 @@ def test_cover_when_partial_shares():
     )
     assert_portfolio(
         portfolio=portfolio,
-        cash=CASH + expected_pnl,
+        cash=CASH + expected_pnl - expected_shares * FILL_PRICE_3,
         pnl=expected_pnl,
         symbols={SYMBOL_1},
         orders=[sell_order, buy_order],
@@ -1540,7 +1555,7 @@ def test_cover_when_multiple_entries():
     )
     assert_portfolio(
         portfolio=portfolio,
-        cash=CASH + expected_order_pnl,
+        cash=CASH + expected_order_pnl - expected_shares * FILL_PRICE_3,
         pnl=expected_order_pnl,
         symbols={SYMBOL_1},
         orders=[sell_order_1, sell_order_2, buy_order],
@@ -1614,6 +1629,7 @@ def test_cover_when_not_enough_cash():
     sell_limit_price = Decimal("4.9")
     buy_fill_price = Decimal(1000)
     buy_limit_price = 1001
+    short_shares = Decimal(20)
     short_order = portfolio.sell(
         DATE_1, SYMBOL_1, SHARES_1, sell_fill_price, sell_limit_price
     )
@@ -1621,7 +1637,7 @@ def test_cover_when_not_enough_cash():
     buy_order = portfolio.buy(
         DATE_2, SYMBOL_1, SHARES_1, buy_fill_price, buy_limit_price
     )
-    expected_pnl = (sell_fill_price - buy_fill_price) * SHARES_1
+    expected_pnl = (sell_fill_price - buy_fill_price) * short_shares
     expected_return_pct = (sell_fill_price / buy_fill_price - 1) * 100
     assert_order(
         order=short_order,
@@ -1630,7 +1646,7 @@ def test_cover_when_not_enough_cash():
         type="sell",
         limit_price=sell_limit_price,
         fill_price=sell_fill_price,
-        shares=SHARES_1,
+        shares=short_shares,
         fees=0,
         intent="sell_to_open",
     )
@@ -1641,7 +1657,7 @@ def test_cover_when_not_enough_cash():
         type="buy",
         limit_price=buy_limit_price,
         fill_price=buy_fill_price,
-        shares=SHARES_1,
+        shares=short_shares,
         fees=0,
         intent="buy_to_close",
     )
@@ -1662,7 +1678,7 @@ def test_cover_when_not_enough_cash():
         exit_date=DATE_2,
         entry=sell_fill_price,
         exit=buy_fill_price,
-        shares=SHARES_1,
+        shares=short_shares,
         pnl=expected_pnl,
         return_pct=expected_return_pct,
         agg_pnl=expected_pnl,
@@ -1684,7 +1700,7 @@ def test_cover_when_not_filled_limit():
     assert buy_order is None
     assert_portfolio(
         portfolio=portfolio,
-        cash=CASH,
+        cash=CASH - SHARES_1 * FILL_PRICE_3,
         pnl=0,
         symbols={SYMBOL_1},
         orders=[sell_order],
@@ -1703,7 +1719,7 @@ def test_cover_when_zero_shares():
     buy_order = portfolio.buy(DATE_2, SYMBOL_1, 0, FILL_PRICE_1, LIMIT_PRICE_1)
     assert sell_order is not None
     assert buy_order is None
-    assert portfolio.cash == CASH
+    assert portfolio.cash == CASH - SHARES_1 * FILL_PRICE_3
     assert len(portfolio.short_positions) == 1
     assert not len(portfolio.long_positions)
     assert portfolio.orders == deque([sell_order])
@@ -1794,6 +1810,148 @@ def test_exit_position():
         fees=0,
         intent="buy_to_close",
     )
+
+
+def test_buy_and_sell_when_market_price():
+    portfolio = Portfolio(CASH)
+    buy_order = portfolio.buy(
+        DATE_1,
+        SYMBOL_1,
+        SHARES_1,
+        FILL_PRICE_1,
+        market_price=Decimal("99.90"),
+    )
+    assert buy_order.market_price == Decimal("99.90")
+    assert buy_order.fill_price == FILL_PRICE_1
+    sell_order = portfolio.sell(DATE_2, SYMBOL_1, SHARES_1, FILL_PRICE_2)
+    assert sell_order.market_price == FILL_PRICE_2
+    assert sell_order.fill_price == FILL_PRICE_2
+
+
+def test_exit_position_when_slippage_then_market_price():
+    portfolio = Portfolio(CASH)
+    portfolio.buy(DATE_1, SYMBOL_1, SHARES_1, FILL_PRICE_1, LIMIT_PRICE_1)
+    portfolio.sell(DATE_1, SYMBOL_2, SHARES_2, FILL_PRICE_3, LIMIT_PRICE_3)
+    portfolio.incr_bars()
+    portfolio.exit_position(
+        DATE_2,
+        SYMBOL_1,
+        buy_fill_price=0,
+        sell_fill_price=FILL_PRICE_2,
+        slippage_model=FixedSlippageModel(bps=100),
+    )
+    portfolio.exit_position(
+        DATE_2,
+        SYMBOL_2,
+        buy_fill_price=FILL_PRICE_4,
+        sell_fill_price=0,
+        slippage_model=FixedSlippageModel(bps=100),
+    )
+    assert len(portfolio.orders) == 4
+    assert_order(
+        order=portfolio.orders[2],
+        date=DATE_2,
+        symbol=SYMBOL_1,
+        type="sell",
+        limit_price=None,
+        market_price=FILL_PRICE_2,
+        fill_price=FILL_PRICE_2 * Decimal("0.99"),
+        shares=SHARES_1,
+        fees=0,
+        intent="sell_to_close",
+    )
+    assert_order(
+        order=portfolio.orders[3],
+        date=DATE_2,
+        symbol=SYMBOL_2,
+        type="buy",
+        limit_price=None,
+        market_price=FILL_PRICE_4,
+        fill_price=FILL_PRICE_4 * Decimal("1.01"),
+        shares=SHARES_2,
+        fees=0,
+        intent="buy_to_close",
+    )
+
+
+class _RecordingSlippageModel(SlippageModel):
+    """Captures the :class:`.SlippageContext` of each fill adjustment."""
+
+    def __init__(self):
+        self.contexts = []
+
+    def apply_slippage(self, fill_ctx):
+        self.contexts.append(fill_ctx)
+        return fill_ctx.shares, fill_ctx.fill_price
+
+
+def test_exit_position_passes_enable_fractional_shares():
+    # Shares returned on this path are discarded, but a model may still
+    # branch on the flag (e.g. flooring the count it computes price impact
+    # from), so it must reflect the portfolio's configuration rather than
+    # the adjust_fill signature default of True.
+    model = _RecordingSlippageModel()
+    portfolio = Portfolio(CASH, enable_fractional_shares=False)
+    portfolio.buy(DATE_1, SYMBOL_1, SHARES_1, FILL_PRICE_1, LIMIT_PRICE_1)
+    portfolio.sell(DATE_1, SYMBOL_2, SHARES_2, FILL_PRICE_3, LIMIT_PRICE_3)
+    portfolio.incr_bars()
+    portfolio.exit_position(
+        DATE_2,
+        SYMBOL_1,
+        buy_fill_price=0,
+        sell_fill_price=FILL_PRICE_2,
+        slippage_model=model,
+    )
+    portfolio.exit_position(
+        DATE_2,
+        SYMBOL_2,
+        buy_fill_price=FILL_PRICE_4,
+        sell_fill_price=0,
+        slippage_model=model,
+    )
+    assert len(model.contexts) == 2
+    assert not any(ctx.enable_fractional_shares for ctx in model.contexts)
+
+
+def test_trigger_stop_passes_enable_fractional_shares():
+    # See test_exit_position_passes_enable_fractional_shares.
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, 200, 300],
+            [SYMBOL_1, DATE_2, 100, 200],
+        ],
+        columns=["symbol", "date", "low", "high"],
+    )
+    df = df.set_index(["symbol", "date"])
+    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)}, True)
+    stops = (
+        Stop(
+            id=1,
+            symbol=SYMBOL_1,
+            stop_type=StopType.LOSS,
+            pos_type="long",
+            percent=Decimal(20),
+            points=None,
+            bars=None,
+            fill_price=None,
+            limit_price=None,
+            exit_price=None,
+        ),
+    )
+    model = _RecordingSlippageModel()
+    portfolio = Portfolio(CASH, enable_fractional_shares=False)
+    portfolio.buy(
+        DATE_1,
+        SYMBOL_1,
+        SHARES_1,
+        Decimal(200),
+        limit_price=None,
+        stops=stops,
+    )
+    portfolio.incr_bars()
+    portfolio.check_stops(DATE_2, price_scope, slippage_model=model)
+    assert len(model.contexts) == 1
+    assert not model.contexts[0].enable_fractional_shares
 
 
 def test_trigger_long_bar_stop():
@@ -1888,6 +2046,109 @@ def test_trigger_long_bar_stop():
     )
 
 
+@pytest.mark.parametrize("insertion_order", [(1, 2), (2, 1)])
+def test_check_stops_evaluates_in_stop_id_order(insertion_order):
+    # Stops reach the portfolio as a frozenset. Stop always carries None
+    # fields and hash(None) is address-derived, so iteration order varies per
+    # process and no seed can pin it. The lower stop id must win regardless of
+    # the order the stops were inserted in.
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, 100, 100],
+            [SYMBOL_1, DATE_2, 90, 110],
+        ],
+        columns=["symbol", "date", "low", "high"],
+    )
+    df = df.set_index(["symbol", "date"])
+    col_scope = ColumnScope(df)
+    sym_end_index = {SYMBOL_1: len(df)}
+    price_scope = PriceScope(col_scope, sym_end_index, True)
+    loss_stop = Stop(
+        id=1,
+        symbol=SYMBOL_1,
+        stop_type=StopType.LOSS,
+        pos_type="long",
+        percent=Decimal(5),
+        points=None,
+        bars=None,
+        fill_price=None,
+        limit_price=None,
+        exit_price=None,
+    )
+    profit_stop = Stop(
+        id=2,
+        symbol=SYMBOL_1,
+        stop_type=StopType.PROFIT,
+        pos_type="long",
+        percent=Decimal(5),
+        points=None,
+        bars=None,
+        fill_price=None,
+        limit_price=None,
+        exit_price=None,
+    )
+    by_id = {1: loss_stop, 2: profit_stop}
+    portfolio = Portfolio(CASH)
+    portfolio.buy(
+        DATE_1,
+        SYMBOL_1,
+        SHARES_1,
+        Decimal(100),
+        limit_price=None,
+        stops=frozenset(by_id[i] for i in insertion_order),
+    )
+    portfolio.check_stops(DATE_2, price_scope)
+    assert len(portfolio.trades) == 1
+    # The bar straddles both levels, so whichever is evaluated first wins.
+    # Stop 1 is the stop loss, exiting at 95.
+    assert portfolio.trades[0].stop == StopType.LOSS.value
+    assert portfolio.trades[0].exit == 95
+
+
+@pytest.mark.parametrize("fill_price", [Decimal(0), Decimal(-5)])
+def test_trigger_bar_stop_when_invalid_fill_price_then_error(fill_price):
+    # A bar stop's fill price comes from the user's sell_fill_price and never
+    # reaches _verify_input, so without a guard a zero or negative silently
+    # books a completed trade.
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, 100, 100],
+            [SYMBOL_1, DATE_2, 90, 110],
+        ],
+        columns=["symbol", "date", "low", "high"],
+    )
+    df = df.set_index(["symbol", "date"])
+    col_scope = ColumnScope(df)
+    sym_end_index = {SYMBOL_1: len(df)}
+    price_scope = PriceScope(col_scope, sym_end_index, True)
+    stops = (
+        Stop(
+            id=1,
+            symbol=SYMBOL_1,
+            stop_type=StopType.BAR,
+            pos_type="long",
+            percent=None,
+            points=None,
+            bars=1,
+            fill_price=fill_price,
+            limit_price=None,
+            exit_price=None,
+        ),
+    )
+    portfolio = Portfolio(CASH)
+    portfolio.buy(
+        DATE_1,
+        SYMBOL_1,
+        SHARES_1,
+        Decimal(100),
+        limit_price=None,
+        stops=stops,
+    )
+    portfolio.incr_bars()
+    with pytest.raises(ValueError, match=re.escape("must be > 0")):
+        portfolio.check_stops(DATE_2, price_scope)
+
+
 @pytest.mark.parametrize(
     "percent, points, expected_fill_price",
     [(Decimal(20), None, Decimal(160)), (None, Decimal(10), Decimal(190))],
@@ -1976,6 +2237,60 @@ def test_trigger_long_loss_stop(percent, points, expected_fill_price):
         type="sell",
         limit_price=None,
         fill_price=expected_fill_price,
+        shares=SHARES_1,
+        fees=0,
+        order_type="stop_loss",
+        intent="sell_to_close",
+    )
+
+
+def test_trigger_long_loss_stop_when_slippage_then_market_price():
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, 200, 300],
+            [SYMBOL_1, DATE_2, 100, 200],
+        ],
+        columns=["symbol", "date", "low", "high"],
+    )
+    df = df.set_index(["symbol", "date"])
+    price_scope = PriceScope(ColumnScope(df), {SYMBOL_1: len(df)}, True)
+    stops = (
+        Stop(
+            id=1,
+            symbol=SYMBOL_1,
+            stop_type=StopType.LOSS,
+            pos_type="long",
+            percent=Decimal(20),
+            points=None,
+            bars=None,
+            fill_price=None,
+            limit_price=None,
+            exit_price=None,
+        ),
+    )
+    entry_price = Decimal(200)
+    portfolio = Portfolio(CASH)
+    portfolio.buy(
+        DATE_1,
+        SYMBOL_1,
+        SHARES_1,
+        entry_price,
+        limit_price=None,
+        stops=stops,
+    )
+    portfolio.incr_bars()
+    portfolio.check_stops(
+        DATE_2, price_scope, slippage_model=FixedSlippageModel(bps=100)
+    )
+    assert len(portfolio.orders) == 2
+    assert_order(
+        order=portfolio.orders[1],
+        date=DATE_2,
+        symbol=SYMBOL_1,
+        type="sell",
+        limit_price=None,
+        market_price=Decimal(160),
+        fill_price=Decimal(160) * Decimal("0.99"),
         shares=SHARES_1,
         fees=0,
         order_type="stop_loss",
@@ -3356,9 +3671,11 @@ def test_capture_stops():
     portfolio.incr_bars()
     portfolio.check_stops(DATE_2, price_scope)
     stops = {stop.stop_id: stop for stop in portfolio._stop_records}
-    print(portfolio._stop_records)
 
-    assert len(stops) == 4
+    # Stop 4 exits the entry, so stop 3 is never reached and is not recorded.
+    # Stops that a sibling preempts produce no row, in either check_stops loop.
+    assert len(stops) == 3
+    assert 3 not in stops
     assert stops[1].date == DATE_2
     assert stops[1].symbol == SYMBOL_1
     assert stops[1].stop_type == StopType.LOSS.value
@@ -3384,19 +3701,6 @@ def test_capture_stops():
     assert stops[2].curr_bars is None
     assert stops[2].exit_price is None
     assert stops[2].fill_price is None
-
-    assert stops[3].date == DATE_2
-    assert stops[3].symbol == SYMBOL_1
-    assert stops[3].stop_type == StopType.BAR.value
-    assert stops[3].pos_type == "long"
-    assert stops[3].curr_value is None
-    assert stops[3].bars == 5
-    assert stops[3].limit_price is None
-    assert stops[3].percent is None
-    assert stops[3].points is None
-    assert stops[3].curr_bars == 1
-    assert stops[3].exit_price == 200
-    assert stops[3].fill_price is None
 
     assert stops[4].date == DATE_2
     assert stops[4].symbol == SYMBOL_1
@@ -3466,7 +3770,9 @@ def test_capture_bar_when_short_position():
     close_price = Decimal("16.7")
     low_price = Decimal("15.00")
     high_price = Decimal("18.00")
-    portfolio = Portfolio(cash)
+    portfolio = Portfolio(
+        cash, record_portfolio_bars=True, record_position_bars=True
+    )
     portfolio.sell(DATE_1, SYMBOL_1, shares, fill_price)
     df = pd.DataFrame(
         [
@@ -3487,12 +3793,13 @@ def test_capture_bar_when_short_position():
     assert len(portfolio.bars) == 1
     bar = portfolio.bars[0]
     assert bar.date == DATE_1
-    assert bar.cash == cash
-    assert bar.equity == bar.cash
+    assert bar.cash == cash - shares * fill_price
+    assert bar.equity == cash
+    assert bar.notional == close_price * shares
     assert bar.margin == close_price * shares
-    assert bar.pnl == 0
-    assert bar.unrealized_pnl == (fill_price - close_price) * shares
-    assert bar.market_value == bar.equity + bar.unrealized_pnl
+    assert bar.pnl == bar.equity - cash
+    assert bar.unrealized_pnl == bar.market_value - bar.equity
+    assert bar.market_value == cash + (fill_price - close_price) * shares
     assert bar.fees == 0
     assert len(portfolio.position_bars) == 1
     pos_bar = portfolio.position_bars[0]
@@ -3501,10 +3808,55 @@ def test_capture_bar_when_short_position():
     assert pos_bar.long_shares == 0
     assert pos_bar.short_shares == shares
     assert pos_bar.close == close_price
-    assert pos_bar.equity == 0
+    assert (
+        pos_bar.equity
+        == shares * fill_price + (fill_price - close_price) * shares
+    )
     assert pos_bar.margin == close_price * shares
     assert pos_bar.unrealized_pnl == (fill_price - close_price) * shares
     assert pos_bar.market_value == pos_bar.margin + pos_bar.unrealized_pnl
+
+
+def test_capture_bar_when_short_position_and_no_price_data():
+    cash = 100_000
+    fill_price = Decimal("16.72")
+    shares = 100
+    portfolio = Portfolio(cash, record_portfolio_bars=True)
+    portfolio.sell(DATE_1, SYMBOL_1, shares, fill_price)
+    df = pd.DataFrame(
+        [], columns=["symbol", "date", "close", "low", "high"]
+    ).set_index(["symbol", "date"])
+    portfolio.capture_bar(DATE_1, ColumnScope(df), {SYMBOL_1: 0})
+    bar = portfolio.bars[0]
+    assert bar.cash == cash - shares * fill_price
+    assert bar.equity == cash
+    assert bar.notional == 0
+    assert bar.market_value == cash
+    assert bar.unrealized_pnl == 0
+    assert not portfolio.position_bars
+
+
+def test_capture_bar_when_short_position_and_leverage():
+    fill_price = Decimal("16.72")
+    shares = 100
+    close_price = Decimal("16.7")
+    portfolio = Portfolio(
+        CASH, leverage=2.0, record_portfolio_bars=True, record_stops=False
+    )
+    portfolio.sell(DATE_1, SYMBOL_1, shares, fill_price)
+    df = pd.DataFrame(
+        [[SYMBOL_1, DATE_1, close_price, Decimal("15.00"), Decimal("18.00")]],
+        columns=["symbol", "date", "close", "low", "high"],
+    ).set_index(["symbol", "date"])
+    portfolio.capture_bar(DATE_1, ColumnScope(df), {SYMBOL_1: 1})
+    entry_notional = shares * fill_price
+    bar = portfolio.bars[0]
+    assert bar.cash == CASH - entry_notional / 2
+    assert bar.margin_loan == entry_notional / 2
+    assert bar.net_cash_balance == CASH - entry_notional
+    assert bar.equity == CASH
+    assert bar.notional == close_price * shares
+    assert bar.market_value == CASH + (fill_price - close_price) * shares
 
 
 def test_capture_bar_when_long_position():
@@ -3514,7 +3866,9 @@ def test_capture_bar_when_long_position():
     close_price = Decimal("16.7")
     low_price = Decimal("15.00")
     high_price = Decimal("18.00")
-    portfolio = Portfolio(cash)
+    portfolio = Portfolio(
+        cash, record_portfolio_bars=True, record_position_bars=True
+    )
     portfolio.buy(DATE_1, SYMBOL_1, shares, fill_price)
     df = pd.DataFrame(
         [
@@ -3537,6 +3891,7 @@ def test_capture_bar_when_long_position():
     assert bar.date == DATE_1
     assert bar.cash == cash - shares * fill_price
     assert bar.equity == cash + bar.pnl
+    assert bar.notional == close_price * shares
     assert bar.margin == 0
     assert bar.pnl == (close_price - fill_price) * shares
     assert bar.market_value == bar.equity
@@ -3620,3 +3975,716 @@ def test_short_only_mode():
     assert not portfolio.short_positions
     assert len(portfolio.trades) == 1
     assert portfolio.trades[0].shares == 100
+
+
+def test_buy_when_leverage_allows_borrowed_funds():
+    portfolio = Portfolio(CASH, leverage=2.0)
+    fill_price = Decimal(100)
+    shares = Decimal(2000)
+    order = portfolio.buy(DATE_1, SYMBOL_1, shares, fill_price)
+    assert order is not None
+    assert order.shares == shares
+    assert portfolio.cash == CASH - shares * fill_price / 2
+    assert portfolio.margin_loan == shares * fill_price / 2
+
+
+def test_buy_when_leverage_clamps_to_buying_power():
+    portfolio = Portfolio(CASH, leverage=2.0)
+    fill_price = Decimal(100)
+    order = portfolio.buy(DATE_1, SYMBOL_1, Decimal(2001), fill_price)
+    assert order is not None
+    assert order.shares == Decimal(2000)
+
+
+def test_buy_when_leverage_partial_deployment():
+    portfolio = Portfolio(CASH, leverage=2.0)
+    fill_price = Decimal(100)
+    order_1 = portfolio.buy(DATE_1, SYMBOL_1, Decimal(1000), fill_price)
+    assert order_1 is not None
+    assert order_1.shares == Decimal(1000)
+    assert portfolio.cash == CASH - Decimal(50_000)
+    assert portfolio.margin_loan == Decimal(50_000)
+    order_2 = portfolio.buy(DATE_2, SYMBOL_1, Decimal(1000), fill_price)
+    assert order_2 is not None
+    assert order_2.shares == Decimal(1000)
+    assert portfolio.cash == 0
+    assert portfolio.margin_loan == CASH
+    order_3 = portfolio.buy(DATE_3, SYMBOL_1, Decimal(1), fill_price)
+    assert order_3 is None
+
+
+def test_sell_when_leverage_pays_down_margin_loan():
+    portfolio = Portfolio(CASH, leverage=2.0)
+    fill_price = Decimal(100)
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(2000), fill_price)
+    portfolio.incr_bars()
+    portfolio.sell(DATE_2, SYMBOL_1, Decimal(2000), fill_price)
+    assert portfolio.cash == CASH
+    assert portfolio.margin_loan == 0
+
+
+def test_capture_bar_when_long_and_short_positions():
+    long_shares = 100
+    long_close = Decimal("16.7")
+    short_shares = 50
+    short_close = Decimal("33.4")
+    portfolio = Portfolio(CASH, leverage=2.0, record_portfolio_bars=True)
+    portfolio.buy(DATE_1, SYMBOL_1, long_shares, Decimal("16.72"))
+    portfolio.sell(DATE_1, SYMBOL_2, short_shares, Decimal("33.35"))
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, long_close, Decimal("15.00"), Decimal("18.00")],
+            [
+                SYMBOL_2,
+                DATE_1,
+                short_close,
+                Decimal("32.00"),
+                Decimal("34.00"),
+            ],
+        ],
+        columns=["symbol", "date", "close", "low", "high"],
+    ).set_index(["symbol", "date"])
+    portfolio.capture_bar(DATE_1, ColumnScope(df), {SYMBOL_1: 1, SYMBOL_2: 1})
+    bar = portfolio.bars[0]
+    assert bar.margin == short_close * short_shares
+    assert (
+        bar.notional == long_close * long_shares + short_close * short_shares
+    )
+    assert bar.notional == long_close * long_shares + bar.margin
+
+
+def test_capture_bar_when_leverage_includes_margin_columns():
+    portfolio = Portfolio(
+        CASH,
+        leverage=2.0,
+        record_portfolio_bars=True,
+        record_position_bars=True,
+    )
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(2000), Decimal(100))
+    df = pd.DataFrame(
+        [[SYMBOL_1, DATE_1, Decimal(100), Decimal(99), Decimal(101)]],
+        columns=["symbol", "date", "close", "low", "high"],
+    )
+    df = df.set_index(["symbol", "date"])
+    portfolio.capture_bar(DATE_1, ColumnScope(df), {SYMBOL_1: 1})
+    bar = portfolio.bars[0]
+    assert bar.cash == 0
+    assert bar.margin_loan == CASH
+    assert bar.net_cash_balance == -CASH
+    assert bar.equity == CASH
+    assert bar.notional == Decimal(200_000)
+
+
+def test_apply_interest_when_net_cash_negative():
+    portfolio = Portfolio(
+        CASH, leverage=2.0, interest_rate=7.0, bars_per_year=252
+    )
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(2000), Decimal(100))
+    portfolio._apply_interest()
+    expected_interest = CASH * Decimal(7) / Decimal(100) / Decimal(252)
+    assert portfolio.margin_loan == CASH + expected_interest
+
+
+def test_apply_interest_when_net_cash_positive():
+    portfolio = Portfolio(CASH, interest_rate=7.0, bars_per_year=252)
+    portfolio._apply_interest()
+    expected_interest = CASH * Decimal(7) / Decimal(100) / Decimal(252)
+    assert portfolio.cash == CASH + expected_interest
+
+
+def test_available_buying_power_when_leverage_default():
+    portfolio = Portfolio(CASH)
+    assert portfolio._available_buying_power() == CASH
+
+
+def test_short_when_leverage_posts_collateral():
+    portfolio = Portfolio(CASH, leverage=2.0)
+    fill_price = Decimal(100)
+    shares = Decimal(2000)
+    order = portfolio.sell(DATE_1, SYMBOL_1, shares, fill_price)
+    assert order is not None
+    assert order.shares == shares
+    assert portfolio.cash == CASH - shares * fill_price / 2
+    assert portfolio.margin_loan == shares * fill_price / 2
+
+
+def test_short_when_leverage_clamps_to_buying_power():
+    portfolio = Portfolio(CASH, leverage=2.0)
+    fill_price = Decimal(100)
+    order = portfolio.sell(DATE_1, SYMBOL_1, Decimal(2001), fill_price)
+    assert order is not None
+    assert order.shares == Decimal(2000)
+
+
+def test_cover_when_leverage_releases_margin():
+    portfolio = Portfolio(CASH, leverage=2.0)
+    fill_price = Decimal(100)
+    portfolio.sell(DATE_1, SYMBOL_1, Decimal(2000), fill_price)
+    portfolio.incr_bars()
+    portfolio.buy(DATE_2, SYMBOL_1, Decimal(2000), fill_price)
+    assert portfolio.cash == CASH
+    assert portfolio.margin_loan == 0
+
+
+def test_mixed_long_short_shared_buying_power():
+    portfolio = Portfolio(CASH, leverage=2.0)
+    fill_price = Decimal(100)
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(1000), fill_price)
+    order = portfolio.sell(DATE_2, SYMBOL_2, Decimal(1000), fill_price)
+    assert order is not None
+    assert order.shares == Decimal(1000)
+    assert portfolio.cash == 0
+    assert portfolio.margin_loan == CASH
+
+
+def test_short_when_leverage_1_requires_full_cash():
+    portfolio = Portfolio(CASH, leverage=1.0)
+    fill_price = Decimal(100)
+    order = portfolio.sell(DATE_1, SYMBOL_1, Decimal(1001), fill_price)
+    assert order is not None
+    assert order.shares == Decimal(1000)
+    assert portfolio.cash == 0
+
+
+def _mark(portfolio, date, prices):
+    """Runs ``capture_bar`` with ``prices`` mapping symbol to close."""
+    df = pd.DataFrame(
+        [
+            [sym, date, to_decimal(px), to_decimal(px), to_decimal(px)]
+            for sym, px in prices.items()
+        ],
+        columns=["symbol", "date", "close", "low", "high"],
+    ).set_index(["symbol", "date"])
+    portfolio.capture_bar(date, ColumnScope(df), {sym: 1 for sym in prices})
+
+
+def _expected_margin_loan(portfolio):
+    leverage = to_decimal(portfolio._leverage)
+    notional = sum(
+        (
+            pos.entry_notional
+            for pos in itertools.chain(
+                portfolio.long_positions.values(),
+                portfolio.short_positions.values(),
+            )
+        ),
+        Decimal(),
+    )
+    if portfolio._leverage <= 1:
+        return portfolio._accrued_interest
+    return notional - notional / leverage + portfolio._accrued_interest
+
+
+@pytest.mark.parametrize("leverage", [1.0, 1.5, 2.0, 4.0])
+@pytest.mark.parametrize("fractional", [True, False])
+def test_margin_loan_invariants_when_random_sequences(leverage, fractional):
+    """margin_loan stays non-negative and matches its defining identity."""
+    rng = np.random.default_rng(42)
+    dates = [DATE_1, DATE_2, DATE_3, DATE_4]
+    for _ in range(300):
+        portfolio = Portfolio(
+            CASH, leverage=leverage, enable_fractional_shares=fractional
+        )
+        for i in range(12):
+            date = dates[i % len(dates)]
+            symbol = SYMBOL_1 if rng.random() < 0.5 else SYMBOL_2
+            price = to_decimal(round(float(rng.uniform(20, 200)), 2))
+            shares = to_decimal(round(float(rng.uniform(1, 900)), 2))
+            if rng.random() < 0.5:
+                portfolio.buy(date, symbol, shares, price)
+            else:
+                portfolio.sell(date, symbol, shares, price)
+            assert portfolio.margin_loan >= 0
+            assert portfolio.margin_loan == _expected_margin_loan(portfolio)
+
+
+@pytest.mark.parametrize("leverage", [1.0, 2.0, 4.0])
+def test_flat_portfolio_is_independent_of_exit_order(leverage):
+    """Closing a long and a short in either order lands in the same state."""
+    fill_price = Decimal(100)
+    shares = Decimal(200)
+    states = []
+    for long_first in (True, False):
+        portfolio = Portfolio(CASH, leverage=leverage)
+        portfolio.buy(DATE_1, SYMBOL_1, shares, fill_price)
+        portfolio.sell(DATE_1, SYMBOL_2, shares, fill_price)
+        if long_first:
+            portfolio.sell(DATE_2, SYMBOL_1, shares, fill_price)
+            portfolio.buy(DATE_3, SYMBOL_2, shares, fill_price)
+        else:
+            portfolio.buy(DATE_2, SYMBOL_2, shares, fill_price)
+            portfolio.sell(DATE_3, SYMBOL_1, shares, fill_price)
+        assert not portfolio.long_positions
+        assert not portfolio.short_positions
+        states.append((portfolio.cash, portfolio.margin_loan))
+        # Flat and zero PnL, so the account is back to its starting cash.
+        assert portfolio.cash == CASH
+        assert portfolio.margin_loan == 0
+    assert states[0] == states[1]
+
+
+def test_buying_power_when_flat_is_equity_times_leverage():
+    portfolio = Portfolio(CASH, leverage=2.0)
+    assert portfolio._available_buying_power() == CASH * 2
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(500), Decimal(100))
+    _mark(portfolio, DATE_1, {SYMBOL_1: 100})
+    portfolio.sell(DATE_2, SYMBOL_1, Decimal(500), Decimal(100))
+    _mark(portfolio, DATE_2, {SYMBOL_1: 100})
+    assert portfolio.market_value == CASH
+    assert portfolio._available_buying_power() == CASH * 2
+
+
+def test_buying_power_when_partial_exit_redeploys():
+    """A partial exit deleverages, so the freed capacity must be reusable."""
+    portfolio = Portfolio(CASH, leverage=2.0)
+    fill_price = Decimal(100)
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(2000), fill_price)
+    _mark(portfolio, DATE_1, {SYMBOL_1: 100})
+    assert portfolio._available_buying_power() == 0
+    portfolio.sell(DATE_2, SYMBOL_1, Decimal(500), fill_price)
+    _mark(portfolio, DATE_2, {SYMBOL_1: 100})
+    # 150k of exposure on 100k of equity is 1.5x, so 50k is still available.
+    assert portfolio._available_buying_power() == Decimal(50_000)
+    order = portfolio.buy(DATE_3, SYMBOL_2, Decimal(500), fill_price)
+    assert order is not None
+    assert order.shares == Decimal(500)
+
+
+@pytest.mark.parametrize(
+    "close, type", [(120, "short"), (190, "short"), (80, "long")]
+)
+def test_buying_power_when_adverse_mark_respects_leverage(close, type):
+    """An unrealized loss must consume buying power for shorts and longs.
+
+    An adverse mark can push an *already open* book past the cap on its own;
+    nothing can be done about that without a margin call, which is not
+    modeled. What must hold is that no *new* exposure breaches the cap.
+    """
+    leverage = Decimal(2)
+    portfolio = Portfolio(CASH, leverage=float(leverage))
+    fill_price = Decimal(100)
+    shares = Decimal(1000)
+    if type == "short":
+        portfolio.sell(DATE_1, SYMBOL_1, shares, fill_price)
+    else:
+        portfolio.buy(DATE_1, SYMBOL_1, shares, fill_price)
+    _mark(portfolio, DATE_1, {SYMBOL_1: close})
+    market_value = portfolio.market_value
+    assert market_value > 0
+    gross_before = shares * to_decimal(close)
+    order = portfolio.buy(DATE_2, SYMBOL_2, Decimal(5000), fill_price)
+    gross_after = gross_before + (
+        order.shares * fill_price if order is not None else Decimal()
+    )
+    if gross_before <= leverage * market_value:
+        assert gross_after <= leverage * market_value
+    else:
+        # Already beyond the cap, so nothing more may be added.
+        assert order is None
+
+
+def _capture_bar_without_data(portfolio, date):
+    """Runs ``capture_bar`` for a date that has no bar for any symbol."""
+    rows = [
+        [sym, DATE_4, Decimal(1), Decimal(1), Decimal(1)]
+        for sym in portfolio.symbols
+    ]
+    df = pd.DataFrame(
+        rows, columns=["symbol", "date", "close", "low", "high"]
+    ).set_index(["symbol", "date"])
+    portfolio.capture_bar(
+        date, ColumnScope(df), {sym: 1 for sym in portfolio.symbols}
+    )
+
+
+def test_capture_bar_when_no_data_and_never_marked_holds_at_cost():
+    """A never-marked long with no bar must not drop out of equity."""
+    portfolio = Portfolio(CASH, leverage=2.0)
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(1000), Decimal(100))
+    _capture_bar_without_data(portfolio, DATE_1)
+    assert portfolio.equity == CASH
+    assert portfolio.market_value == CASH
+    assert portfolio._long_market_value() == Decimal(100_000)
+    assert portfolio._metrics_bars[-1].notional == Decimal(100_000)
+
+
+@pytest.mark.parametrize("type", ["long", "short"])
+def test_capture_bar_when_no_data_holds_at_last_mark(type):
+    """A marked position with no bar keeps its last mark, not its cost.
+
+    capture_bar and _long_market_value/_short_market_value must agree, since
+    _available_buying_power subtracts one from the other.
+    """
+    portfolio = Portfolio(CASH, leverage=2.0)
+    shares = Decimal(500)
+    if type == "long":
+        portfolio.buy(DATE_1, SYMBOL_1, shares, Decimal(100))
+    else:
+        portfolio.sell(DATE_1, SYMBOL_1, shares, Decimal(100))
+    _mark(portfolio, DATE_1, {SYMBOL_1: 120})
+    marked = portfolio.market_value
+    _capture_bar_without_data(portfolio, DATE_2)
+    assert portfolio.market_value == marked
+    assert portfolio.market_value == portfolio._live_market_value()
+
+
+@pytest.mark.parametrize(
+    "fee_mode, fee_amount",
+    [
+        (FeeMode.PER_SHARE, 1.0),
+        (FeeMode.ORDER_PERCENT, 1.0),
+        (FeeMode.PER_ORDER, 500.0),
+    ],
+)
+def test_buy_when_fees_do_not_breach_leverage(fee_mode, fee_amount):
+    leverage = Decimal(2)
+    portfolio = Portfolio(
+        CASH,
+        leverage=float(leverage),
+        fee_mode=fee_mode,
+        fee_amount=fee_amount,
+    )
+    fill_price = Decimal(100)
+    order = portfolio.buy(DATE_1, SYMBOL_1, Decimal(5000), fill_price)
+    assert order is not None
+    _mark(portfolio, DATE_1, {SYMBOL_1: 100})
+    gross = order.shares * fill_price
+    assert gross / portfolio.market_value <= leverage
+
+
+def test_apply_interest_when_no_bars_per_year_then_noop():
+    portfolio = Portfolio(CASH, interest_rate=7.0)
+    portfolio._apply_interest()
+    assert portfolio.cash == CASH
+    assert portfolio.margin_loan == 0
+
+
+def test_apply_interest_matches_across_timeframes():
+    """The same elapsed year must cost the same regardless of bar size."""
+    daily = Portfolio(CASH, leverage=2.0, interest_rate=7.0, bars_per_year=252)
+    daily.buy(DATE_1, SYMBOL_1, Decimal(2000), Decimal(100))
+    for _ in range(252):
+        daily._apply_interest()
+    intraday = Portfolio(
+        CASH, leverage=2.0, interest_rate=7.0, bars_per_year=252 * 390
+    )
+    intraday.buy(DATE_1, SYMBOL_1, Decimal(2000), Decimal(100))
+    for _ in range(252 * 390):
+        intraday._apply_interest()
+    assert float(daily.margin_loan) == pytest.approx(
+        float(intraday.margin_loan), rel=1e-3
+    )
+
+
+def test_apply_interest_sweeps_accrued_interest_from_cash():
+    portfolio = Portfolio(
+        CASH, leverage=2.0, interest_rate=7.0, bars_per_year=252
+    )
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(2000), Decimal(100))
+    portfolio._apply_interest()
+    accrued = portfolio._accrued_interest
+    assert accrued > 0
+    portfolio.sell(DATE_2, SYMBOL_1, Decimal(2000), Decimal(100))
+    assert portfolio.cash == CASH
+    assert portfolio.margin_loan == accrued
+    net_cash = portfolio._net_cash_balance()
+    portfolio._sweep_accrued_interest()
+    # Repaying out of cash leaves the net balance unchanged.
+    assert portfolio._accrued_interest == 0
+    assert portfolio.margin_loan == 0
+    assert portfolio.cash == CASH - accrued
+    assert portfolio._net_cash_balance() == net_cash
+
+
+def test_cover_when_fractional_shares_leaves_no_dust():
+    portfolio = Portfolio(CASH, enable_fractional_shares=True)
+    portfolio.sell(DATE_1, SYMBOL_1, Decimal("722.76"), Decimal("132.33"))
+    portfolio.sell(DATE_2, SYMBOL_1, Decimal("116.49"), Decimal("105.43"))
+    pos = portfolio.short_positions[SYMBOL_1]
+    assert pos.shares == sum(entry.shares for entry in pos.entries)
+    portfolio.buy(DATE_3, SYMBOL_1, pos.shares, Decimal(100))
+    assert not portfolio.short_positions
+    assert not portfolio.long_positions
+    assert SYMBOL_1 not in portfolio.symbols
+
+
+def _exit_before_mark(type, exit_shares, leverage=Decimal(2)):
+    """Exits, then fills a second order on the same bar, before any mark."""
+    portfolio = Portfolio(CASH, leverage=float(leverage))
+    shares = Decimal(2000)
+    # Adverse move for whichever side is held.
+    exit_price = Decimal(85) if type == "long" else Decimal(115)
+    if type == "long":
+        portfolio.buy(DATE_1, SYMBOL_1, shares, Decimal(100))
+        _mark(portfolio, DATE_1, {SYMBOL_1: 100})
+        portfolio.sell(DATE_2, SYMBOL_1, exit_shares, exit_price)
+    else:
+        portfolio.sell(DATE_1, SYMBOL_1, shares, Decimal(100))
+        _mark(portfolio, DATE_1, {SYMBOL_1: 100})
+        portfolio.buy(DATE_2, SYMBOL_1, exit_shares, exit_price)
+    # No mark in between: this fill is still on the same bar as the exit.
+    order = portfolio.buy(DATE_2, SYMBOL_2, Decimal(5000), Decimal(100))
+    _mark(portfolio, DATE_2, {SYMBOL_1: exit_price, SYMBOL_2: 100})
+    gross = (shares - exit_shares) * exit_price
+    if order is not None:
+        gross += order.shares * Decimal(100)
+    return portfolio, gross
+
+
+@pytest.mark.parametrize("type", ["long", "short"])
+def test_buying_power_when_full_exit_before_mark_respects_leverage(type):
+    """An order filling after a full exit, before the mark, must not over-lever.
+
+    Every fill in the bar loop happens before ``capture_bar``, so sizing off
+    the last snapshot would value the account as it stood before this bar's
+    exits. With the position fully closed there is nothing left carrying a
+    stale mark, so the cap must bind exactly.
+    """
+    leverage = Decimal(2)
+    portfolio, gross = _exit_before_mark(type, Decimal(2000), leverage)
+    assert portfolio.market_value > 0
+    assert gross / portfolio.market_value <= leverage
+
+
+@pytest.mark.parametrize(
+    "type, excess", [("long", Decimal(22_500)), ("short", Decimal(67_500))]
+)
+def test_buying_power_when_partial_exit_before_mark_trails_by_one_bar(
+    type, excess
+):
+    """Pins the known residual: the *unexited* remainder keeps its last mark.
+
+    Everything realized is exact, but a position still open since the last
+    ``capture_bar`` is valued at that mark, so buying power trails by
+    ``(leverage - 1) * delta`` for longs and ``(leverage + 1) * delta`` for
+    shorts, where ``delta`` is the remainder's one-bar move (1500 shares
+    moving 15 here). Inherent to the bar loop, not to this formula; fixing it
+    means marking at the fill price before pre-``capture_bar`` fills.
+    """
+    leverage = Decimal(2)
+    portfolio, gross = _exit_before_mark(type, Decimal(500), leverage)
+    assert gross - leverage * portfolio.market_value == excess
+
+
+@pytest.mark.parametrize("close", [80, 100, 120])
+@pytest.mark.parametrize(
+    "ops",
+    [
+        [("buy", 1000)],
+        [("sell", 1000)],
+        [("buy", 1000), ("sell", 400)],
+        [("sell", 1000), ("buy", 400)],
+        [("buy", 1000), ("sell", 1000)],
+        [("sell", 1000), ("buy", 1000)],
+    ],
+)
+def test_live_market_value_matches_capture_bar(ops, close):
+    """The live mark must equal the snapshot when taken right after one.
+
+    This is what catches expressing a short as ``entry_notional + pnl``:
+    ``pnl`` is only recomputed in ``capture_bar``, so it is stale after a
+    partial cover, while the realized slice has already been paid to cash.
+    """
+    portfolio = Portfolio(CASH, leverage=2.0)
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(200), Decimal(100))
+    portfolio.sell(DATE_1, SYMBOL_2, Decimal(300), Decimal(100))
+    _mark(portfolio, DATE_1, {SYMBOL_1: close, SYMBOL_2: close})
+    for op, qty in ops:
+        if op == "buy":
+            portfolio.buy(DATE_2, SYMBOL_2, Decimal(qty), to_decimal(close))
+        else:
+            portfolio.sell(DATE_2, SYMBOL_1, Decimal(qty), to_decimal(close))
+    _mark(portfolio, DATE_2, {SYMBOL_1: close, SYMBOL_2: close})
+    assert portfolio._live_market_value() == portfolio.market_value
+
+
+def test_buying_power_when_unrealized_gain_is_not_capped_by_cash():
+    """Guards against reintroducing a ``cash * leverage`` term.
+
+    Cash is depleted by design under leverage, so capping on it would strand
+    the capacity an unrealized gain creates.
+    """
+    portfolio = Portfolio(CASH, leverage=2.0)
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(2000), Decimal(100))
+    _mark(portfolio, DATE_1, {SYMBOL_1: 100})
+    assert portfolio.cash == 0
+    _mark(portfolio, DATE_2, {SYMBOL_1: 120})
+    # Equity 140k, exposure 240k, so 2 * 140k - 240k is still deployable.
+    assert portfolio.market_value == Decimal(140_000)
+    assert portfolio._available_buying_power() == Decimal(40_000)
+
+
+@pytest.mark.parametrize("leverage", [1.0, 2.0])
+@pytest.mark.parametrize("fractional", [True, False])
+def test_entry_notional_totals_track_positions(leverage, fractional):
+    """The running totals must never drift from the open book."""
+    rng = np.random.default_rng(7)
+    dates = [DATE_1, DATE_2, DATE_3, DATE_4]
+    for _ in range(200):
+        portfolio = Portfolio(
+            CASH, leverage=leverage, enable_fractional_shares=fractional
+        )
+        for i in range(12):
+            date = dates[i % len(dates)]
+            symbol = SYMBOL_1 if rng.random() < 0.5 else SYMBOL_2
+            price = to_decimal(round(float(rng.uniform(20, 200)), 2))
+            shares = to_decimal(round(float(rng.uniform(1, 900)), 2))
+            if rng.random() < 0.5:
+                portfolio.buy(date, symbol, shares, price)
+            else:
+                portfolio.sell(date, symbol, shares, price)
+            for total, positions in (
+                (portfolio._long_entry_notional, portfolio.long_positions),
+                (portfolio._short_entry_notional, portfolio.short_positions),
+            ):
+                assert total == sum(
+                    (pos.entry_notional for pos in positions.values()),
+                    Decimal(),
+                )
+
+
+@pytest.mark.parametrize("type", ["long", "short"])
+def test_buying_power_when_add_on_before_mark_charges_fill_price(type):
+    """An add-on must consume its own notional of buying power.
+
+    Valuing the whole position at the previous mark prices the new shares at
+    a price they were not bought at, so the fill can cost less buying power
+    than it consumes -- or none at all, letting exposure compound without
+    bound across same-bar add-ons.
+    """
+    portfolio = Portfolio(CASH, leverage=2.0)
+    fill = Decimal(100)
+    if type == "long":
+        portfolio.buy(DATE_1, SYMBOL_1, Decimal(500), fill)
+    else:
+        portfolio.sell(DATE_1, SYMBOL_1, Decimal(500), fill)
+    _mark(portfolio, DATE_1, {SYMBOL_1: 100})
+    # Add on at half the mark, on the next bar but before it is marked.
+    add_price = Decimal(50)
+    before = portfolio._available_buying_power()
+    if type == "long":
+        portfolio.buy(DATE_2, SYMBOL_1, Decimal(100), add_price)
+    else:
+        portfolio.sell(DATE_2, SYMBOL_1, Decimal(100), add_price)
+    after = portfolio._available_buying_power()
+    assert before - after == Decimal(100) * add_price
+
+
+@pytest.mark.parametrize("type", ["long", "short"])
+def test_buying_power_when_repeated_add_ons_then_exhausted(type):
+    """Repeated same-bar add-ons must drain buying power, not regenerate it."""
+    portfolio = Portfolio(CASH, leverage=2.0)
+    order_fn = portfolio.buy if type == "long" else portfolio.sell
+    order_fn(DATE_1, SYMBOL_1, Decimal(500), Decimal(100))
+    _mark(portfolio, DATE_1, {SYMBOL_1: 100})
+    filled = [
+        Decimal() if order is None else order.shares
+        for order in (
+            order_fn(DATE_2, SYMBOL_1, Decimal(10_000), Decimal(50))
+            for _ in range(8)
+        )
+    ]
+    assert portfolio._available_buying_power() == 0
+    assert sum(filled[1:]) == 0
+
+
+@pytest.mark.parametrize("type", ["long", "short"])
+def test_exit_when_shares_match_entry_prefix_then_no_empty_trade(type):
+    """An exit consuming whole entries must not book a zero-share trade."""
+    portfolio = Portfolio(CASH)
+    open_fn = portfolio.buy if type == "long" else portfolio.sell
+    close_fn = portfolio.sell if type == "long" else portfolio.buy
+    open_fn(DATE_1, SYMBOL_1, Decimal(100), Decimal(100))
+    open_fn(DATE_2, SYMBOL_1, Decimal(100), Decimal(100))
+    close_fn(DATE_3, SYMBOL_1, Decimal(100), Decimal(110))
+    assert len(portfolio.trades) == 1
+    assert all(trade.shares > 0 for trade in portfolio.trades)
+
+
+def test_clamp_shares_when_leveraged_per_share_fee_then_order_fills():
+    """The fee reserve must be sized to the order, not to the largest one.
+
+    A per-share fee grows with the share count, so reserving for the biggest
+    order buying power could support drops an order costing a few dollars.
+    """
+    portfolio = Portfolio(
+        10_000, fee_mode=FeeMode.PER_SHARE, fee_amount=0.01, leverage=2.0
+    )
+    order = portfolio.buy(DATE_1, SYMBOL_1, Decimal(100), Decimal("0.01"))
+    assert order is not None
+    assert order.shares == Decimal(100)
+
+
+@pytest.mark.parametrize("type", ["long", "short"])
+def test_position_cap_when_lowered_below_held_count_then_still_binds(type):
+    """The cap is retuned per window by walkforward optimization, so it can
+    drop below the number of positions already held. An equality test would
+    stop binding entirely and let the book keep growing."""
+    if type == "long":
+        portfolio = Portfolio(1_000_000, max_long_positions=3)
+        order_fn = portfolio.buy
+        positions = portfolio.long_positions
+    else:
+        portfolio = Portfolio(1_000_000, max_short_positions=3)
+        order_fn = portfolio.sell
+        positions = portfolio.short_positions
+    for symbol in ("A", "B", "C"):
+        order_fn(DATE_1, symbol, Decimal(10), Decimal(100))
+    assert len(positions) == 3
+    if type == "long":
+        portfolio._max_long_positions = 1
+    else:
+        portfolio._max_short_positions = 1
+    assert order_fn(DATE_2, "D", Decimal(10), Decimal(100)) is None
+    assert len(positions) == 3
+
+
+@pytest.mark.parametrize(
+    "fee_mode, fee_amount, price",
+    [
+        (FeeMode.PER_SHARE, 0.05, Decimal(1)),
+        (FeeMode.PER_SHARE, 0.005, Decimal(5)),
+        (FeeMode.ORDER_PERCENT, 0.5, Decimal(100)),
+        (FeeMode.PER_ORDER, 5.0, Decimal(10)),
+    ],
+)
+@pytest.mark.parametrize("leverage", [1.5, 2.0, 4.0])
+def test_clamp_shares_fee_reserve_never_exceeds_buying_power(
+    fee_mode, fee_amount, price, leverage
+):
+    """The fill plus the leverage cost of its fees must fit the budget.
+
+    Re-deriving the reserve at a reduced share count yields a *smaller* fee
+    and so a larger budget, which undoes the reservation and lets the fill
+    spill past the configured leverage.
+    """
+    portfolio = Portfolio(
+        100_000, fee_mode=fee_mode, fee_amount=fee_amount, leverage=leverage
+    )
+    budget = portfolio._available_buying_power()
+    order = portfolio.buy(DATE_1, SYMBOL_1, Decimal(500_000), price)
+    if order is None:
+        return
+    used = order.shares * price + portfolio.fees * to_decimal(leverage)
+    assert used <= budget
+
+
+def test_clamp_unmarked_uses_fifo_cost_of_surviving_entries():
+    """Exits are FIFO, so the unmarked survivors are the newest entries.
+
+    Rescaling the notional proportionally prices them at the average cost of
+    every unmarked fill, which is not what FIFO actually left behind when
+    those fills had different prices.
+    """
+    portfolio = Portfolio(1_000_000)
+    portfolio.buy(DATE_1, SYMBOL_1, Decimal(100), Decimal(10))
+    _mark(portfolio, DATE_1, {SYMBOL_1: 10})
+    portfolio.buy(DATE_2, SYMBOL_1, Decimal(50), Decimal(12))
+    portfolio.buy(DATE_2, SYMBOL_1, Decimal(50), Decimal(14))
+    portfolio.sell(DATE_2, SYMBOL_1, Decimal(150), Decimal(20))
+    pos = portfolio.long_positions[SYMBOL_1]
+    expected = sum(
+        (entry.shares * entry.price for entry in pos.entries), Decimal()
+    )
+    assert pos.unmarked_shares == pos.shares
+    assert pos.unmarked_notional == expected

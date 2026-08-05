@@ -1,0 +1,186 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-04 18:14-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/notebooks/11. Configuring Parallelization.ipynb:9
+#: cd0a0b6fcc51408a97ec4491452ec8cf
+msgid "Configuring Parallelization"
+msgstr "配置并行化"
+
+#: ../../source/notebooks/11. 2ca6f858a43c4c9485e0b4e2b6370161 Configuring
+#: Parallelization.ipynb:11
+msgid ""
+"**PyBroker** uses `Joblib <https://joblib.readthedocs.io/>`__ to compute "
+"indicators, train models, and optimize parameters in parallel."
+msgstr ""
+"**PyBroker** 使用 `Joblib <https://joblib.readthedocs.io/>`__ "
+"并行计算指标、训练模型以及优化参数。"
+
+#: ../../source/notebooks/11. 1ddbe511ef27448da7df028ad38ce658 Configuring
+#: Parallelization.ipynb:23
+msgid "Setting Workers"
+msgstr "设置工作进程"
+
+#: ../../source/notebooks/11. Configuring Parallelization.ipynb:25
+#: ceb3360569e6422ab9a1ccab041fde30
+msgid ""
+"`set_parallel "
+"<https://www.pybroker.com/en/latest/reference/pybroker.parallel.html#pybroker.parallel.set_parallel>`__"
+" updates the global Joblib configuration. The `n_jobs "
+"<https://www.pybroker.com/en/latest/reference/pybroker.parallel.html#pybroker.parallel.ParallelConfig.n_jobs>`__"
+" parameter specifies the number of worker jobs: ``-1`` (the default) uses"
+" all available CPU cores, and ``1`` runs sequentially. Read the current "
+"settings with `get_parallel_config "
+"<https://www.pybroker.com/en/latest/reference/pybroker.parallel.html#pybroker.parallel.get_parallel_config>`__:"
+msgstr ""
+"`set_parallel "
+"<https://www.pybroker.com/en/latest/reference/pybroker.parallel.html#pybroker.parallel.set_parallel>`__"
+" 用于更新全局 Joblib 配置。`n_jobs "
+"<https://www.pybroker.com/en/latest/reference/pybroker.parallel.html#pybroker.parallel.ParallelConfig.n_jobs>`__"
+" 参数指定工作任务的数量：``-1`` （默认值）表示使用所有可用的 CPU 核心，``1`` 表示按顺序运行。可以使用 "
+"`get_parallel_config "
+"<https://www.pybroker.com/en/latest/reference/pybroker.parallel.html#pybroker.parallel.get_parallel_config>`__"
+" 读取当前设置："
+
+#: ../../source/notebooks/11. Configuring Parallelization.ipynb:83
+#: f29855a3db524053bf52bc2d1790cced
+msgid "Parallel Indicators"
+msgstr "并行计算指标"
+
+#: ../../source/notebooks/11. 47390702ffa048cab3a1d7873b12b25a Configuring
+#: Parallelization.ipynb:85
+msgid ""
+"Indicators are computed **per symbol**: all indicators for a given symbol"
+" are grouped into a single task, and one task is dispatched per symbol. "
+"Passing ``parallel_indicators=True`` to `backtest "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`__,"
+" `walkforward "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`__,"
+" or `optimize "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.optimize>`__"
+" runs these tasks across the configured workers (defaulting to "
+"``False``)."
+msgstr ""
+"指标是按**每个股票代码**计算的：给定股票代码的所有指标都会被归入一个任务，每个股票代码分派一个任务。向 `backtest "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`__、"
+"`walkforward "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`__"
+" 或 `optimize "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.optimize>`__"
+" 传入 ``parallel_indicators=True``，会让这些任务在已配置的工作进程之间运行（默认值为 ``False``）。"
+
+#: ../../source/notebooks/11. 269b46d0316247debe95dabfbef12ac4 Configuring
+#: Parallelization.ipynb:88
+msgid "To see this in action, let's backtest a moving average crossover:"
+msgstr "为了实际演示这一点，让我们回测一个移动平均线交叉策略："
+
+#: ../../source/notebooks/11. 67ce78210f3c401b8128665fec2f95fd Configuring
+#: Parallelization.ipynb:441
+msgid ""
+"Standalone indicator computation with an `IndicatorSet "
+"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.IndicatorSet>`__"
+" accepts the same ``parallel_indicators`` flag:"
+msgstr ""
+"使用 `IndicatorSet "
+"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.IndicatorSet>`__"
+" 进行独立的指标计算时，同样接受相同的 ``parallel_indicators`` 标志："
+
+#: ../../source/notebooks/11. 65c6931e41e64d189db0802893c886d9 Configuring
+#: Parallelization.ipynb:658
+msgid "Parallel Model Training"
+msgstr "并行模型训练"
+
+#: ../../source/notebooks/11. 083d8da2eac44a2d9c778599ebf58413 Configuring
+#: Parallelization.ipynb:660
+msgid ""
+"Model training runs serially by default. Passing ``parallel_models=True``"
+" to `backtest "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`__"
+" or `walkforward "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`__"
+" trains each model in its own task across the configured workers."
+msgstr ""
+"模型训练默认按顺序运行。向 `backtest "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`__"
+" 或 `walkforward "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`__"
+" 传入 ``parallel_models=True``，会让每个模型在已配置的工作进程中以各自独立的任务进行训练。"
+
+#: ../../source/notebooks/11. Configuring Parallelization.ipynb:662
+#: ce9dde84b64e498eadf0d945ce57f82b
+msgid ""
+"This example adapts the linear regression model from `Training a Model "
+"<https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html>`__:"
+msgstr ""
+"本示例改编自 `训练模型 "
+"<https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html>`__"
+" 文档中的线性回归模型："
+
+#: ../../source/notebooks/11. 4df75a2897fb4189ad925e6baaca9393 Configuring
+#: Parallelization.ipynb:1043
+msgid "Using Ray as the Backend"
+msgstr "使用 Ray 作为后端"
+
+#: ../../source/notebooks/11. Configuring Parallelization.ipynb:1045
+#: f7025bdf9af741e0b6dae54e93276772
+msgid ""
+"`Ray <https://www.ray.io/>`__ can distribute the same work across many "
+"cores or an entire cluster. Install it with ``pip install ray`` and then "
+"register it with Joblib via `register_ray <https://docs.ray.io/en/latest"
+"/ray-more-libs/joblib.html>`__ (from ``ray.util.joblib``):"
+msgstr ""
+"`Ray <https://www.ray.io/>`__ 可以将同样的工作分布到多个核心甚至整个集群上。使用 ``pip install ray`` "
+"进行安装，然后通过 `register_ray <https://docs.ray.io/en/latest"
+"/ray-more-libs/joblib.html>`__ （来自 ``ray.util.joblib``）将其注册到 Joblib："
+
+#: ../../source/notebooks/11. 90550ee48f6a4853936870de93bf0cc2 Configuring
+#: Parallelization.ipynb:1095
+msgid ""
+"After registering Ray, pass ``backend=\"ray\"`` to `set_parallel "
+"<https://www.pybroker.com/en/latest/reference/pybroker.parallel.html#pybroker.parallel.set_parallel>`__"
+" to make it available as a backend:"
+msgstr ""
+"注册 Ray 之后，向 `set_parallel "
+"<https://www.pybroker.com/en/latest/reference/pybroker.parallel.html#pybroker.parallel.set_parallel>`__"
+" 传入 ``backend=\"ray\"``，即可将其作为后端使用："
+
+#: ../../source/notebooks/11. 774613fb700d4f4eb4d940740b22c88e Configuring
+#: Parallelization.ipynb:1141
+msgid ""
+"**PyBroker** will now use the Ray backend for all parallel tasks. For "
+"example, calling `backtest "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`__"
+" with ``parallel_indicators=True``:"
+msgstr ""
+"**PyBroker** 现在会将 Ray 后端用于所有并行任务。例如，以 ``parallel_indicators=True`` 调用 "
+"`backtest "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`__："
+
+#: ../../source/notebooks/11. 33ddd47b1c754e54bacae59cdba98433 Configuring
+#: Parallelization.ipynb:1312
+msgid ""
+"We will explore `parameter optimization "
+"<https://www.pybroker.com/en/latest/notebooks/12.%20Parameter%20Optimization.html>`__"
+" in the next notebook, which can also be parallelized in certain "
+"scenarios."
+msgstr ""
+"我们将在下一篇文档中探讨 `参数优化 "
+"<https://www.pybroker.com/en/latest/notebooks/12.%20Parameter%20Optimization.html>`__"
+"，在某些场景下，参数优化同样可以并行化。"

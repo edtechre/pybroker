@@ -7,6 +7,9 @@ This code is licensed under Apache 2.0 with Commons Clause license
 """
 
 import dataclasses
+import json
+import math
+import warnings
 import numpy as np
 import pandas as pd
 from pybroker.cache import CacheDateFields
@@ -18,7 +21,17 @@ from pybroker.common import (
     ModelSymbol,
     OrderType,
     PriceType,
+    SymbolSelector,
+    _dataframe_records,
+    _ensure_range_index,
+    _is_symbol_selector,
+    _json_safe,
+    _resolve_executions,
+    _selected_symbols,
+    _selection_df,
+    _static_symbols,
     get_unique_sorted_dates,
+    get_unique_sorted_dates_array,
     quantize,
     to_datetime,
     to_decimal,
@@ -30,14 +43,19 @@ from pybroker.config import StrategyConfig
 from pybroker.context import (
     ExecContext,
     ExecResult,
-    PosSizeContext,
+    RotationContext,
     set_exec_ctx_data,
-    set_pos_size_ctx_data,
 )
 from pybroker.data import AlpacaCrypto, DataSource
 from pybroker.eval import BootstrapResult, EvalMetrics, EvaluateMixin
+from pybroker.optimize import Hyperparam, OptimizeMixin, build_run_hyperparams
 from pybroker.indicator import Indicator, IndicatorsMixin
-from pybroker.model import ModelSource, ModelsMixin, TrainedModel
+from pybroker.model import (
+    ModelSource,
+    ModelTrainer,
+    ModelsMixin,
+    TrainedModel,
+)
 from pybroker.portfolio import (
     Order,
     Portfolio,
@@ -50,13 +68,38 @@ from pybroker.scope import (
     ColumnScope,
     IndicatorScope,
     ModelInputScope,
+    PendingOrder,
     PendingOrderScope,
     PredictionScope,
     PriceScope,
     StaticScope,
+    SymbolArrayStore,
+    IntervalScope,
+    column_scope_from_frame,
     get_signals,
+    slice_symbol_array_store_by_dates,
+    sym_exec_dates_from_store,
+    symbol_array_store_from_frame,
 )
-from pybroker.slippage import SlippageModel
+from pybroker.interval import (
+    IntervalData,
+    TimeframeInterval,
+    _iter_symbol_date_groups,
+    base_timeframe_to_seconds,
+    compress_intervals_from_frame,
+    indicator_interval_name,
+    model_interval_name,
+    normalize_interval,
+    parse_indicator_interval_name,
+    parse_model_interval_name,
+    symbol_dates_from_frame,
+    validate_interval,
+)
+from pybroker.slippage import (
+    SlippageContext,
+    FixedSlippageModel,
+    SlippageModel,
+)
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime
@@ -72,6 +115,8 @@ from typing import (
     MutableMapping,
     NamedTuple,
     Optional,
+    Sequence,
+    TypeGuard,
     Union,
 )
 from typing_extensions import Concatenate, ParamSpec
@@ -79,20 +124,480 @@ from typing_extensions import Concatenate, ParamSpec
 
 P = ParamSpec("P")
 
+_EMPTY_KWARGS: dict[str, Any] = {}
+
+
+def _unique_dates_from_rows(
+    dates_arr: NDArray[np.datetime64],
+    row_indices: NDArray[np.int_],
+) -> NDArray[np.datetime64]:
+    if len(row_indices) == 0:
+        return np.array([], dtype="datetime64[ns]")
+    return get_unique_sorted_dates_array(dates_arr[row_indices])
+
+
+def _date_to_active_syms(
+    sym_exec_dates: Mapping[str, frozenset[np.datetime64]],
+    test_dates: Sequence[np.datetime64],
+) -> tuple[dict[np.datetime64, tuple[str, ...]], bool]:
+    test_dates_set = frozenset(test_dates)
+    if not sym_exec_dates:
+        return {}, True
+    aligned = all(dates == test_dates_set for dates in sym_exec_dates.values())
+    if aligned:
+        return {}, True
+    date_to_syms: dict[np.datetime64, list[str]] = defaultdict(list)
+    for sym, dates in sym_exec_dates.items():
+        for date in dates:
+            date_to_syms[date].append(sym)
+    return {date: tuple(syms) for date, syms in date_to_syms.items()}, False
+
 
 def _between(
     df: pd.DataFrame, start_date: datetime, end_date: datetime
 ) -> pd.DataFrame:
     if df.empty:
         return df
-    return df[
-        (df[DataCol.DATE.value].dt.tz_localize(None) >= start_date)
-        & (df[DataCol.DATE.value].dt.tz_localize(None) <= end_date)
-    ]
+    date_col = DataCol.DATE.value
+    col = df[date_col]
+    if col.dt.tz is not None:
+        col = col.dt.tz_convert(None)
+    dates = col.to_numpy(dtype="datetime64[ns]", copy=False)
+    start = np.datetime64(start_date)
+    end = np.datetime64(end_date)
+    mask = (dates >= start) & (dates <= end)
+    rows = np.flatnonzero(mask)
+    if len(rows) == len(df):
+        return df
+    return df.iloc[rows]
 
 
-def _sort_by_score(result: ExecResult) -> float:
-    return 0.0 if result.score is None else result.score
+# Both schedules are sorted descending, so an unrankable score sorts last.
+# Returning NaN instead would make the ordering predicate non-transitive --
+# every comparison against NaN is False -- and Timsort's output would not be a
+# sorted permutation, handing the scarce position slot to an arbitrary symbol.
+_UNRANKABLE_SORT_SCORE = -math.inf
+
+
+def _sort_by_buy_score(result: ExecResult) -> float:
+    if result.long_score is not None:
+        return (
+            result.long_score
+            if _is_rankable(result.long_score)
+            else _UNRANKABLE_SORT_SCORE
+        )
+    if not _is_rankable(result.score):
+        return _UNRANKABLE_SORT_SCORE if result.score is not None else 0.0
+    return result.score
+
+
+def _sort_by_sell_score(result: ExecResult) -> float:
+    if result.short_score is not None:
+        return (
+            result.short_score
+            if _is_rankable(result.short_score)
+            else _UNRANKABLE_SORT_SCORE
+        )
+    if not _is_rankable(result.score):
+        return _UNRANKABLE_SORT_SCORE if result.score is not None else 0.0
+    return result.score
+
+
+def _is_persistent_limit(pending: PendingOrder) -> bool:
+    return pending.limit_price is not None and pending.timeout_bars is not None
+
+
+def _is_rankable(score: Optional[float]) -> TypeGuard[float]:
+    if score is None:
+        return False
+    if isinstance(score, float) and math.isnan(score):
+        return False
+    if pd.isna(score):
+        return False
+    return True
+
+
+def _rank_by_score(scores: Mapping[str, float]) -> dict[str, int]:
+    sorted_scores = sorted(
+        scores.items(), key=lambda item: (-item[1], item[0])
+    )
+    return {symbol: rank + 1 for rank, (symbol, _) in enumerate(sorted_scores)}
+
+
+def _rank_by_short_score(scores: Mapping[str, float]) -> dict[str, int]:
+    return _rank_by_score(scores)
+
+
+def _long_rotation_score(ctx: ExecContext) -> Optional[float]:
+    if _is_rankable(ctx.long_score):
+        return ctx.long_score
+    return None
+
+
+def _short_rotation_score(ctx: ExecContext) -> Optional[float]:
+    if _is_rankable(ctx.short_score):
+        return ctx.short_score
+    return None
+
+
+StrategySetting = Union[int, Hyperparam, None]
+
+
+@dataclass(frozen=True)
+class BacktestSettings:
+    max_long_positions: Optional[int] = None
+    max_short_positions: Optional[int] = None
+    worst_rank_held: Optional[int] = None
+
+
+def _resolve_strategy_setting(
+    value: StrategySetting,
+    run_hyperparams: Optional[dict[str, Any]],
+) -> Optional[int]:
+    if value is None:
+        return None
+    if isinstance(value, Hyperparam):
+        if run_hyperparams is None:
+            raise ValueError(
+                f"Hyperparam {value.name!r} requires run_hyperparams."
+            )
+        if value.name not in run_hyperparams:
+            raise ValueError(f"Hyperparam {value.name!r} was not resolved.")
+        return int(run_hyperparams[value.name])
+    return int(value)
+
+
+def _validate_worst_rank_held(
+    worst_rank_held: int,
+    max_long_positions: Optional[int],
+    max_short_positions: Optional[int],
+) -> None:
+    if max_long_positions is None and max_short_positions is None:
+        raise ValueError(
+            "worst_rank_held requires max_long_positions or "
+            "max_short_positions to be set."
+        )
+    if max_long_positions is not None and worst_rank_held < max_long_positions:
+        raise ValueError(
+            "worst_rank_held must be greater than or equal to "
+            "max_long_positions."
+        )
+    if (
+        max_short_positions is not None
+        and worst_rank_held < max_short_positions
+    ):
+        raise ValueError(
+            "worst_rank_held must be greater than or equal to "
+            "max_short_positions."
+        )
+
+
+def _rotation_target_size(settings: BacktestSettings) -> float:
+    slots = 0
+    if settings.max_long_positions is not None:
+        slots += settings.max_long_positions
+    if settings.max_short_positions is not None:
+        slots += settings.max_short_positions
+    return 1 / slots
+
+
+def _reset_rotation_orders(active_ctxs: Mapping[str, ExecContext]) -> None:
+    """Discards orders placed by execution functions.
+
+    Rotation drives trading entirely from :attr:`.ExecContext.long_score` and
+    :attr:`.ExecContext.short_score`, so orders set during an execution are
+    ignored. Fill prices and stops are kept, since those still shape the orders
+    that rotation goes on to place.
+    """
+    for ctx in active_ctxs.values():
+        ctx.buy_shares = None
+        ctx.buy_limit_price = None
+        ctx.buy_timeout_bars = None
+        ctx.sell_shares = None
+        ctx.sell_limit_price = None
+        ctx.sell_timeout_bars = None
+        ctx._cover = False
+        ctx._exiting_pos = False
+        # The discarded order never reaches to_result, so the stop removal it
+        # asked for must be dropped with it.
+        ctx._exit_stop_pos = None
+
+
+def _clear_unused_rotation_signals(
+    active_ctxs: Mapping[str, ExecContext],
+) -> None:
+    """Drops fill prices and stops that rotation left without an order.
+
+    :meth:`pybroker.context.ExecContext.to_result` rejects a fill price or stop
+    that has no accompanying order, and an execution function has no way to
+    know in advance which symbols rotation will trade, or in which direction.
+    """
+    for ctx in active_ctxs.values():
+        if ctx.buy_shares is None:
+            ctx.buy_fill_price = None
+        if ctx.sell_shares is None:
+            ctx.sell_fill_price = None
+        if ctx.buy_shares is not None or ctx.sell_shares is not None:
+            if ctx._exiting_pos:
+                # A rotation exit sets sell_shares (long) or buy_shares
+                # (short), and _get_stops reads the position type off whichever
+                # is set, so a surviving hold_bars would arm a bar stop on the
+                # opposite side of the position being closed.
+                ctx.hold_bars = None
+            continue
+        # Cleared alongside the stops rather than in _reset_rotation_orders:
+        # hold_bars is a stop, and rotation's contract is that stops set during
+        # an execution are kept and applied to the orders it goes on to place.
+        # to_result rejects hold_bars without an order, so it still has to go
+        # for a symbol rotation left untraded.
+        ctx.hold_bars = None
+        ctx.stop_loss = None
+        ctx.stop_loss_pct = None
+        ctx.stop_loss_limit = None
+        ctx.stop_loss_exit_price = None
+        ctx.stop_profit = None
+        ctx.stop_profit_pct = None
+        ctx.stop_profit_limit = None
+        ctx.stop_profit_exit_price = None
+        ctx.stop_trailing = None
+        ctx.stop_trailing_pct = None
+        ctx.stop_trailing_limit = None
+        ctx.stop_trailing_exit_price = None
+
+
+def _rotation_ranks(
+    active_ctxs: Mapping[str, ExecContext],
+    dir: Literal["long", "short"],
+) -> dict[str, int]:
+    scores: dict[str, float] = {}
+    for sym, ctx in active_ctxs.items():
+        score = (
+            _long_rotation_score(ctx)
+            if dir == "long"
+            else _short_rotation_score(ctx)
+        )
+        if score is not None:
+            scores[sym] = score
+    if dir == "long":
+        return _rank_by_score(scores)
+    return _rank_by_short_score(scores)
+
+
+def _pending_order_priority(pending: PendingOrder) -> tuple[int, int]:
+    """Orders retries cover, then sell, then buy -- as the bar loop does.
+
+    The scheduled path places covers before sells before buys so that capital
+    and position slots an exit frees are available to entries on the same bar.
+    Orders filled from this loop -- persistent limit retries, and orders whose
+    execution bar fell in a later walkforward window -- have to observe the
+    same precedence or a boundary bar silently inverts it. The id breaks ties
+    so the order is stable.
+    """
+    if pending.type == "buy":
+        rank = 0 if pending.exit_pos_type == "short" else 2
+    else:
+        rank = 1
+    return rank, pending.id
+
+
+def _has_pending_order(
+    ctx: ExecContext, order_type: Literal["buy", "sell"]
+) -> bool:
+    return any(
+        order.type == order_type for order in ctx.pending_orders(ctx.symbol)
+    )
+
+
+def _rotation_exits(
+    active_ctxs: Mapping[str, ExecContext],
+    portfolio: Portfolio,
+    ranks: Mapping[str, int],
+    worst_rank_held: int,
+    dir: Literal["long", "short"],
+) -> int:
+    """Liquidates held positions ranked outside the hold band.
+
+    Returns the number of positions leaving the portfolio, which frees the same
+    number of slots for entries on this bar.
+    """
+    if dir == "long":
+        positions: Mapping[str, Any] = portfolio.long_positions
+        exit_order_type: Literal["buy", "sell"] = "sell"
+    else:
+        positions = portfolio.short_positions
+        exit_order_type = "buy"
+    exiting = 0
+    for sym in positions:
+        ctx = active_ctxs.get(sym)
+        if ctx is None:
+            # Without a bar for this symbol there is nothing to trade against,
+            # so the position keeps its slot.
+            continue
+        rank = ranks.get(sym)
+        if rank is not None and rank <= worst_rank_held:
+            continue
+        exiting += 1
+        if _has_pending_order(ctx, exit_order_type):
+            # The liquidation is already in flight. Re-issuing it would queue a
+            # redundant order against a position that is already spoken for.
+            continue
+        if dir == "long":
+            ctx.sell_all_shares()
+        else:
+            ctx.cover_all_shares()
+    return exiting
+
+
+def _pending_entry_symbols(
+    pending_order_scope: Optional[PendingOrderScope],
+    portfolio: Portfolio,
+    entry_order_type: Literal["buy", "sell"],
+) -> set[str]:
+    """Returns symbols with an in-flight entry order of ``entry_order_type``.
+
+    Read from the scope rather than from ``active_ctxs`` so that a symbol with
+    no bar on this date still holds its slot. Counting only symbols that
+    happen to trade today understates the in-flight total, and the surplus
+    entry rotation then issues is discarded by the position limit inside
+    :meth:`Portfolio._long` with no order recorded anywhere.
+    """
+    if pending_order_scope is None:
+        return set()
+    return {
+        order.symbol
+        for order in pending_order_scope.orders()
+        if order.type == entry_order_type
+        and order.exit_pos_type is None
+        and order.symbol not in portfolio.long_positions
+        and order.symbol not in portfolio.short_positions
+    }
+
+
+def _rotation_candidates(
+    active_ctxs: Mapping[str, ExecContext],
+    portfolio: Portfolio,
+    ranks: Mapping[str, int],
+    worst_rank_held: int,
+    max_positions: int,
+    exiting: int,
+    dir: Literal["long", "short"],
+    pending_order_scope: Optional[PendingOrderScope] = None,
+) -> list[str]:
+    """Returns the top-ranked symbols to enter, limited to free position slots.
+
+    Candidates ranked worse than ``worst_rank_held`` are excluded, since such a
+    position would be liquidated on the following bar.
+    """
+    if dir == "long":
+        held: Mapping[str, Any] = portfolio.long_positions
+        entry_order_type: Literal["buy", "sell"] = "buy"
+    else:
+        held = portfolio.short_positions
+        entry_order_type = "sell"
+    pending_syms = _pending_entry_symbols(
+        pending_order_scope, portfolio, entry_order_type
+    )
+    eligible: list[str] = []
+    for sym, ctx in active_ctxs.items():
+        if sym in portfolio.long_positions or sym in portfolio.short_positions:
+            continue
+        if sym in pending_syms or _has_pending_order(ctx, entry_order_type):
+            # The entry is already in flight and holds its slot. Re-issuing it
+            # would stack a second order and overshoot the target allocation.
+            #
+            # Checked before the rank filter: an in-flight entry still fills
+            # even if its rank has since dropped out of the hold band, so
+            # skipping it here would hand its slot to another symbol and let
+            # the position limit silently discard one of the two.
+            pending_syms.add(sym)
+            continue
+        rank = ranks.get(sym)
+        if rank is None or rank > worst_rank_held:
+            continue
+        eligible.append(sym)
+    free = max_positions - (len(held) - exiting) - len(pending_syms)
+    if free <= 0:
+        return []
+    eligible.sort(key=lambda sym: ranks[sym])
+    return eligible[:free]
+
+
+def _resolve_rotation_overlap(
+    long_cands: list[str],
+    short_cands: list[str],
+    long_ranks: Mapping[str, int],
+    short_ranks: Mapping[str, int],
+) -> tuple[list[str], list[str]]:
+    """Assigns a symbol picked by both legs to the side it ranks better on.
+
+    Ties go long. Overlap is only reachable when the long and short position
+    limits together exceed the number of rankable symbols.
+    """
+    overlap = set(long_cands) & set(short_cands)
+    if not overlap:
+        return long_cands, short_cands
+    drop_from_long = {
+        sym for sym in overlap if short_ranks[sym] < long_ranks[sym]
+    }
+    drop_from_short = overlap - drop_from_long
+    return (
+        [sym for sym in long_cands if sym not in drop_from_long],
+        [sym for sym in short_cands if sym not in drop_from_short],
+    )
+
+
+def _apply_worst_rank_held(
+    active_ctxs: Mapping[str, ExecContext],
+    portfolio: Portfolio,
+    settings: BacktestSettings,
+    pending_order_scope: Optional[PendingOrderScope] = None,
+) -> tuple[dict[str, int], dict[str, int]]:
+    worst_rank_held = settings.worst_rank_held
+    if worst_rank_held is None:
+        return {}, {}
+    target_size = _rotation_target_size(settings)
+    long_ranks: dict[str, int] = {}
+    short_ranks: dict[str, int] = {}
+    long_cands: list[str] = []
+    short_cands: list[str] = []
+    # Both legs decide before either places an order, so a symbol that ranks on
+    # both sides cannot end up with a buy and a sell on the same bar.
+    if settings.max_long_positions is not None:
+        long_ranks = _rotation_ranks(active_ctxs, "long")
+        long_cands = _rotation_candidates(
+            active_ctxs,
+            portfolio,
+            long_ranks,
+            worst_rank_held,
+            settings.max_long_positions,
+            _rotation_exits(
+                active_ctxs, portfolio, long_ranks, worst_rank_held, "long"
+            ),
+            "long",
+            pending_order_scope,
+        )
+    if settings.max_short_positions is not None:
+        short_ranks = _rotation_ranks(active_ctxs, "short")
+        short_cands = _rotation_candidates(
+            active_ctxs,
+            portfolio,
+            short_ranks,
+            worst_rank_held,
+            settings.max_short_positions,
+            _rotation_exits(
+                active_ctxs, portfolio, short_ranks, worst_rank_held, "short"
+            ),
+            "short",
+            pending_order_scope,
+        )
+    long_cands, short_cands = _resolve_rotation_overlap(
+        long_cands, short_cands, long_ranks, short_ranks
+    )
+    for sym in long_cands:
+        active_ctxs[sym].set_target_shares(target_size, dir="long")
+    for sym in short_cands:
+        active_ctxs[sym].set_target_shares(target_size, dir="short")
+    return long_ranks, short_ranks
 
 
 class Execution(NamedTuple):
@@ -107,17 +612,62 @@ class Execution(NamedTuple):
             execution of ``fn``.
         indicator_names: Names of :class:`pybroker.indicator.Indicator`\ s
             used for execution of ``fn``.
+        intervals: Compression intervals available to ``fn`` through
+            :meth:`pybroker.context.ExecContext.interval`.
         args: Additional positional arguments for ``fn``.
         kwargs: Additional keyword arguments for ``fn``.
     """
 
     id: int
-    symbols: frozenset[str]
+    symbols: Union[frozenset[str], SymbolSelector]
     fn: Optional[Callable[[ExecContext], None]]
     model_names: frozenset[str]
     indicator_names: frozenset[str]
+    # Construct with keyword arguments only: inserting a field here shifts the
+    # positional index of every field below it.
+    intervals: frozenset[TimeframeInterval] = frozenset()
+    hyperparam_names: frozenset[str] = frozenset()
     args: tuple[Any, ...] = tuple()
     kwargs: tuple[tuple[str, Any], ...] = tuple()
+
+
+def _all_intervals(
+    executions: Iterable[Execution],
+) -> frozenset[TimeframeInterval]:
+    """Returns the union of intervals declared across ``executions``."""
+    intervals: set[TimeframeInterval] = set()
+    for execution in executions:
+        intervals.update(execution.intervals)
+    return frozenset(intervals)
+
+
+def _symbol_intervals(
+    executions: Iterable[Execution],
+    df: pd.DataFrame,
+) -> dict[str, frozenset[TimeframeInterval]]:
+    r"""Maps each symbol to the intervals that must be compressed for it.
+
+    A :class:`pybroker.common.SymbolSelector` execution does not resolve its
+    symbols until a walkforward window is split, but compression runs once up
+    front over the whole frame. A selector may return any symbol the frame
+    holds, so its intervals are attached to every symbol in ``df``: narrowing
+    would leave a later window without compressed data for a symbol the
+    selector picked.
+    """
+    result: dict[str, set[TimeframeInterval]] = defaultdict(set)
+    selector_intervals: set[TimeframeInterval] = set()
+    for execution in executions:
+        if not execution.intervals:
+            continue
+        if _is_symbol_selector(execution.symbols):
+            selector_intervals.update(execution.intervals)
+        else:
+            for sym in _static_symbols(execution.symbols):
+                result[sym].update(execution.intervals)
+    if selector_intervals:
+        for sym in df[DataCol.SYMBOL.value].unique():
+            result[str(sym)].update(selector_intervals)
+    return {sym: frozenset(intervals) for sym, intervals in result.items()}
 
 
 class BacktestMixin:
@@ -134,13 +684,20 @@ class BacktestMixin:
         indicator_data: Mapping[IndicatorSymbol, pd.Series],
         test_data: pd.DataFrame,
         portfolio: Portfolio,
-        pos_size_handler: Optional[Callable[[PosSizeContext], None]],
         exit_dates: Mapping[str, np.datetime64],
+        backtest_settings: BacktestSettings = BacktestSettings(),
+        rotation_sizer: Optional[Callable[[RotationContext], None]] = None,
         train_only: bool = False,
         slippage_model: Optional[SlippageModel] = None,
         enable_fractional_shares: bool = False,
         round_fill_price: bool = True,
         warmup: Optional[int] = None,
+        interval_data: IntervalData = IntervalData(),
+        history_col_scope: Optional[ColumnScope] = None,
+        test_col_scope: Optional[ColumnScope] = None,
+        run_hyperparams: Optional[dict[str, Any]] = None,
+        pending_order_scope: Optional[PendingOrderScope] = None,
+        master_col_scope: Optional[ColumnScope] = None,
     ) -> dict[str, pd.DataFrame]:
         r"""Backtests a ``set`` of :class:`.Execution`\ s that implement
         trading logic.
@@ -159,11 +716,12 @@ class BacktestMixin:
                 values.
             test_data: :class:`pandas.DataFrame` of test data.
             portfolio: :class:`pybroker.portfolio.Portfolio`.
-            pos_size_handler: :class:`Callable` that sets position sizes when
-                placing orders for buy and sell signals.
             exit_dates: :class:`Mapping` of symbols to exit dates.
             train_only: Whether the backtest is run with trading rules or
                 only trains models.
+            slippage_model: ``Optional``
+                :class:`pybroker.slippage.SlippageModel` applied to order
+                fills, stop exits, and position exits.
             enable_fractional_shares: Whether to enable trading fractional
                 shares.
             round_fill_price: Whether to round fill prices to the nearest cent.
@@ -175,31 +733,67 @@ class BacktestMixin:
             indicator data, and model predictions for each symbol when
             :attr:`pybroker.config.StrategyConfig.return_signals` is ``True``.
         """
-        test_dates = get_unique_sorted_dates(test_data[DataCol.DATE.value])
-        test_syms = sorted(test_data[DataCol.SYMBOL.value].unique())
-        test_data = (
-            test_data.reset_index(drop=True)
-            .set_index([DataCol.SYMBOL.value, DataCol.DATE.value])
-            .sort_index()
-        )
-        col_scope = ColumnScope(test_data)
+        if (
+            rotation_sizer is not None
+            and backtest_settings.worst_rank_held is None
+        ):
+            raise ValueError(
+                "Rotation sizer is set but rotation is not enabled; call "
+                "enable_rotation(worst_rank_held=...) first."
+            )
+        test_dates: Sequence[np.datetime64]
+        if test_col_scope is not None:
+            # Derive from the store so callers need not materialize (or ship
+            # to a worker) a DataFrame purely for its dates and symbols.
+            col_scope = test_col_scope
+            test_dates = list(test_col_scope.unique_dates())
+            test_syms = sorted(test_col_scope.symbols)
+        else:
+            test_dates = get_unique_sorted_dates(test_data[DataCol.DATE.value])
+            test_syms = sorted(test_data[DataCol.SYMBOL.value].unique())
+            col_scope = column_scope_from_frame(_ensure_range_index(test_data))
+        # A SymbolSelector leaves the whole candidate universe in the store,
+        # so signals are scoped to what these executions actually traded.
+        exec_syms = {
+            sym for exec in executions for sym in _static_symbols(exec.symbols)
+        }
+        signal_syms = [sym for sym in test_syms if sym in exec_syms]
         ind_scope = IndicatorScope(indicator_data, test_dates)
-        input_scope = ModelInputScope(col_scope, ind_scope, models)
+        input_scope = ModelInputScope(
+            col_scope,
+            ind_scope,
+            models,
+            history_col_scope,
+            test_dates,
+        )
+        interval_scope = IntervalScope(
+            interval_data,
+            ind_scope,
+            models,
+            test_dates,
+        )
         pred_scope = PredictionScope(models, input_scope)
         if train_only:
             if config.return_signals:
-                return get_signals(test_syms, col_scope, ind_scope, pred_scope)
+                return get_signals(
+                    signal_syms, col_scope, ind_scope, pred_scope
+                )
             return {}
         sym_end_index: dict[str, int] = defaultdict(int)
         price_scope = PriceScope(col_scope, sym_end_index, round_fill_price)
-        pending_order_scope = PendingOrderScope()
+        # Owned by the walkforward when one is running, so an order still
+        # pending at a window boundary carries into the next window instead of
+        # being dropped with the scope.
+        if pending_order_scope is None:
+            pending_order_scope = PendingOrderScope()
         exec_ctxs: dict[str, ExecContext] = {}
         exec_fns: dict[str, Callable[[ExecContext], None]] = {}
         exec_args: dict[str, tuple[Any, ...]] = {}
-        exec_kwargs: dict[str, tuple[tuple[str, Any], ...]] = {}
+        exec_kwargs: dict[str, dict[str, Any]] = {}
+        rotation_enabled = backtest_settings.worst_rank_held is not None
         for sym in test_syms:
             for exec in executions:
-                if sym not in exec.symbols:
+                if sym not in _static_symbols(exec.symbols):
                     continue
                 exec_ctxs[sym] = ExecContext(
                     symbol=sym,
@@ -207,37 +801,39 @@ class BacktestMixin:
                     portfolio=portfolio,
                     col_scope=col_scope,
                     ind_scope=ind_scope,
+                    interval_scope=interval_scope,
+                    declared_intervals=exec.intervals,
                     input_scope=input_scope,
                     pred_scope=pred_scope,
                     pending_order_scope=pending_order_scope,
                     models=models,
                     sym_end_index=sym_end_index,
                     session=sessions[sym],
+                    run_hyperparams=run_hyperparams,
+                    allowed_hyperparam_names=exec.hyperparam_names,
+                    rotation_enabled=rotation_enabled,
                 )
                 exec_args[sym] = exec.args
-                exec_kwargs[sym] = exec.kwargs
+                exec_kwargs[sym] = dict(exec.kwargs)
                 if exec.fn is not None:
                     exec_fns[sym] = exec.fn
+                # Executions hold disjoint symbols, so the first match owns
+                # this symbol. Stopping here keeps a latent overlap from
+                # silently swapping the context's declared intervals.
+                break
         sym_exec_dates = {
-            sym: frozenset(test_data.loc[pd.IndexSlice[sym, :]].index.values)
-            for sym in exec_ctxs.keys()
+            sym: dates
+            for sym, dates in sym_exec_dates_from_store(
+                col_scope.store
+            ).items()
+            if sym in exec_ctxs
         }
+        date_to_syms, calendar_aligned = _date_to_active_syms(
+            sym_exec_dates, test_dates
+        )
         cover_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
         buy_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
         sell_sched: dict[np.datetime64, list[ExecResult]] = defaultdict(list)
-        if pos_size_handler is not None:
-            pos_ctx = PosSizeContext(
-                config=config,
-                portfolio=portfolio,
-                col_scope=col_scope,
-                ind_scope=ind_scope,
-                input_scope=input_scope,
-                pred_scope=pred_scope,
-                pending_order_scope=pending_order_scope,
-                models=models,
-                sessions=sessions,
-                sym_end_index=sym_end_index,
-            )
         logger = StaticScope.instance().logger
         logger.backtest_executions_start(test_dates)
         cover_results: deque[ExecResult] = deque()
@@ -247,9 +843,18 @@ class BacktestMixin:
         active_ctxs: dict[str, ExecContext] = {}
         for i, date in enumerate(test_dates):
             active_ctxs.clear()
-            for sym, ctx in exec_ctxs.items():
-                if date not in sym_exec_dates[sym]:
-                    continue
+            price_scope.reset_bar()
+            if calendar_aligned:
+                active_iter: Iterable[tuple[str, ExecContext]] = (
+                    exec_ctxs.items()
+                )
+            else:
+                active_iter = (
+                    (sym, exec_ctxs[sym])
+                    for sym in date_to_syms.get(date, ())
+                    if sym in exec_ctxs
+                )
+            for sym, ctx in active_iter:
                 sym_end_index[sym] += 1
                 if warmup and sym_end_index[sym] <= warmup:
                     continue
@@ -264,38 +869,34 @@ class BacktestMixin:
             is_cover_sched = date in cover_sched
             is_buy_sched = date in buy_sched
             is_sell_sched = date in sell_sched
-            if (
-                config.max_long_positions is not None
-                or pos_size_handler is not None
-            ):
+            if config.max_long_positions is not None:
+                # Covers and buys are placed from separate schedules, so both
+                # need sorting; ranking only one leaves the other filling in
+                # scheduling order once the position limit binds.
                 if is_cover_sched:
-                    cover_sched[date].sort(key=_sort_by_score, reverse=True)
-                elif is_buy_sched:
-                    buy_sched[date].sort(key=_sort_by_score, reverse=True)
-            if is_sell_sched and (
-                config.max_short_positions is not None
-                or pos_size_handler is not None
-            ):
-                sell_sched[date].sort(key=_sort_by_score, reverse=True)
-            if pos_size_handler is not None and (
-                is_cover_sched or is_buy_sched or is_sell_sched
-            ):
-                pos_size_buy_results = None
-                if is_cover_sched:
-                    pos_size_buy_results = cover_sched[date]
-                elif is_buy_sched:
-                    pos_size_buy_results = buy_sched[date]
-                self._set_pos_sizes(
-                    pos_size_handler=pos_size_handler,
-                    pos_ctx=pos_ctx,
-                    buy_results=pos_size_buy_results,
-                    sell_results=sell_sched[date] if is_sell_sched else None,
-                )
-            portfolio.check_stops(date, price_scope)
+                    cover_sched[date].sort(
+                        key=_sort_by_buy_score, reverse=True
+                    )
+                if is_buy_sched:
+                    buy_sched[date].sort(key=_sort_by_buy_score, reverse=True)
+            if is_sell_sched and config.max_short_positions is not None:
+                sell_sched[date].sort(key=_sort_by_sell_score, reverse=True)
+            portfolio.check_stops(
+                date,
+                price_scope,
+                col_scope,
+                sym_end_index,
+                ind_scope=ind_scope,
+                slippage_model=slippage_model,
+            )
             if is_cover_sched:
                 self._place_buy_orders(
                     date=date,
                     price_scope=price_scope,
+                    col_scope=col_scope,
+                    ind_scope=ind_scope,
+                    sym_end_index=sym_end_index,
+                    slippage_model=slippage_model,
                     pending_order_scope=pending_order_scope,
                     buy_sched=cover_sched,
                     portfolio=portfolio,
@@ -305,6 +906,10 @@ class BacktestMixin:
                 self._place_sell_orders(
                     date=date,
                     price_scope=price_scope,
+                    col_scope=col_scope,
+                    ind_scope=ind_scope,
+                    sym_end_index=sym_end_index,
+                    slippage_model=slippage_model,
                     pending_order_scope=pending_order_scope,
                     sell_sched=sell_sched,
                     portfolio=portfolio,
@@ -314,12 +919,29 @@ class BacktestMixin:
                 self._place_buy_orders(
                     date=date,
                     price_scope=price_scope,
+                    col_scope=col_scope,
+                    ind_scope=ind_scope,
+                    sym_end_index=sym_end_index,
+                    slippage_model=slippage_model,
                     pending_order_scope=pending_order_scope,
                     buy_sched=buy_sched,
                     portfolio=portfolio,
                     enable_fractional_shares=enable_fractional_shares,
                 )
-            portfolio.capture_bar(date, col_scope, sym_end_index)
+            self._process_persistent_orders(
+                date=date,
+                sym_end_index=sym_end_index,
+                price_scope=price_scope,
+                col_scope=col_scope,
+                ind_scope=ind_scope,
+                slippage_model=slippage_model,
+                pending_order_scope=pending_order_scope,
+                portfolio=portfolio,
+                enable_fractional_shares=enable_fractional_shares,
+            )
+            portfolio.capture_bar(
+                date, col_scope, sym_end_index, price_scope=price_scope
+            )
             if before_exec_fn is not None and active_ctxs:
                 before_exec_fn(active_ctxs)
             for sym, ctx in active_ctxs.items():
@@ -327,17 +949,30 @@ class BacktestMixin:
                     exec_fns[sym](
                         ctx,
                         *exec_args.get(sym, ()),
-                        **dict(exec_kwargs.get(sym, ())),
+                        **exec_kwargs.get(sym, _EMPTY_KWARGS),
                     )
             if after_exec_fn is not None and active_ctxs:
                 after_exec_fn(active_ctxs)
+            if backtest_settings.worst_rank_held is not None:
+                _reset_rotation_orders(active_ctxs)
+                long_ranks, short_ranks = _apply_worst_rank_held(
+                    active_ctxs,
+                    portfolio,
+                    backtest_settings,
+                    pending_order_scope,
+                )
+                if rotation_sizer is not None and active_ctxs:
+                    rotation_sizer(
+                        RotationContext(
+                            ctxs=active_ctxs,
+                            portfolio=portfolio,
+                            long_ranks=long_ranks,
+                            short_ranks=short_ranks,
+                            config=config,
+                        )
+                    )
+                _clear_unused_rotation_signals(active_ctxs)
             for ctx in active_ctxs.values():
-                if (
-                    slippage_model
-                    and not ctx._exiting_pos
-                    and (ctx.buy_shares or ctx.sell_shares)
-                ):
-                    self._apply_slippage(slippage_model, ctx)
                 result = ctx.to_result()
                 if result is None:
                     continue
@@ -357,6 +992,7 @@ class BacktestMixin:
                     sched=cover_sched,
                     col_scope=col_scope,
                     pending_order_scope=pending_order_scope,
+                    master_col_scope=master_col_scope,
                 )
             while buy_results:
                 self._schedule_order(
@@ -367,6 +1003,7 @@ class BacktestMixin:
                     sched=buy_sched,
                     col_scope=col_scope,
                     pending_order_scope=pending_order_scope,
+                    master_col_scope=master_col_scope,
                 )
             while sell_results:
                 self._schedule_order(
@@ -377,6 +1014,7 @@ class BacktestMixin:
                     sched=sell_sched,
                     col_scope=col_scope,
                     pending_order_scope=pending_order_scope,
+                    master_col_scope=master_col_scope,
                 )
             while exit_ctxs:
                 self._exit_position(
@@ -386,25 +1024,18 @@ class BacktestMixin:
                     exit_cover_fill_price=config.exit_cover_fill_price,
                     exit_sell_fill_price=config.exit_sell_fill_price,
                     price_scope=price_scope,
+                    col_scope=col_scope,
+                    ind_scope=ind_scope,
+                    sym_end_index=sym_end_index,
+                    slippage_model=slippage_model,
                 )
-            portfolio.incr_bars()
+            portfolio.incr_bars(date, price_scope)
             if i % 10 == 0 or i == len(test_dates) - 1:
                 logger.backtest_executions_loading(i + 1)
         return (
-            get_signals(test_syms, col_scope, ind_scope, pred_scope)
+            get_signals(signal_syms, col_scope, ind_scope, pred_scope)
             if config.return_signals
             else {}
-        )
-
-    def _apply_slippage(
-        self,
-        slippage_model: SlippageModel,
-        ctx: ExecContext,
-    ):
-        buy_shares = to_decimal(ctx.buy_shares) if ctx.buy_shares else None
-        sell_shares = to_decimal(ctx.sell_shares) if ctx.sell_shares else None
-        slippage_model.apply_slippage(
-            ctx, buy_shares=buy_shares, sell_shares=sell_shares
         )
 
     def _exit_position(
@@ -419,6 +1050,10 @@ class BacktestMixin:
             PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
         ],
         price_scope: PriceScope,
+        col_scope: ColumnScope,
+        ind_scope: IndicatorScope,
+        sym_end_index: Mapping[str, int],
+        slippage_model: Optional[SlippageModel],
     ):
         buy_fill_price = price_scope.fetch(ctx.symbol, exit_cover_fill_price)
         sell_fill_price = price_scope.fetch(ctx.symbol, exit_sell_fill_price)
@@ -427,43 +1062,11 @@ class BacktestMixin:
             ctx.symbol,
             buy_fill_price=buy_fill_price,
             sell_fill_price=sell_fill_price,
+            col_scope=col_scope,
+            ind_scope=ind_scope,
+            sym_end_index=sym_end_index,
+            slippage_model=slippage_model,
         )
-
-    def _set_pos_sizes(
-        self,
-        pos_size_handler: Callable[[PosSizeContext], None],
-        pos_ctx: PosSizeContext,
-        buy_results: Optional[list[ExecResult]],
-        sell_results: Optional[list[ExecResult]],
-    ):
-        set_pos_size_ctx_data(
-            ctx=pos_ctx, buy_results=buy_results, sell_results=sell_results
-        )
-        pos_size_handler(pos_ctx)
-        for id, shares in pos_ctx._signal_shares.items():
-            if id < 0:
-                raise ValueError(f"Invalid ExecSignal id: {id}")
-            if buy_results is not None and sell_results is not None:
-                if id >= (len(buy_results) + len(sell_results)):
-                    raise ValueError(f"Invalid ExecSignal id: {id}")
-                if id < len(buy_results):
-                    buy_results[id].buy_shares = to_decimal(shares)
-                else:
-                    sell_results[
-                        id - len(buy_results)
-                    ].sell_shares = to_decimal(shares)
-            elif buy_results is not None:
-                if id >= len(buy_results):
-                    raise ValueError(f"Invalid ExecSignal id: {id}")
-                buy_results[id].buy_shares = to_decimal(shares)
-            elif sell_results is not None:
-                if id >= len(sell_results):
-                    raise ValueError(f"Invalid ExecSignal id: {id}")
-                sell_results[id].sell_shares = to_decimal(shares)
-            else:
-                raise ValueError(
-                    "buy_results and sell_results cannot both be None."
-                )
 
     def _schedule_order(
         self,
@@ -474,14 +1077,28 @@ class BacktestMixin:
         sched: Mapping[np.datetime64, list[ExecResult]],
         col_scope: ColumnScope,
         pending_order_scope: PendingOrderScope,
+        master_col_scope: Optional[ColumnScope] = None,
     ):
         date_loc = sym_end_index[result.symbol] - 1
         dates = col_scope.fetch(result.symbol, DataCol.DATE.value)
         if dates is None:
             raise ValueError("Dates not found.")
         logger = StaticScope.instance().logger
+        date = None
+        in_window = False
         if date_loc + delay < len(dates):
             date = dates[date_loc + delay]
+            in_window = True
+        elif master_col_scope is not None:
+            # The delayed bar lies past this window's test range. Resolving it
+            # against the whole dataset is what keeps a signal on a window's
+            # final bar tradeable: the bar it would execute on is the next
+            # window's first test bar, which the run does reach. Dropping the
+            # order here loses exactly ``windows - 1`` orders per symbol.
+            date = self._next_master_date(
+                master_col_scope, result.symbol, dates[date_loc], delay
+            )
+        if date is not None:
             order_type: Literal["buy", "sell"]
             if result.buy_shares is not None:
                 order_type = "buy"
@@ -495,6 +1112,15 @@ class BacktestMixin:
                 fill_price = result.sell_fill_price
             else:
                 raise ValueError("buy_shares or sell_shares needs to be set.")
+            if order_type == "buy":
+                timeout_bars = result.buy_timeout_bars
+                stops = result.long_stops
+            else:
+                timeout_bars = result.sell_timeout_bars
+                stops = result.short_stops
+            if stops is not None and not stops:
+                stops = None
+            exec_bar = sym_end_index[result.symbol] + delay
             result.pending_order_id = pending_order_scope.add(
                 type=order_type,
                 symbol=result.symbol,
@@ -503,22 +1129,58 @@ class BacktestMixin:
                 shares=shares,
                 limit_price=limit_price,
                 fill_price=fill_price,
+                exec_bar=exec_bar,
+                timeout_bars=timeout_bars,
+                stops=stops,
+                exit_pos_type=result.exit_pos_type,
             )
-            sched[date].append(result)
+            if in_window:
+                sched[date].append(result)
+            # Else the order executes in a later window, whose bar loop has no
+            # entry in this window's schedule to place it from. It stays in the
+            # shared PendingOrderScope, and _process_persistent_orders adopts
+            # it on its execution date.
             logger.debug_schedule_order(date, result)
         else:
             logger.debug_unscheduled_order(result)
+
+    @staticmethod
+    def _next_master_date(
+        master_col_scope: ColumnScope,
+        symbol: str,
+        curr_date: np.datetime64,
+        delay: int,
+    ) -> Optional[np.datetime64]:
+        """Returns ``symbol``'s bar ``delay`` bars after ``curr_date``.
+
+        ``None`` when the dataset genuinely ends before then, which is the only
+        case in which an order should be discarded.
+        """
+        master_dates = master_col_scope.fetch(symbol, DataCol.DATE.value)
+        if master_dates is None or not len(master_dates):
+            return None
+        loc = int(np.searchsorted(master_dates, curr_date))
+        if loc >= len(master_dates) or master_dates[loc] != curr_date:
+            return None
+        if loc + delay >= len(master_dates):
+            return None
+        return master_dates[loc + delay]
 
     def _place_buy_orders(
         self,
         date: np.datetime64,
         price_scope: PriceScope,
+        col_scope: ColumnScope,
+        ind_scope: IndicatorScope,
+        sym_end_index: Mapping[str, int],
+        slippage_model: Optional[SlippageModel],
         pending_order_scope: PendingOrderScope,
         buy_sched: dict[np.datetime64, list[ExecResult]],
         portfolio: Portfolio,
         enable_fractional_shares: bool,
     ):
         buy_results = buy_sched[date]
+        logger = StaticScope.instance().logger
         for result in buy_results:
             if result.buy_shares is None:
                 continue
@@ -527,63 +1189,56 @@ class BacktestMixin:
                 or not pending_order_scope.contains(result.pending_order_id)
             ):
                 continue
-            pending = tuple(
-                pending_order_scope.orders(
-                    order_id=result.pending_order_id,
-                )
-            )
-            pending_order_scope.remove(result.pending_order_id)
-            buy_shares = self._get_shares(
-                result.buy_shares, enable_fractional_shares
-            )
-            fill_price = price_scope.fetch(
-                result.symbol, result.buy_fill_price
-            )
-            created = pending[0].created if pending else None
-            order_type = (
-                OrderType.LIMIT
-                if result.buy_limit_price is not None
-                else OrderType.MARKET
-            )
-            order = portfolio.buy(
+            pending = pending_order_scope.get(result.pending_order_id)
+            if pending is None:
+                continue
+            pending_order_scope.mark_attempted(pending.id)
+            order, shares, fill_price = self._attempt_pending_order(
+                pending=pending,
                 date=date,
-                symbol=result.symbol,
-                shares=buy_shares,
-                fill_price=fill_price,
-                limit_price=result.buy_limit_price,
-                stops=result.long_stops,
-                created=created,
-                order_type=order_type,
+                price_scope=price_scope,
+                col_scope=col_scope,
+                ind_scope=ind_scope,
+                sym_end_index=sym_end_index,
+                slippage_model=slippage_model,
+                portfolio=portfolio,
+                enable_fractional_shares=enable_fractional_shares,
             )
-            logger = StaticScope.instance().logger
             if order is None:
                 logger.debug_unfilled_buy_order(
                     date=date,
-                    symbol=result.symbol,
-                    shares=buy_shares,
+                    symbol=pending.symbol,
+                    shares=shares,
                     fill_price=fill_price,
-                    limit_price=result.buy_limit_price,
+                    limit_price=pending.limit_price,
                 )
             else:
                 logger.debug_filled_buy_order(
                     date=date,
-                    symbol=result.symbol,
-                    shares=buy_shares,
+                    symbol=pending.symbol,
+                    shares=shares,
                     fill_price=fill_price,
-                    limit_price=result.buy_limit_price,
+                    limit_price=pending.limit_price,
                 )
+            if order is not None or not _is_persistent_limit(pending):
+                pending_order_scope.remove(pending.id)
         del buy_sched[date]
 
     def _place_sell_orders(
         self,
         date: np.datetime64,
         price_scope: PriceScope,
+        col_scope: ColumnScope,
+        ind_scope: IndicatorScope,
+        sym_end_index: Mapping[str, int],
+        slippage_model: Optional[SlippageModel],
         pending_order_scope: PendingOrderScope,
         sell_sched: dict[np.datetime64, list[ExecResult]],
         portfolio: Portfolio,
         enable_fractional_shares: bool,
     ):
         sell_results = sell_sched[date]
+        logger = StaticScope.instance().logger
         for result in sell_results:
             if result.sell_shares is None:
                 continue
@@ -592,52 +1247,262 @@ class BacktestMixin:
                 or not pending_order_scope.contains(result.pending_order_id)
             ):
                 continue
-            pending = tuple(
-                pending_order_scope.orders(
-                    order_id=result.pending_order_id,
-                )
-            )
-            pending_order_scope.remove(result.pending_order_id)
-            sell_shares = self._get_shares(
-                result.sell_shares, enable_fractional_shares
-            )
-            fill_price = price_scope.fetch(
-                result.symbol, result.sell_fill_price
-            )
-            created = pending[0].created if pending else None
-            order_type = (
-                OrderType.LIMIT
-                if result.sell_limit_price is not None
-                else OrderType.MARKET
-            )
-            order = portfolio.sell(
+            pending = pending_order_scope.get(result.pending_order_id)
+            if pending is None:
+                continue
+            pending_order_scope.mark_attempted(pending.id)
+            order, shares, fill_price = self._attempt_pending_order(
+                pending=pending,
                 date=date,
-                symbol=result.symbol,
-                shares=sell_shares,
-                fill_price=fill_price,
-                limit_price=result.sell_limit_price,
-                stops=result.short_stops,
-                created=created,
-                order_type=order_type,
+                price_scope=price_scope,
+                col_scope=col_scope,
+                ind_scope=ind_scope,
+                sym_end_index=sym_end_index,
+                slippage_model=slippage_model,
+                portfolio=portfolio,
+                enable_fractional_shares=enable_fractional_shares,
             )
-            logger = StaticScope.instance().logger
             if order is None:
                 logger.debug_unfilled_sell_order(
                     date=date,
-                    symbol=result.symbol,
-                    shares=sell_shares,
+                    symbol=pending.symbol,
+                    shares=shares,
                     fill_price=fill_price,
-                    limit_price=result.sell_limit_price,
+                    limit_price=pending.limit_price,
                 )
             else:
                 logger.debug_filled_sell_order(
                     date=date,
-                    symbol=result.symbol,
-                    shares=sell_shares,
+                    symbol=pending.symbol,
+                    shares=shares,
                     fill_price=fill_price,
-                    limit_price=result.sell_limit_price,
+                    limit_price=pending.limit_price,
                 )
+            if order is not None or not _is_persistent_limit(pending):
+                pending_order_scope.remove(pending.id)
         del sell_sched[date]
+
+    def _process_persistent_orders(
+        self,
+        date: np.datetime64,
+        sym_end_index: Mapping[str, int],
+        price_scope: PriceScope,
+        col_scope: ColumnScope,
+        ind_scope: IndicatorScope,
+        slippage_model: Optional[SlippageModel],
+        pending_order_scope: PendingOrderScope,
+        portfolio: Portfolio,
+        enable_fractional_shares: bool,
+    ):
+        if not pending_order_scope.has_orders():
+            return
+        logger = StaticScope.instance().logger
+        for pending in sorted(
+            pending_order_scope.orders(), key=_pending_order_priority
+        ):
+            if pending.exec_date > date:
+                continue
+            first_attempt = not pending_order_scope.was_attempted(pending.id)
+            if pending.exec_date == date and not first_attempt:
+                # The scheduled path already made this bar's attempt.
+                continue
+            if not price_scope.has_bar_on(pending.symbol, date):
+                # The symbol has no bar on this date, so there is no price to
+                # fill against -- and no bar of its own for timeout_bars to
+                # count. Retrying here would fill at the symbol's last bar,
+                # which is an earlier date than the fill is recorded on, and
+                # ageing here would count calendar bars instead of the
+                # symbol's, expiring a 1-in-3 symbol's order three times early.
+                # A symbol a SymbolSelector drops does not age indefinitely
+                # either: _liquidate_dropped_symbols cancels its orders at the
+                # window boundary.
+                continue
+            if not first_attempt:
+                if pending.timeout_bars is None:
+                    continue
+                # Counted on the scope, not derived from sym_end_index: the
+                # scope is owned by the walkforward and outlives a window,
+                # while sym_end_index restarts at each one.
+                pending_order_scope.advance_retry_bars(pending.id)
+                bars_since_attempt = pending_order_scope.retry_bars(pending.id)
+                if (
+                    pending.timeout_bars >= 0
+                    and bars_since_attempt > pending.timeout_bars
+                ):
+                    pending_order_scope.remove(pending.id)
+                    logger.debug_timeout_order(
+                        date=date, pending_order=pending
+                    )
+                    continue
+            pending_order_scope.mark_attempted(pending.id)
+            order, shares, fill_price = self._attempt_pending_order(
+                pending=pending,
+                date=date,
+                price_scope=price_scope,
+                col_scope=col_scope,
+                ind_scope=ind_scope,
+                sym_end_index=sym_end_index,
+                slippage_model=slippage_model,
+                portfolio=portfolio,
+                enable_fractional_shares=enable_fractional_shares,
+            )
+            if order is None:
+                if pending.type == "buy":
+                    logger.debug_unfilled_buy_order(
+                        date=date,
+                        symbol=pending.symbol,
+                        shares=shares,
+                        fill_price=fill_price,
+                        limit_price=pending.limit_price,
+                    )
+                else:
+                    logger.debug_unfilled_sell_order(
+                        date=date,
+                        symbol=pending.symbol,
+                        shares=shares,
+                        fill_price=fill_price,
+                        limit_price=pending.limit_price,
+                    )
+            else:
+                if pending.type == "buy":
+                    logger.debug_filled_buy_order(
+                        date=date,
+                        symbol=pending.symbol,
+                        shares=shares,
+                        fill_price=fill_price,
+                        limit_price=pending.limit_price,
+                    )
+                else:
+                    logger.debug_filled_sell_order(
+                        date=date,
+                        symbol=pending.symbol,
+                        shares=shares,
+                        fill_price=fill_price,
+                        limit_price=pending.limit_price,
+                    )
+            # Same rule as the two scheduled paths: only a persistent limit
+            # order survives an unfilled attempt. An adopted one-shot order
+            # left in the scope can never be retried -- the branch above needs
+            # timeout_bars -- so it would linger for the whole run and hold a
+            # rotation slot through _pending_entry_symbols.
+            if order is not None or not _is_persistent_limit(pending):
+                pending_order_scope.remove(pending.id)
+
+    def _attempt_pending_order(
+        self,
+        pending: PendingOrder,
+        date: np.datetime64,
+        price_scope: PriceScope,
+        col_scope: ColumnScope,
+        ind_scope: IndicatorScope,
+        sym_end_index: Mapping[str, int],
+        slippage_model: Optional[SlippageModel],
+        portfolio: Portfolio,
+        enable_fractional_shares: bool,
+    ) -> tuple[Optional[Order], Decimal, Decimal]:
+        shares = self._get_shares(pending.shares, enable_fractional_shares)
+        fill_price = price_scope.fetch(pending.symbol, pending.fill_price)
+        try:
+            fill_price_f = float(fill_price)
+        except (TypeError, ValueError):  # pragma: no cover - defensive
+            fill_price_f = float("nan")
+        if not math.isfinite(fill_price_f):
+            # A bar that cannot be priced -- a halt, a vendor gap -- cannot
+            # fill an order. Reported as unfilled: a persistent limit order
+            # retries on the next priceable bar, a one-shot order is dropped
+            # by its caller's removal rule. Letting the NaN through instead
+            # aborted the run from Decimal comparisons deep in the portfolio.
+            return None, shares, fill_price
+        if pending.exit_pos_type is not None:
+            # An exit can only close what is still held. Clamping here is what
+            # lets the position keep its stops between the signal and the fill:
+            # if a stop fires first there is nothing left to sell, so the order
+            # cannot flip the position to the opposite side. A partial fill --
+            # a participation cap, say -- leaves the remainder held, and the
+            # entries it did not consume keep the stops protecting them.
+            positions = (
+                portfolio.long_positions
+                if pending.exit_pos_type == "long"
+                else portfolio.short_positions
+            )
+            exit_pos = positions.get(pending.symbol)
+            held = Decimal() if exit_pos is None else exit_pos.shares
+            if shares > held:
+                shares = held
+            if shares <= 0:
+                return None, Decimal(), fill_price
+        # The unadjusted bar price, recorded on the order so slippage can be
+        # quantified per fill.
+        market_price = fill_price
+        if slippage_model is not None:
+            # Exact type check, not isinstance: a subclass may override
+            # apply_slippage and must not be routed to the fast path.
+            if type(slippage_model) is FixedSlippageModel:
+                fill_price = slippage_model.adjust_fill_price(
+                    pending.type, fill_price
+                )
+            elif not slippage_model.is_fill_noop:
+                slippage_ctx = SlippageContext(
+                    side=pending.type,
+                    symbol=pending.symbol,
+                    shares=shares,
+                    fill_price=fill_price,
+                    col_scope=col_scope,
+                    ind_scope=ind_scope,
+                    sym_end_index=sym_end_index,
+                    enable_fractional_shares=enable_fractional_shares,
+                )
+                shares, fill_price = slippage_model.apply_slippage(
+                    slippage_ctx
+                )
+                if shares < 0 or shares > slippage_ctx.shares:
+                    raise ValueError(
+                        f"{type(slippage_model).__name__}.apply_slippage "
+                        f"returned {shares} shares; must be between 0 and "
+                        f"the ordered {slippage_ctx.shares}."
+                    )
+                shares = self._get_shares(shares, enable_fractional_shares)
+        if pending.type == "buy":
+            order_type = (
+                OrderType.LIMIT
+                if pending.limit_price is not None
+                else OrderType.MARKET
+            )
+            return (
+                portfolio.buy(
+                    date=date,
+                    symbol=pending.symbol,
+                    shares=shares,
+                    fill_price=fill_price,
+                    limit_price=pending.limit_price,
+                    stops=pending.stops,
+                    created=pending.created,
+                    order_type=order_type,
+                    market_price=market_price,
+                ),
+                shares,
+                fill_price,
+            )
+        order_type = (
+            OrderType.LIMIT
+            if pending.limit_price is not None
+            else OrderType.MARKET
+        )
+        return (
+            portfolio.sell(
+                date=date,
+                symbol=pending.symbol,
+                shares=shares,
+                fill_price=fill_price,
+                limit_price=pending.limit_price,
+                stops=pending.stops,
+                created=pending.created,
+                order_type=order_type,
+                market_price=market_price,
+            ),
+            shares,
+            fill_price,
+        )
 
     def _get_shares(
         self,
@@ -651,17 +1516,34 @@ class BacktestMixin:
 
 
 class WalkforwardWindow(NamedTuple):
-    """Contains ``train_data`` and ``test_data`` of a time window used for
-    `Walkforward Analysis
-    <https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis>`_.
+    """Contains train/test row indices for a walkforward window.
 
     Attributes:
-        train_data: Train data.
-        test_data: Test data.
+        train_data: Integer row indices into the master frame for training.
+        test_data: Integer row indices into the master frame for testing.
     """
 
     train_data: NDArray[np.int_]
     test_data: NDArray[np.int_]
+
+
+def _walkforward_row_mask(
+    dates: NDArray[np.datetime64],
+    low: np.datetime64,
+    high: np.datetime64,
+    *,
+    below_low: bool = False,
+    above_high: bool = False,
+) -> NDArray[np.int_]:
+    if below_low:
+        lo = dates > low
+    else:
+        lo = dates >= low
+    if above_high:
+        hi = dates < high
+    else:
+        hi = dates <= high
+    return np.flatnonzero(lo & hi).astype(np.int_)
 
 
 class WalkforwardMixin:
@@ -710,8 +1592,8 @@ class WalkforwardMixin:
         if df.empty:
             raise ValueError("DataFrame is empty.")
         date_col = DataCol.DATE.value
-        dates = df[[date_col]]
-        window_dates = get_unique_sorted_dates(df[date_col])
+        dates_arr = df[date_col].to_numpy(copy=False, dtype="datetime64[ns]")
+        window_dates = get_unique_sorted_dates_array(dates_arr)
         error_msg = f"""
         Invalid params for {len(window_dates)} dates:
         windows: {windows}
@@ -720,26 +1602,35 @@ class WalkforwardMixin:
         """
         if train_size == 0 or train_size == 1:
             window_length = int(len(window_dates) / windows)
+            if window_length == 0:
+                # Otherwise ``start`` reaches len(window_dates) and the date
+                # lookup below raises a bare IndexError rather than naming the
+                # parameters that cannot be satisfied.
+                raise ValueError(error_msg)
             offset = len(window_dates) - window_length * windows
             for i in range(windows):
                 start = offset + i * window_length
                 end = start + window_length
                 if train_size == 0:
-                    test_idx = dates[
-                        (dates[date_col] >= window_dates[start])
-                        & (dates[date_col] <= window_dates[end - 1])
-                    ]
-                    test_idx = test_idx.index.to_numpy(copy=True)
-                    yield WalkforwardWindow(np.array(tuple()), test_idx)
+                    test_rows = _walkforward_row_mask(
+                        dates_arr,
+                        window_dates[start],
+                        window_dates[end - 1],
+                    )
+                    yield WalkforwardWindow(
+                        np.array((), dtype=np.int_), test_rows
+                    )
                 else:
-                    train_idx = dates[
-                        (dates[date_col] >= window_dates[start])
-                        & (dates[date_col] <= window_dates[end - 1])
-                    ]
-                    train_idx = train_idx.index.to_numpy(copy=True)
+                    train_rows = _walkforward_row_mask(
+                        dates_arr,
+                        window_dates[start],
+                        window_dates[end - 1],
+                    )
                     if shuffle:
-                        np.random.shuffle(train_idx)
-                    yield WalkforwardWindow(train_idx, np.array(tuple()))
+                        np.random.shuffle(train_rows)
+                    yield WalkforwardWindow(
+                        train_rows, np.array((), dtype=np.int_)
+                    )
         elif windows == 1:
             res = len(window_dates) - 1 - lookahead
             if res <= 0:
@@ -754,19 +1645,19 @@ class WalkforwardMixin:
             if test_start >= len(window_dates):
                 raise ValueError(error_msg)
             test_end = len(window_dates) - 1
-            train_idx = dates[
-                (dates[date_col] >= window_dates[train_start])
-                & (dates[date_col] <= window_dates[train_end])
-            ]
-            test_idx = dates[
-                (dates[date_col] >= window_dates[test_start])
-                & (dates[date_col] <= window_dates[test_end])
-            ]
-            train_idx = train_idx.index.to_numpy(copy=True)
-            test_idx = test_idx.index.to_numpy(copy=True)
+            train_rows = _walkforward_row_mask(
+                dates_arr,
+                window_dates[train_start],
+                window_dates[train_end],
+            )
+            test_rows = _walkforward_row_mask(
+                dates_arr,
+                window_dates[test_start],
+                window_dates[test_end],
+            )
             if shuffle:
-                np.random.shuffle(train_idx)
-            yield WalkforwardWindow(train_idx, test_idx)
+                np.random.shuffle(train_rows)
+            yield WalkforwardWindow(train_rows, test_rows)
         else:
             res = len(window_dates) - (lookahead - 1) * windows
             avg_window_length = res / windows
@@ -782,6 +1673,11 @@ class WalkforwardMixin:
                     break
                 train_length += train_incr
                 test_length += test_incr
+            # ``and``, not ``or``: a train-only window is a supported shape --
+            # train_size=1 produces nothing else -- so test_length flooring to
+            # 0 is not on its own an invalid split. What it must not do is pass
+            # silently all the way to a zero-bar result, which _run_walkforward
+            # warns about once it knows no window had test data.
             if train_length == 0 and test_length == 0:
                 raise ValueError(error_msg)
             window_idx = []
@@ -794,21 +1690,39 @@ class WalkforwardMixin:
                     (train_start, train_end, test_start, test_end)
                 )
             window_idx.reverse()
-            window_dates = window_dates[::-1]
+            reversed_dates = window_dates[::-1]
             for train_start, train_end, test_start, test_end in window_idx:
-                train_idx = dates[
-                    (dates[date_col] > window_dates[train_start])
-                    & (dates[date_col] <= window_dates[train_end])
-                ]
-                test_idx = dates[
-                    (dates[date_col] > window_dates[test_start])
-                    & (dates[date_col] <= window_dates[test_end])
-                ]
-                train_idx = train_idx.index.to_numpy(copy=True)
-                test_idx = test_idx.index.to_numpy(copy=True)
+                train_rows = _walkforward_row_mask(
+                    dates_arr,
+                    reversed_dates[train_start],
+                    reversed_dates[train_end],
+                    below_low=True,
+                )
+                test_rows = _walkforward_row_mask(
+                    dates_arr,
+                    reversed_dates[test_start],
+                    reversed_dates[test_end],
+                    below_low=True,
+                )
                 if shuffle:
-                    np.random.shuffle(train_idx)
-                yield WalkforwardWindow(train_idx, test_idx)
+                    np.random.shuffle(train_rows)
+                yield WalkforwardWindow(train_rows, test_rows)
+
+
+_DEFAULT_JSON_INCLUDE = frozenset({"metrics", "trades", "orders", "bootstrap"})
+
+
+def _filter_df_symbols(
+    df: pd.DataFrame, symbols: Optional[frozenset[str]]
+) -> pd.DataFrame:
+    if symbols is None or df.empty:
+        return df
+    if "symbol" in df.columns:
+        return df[df["symbol"].isin(symbols)]
+    if isinstance(df.index, pd.MultiIndex) and "symbol" in df.index.names:
+        mask = df.index.get_level_values("symbol").isin(symbols)
+        return df[mask]
+    return df
 
 
 @dataclass(frozen=True)
@@ -846,6 +1760,86 @@ class TestResult:
     signals: Optional[dict[str, pd.DataFrame]]
     stops: Optional[pd.DataFrame]
 
+    def to_json(
+        self,
+        *,
+        include: frozenset[str] = _DEFAULT_JSON_INCLUDE,
+        max_rows: Optional[int] = 100,
+        symbols: Optional[frozenset[str]] = None,
+    ) -> dict[str, Any]:
+        """Returns JSON-serializable backtest results.
+
+        By default includes ``start_date``, ``end_date``, ``metrics``,
+        ``trades``, ``orders``, and ``bootstrap`` (when present). Large
+        time series such as ``portfolio``, ``positions``, ``signals``, and
+        ``stops`` are opt-in via ``include``.
+
+        Args:
+            include: Names of optional result sections to include.
+            max_rows: Maximum rows per tabular section. ``None`` for no limit.
+            symbols: When set, filter symbol-specific sections to these tickers.
+        """
+        payload: dict[str, Any] = {
+            "start_date": _json_safe(self.start_date),
+            "end_date": _json_safe(self.end_date),
+        }
+        if "metrics" in include:
+            payload["metrics"] = self.metrics.to_json()
+        if "metrics_df" in include:
+            payload["metrics_df"] = _dataframe_records(
+                self.metrics_df, max_rows=max_rows
+            )
+        if "trades" in include:
+            payload["trades"] = _dataframe_records(
+                _filter_df_symbols(self.trades, symbols),
+                max_rows=max_rows,
+            )
+        if "orders" in include:
+            payload["orders"] = _dataframe_records(
+                _filter_df_symbols(self.orders, symbols),
+                max_rows=max_rows,
+            )
+        if "portfolio" in include:
+            payload["portfolio"] = _dataframe_records(
+                self.portfolio, max_rows=max_rows
+            )
+        if "positions" in include:
+            payload["positions"] = _dataframe_records(
+                _filter_df_symbols(self.positions, symbols),
+                max_rows=max_rows,
+            )
+        if "bootstrap" in include and self.bootstrap is not None:
+            payload["bootstrap"] = self.bootstrap.to_json()
+        if "signals" in include and self.signals is not None:
+            payload["signals"] = {
+                sym: _dataframe_records(df, max_rows=max_rows)
+                for sym, df in self.signals.items()
+                if symbols is None or sym in symbols
+            }
+        if "stops" in include and self.stops is not None:
+            stops = self.stops
+            if symbols is not None and "symbol" in stops.columns:
+                stops = stops[stops["symbol"].isin(symbols)]
+            payload["stops"] = _dataframe_records(stops, max_rows=max_rows)
+        return payload
+
+    def to_json_str(
+        self,
+        *,
+        include: frozenset[str] = _DEFAULT_JSON_INCLUDE,
+        max_rows: Optional[int] = 100,
+        symbols: Optional[frozenset[str]] = None,
+    ) -> str:
+        """Returns strict JSON text from :meth:`to_json`."""
+        return json.dumps(
+            self.to_json(
+                include=include,
+                max_rows=max_rows,
+                symbols=symbols,
+            ),
+            allow_nan=False,
+        )
+
 
 class Strategy(
     BacktestMixin,
@@ -853,6 +1847,7 @@ class Strategy(
     IndicatorsMixin,
     ModelsMixin,
     WalkforwardMixin,
+    OptimizeMixin,
 ):
     """Class representing a trading strategy to backtest.
 
@@ -892,7 +1887,10 @@ class Strategy(
         self._after_exec_fn: Optional[
             Callable[[Mapping[str, ExecContext]], None]
         ] = None
-        self._pos_size_handler: Optional[Callable[[PosSizeContext], None]] = (
+        self._max_long_positions: StrategySetting = None
+        self._max_short_positions: StrategySetting = None
+        self._worst_rank_held: StrategySetting = None
+        self._rotation_sizer: Optional[Callable[[RotationContext], None]] = (
             None
         )
         self._slippage_model: Optional[SlippageModel] = None
@@ -912,14 +1910,163 @@ class Strategy(
             and config.max_short_positions <= 0
         ):
             raise ValueError("max_short_positions must be greater than 0.")
+        if config.max_long_positions is not None:
+            warnings.warn(
+                "StrategyConfig.max_long_positions is deprecated; use "
+                "Strategy.set_max_long_positions().",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if config.max_short_positions is not None:
+            warnings.warn(
+                "StrategyConfig.max_short_positions is deprecated; use "
+                "Strategy.set_max_short_positions().",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if config.fee_amount is not None and config.fee_amount < 0:
+            # A negative fee flows straight into the fill accounting and
+            # CREDITS the account on every order instead of debiting it.
+            raise ValueError("fee_amount cannot be negative.")
         if config.buy_delay <= 0:
             raise ValueError("buy_delay must be greater than 0.")
         if config.sell_delay <= 0:
             raise ValueError("sell_delay must be greater than 0.")
         if config.bootstrap_samples <= 0:
             raise ValueError("bootstrap_samples must be greater than 0.")
-        if config.bootstrap_sample_size <= 0:
-            raise ValueError("bootstrap_sample_size must be greater than 0.")
+        if config.leverage < 1:
+            raise ValueError("leverage must be greater than or equal to 1.")
+        if config.interest_rate < 0:
+            raise ValueError(
+                "interest_rate must be greater than or equal to 0."
+            )
+        if config.interest_rate > 0 and config.bars_per_year is None:
+            raise ValueError(
+                "bars_per_year is required when interest_rate is set, since "
+                "it sets the interest accrual period. For example, use 252 "
+                "for daily bars or 98280 for 1-minute US equity bars."
+            )
+
+    def _resolve_backtest_settings(
+        self, run_hyperparams: Optional[dict[str, Any]] = None
+    ) -> BacktestSettings:
+        max_long = _resolve_strategy_setting(
+            self._max_long_positions, run_hyperparams
+        )
+        max_short = _resolve_strategy_setting(
+            self._max_short_positions, run_hyperparams
+        )
+        worst = _resolve_strategy_setting(
+            self._worst_rank_held, run_hyperparams
+        )
+
+        if self._config.max_long_positions is not None:
+            if max_long is not None:
+                warnings.warn(
+                    "Strategy.set_max_long_positions takes precedence over "
+                    "StrategyConfig.max_long_positions.",
+                    stacklevel=2,
+                )
+            else:
+                max_long = self._config.max_long_positions
+        if self._config.max_short_positions is not None:
+            if max_short is not None:
+                warnings.warn(
+                    "Strategy.set_max_short_positions takes precedence over "
+                    "StrategyConfig.max_short_positions.",
+                    stacklevel=2,
+                )
+            else:
+                max_short = self._config.max_short_positions
+
+        if max_long is not None and max_long <= 0:
+            raise ValueError("max_long_positions must be greater than 0.")
+        if max_short is not None and max_short <= 0:
+            raise ValueError("max_short_positions must be greater than 0.")
+        if self._rotation_sizer is not None and worst is None:
+            raise ValueError(
+                "Rotation sizer is set but rotation is not enabled; call "
+                "enable_rotation(worst_rank_held=...) first."
+            )
+        if worst is not None:
+            _validate_worst_rank_held(worst, max_long, max_short)
+
+        return BacktestSettings(
+            max_long_positions=max_long,
+            max_short_positions=max_short,
+            worst_rank_held=worst,
+        )
+
+    def _effective_config(self, settings: BacktestSettings) -> StrategyConfig:
+        return dataclasses.replace(
+            self._config,
+            max_long_positions=settings.max_long_positions,
+            max_short_positions=settings.max_short_positions,
+        )
+
+    def set_max_long_positions(self, max_long: StrategySetting) -> None:
+        r"""Sets the maximum number of long positions held at any time.
+
+        Args:
+            max_long: Maximum long positions, a searchable
+                :class:`pybroker.optimize.Hyperparam`, or ``None`` for
+                unlimited.
+        """
+        if isinstance(max_long, int) and max_long <= 0:
+            raise ValueError("max_long_positions must be greater than 0.")
+        self._max_long_positions = max_long
+
+    def set_max_short_positions(self, max_short: StrategySetting) -> None:
+        r"""Sets the maximum number of short positions held at any time.
+
+        Args:
+            max_short: Maximum short positions, a searchable
+                :class:`pybroker.optimize.Hyperparam`, or ``None`` for
+                unlimited.
+        """
+        if isinstance(max_short, int) and max_short <= 0:
+            raise ValueError("max_short_positions must be greater than 0.")
+        self._max_short_positions = max_short
+
+    def enable_rotation(
+        self,
+        worst_rank_held: StrategySetting,
+        sizer: Optional[Callable[[RotationContext], None]] = None,
+    ) -> None:
+        r"""Enables rotational hold-band logic and optional custom sizing.
+
+        Each bar, held positions ranked worse than ``worst_rank_held`` are
+        liquidated, and the top-ranked symbols are entered to fill the position
+        slots that remain free. Without a ``sizer``, entries are equal-weighted
+        across :meth:`.set_max_long_positions` plus
+        :meth:`.set_max_short_positions` slots.
+
+        Rotation is exclusive: trading is driven entirely by
+        :attr:`pybroker.context.ExecContext.long_score` and
+        :attr:`pybroker.context.ExecContext.short_score`, and orders placed by
+        an :class:`.Execution` are ignored. Fill prices and stops set during an
+        execution are kept and applied to the orders rotation places.
+
+        Ranking spans the whole portfolio, so a held position without a
+        rankable score is liquidated even when another :class:`.Execution`
+        opened it.
+
+        Args:
+            worst_rank_held: Worst score rank at which a held position is
+                kept, a searchable :class:`pybroker.optimize.Hyperparam`, or
+                ``None`` to disable rotation. Must be greater than or equal to
+                the maximum long and short position counts.
+            sizer: Optional :class:`Callable` that takes a
+                :class:`pybroker.context.RotationContext` to override
+                equal-weight entry sizing after rotation decisions are made.
+                Do not override sell or cover signals set by rotation.
+        """
+        if worst_rank_held is None:
+            self._worst_rank_held = None
+            self._rotation_sizer = None
+            return
+        self._worst_rank_held = worst_rank_held
+        self._rotation_sizer = sizer
 
     def _verify_data_source(
         self, data_source: Union[DataSource, pd.DataFrame]
@@ -930,51 +2077,171 @@ class Strategy(
             raise TypeError(f"Invalid data_source type: {type(data_source)}")
 
     def set_slippage_model(self, slippage_model: Optional[SlippageModel]):
-        """Sets :class:`pybroker.slippage.SlippageModel`."""
+        """Sets :class:`pybroker.slippage.SlippageModel`.
+
+        Built-in models are
+        :class:`pybroker.slippage.FixedSlippageModel` (fixed basis points),
+        :class:`pybroker.slippage.VolatilitySlippageModel` (ATR-scaled), and
+        :class:`pybroker.slippage.VolumeSlippageModel` (participation cap and
+        square-law price impact). Pass ``None`` to disable slippage.
+
+        Fill-time slippage applies to scheduled orders, stop exits, and
+        position exits. Stop and position exits use the adjusted fill price
+        only; share adjustments are ignored on those paths because they exit
+        an entry in full.
+        """
         self._slippage_model = slippage_model
+
+    def _supports_interval_training(self, base_model_name: str) -> bool:
+        """Returns whether a model source can be trained per interval.
+
+        Pretrained models (:class:`pybroker.model.ModelLoader`) are loaded
+        rather than trained, so they stay bound to the base timeframe and are
+        accessed with :meth:`pybroker.context.ExecContext.preds` instead of
+        ``ctx.interval(interval).preds()``.
+        """
+        return isinstance(
+            self._scope.get_model_source(base_model_name), ModelTrainer
+        )
+
+    def _build_interval_data(
+        self, df: pd.DataFrame, timeframe: str
+    ) -> IntervalData:
+        r"""Validates and compresses the intervals declared by executions.
+
+        Compression narrows to the ``(symbol, interval)`` pairs some execution
+        actually declared, so an execution that asks for no intervals costs
+        nothing and one that asks for ``'weekly'`` does not force ``'weekly'``
+        onto every other symbol in the frame.
+        """
+        intervals = _all_intervals(self._executions)
+        if not intervals:
+            return IntervalData()
+        if not timeframe.strip():
+            raise ValueError(
+                "add_execution(intervals=...) needs the base bar spacing of "
+                "the data: pass timeframe= to backtest() or walkforward() "
+                "(e.g. walkforward(windows=1, timeframe='1d'))."
+            )
+        base_bar_seconds = base_timeframe_to_seconds(timeframe)
+        # Validate the union rather than the per-symbol map so an interval
+        # declared by an execution whose symbols have no rows still raises.
+        for interval in intervals:
+            validate_interval(interval, base_bar_seconds)
+        return compress_intervals_from_frame(
+            df,
+            _symbol_intervals(self._executions, df),
+            sorted(self._scope.custom_data_cols),
+            base_bar_seconds,
+        )
 
     def add_execution(
         self,
         fn: Optional[Callable[Concatenate[ExecContext, P], None]],
-        symbols: Union[str, Iterable[str]],
+        symbols: Union[str, Iterable[str], SymbolSelector],
         models: Optional[Union[ModelSource, Iterable[ModelSource]]] = None,
         indicators: Optional[Union[Indicator, Iterable[Indicator]]] = None,
+        hyperparams: Optional[Iterable[Hyperparam]] = None,
+        intervals: Optional[
+            Union[TimeframeInterval, Iterable[TimeframeInterval]]
+        ] = None,
         *args: P.args,
         **kwargs: P.kwargs,
     ):
         r"""Adds an execution to backtest.
+
+        A :class:`~pybroker.interval.TimeframeInterval` passed to ``intervals`` is one
+        of the following:
+
+        - **Every-n-bars** (``int``): Compress every ``n`` base bars into one
+          bar, where ``n > 1``. On 1-minute data, ``5`` yields 5-bar bins
+          (approximately 5-minute bars).
+
+        - **Duration** (``str``): Fixed time span as digits plus one unit
+          letter — ``"1m"``, ``"5m"``, ``"1h"``, ``"30s"``, or ``"1d"``.
+
+        - **Calendar** (``str``): Calendar buckets — ``"daily"``,
+          ``"weekly"``, ``"monthly"``, ``"quarterly"``, or ``"yearly"``.
+          Weeks start on Monday, months on the first of the month, quarters
+          in January, April, July, and October, and years on January 1.
+
+        For example, to use weekly bars, 5-bar bins, and 1-hour duration bars
+        on a 1-minute feed::
+
+            strategy.add_execution(
+                fn,
+                "SPY",
+                indicators=[sma],
+                intervals=["weekly", 5, "1h"],
+            )
+            strategy.walkforward(windows=1, timeframe="1m")
 
         Args:
             fn: :class:`Callable` invoked on every bar of data during the
                 backtest and passed an :class:`pybroker.context.ExecContext`
                 for each ticker symbol in ``symbols``.
             symbols: Ticker symbols used to run ``fn``, where ``fn`` is called
-                separately for each symbol.
+                separately for each symbol. Can also be a
+                :class:`pybroker.common.SymbolSelector` — a :class:`Callable`
+                ``(df) -> Sequence[str]`` that picks the symbols to trade once
+                per walkforward window, so the universe changes over the
+                backtest. It receives the window's **training** data, never test
+                data, and therefore requires a training window:
+                :meth:`.backtest` and ``train_size=0`` raise ``ValueError``.
+                The candidate universe must be supplied as a
+                :class:`pandas.DataFrame` rather than a
+                :class:`pybroker.data.DataSource`, since the symbols to query
+                are unknown until a window is split. A position in a symbol that
+                a later window drops is closed at the first bar of that window;
+                if the symbol has no bars left, it is closed at its final bar.
+                Note that ``shuffle=True`` randomizes the training frame's row
+                order, so avoid it with a selector that depends on bar order.
             models: :class:`Iterable` of :class:`pybroker.model.ModelSource`\ s
                 to train/load for backtesting.
             indicators: :class:`Iterable` of
                 :class:`pybroker.indicator.Indicator`\ s to compute for
                 backtesting.
+            hyperparams: :class:`Iterable` of
+                :class:`pybroker.optimize.Hyperparam`\ s that ``fn`` can read with
+                :meth:`pybroker.context.ExecContext.hyperparam`.
+            intervals: One or more compression intervals made available to
+                ``fn`` through :meth:`pybroker.context.ExecContext.interval`.
+                Each must be strictly coarser than the base bar spacing passed
+                as ``timeframe`` to :meth:`.backtest` or :meth:`.walkforward`;
+                invalid combinations raise ``ValueError`` when the backtest
+                runs. Intervals are scoped to this execution, so another
+                execution's :class:`pybroker.context.ExecContext` cannot read
+                them — including inside a :meth:`.set_before_exec` or
+                :meth:`.set_after_exec` callback, which receives contexts from
+                every execution.
             args: Positional arguments passed to ``fn``.
             kwargs: Keyword arguments passed to ``fn``.
         """
-        symbols = (
-            frozenset((symbols,))
-            if isinstance(symbols, str)
-            else frozenset(symbols)
-        )
-        if not symbols:
-            raise ValueError("symbols cannot be empty.")
-        for sym in symbols:
-            for exec in self._executions:
-                if sym in exec.symbols:
-                    raise ValueError(
-                        f"{sym} was already added to an execution."
-                    )
+        if callable(symbols) and not isinstance(symbols, (str, bytes)):
+            stored_symbols: Union[frozenset[str], SymbolSelector] = symbols
+        elif isinstance(symbols, str):
+            stored_symbols = frozenset((symbols,))
+        else:
+            stored_symbols = frozenset(symbols)
+        if isinstance(stored_symbols, frozenset):
+            if not stored_symbols:
+                raise ValueError("symbols cannot be empty.")
+            for sym in stored_symbols:
+                for exec in self._executions:
+                    exec_syms = _static_symbols(exec.symbols)
+                    if not exec_syms:
+                        continue
+                    if sym in exec_syms:
+                        raise ValueError(
+                            f"{sym} was already added to an execution."
+                        )
         if models is not None:
+            model_name_set: set[str] = set()
             for model in (
                 (models,) if isinstance(models, ModelSource) else models
             ):
+                if not isinstance(model, ModelSource):
+                    raise TypeError(f"Invalid model type: {type(model)!r}.")
                 if not self._scope.has_model_source(model.name):
                     raise ValueError(
                         f"ModelSource {model.name!r} was not registered."
@@ -984,21 +2251,19 @@ class Strategy(
                         f"ModelSource {model.name!r} does not match "
                         "registered ModelSource."
                     )
+                model_name_set.add(model.name)
         model_names = (
-            (
-                frozenset((models.name,))
-                if isinstance(models, ModelSource)
-                else frozenset(model.name for model in models)
-            )
-            if models is not None
-            else frozenset()
+            frozenset(model_name_set) if models is not None else frozenset()
         )
         if indicators is not None:
+            ind_name_set: set[str] = set()
             for ind in (
                 (indicators,)
                 if isinstance(indicators, Indicator)
                 else indicators
             ):
+                if not isinstance(ind, Indicator):
+                    raise TypeError(f"Invalid indicator type: {type(ind)!r}.")
                 if not self._scope.has_indicator(ind.name):
                     raise ValueError(
                         f"Indicator {ind.name!r} was not registered."
@@ -1008,23 +2273,53 @@ class Strategy(
                         f"Indicator {ind.name!r} does not match registered "
                         "Indicator."
                     )
-        ind_names = (
-            (
-                frozenset((indicators.name,))
-                if isinstance(indicators, Indicator)
-                else frozenset(ind.name for ind in indicators)
+                ind_name_set.add(ind.name)
+            ind_names = frozenset(ind_name_set)
+        else:
+            ind_names = frozenset()
+        hyperparam_name_set: set[str] = set()
+        if hyperparams is not None:
+            for hp in hyperparams:
+                if not isinstance(hp, Hyperparam):
+                    raise TypeError(f"Invalid hyperparam type: {type(hp)!r}.")
+                if not self._scope.has_hyperparam(hp.name):
+                    raise ValueError(
+                        f"Hyperparam {hp.name!r} was not registered."
+                    )
+                if hp is not self._scope.get_hyperparam(hp.name):
+                    raise ValueError(
+                        f"Hyperparam {hp.name!r} does not match registered "
+                        "Hyperparam."
+                    )
+                hyperparam_name_set.add(hp.name)
+        if intervals is None:
+            interval_set: frozenset[TimeframeInterval] = frozenset()
+        else:
+            # str is Iterable, so 'weekly' must not split into characters.
+            declared = (
+                (intervals,)
+                if isinstance(intervals, (int, str))
+                else tuple(intervals)
             )
-            if indicators is not None
-            else frozenset()
-        )
+            if not declared:
+                raise ValueError("intervals cannot be empty.")
+            seen_intervals: set[TimeframeInterval] = set()
+            for interval in declared:
+                norm = normalize_interval(interval)
+                if norm in seen_intervals:
+                    raise ValueError(f"Duplicate interval: {interval!r}.")
+                seen_intervals.add(norm)
+            interval_set = frozenset(seen_intervals)
         self._execution_id += 1
         self._executions.add(
             Execution(
                 id=self._execution_id,
-                symbols=symbols,
+                symbols=stored_symbols,
                 fn=fn,
                 model_names=model_names,
                 indicator_names=ind_names,
+                intervals=interval_set,
+                hyperparam_names=frozenset(hyperparam_name_set),
                 args=args,
                 kwargs=tuple(sorted(kwargs.items())),
             )
@@ -1058,19 +2353,6 @@ class Strategy(
         """Clears executions that were added with :meth:`.add_execution`."""
         self._executions.clear()
 
-    def set_pos_size_handler(
-        self, fn: Optional[Callable[[PosSizeContext], None]]
-    ):
-        r"""Sets a :class:`Callable` that determines position sizes to use for
-        buy and sell signals.
-
-        Args:
-            fn: :class:`Callable` invoked before placing orders for buy and
-                sell signals, and is passed a
-                :class:`pybroker.context.PosSizeContext`.
-        """
-        self._pos_size_handler = fn
-
     def backtest(
         self,
         start_date: Optional[Union[str, datetime]] = None,
@@ -1082,11 +2364,13 @@ class Strategy(
         train_size: float = 0,
         shuffle: bool = False,
         calc_bootstrap: bool = False,
-        disable_parallel: bool = False,
+        parallel_indicators: bool = False,
+        parallel_models: bool = False,
         warmup: Optional[int] = None,
         portfolio: Optional[Portfolio] = None,
         adjust: Optional[Any] = None,
         seed: Optional[int] = 42,
+        params: Optional[dict[str, Any]] = None,
     ) -> TestResult:
         """Backtests the trading strategy by running executions that were added
         with :meth:`.add_execution`.
@@ -1108,7 +2392,10 @@ class Strategy(
                 - ``"d"``/``"day"``: days
                 - ``"w"``/``"week"``: weeks
 
-                An example timeframe string is ``1h 30m``.
+                An example timeframe string is ``1h 30m``. Required when any
+                execution declares ``intervals``, since it defines the base
+                bar spacing that compression intervals are validated and
+                aligned against.
             between_time: ``tuple[str, str]`` of times of day e.g.
                 ('9:30', '16:00') used to filter the backtesting data
                 (inclusive).
@@ -1128,10 +2415,11 @@ class Strategy(
                 via :meth:`pybroker.cache.enable_model_cache`.
             calc_bootstrap: Whether to compute randomized bootstrap evaluation
                 metrics. Defaults to ``False``.
-            disable_parallel: If ``True``,
-                :class:`pybroker.indicator.Indicator` data is computed
-                serially. If ``False``, :class:`pybroker.indicator.Indicator`
-                data is computed in parallel using multiple processes.
+            parallel_indicators: If ``True``,
+                :class:`pybroker.indicator.Indicator` data is computed in
+                parallel using multiple processes. Defaults to ``False``.
+            parallel_models: If ``True``, :class:`pybroker.model.ModelTrainer`
+                models are trained in parallel using multiple processes.
                 Defaults to ``False``.
             warmup: Number of bars that need to pass before running the
                 executions.
@@ -1156,11 +2444,13 @@ class Strategy(
             train_size=train_size,
             shuffle=shuffle,
             calc_bootstrap=calc_bootstrap,
-            disable_parallel=disable_parallel,
+            parallel_indicators=parallel_indicators,
+            parallel_models=parallel_models,
             warmup=warmup,
             portfolio=portfolio,
             adjust=adjust,
             seed=seed,
+            params=params,
         )
 
     def walkforward(
@@ -1175,11 +2465,13 @@ class Strategy(
         train_size: float = 0.5,
         shuffle: bool = False,
         calc_bootstrap: bool = False,
-        disable_parallel: bool = False,
+        parallel_indicators: bool = False,
+        parallel_models: bool = False,
         warmup: Optional[int] = None,
         portfolio: Optional[Portfolio] = None,
         adjust: Optional[Any] = None,
         seed: Optional[int] = 42,
+        params: Optional[dict[str, Any]] = None,
     ) -> TestResult:
         """Backtests the trading strategy using `Walkforward Analysis
         <https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html#Walkforward-Analysis>`_.
@@ -1207,7 +2499,10 @@ class Strategy(
                 - ``"d"``/``"day"``: days
                 - ``"w"``/``"week"``: weeks
 
-                An example timeframe string is ``1h 30m``.
+                An example timeframe string is ``1h 30m``. Required when any
+                execution declares ``intervals``, since it defines the base
+                bar spacing that compression intervals are validated and
+                aligned against.
             between_time: ``tuple[str, str]`` of times of day e.g.
                 ('9:30', '16:00') used to filter the backtesting data
                 (inclusive).
@@ -1227,10 +2522,11 @@ class Strategy(
                 via :meth:`pybroker.cache.enable_model_cache`.
             calc_bootstrap: Whether to compute randomized bootstrap evaluation
                 metrics. Defaults to ``False``.
-            disable_parallel: If ``True``,
-                :class:`pybroker.indicator.Indicator` data is computed
-                serially. If ``False``, :class:`pybroker.indicator.Indicator`
-                data is computed in parallel using multiple processes.
+            parallel_indicators: If ``True``,
+                :class:`pybroker.indicator.Indicator` data is computed in
+                parallel using multiple processes. Defaults to ``False``.
+            parallel_models: If ``True``, :class:`pybroker.model.ModelTrainer`
+                models are trained in parallel using multiple processes.
                 Defaults to ``False``.
             warmup: Number of bars that need to pass before running the
                 executions.
@@ -1251,6 +2547,8 @@ class Strategy(
             scope.freeze_data_cols()
             if not self._executions:
                 raise ValueError("No executions were added.")
+            if self._slippage_model is not None:
+                self._slippage_model.validate(self)
             start_dt = (
                 self._start_date
                 if start_date is None
@@ -1272,6 +2570,12 @@ class Strategy(
             if start_dt is not None and end_dt is not None:
                 verify_date_range(start_dt, end_dt)
             self._logger.walkforward_start(start_dt, end_dt)
+            hyperparams = self._collect_hyperparams()
+            run_hyperparams = build_run_hyperparams(hyperparams, params)
+            backtest_settings = self._resolve_backtest_settings(
+                run_hyperparams
+            )
+            effective_config = self._effective_config(backtest_settings)
             df = self._fetch_data(timeframe, adjust)
             day_ids = self._to_day_ids(days)
             df = self._filter_dates(
@@ -1281,38 +2585,64 @@ class Strategy(
                 between_time=between_time,
                 days=day_ids,
             )
+            interval_data = self._build_interval_data(df, timeframe)
+            has_selector = self._has_symbol_selector()
             tf_seconds = to_seconds(timeframe)
-            indicator_data = self._fetch_indicators(
-                df=df,
-                cache_date_fields=CacheDateFields(
-                    start_date=start_dt,
-                    end_date=end_dt,
-                    tf_seconds=tf_seconds,
-                    between_time=between_time,
-                    days=day_ids,
-                ),
-                disable_parallel=disable_parallel,
+            cache_date_fields = CacheDateFields(
+                start_date=start_dt,
+                end_date=end_dt,
+                tf_seconds=tf_seconds,
+                between_time=between_time,
+                days=day_ids,
             )
+            date_col = DataCol.DATE.value
+            master_store = symbol_array_store_from_frame(
+                _ensure_range_index(df)
+            )
+            master_dates_arr = df[date_col].to_numpy(
+                dtype="datetime64[ns]", copy=False
+            )
+            if has_selector:
+                indicator_data: dict[IndicatorSymbol, pd.Series] = {}
+            else:
+                indicator_data = self._fetch_indicators(
+                    df=df,
+                    cache_date_fields=cache_date_fields,
+                    parallel_indicators=parallel_indicators,
+                    interval_data=interval_data,
+                    symbol_store=master_store,
+                    hyperparams=run_hyperparams or None,
+                )
             train_only = (
                 self._before_exec_fn is None
                 and self._after_exec_fn is None
+                and self._rotation_sizer is None
+                and backtest_settings.worst_rank_held is None
                 and all(map(lambda e: e.fn is None, self._executions))
             )
             if portfolio is None:
                 portfolio = Portfolio(
-                    self._config.initial_cash,
-                    self._config.fee_mode,
-                    self._config.fee_amount,
+                    effective_config.initial_cash,
+                    effective_config.fee_mode,
+                    effective_config.fee_amount,
                     self._fractional_shares_enabled(),
-                    self._config.position_mode,
-                    self._config.max_long_positions,
-                    self._config.max_short_positions,
-                    self._config.return_stops,
+                    effective_config.position_mode,
+                    backtest_settings.max_long_positions,
+                    backtest_settings.max_short_positions,
+                    effective_config.return_stops,
+                    effective_config.leverage,
+                    effective_config.interest_rate,
+                    effective_config.bars_per_year,
+                    record_portfolio_bars=effective_config.record_portfolio_bars,
+                    record_position_bars=effective_config.record_position_bars,
                 )
             signals = self._run_walkforward(
                 portfolio=portfolio,
                 df=df,
+                master_store=master_store,
+                master_dates_arr=master_dates_arr,
                 indicator_data=indicator_data,
+                interval_data=interval_data,
                 tf_seconds=tf_seconds,
                 between_time=between_time,
                 days=day_ids,
@@ -1322,6 +2652,14 @@ class Strategy(
                 shuffle=shuffle,
                 train_only=train_only,
                 warmup=warmup,
+                parallel_models=parallel_models,
+                has_selector=has_selector,
+                parallel_indicators=parallel_indicators,
+                global_cache_date_fields=cache_date_fields,
+                run_hyperparams=run_hyperparams,
+                backtest_settings=backtest_settings,
+                effective_config=effective_config,
+                rotation_sizer=self._rotation_sizer,
             )
             if train_only:
                 self._logger.walkforward_completed()
@@ -1352,6 +2690,147 @@ class Strategy(
             )
         )  # type: ignore[return-value]
 
+    def _has_symbol_selector(self) -> bool:
+        return any(_is_symbol_selector(e.symbols) for e in self._executions)
+
+    def _liquidate_dropped_symbols(
+        self,
+        portfolio: Portfolio,
+        selected_syms: set[str],
+        test_data: pd.DataFrame,
+        master_store: Optional[SymbolArrayStore] = None,
+        slippage_model: Optional[SlippageModel] = None,
+        indicator_data: Optional[Mapping[IndicatorSymbol, pd.Series]] = None,
+        pending_order_scope: Optional[PendingOrderScope] = None,
+    ) -> None:
+        """Closes positions in symbols the new window no longer selects.
+
+        A dropped symbol exits on the first bar of the new test window. One with
+        no bars left there -- delisted, or simply absent from the window --
+        exits at its last bar at or before this window's start: leaving it open
+        would strand the capital for the rest of the run and record no
+        :class:`pybroker.portfolio.Trade`, while exiting at its last bar in the
+        whole dataset would price the exit off a future bar.
+
+        Any :class:`pybroker.scope.PendingOrder`\\ s for a dropped symbol are
+        cancelled. The scope is owned by the walkforward and outlives a window,
+        so an order left behind here would keep being retried for a symbol the
+        strategy no longer selects, and would fill against a position that was
+        just liquidated -- opening one in the opposite direction. No execution
+        function runs for a dropped symbol, so there is no way for a caller to
+        cancel it either.
+        """
+        held = set(portfolio.long_positions) | set(portfolio.short_positions)
+        if pending_order_scope is not None:
+            stale = {
+                order.symbol
+                for order in pending_order_scope.orders()
+                if order.symbol not in selected_syms
+            }
+            for sym in sorted(stale):
+                pending_order_scope.remove_all(sym)
+        dropped = frozenset(held - selected_syms)
+        if not dropped:
+            return
+        exited: set[str] = set()
+        boundary_date: Optional[np.datetime64] = None
+        if not test_data.empty:
+            boundary_date = test_data[DataCol.DATE.value].min()
+            exited = self._exit_dropped_at_bar(
+                portfolio=portfolio,
+                store=symbol_array_store_from_frame(
+                    _ensure_range_index(test_data), symbols=dropped
+                ),
+                symbols=dropped,
+                first_bar=True,
+                slippage_model=slippage_model,
+                indicator_data=indicator_data,
+            )
+        remaining = dropped - exited
+        if remaining and master_store is not None:
+            self._exit_dropped_at_bar(
+                portfolio=portfolio,
+                store=master_store,
+                symbols=remaining,
+                first_bar=False,
+                slippage_model=slippage_model,
+                indicator_data=indicator_data,
+                not_after=boundary_date,
+            )
+
+    def _exit_dropped_at_bar(
+        self,
+        portfolio: Portfolio,
+        store: SymbolArrayStore,
+        symbols: Iterable[str],
+        first_bar: bool,
+        slippage_model: Optional[SlippageModel],
+        indicator_data: Optional[Mapping[IndicatorSymbol, pd.Series]] = None,
+        not_after: Optional[np.datetime64] = None,
+    ) -> set[str]:
+        """Exits ``symbols`` at their first or last bar in ``store``.
+
+        When ``not_after`` is set, the last bar is chosen from those at or
+        before it, so the exit is never priced off a bar the strategy has not
+        reached yet.
+
+        Returns the symbols that had a bar to exit on.
+        """
+        date_col = DataCol.DATE.value
+        sym_end_index: dict[str, int] = {}
+        exit_dates: dict[str, np.datetime64] = {}
+        for sym in symbols:
+            arrays = store.sym_arrays.get(sym)
+            if arrays is None:
+                continue
+            date_arr = arrays.get(date_col)
+            if date_arr is None or not len(date_arr):
+                continue
+            # Locate the bar rather than indexing the ends, since a store is
+            # only as ordered as the frame it was built from.
+            if first_bar:
+                loc = int(np.argmin(date_arr))
+            elif not_after is None:
+                loc = int(np.argmax(date_arr))
+            else:
+                eligible = np.flatnonzero(date_arr <= not_after)
+                if not len(eligible):
+                    # Every bar this symbol has left is in the future. Hold
+                    # the position rather than exit at a price the strategy
+                    # cannot have seen.
+                    continue
+                loc = int(eligible[np.argmax(date_arr[eligible])])
+            sym_end_index[sym] = loc + 1
+            exit_dates[sym] = date_arr[loc]
+        if not sym_end_index:
+            return set()
+        col_scope = ColumnScope(store)
+        price_scope = PriceScope(
+            col_scope, sym_end_index, self._config.round_fill_price
+        )
+        # Pass the window's real indicator data: a slippage model that reads
+        # an indicator raises "Indicator not found" against an empty scope.
+        ind_scope = IndicatorScope(
+            dict(indicator_data) if indicator_data else {},
+            sorted(set(exit_dates.values())),
+        )
+        for sym, date in exit_dates.items():
+            portfolio.exit_position(
+                date,
+                sym,
+                buy_fill_price=price_scope.fetch(
+                    sym, self._config.exit_cover_fill_price
+                ),
+                sell_fill_price=price_scope.fetch(
+                    sym, self._config.exit_sell_fill_price
+                ),
+                col_scope=col_scope,
+                ind_scope=ind_scope,
+                sym_end_index=sym_end_index,
+                slippage_model=slippage_model,
+            )
+        return set(sym_end_index)
+
     def _fractional_shares_enabled(self):
         return self._config.enable_fractional_shares or isinstance(
             self._data_source, AlpacaCrypto
@@ -1361,7 +2840,10 @@ class Strategy(
         self,
         portfolio: Portfolio,
         df: pd.DataFrame,
+        master_store: SymbolArrayStore,
+        master_dates_arr: NDArray[np.datetime64],
         indicator_data: dict[IndicatorSymbol, pd.Series],
+        interval_data: IntervalData,
         tf_seconds: int,
         between_time: Optional[tuple[str, str]],
         days: Optional[tuple[int]],
@@ -1371,25 +2853,39 @@ class Strategy(
         shuffle: bool,
         train_only: bool,
         warmup: Optional[int],
+        parallel_models: bool = False,
+        has_selector: bool = False,
+        parallel_indicators: bool = False,
+        global_cache_date_fields: Optional[CacheDateFields] = None,
+        run_hyperparams: Optional[dict[str, Any]] = None,
+        backtest_settings: Optional[BacktestSettings] = None,
+        effective_config: Optional[StrategyConfig] = None,
+        rotation_sizer: Optional[Callable[[RotationContext], None]] = None,
     ) -> dict[str, pd.DataFrame]:
+        if backtest_settings is None:
+            backtest_settings = self._resolve_backtest_settings(
+                run_hyperparams
+            )
+        if effective_config is None:
+            effective_config = self._effective_config(backtest_settings)
+        if rotation_sizer is None:
+            rotation_sizer = self._rotation_sizer
         sessions: dict[str, dict] = defaultdict(dict)
-        exit_dates: dict[str, np.datetime64] = {}
-        if self._config.exit_on_last_bar:
-            exit_symbols: set[str] = set()
-            for exec in self._executions:
-                exit_symbols.update(exec.symbols)
-            if exit_symbols and not df.empty:
-                sym_col = DataCol.SYMBOL.value
-                date_col = DataCol.DATE.value
-                mask = df[sym_col].isin(exit_symbols)
-                grouped = (
-                    df.loc[mask].groupby(sym_col, sort=False)[date_col].max()
-                )
-                exit_dates = {
-                    sym: np.datetime64(date) for sym, date in grouped.items()
-                }
+        sym_col = DataCol.SYMBOL.value
+        date_col = DataCol.DATE.value
+        exit_dates = self._build_exit_dates(df, has_selector)
         signals: dict[str, pd.DataFrame] = {}
-        for train_idx, test_idx in self.walkforward_split(
+        signal_frames: dict[str, list[pd.DataFrame]] = defaultdict(list)
+        # Owned here, like sessions and the portfolio, so a persistent order
+        # outlives the window it was placed in. A per-window scope silently
+        # dropped every order still pending at the boundary, including the
+        # timeout_bars=-1 orders documented to persist indefinitely.
+        pending_order_scope = PendingOrderScope()
+        # Spans the whole dataset, so an order delayed past the end of a window
+        # resolves to the bar it really executes on rather than being dropped.
+        master_col_scope = ColumnScope(master_store)
+        tested_windows = 0
+        for train_rows, test_rows in self.walkforward_split(
             df=df,
             windows=windows,
             lookahead=lookahead,
@@ -1397,19 +2893,103 @@ class Strategy(
             shuffle=shuffle,
         ):
             models: dict[ModelSymbol, TrainedModel] = {}
-            train_data = df.loc[train_idx]
-            test_data = df.loc[test_idx]
-            if not train_data.empty:
-                model_syms = {
-                    ModelSymbol(model_name, sym)
-                    for sym in train_data[DataCol.SYMBOL.value].unique()
-                    for execution in self._executions
-                    for model_name in execution.model_names
-                    if sym in execution.symbols
-                }
-                train_dates = get_unique_sorted_dates(
-                    train_data[DataCol.DATE.value]
+            train_data = (
+                df.iloc[train_rows] if len(train_rows) else df.iloc[:0]
+            )
+            test_data = df.iloc[test_rows] if len(test_rows) else df.iloc[:0]
+            selection_data = _selection_df(
+                self._executions, train_data, test_data
+            )
+            if has_selector:
+                if global_cache_date_fields is None:
+                    raise ValueError("global_cache_date_fields is required.")
+                window_executions = _resolve_executions(
+                    self._executions, selection_data
                 )
+                window_indicator_data = self._fetch_indicators(
+                    df=df,
+                    cache_date_fields=global_cache_date_fields,
+                    parallel_indicators=parallel_indicators,
+                    interval_data=interval_data,
+                    executions=window_executions,
+                    symbol_store=master_store,
+                    hyperparams=run_hyperparams,
+                )
+                indicator_data.update(window_indicator_data)
+            else:
+                window_executions = self._executions
+            selected_syms = _selected_symbols(
+                window_executions, test_data, has_selector
+            )
+            self._liquidate_dropped_symbols(
+                portfolio,
+                selected_syms,
+                test_data,
+                master_store=master_store,
+                slippage_model=self._slippage_model,
+                indicator_data=indicator_data,
+                pending_order_scope=pending_order_scope,
+            )
+            train_store, test_store, history_store = self._build_window_stores(
+                master_store=master_store,
+                master_dates_arr=master_dates_arr,
+                train_rows=train_rows,
+                test_rows=test_rows,
+                train_empty=train_data.empty,
+                test_empty=test_data.empty,
+            )
+            if not train_data.empty:
+                train_symbols = set(train_data[sym_col].unique())
+                model_syms: set[ModelSymbol] = set()
+                for sym in train_symbols:
+                    for execution in window_executions:
+                        if sym not in _static_symbols(execution.symbols):
+                            continue
+                        for model_name in execution.model_names:
+                            base_name, token = parse_model_interval_name(
+                                model_name
+                            )
+                            if token is not None:
+                                model_syms.add(ModelSymbol(model_name, sym))
+                                continue
+                            model_syms.add(ModelSymbol(model_name, sym))
+                            if not self._supports_interval_training(base_name):
+                                continue
+                            for tf in execution.intervals:
+                                model_syms.add(
+                                    ModelSymbol(
+                                        model_interval_name(base_name, tf),
+                                        sym,
+                                    )
+                                )
+                pooled_model_groups: dict[tuple[str, int], frozenset[str]] = {}
+                for execution in window_executions:
+                    exec_syms = frozenset(
+                        sym
+                        for sym in _static_symbols(execution.symbols)
+                        if sym in train_symbols
+                    )
+                    if not exec_syms:
+                        continue
+                    for model_name in execution.model_names:
+                        base_name, token = parse_model_interval_name(
+                            model_name
+                        )
+                        if token is not None:
+                            continue
+                        source = self._scope.get_model_source(base_name)
+                        if isinstance(source, ModelTrainer) and source.pooled:
+                            pooled_model_groups[(model_name, execution.id)] = (
+                                exec_syms
+                            )
+                            for tf in execution.intervals:
+                                pooled_model_groups[
+                                    (
+                                        model_interval_name(base_name, tf),
+                                        execution.id,
+                                    )
+                                ] = exec_syms
+                train_dates = get_unique_sorted_dates(train_data[date_col])
                 models = self.train_models(
                     model_syms=model_syms,
                     train_data=train_data,
@@ -1422,32 +3002,68 @@ class Strategy(
                         between_time=between_time,
                         days=days,
                     ),
+                    parallel_models=parallel_models,
+                    pooled_model_groups=pooled_model_groups,
+                    interval_data=interval_data,
+                    history_store=history_store,
+                    train_store=train_store,
+                    test_store=test_store,
                 )
             if test_data.empty:
-                return signals
+                # ``continue``, not ``return``: one window with no test bars
+                # must not truncate the windows after it.
+                continue
+            tested_windows += 1
+            if history_store is None:
+                history_store = test_store
+            history_col_scope = ColumnScope(history_store)
+            test_col_scope = ColumnScope(test_store)
             split_signals = self.backtest_executions(
-                config=self._config,
-                executions=self._executions,
+                config=effective_config,
+                executions=window_executions,
                 before_exec_fn=self._before_exec_fn,
                 after_exec_fn=self._after_exec_fn,
                 sessions=sessions,
                 models=models,
                 indicator_data=indicator_data,
+                interval_data=interval_data.slice_for_test(
+                    symbol_dates_from_frame(test_data)
+                ),
                 test_data=test_data,
                 portfolio=portfolio,
-                pos_size_handler=self._pos_size_handler,
                 exit_dates=exit_dates,
+                backtest_settings=backtest_settings,
+                rotation_sizer=rotation_sizer,
                 train_only=train_only,
                 slippage_model=self._slippage_model,
                 enable_fractional_shares=self._fractional_shares_enabled(),
-                round_fill_price=self._config.round_fill_price,
+                round_fill_price=effective_config.round_fill_price,
                 warmup=warmup,
+                history_col_scope=history_col_scope,
+                test_col_scope=test_col_scope,
+                run_hyperparams=run_hyperparams,
+                pending_order_scope=pending_order_scope,
+                master_col_scope=master_col_scope,
             )
             for sym, signals_df in split_signals.items():
-                if sym in signals:
-                    signals[sym] = pd.concat([signals[sym], signals_df])
-                else:
-                    signals[sym] = signals_df
+                signal_frames[sym].append(signals_df)
+        if not tested_windows and not train_only:
+            # Every window split to an empty test range, so nothing was ever
+            # backtested. Without this the run reports a clean zero-PnL result
+            # -- initial_market_value of 0 against a funded portfolio -- and
+            # looks like a strategy that simply never traded.
+            warnings.warn(
+                f"No test data in any of the {windows} walkforward windows "
+                f"(train_size={train_size}, lookahead={lookahead}). Nothing "
+                "was backtested. Lower train_size or use fewer windows.",
+                UserWarning,
+            )
+        for sym, frames in signal_frames.items():
+            signals[sym] = (
+                frames[0]
+                if len(frames) == 1
+                else pd.concat(frames, ignore_index=True)
+            )
         return signals
 
     def _filter_dates(
@@ -1459,7 +3075,8 @@ class Strategy(
         days: Optional[tuple[int]],
     ) -> pd.DataFrame:
         if start_date != self._start_date or end_date != self._end_date:
-            df = _between(df, start_date, end_date).reset_index(drop=True)
+            df = _between(df, start_date, end_date)
+            df = _ensure_range_index(df)
         if df[DataCol.DATE.value].dt.tz is not None:
             # Fixes bug on Windows.
             # https://stackoverflow.com/questions/51827582/message-exception-ignored-when-dealing-pandas-datetime-type
@@ -1482,35 +3099,175 @@ class Strategy(
             df = df.reset_index()
         return df
 
+    def _build_window_stores(
+        self,
+        master_store: SymbolArrayStore,
+        master_dates_arr: NDArray[np.datetime64],
+        train_rows: np.ndarray,
+        test_rows: np.ndarray,
+        train_empty: bool,
+        test_empty: bool,
+    ) -> tuple[
+        Optional[SymbolArrayStore],
+        Optional[SymbolArrayStore],
+        Optional[SymbolArrayStore],
+    ]:
+        """Slices per-window train, test, and history stores from
+        ``master_store``.
+
+        Returns ``(train_store, test_store, history_store)``. ``history_store``
+        spans the train window through the end of the test window and backs
+        :class:`pybroker.scope.ModelInputScope`, which needs bars from before
+        the test window to compute lag features at its first bar.
+        """
+        train_store = None
+        test_store = None
+        history_store = None
+        test_dates_arr = None
+        if not test_empty:
+            test_dates_arr = _unique_dates_from_rows(
+                master_dates_arr, test_rows
+            )
+            test_store = slice_symbol_array_store_by_dates(
+                master_store, test_dates_arr
+            )
+        if not train_empty:
+            train_dates_arr = _unique_dates_from_rows(
+                master_dates_arr, train_rows
+            )
+            train_store = slice_symbol_array_store_by_dates(
+                master_store, train_dates_arr
+            )
+            if test_dates_arr is not None:
+                # Slice the contiguous span rather than merging the two
+                # windows: with lookahead > 1 the skipped bars fall
+                # between them, and omitting those would make "lag 1" at
+                # the train/test boundary reach lookahead bars back.
+                span_mask = (master_dates_arr >= train_dates_arr[0]) & (
+                    master_dates_arr <= test_dates_arr[-1]
+                )
+                history_store = slice_symbol_array_store_by_dates(
+                    master_store,
+                    np.unique(master_dates_arr[span_mask]),
+                )
+            else:
+                history_store = train_store
+        elif test_store is not None:
+            history_store = test_store
+        return train_store, test_store, history_store
+
+    def _build_exit_dates(
+        self, df: pd.DataFrame, has_selector: bool
+    ) -> dict[str, np.datetime64]:
+        """Returns each symbol's final bar date when ``exit_on_last_bar`` is on.
+
+        Computed over the whole ``df`` rather than per window so that only the
+        true final bar liquidates.
+        """
+        exit_dates: dict[str, np.datetime64] = {}
+        if not self._config.exit_on_last_bar:
+            return exit_dates
+        sym_col = DataCol.SYMBOL.value
+        if has_selector:
+            exit_symbols = set(df[sym_col].unique())
+        else:
+            exit_symbols = {
+                sym
+                for exec in self._executions
+                for sym in _static_symbols(exec.symbols)
+            }
+        if exit_symbols and not df.empty:
+            mask = df[sym_col].isin(exit_symbols)
+            masked = df.loc[mask]
+            for sym, sym_dates in _iter_symbol_date_groups(masked):
+                if sym in exit_symbols:
+                    exit_dates[sym] = np.datetime64(sym_dates.max())
+        return exit_dates
+
+    def _indicator_syms(
+        self, executions: Optional[set[Execution]] = None
+    ) -> set[IndicatorSymbol]:
+        """Returns every :class:`pybroker.common.IndicatorSymbol` pair that
+        ``executions`` needs, including indicators registered on model sources
+        and their per-interval variants.
+        """
+        exec_set = executions if executions is not None else self._executions
+        indicator_syms: set[IndicatorSymbol] = set()
+        for execution in exec_set:
+            for sym in _static_symbols(execution.symbols):
+                for model_name in execution.model_names:
+                    base_name, token = parse_model_interval_name(model_name)
+                    ind_names = self._scope.get_indicator_names(base_name)
+                    for ind_name in ind_names:
+                        indicator_syms.add(IndicatorSymbol(ind_name, sym))
+                        if token is not None:
+                            indicator_syms.add(
+                                IndicatorSymbol(
+                                    indicator_interval_name(ind_name, token),
+                                    sym,
+                                )
+                            )
+                        elif execution.intervals and (
+                            self._supports_interval_training(base_name)
+                        ):
+                            for tf in execution.intervals:
+                                indicator_syms.add(
+                                    IndicatorSymbol(
+                                        indicator_interval_name(ind_name, tf),
+                                        sym,
+                                    )
+                                )
+                for ind_name in execution.indicator_names:
+                    base_name, token = parse_indicator_interval_name(ind_name)
+                    indicator_syms.add(IndicatorSymbol(ind_name, sym))
+                    if token is None and execution.intervals:
+                        for tf in execution.intervals:
+                            indicator_syms.add(
+                                IndicatorSymbol(
+                                    indicator_interval_name(base_name, tf),
+                                    sym,
+                                )
+                            )
+        return indicator_syms
+
     def _fetch_indicators(
         self,
         df: pd.DataFrame,
         cache_date_fields: CacheDateFields,
-        disable_parallel: bool,
+        parallel_indicators: bool,
+        interval_data: Optional[IntervalData] = None,
+        executions: Optional[set[Execution]] = None,
+        symbol_store: Optional[SymbolArrayStore] = None,
+        hyperparams: Optional[dict[str, Any]] = None,
+        indicator_syms: Optional[set[IndicatorSymbol]] = None,
     ) -> dict[IndicatorSymbol, pd.Series]:
-        indicator_syms = set()
-        for execution in self._executions:
-            for sym in execution.symbols:
-                for model_name in execution.model_names:
-                    ind_names = self._scope.get_indicator_names(model_name)
-                    for ind_name in ind_names:
-                        indicator_syms.add(IndicatorSymbol(ind_name, sym))
-                for ind_name in execution.indicator_names:
-                    indicator_syms.add(IndicatorSymbol(ind_name, sym))
+        if indicator_syms is None:
+            indicator_syms = self._indicator_syms(executions)
         return self.compute_indicators(
             df=df,
             indicator_syms=indicator_syms,
             cache_date_fields=cache_date_fields,
-            disable_parallel=disable_parallel,
+            parallel_indicators=parallel_indicators,
+            interval_data=interval_data,
+            symbol_store=symbol_store,
+            hyperparams=hyperparams,
         )
 
     def _fetch_data(
         self, timeframe: str, adjust: Optional[Any]
     ) -> pd.DataFrame:
-        unique_syms = {
-            sym for execution in self._executions for sym in execution.symbols
-        }
+        has_selector = self._has_symbol_selector()
+        if has_selector and isinstance(self._data_source, DataSource):
+            raise ValueError(
+                "Dynamic symbol selection requires a pandas DataFrame data "
+                "source containing the candidate universe."
+            )
         if isinstance(self._data_source, DataSource):
+            unique_syms = frozenset(
+                sym
+                for execution in self._executions
+                for sym in _static_symbols(execution.symbols)
+            )
             df = self._data_source.query(
                 unique_syms,
                 self._start_date,
@@ -1520,10 +3277,52 @@ class Strategy(
             )
         else:
             df = _between(self._data_source, self._start_date, self._end_date)
-            df = df[df[DataCol.SYMBOL.value].isin(unique_syms)]
+            if not has_selector:
+                unique_syms = frozenset(
+                    sym
+                    for execution in self._executions
+                    for sym in _static_symbols(execution.symbols)
+                )
+                df = df[df[DataCol.SYMBOL.value].isin(unique_syms)]
         if df.empty:
             raise ValueError("DataSource is empty.")
-        return df.reset_index(drop=True)
+        self._reject_duplicate_bars(df)
+        return _ensure_range_index(df)
+
+    @staticmethod
+    def _reject_duplicate_bars(df: pd.DataFrame) -> None:
+        """Raises when a symbol has more than one row on the same date.
+
+        One row per symbol per date is an input invariant, not a preference.
+        The columnar store, the indicator series and an interval's ``completed``
+        map each assume it independently and resolve a duplicate differently:
+        the store is sliced by a merge join that emits one row per date, while
+        ``IndicatorScope`` masks with ``np.isin`` and keeps both. Whichever way
+        the slice behaves, the bar counter -- which advances once per *date* --
+        ends up pointing at the wrong row in one of them from the duplicate
+        onward, so prices and indicators silently drift a bar apart.
+
+        There is no reconciling behavior to pick, so this fails loudly rather
+        than producing a result that is wrong in a way nothing downstream can
+        detect.
+        """
+        sym_col = DataCol.SYMBOL.value
+        date_col = DataCol.DATE.value
+        if sym_col not in df.columns or date_col not in df.columns:
+            return
+        dupes = df.duplicated(subset=[sym_col, date_col])
+        if not dupes.any():
+            return
+        symbols = sorted(set(df.loc[dupes, sym_col].astype(str)))
+        shown = ", ".join(symbols[:5])
+        if len(symbols) > 5:
+            shown += f", ... ({len(symbols)} symbols)"
+        raise ValueError(
+            f"Data contains {int(dupes.sum())} duplicate (symbol, date) rows "
+            f"for: {shown}. Bar data and indicators are indexed by the same "
+            "bar counter, so duplicates put them out of step. Drop them with "
+            "df.drop_duplicates(['symbol', 'date'])."
+        )
 
     def _to_test_result(
         self,
@@ -1552,6 +3351,10 @@ class Strategy(
         pos_df = pd.DataFrame.from_records(
             portfolio.position_bars, columns=PositionBar._fields
         )
+        # Applied whether or not there are rows, so that `positions` has the
+        # same index and dtypes either way. `record_position_bars` is off by
+        # default, so guarding on non-empty gave the common case a plain
+        # RangeIndex and object columns.
         for col in (
             "close",
             "equity",
@@ -1561,13 +3364,19 @@ class Strategy(
         ):
             pos_df[col] = quantize(pos_df, col, self._config.round_test_result)
         pos_df.set_index(["symbol", "date"], inplace=True)
+        bar_records = (
+            portfolio.bars if portfolio.bars else portfolio._metrics_bars
+        )
         portfolio_df = pd.DataFrame.from_records(
-            portfolio.bars, columns=PortfolioBar._fields, index="date"
+            bar_records, columns=PortfolioBar._fields, index="date"
         )
         for col in (
             "cash",
             "equity",
+            "notional",
             "margin",
+            "margin_loan",
+            "net_cash_balance",
             "market_value",
             "pnl",
             "unrealized_pnl",
@@ -1579,7 +3388,7 @@ class Strategy(
         orders_df = pd.DataFrame.from_records(
             portfolio.orders, columns=Order._fields, index="id"
         )
-        for col in ("limit_price", "fill_price", "fees"):
+        for col in ("limit_price", "market_price", "fill_price", "fees"):
             orders_df[col] = quantize(
                 orders_df, col, self._config.round_test_result
             )
@@ -1609,7 +3418,6 @@ class Strategy(
             portfolio_df=portfolio_df,
             trades_df=trades_df,
             calc_bootstrap=calc_bootstrap,
-            bootstrap_sample_size=self._config.bootstrap_sample_size,
             bootstrap_samples=self._config.bootstrap_samples,
             bars_per_year=self._config.bars_per_year,
             seed=seed,

@@ -12,10 +12,9 @@ import pytest
 import re
 from datetime import datetime
 from decimal import Decimal
-from joblib import Parallel
 from pybroker.common import (
     BarData,
-    default_parallel,
+    bars_to_df,
     parse_timeframe,
     quantize,
     to_datetime,
@@ -68,6 +67,67 @@ def test_bar_data_get_custom_data_when_no_attr_then_error():
         AttributeError, match=re.escape("Attribute 'foo' not found.")
     ):
         bar_data.foo
+
+
+def test_bars_to_df():
+    date = np.full(10, np.datetime64("2022-02-02"))
+    open_ = np.full(10, 1.0)
+    high = np.full(10, 2.0)
+    low = np.full(10, 3.0)
+    close = np.full(10, 4.0)
+    volume = np.full(10, 5.0)
+    vwap = np.full(10, 6.0)
+    foo = np.full(10, 7.0)
+    bar_data = BarData(
+        date=date,
+        open=open_,
+        high=high,
+        low=low,
+        close=close,
+        volume=volume,
+        vwap=vwap,
+        foo=foo,
+    )
+    df = bars_to_df(bar_data)
+    assert df.columns.tolist() == [
+        "date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "vwap",
+        "foo",
+    ]
+    assert len(df) == 10
+    assert (df["date"].to_numpy() == date).all()
+    assert (df["open"].to_numpy() == open_).all()
+    assert (df["high"].to_numpy() == high).all()
+    assert (df["low"].to_numpy() == low).all()
+    assert (df["close"].to_numpy() == close).all()
+    assert (df["volume"].to_numpy() == volume).all()
+    assert (df["vwap"].to_numpy() == vwap).all()
+    assert (df["foo"].to_numpy() == foo).all()
+
+
+def test_bars_to_df_when_optional_cols_none():
+    date = np.full(10, np.datetime64("2022-02-02"))
+    open_ = np.full(10, 1.0)
+    high = np.full(10, 2.0)
+    low = np.full(10, 3.0)
+    close = np.full(10, 4.0)
+    bar_data = BarData(
+        date=date,
+        open=open_,
+        high=high,
+        low=low,
+        close=close,
+        volume=None,
+        vwap=None,
+    )
+    df = bars_to_df(bar_data)
+    assert df.columns.tolist() == ["date", "open", "high", "low", "close"]
+    assert len(df) == 10
 
 
 @pytest.mark.parametrize(
@@ -229,5 +289,32 @@ def test_verify_data_source_columns_when_missing_then_error():
         verify_data_source_columns(df)
 
 
-def test_default_parallel():
-    assert type(default_parallel()) is Parallel
+def test_json_safe_when_nat_then_null():
+    """NaTType subclasses datetime, so it would otherwise be serialized by the
+    datetime branch as the string "NaT" rather than as null."""
+    from pybroker.common import _json_safe
+
+    assert _json_safe(pd.NaT) is None
+    assert _json_safe(np.datetime64("NaT")) is None
+    assert _json_safe(pd.Timestamp("2021-01-04")) == "2021-01-04T00:00:00"
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (Decimal("NaN"), None),
+        (Decimal("Infinity"), None),
+        (Decimal("-Infinity"), None),
+        (Decimal("1.5"), 1.5),
+    ],
+)
+def test_json_safe_non_finite_decimal(value, expected):
+    """Decimal('NaN') floats into a raw nan, which
+    json.dumps(allow_nan=False) rejects -- so one non-finite Decimal made
+    to_json_str() raise on an otherwise valid result."""
+    import json
+
+    from pybroker.common import _json_safe
+
+    assert _json_safe(value) == expected
+    json.dumps({"v": _json_safe(value)}, allow_nan=False)

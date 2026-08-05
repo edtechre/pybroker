@@ -13,7 +13,12 @@ import pandas as pd
 import pytest
 import re
 from datetime import datetime
+from numba import njit
 from pybroker.eval import (
+    BootstrapResult,
+    BootConfIntervals,
+    DrawdownConfs,
+    DrawdownMetrics,
     EvalMetrics,
     EvaluateMixin,
     annual_total_return_percent,
@@ -84,52 +89,58 @@ def truncate(value, n):
     return math.floor(value * 10**n) / 10**n
 
 
+def assert_metric(actual, expected):
+    """Compares a ratio, allowing ``inf`` (unbounded) and ``None`` (NaN)."""
+    if expected is None:
+        assert math.isnan(actual)
+    elif math.isinf(expected):
+        assert actual == expected
+    else:
+        assert truncate(actual, 6) == truncate(expected, 6)
+
+
 @pytest.mark.parametrize(
-    "n, n_boot, expected_msg",
+    "n_boot, expected_msg",
     [
-        (0, 100, "Bootstrap sample size must be greater than 0."),
-        (-1, 100, "Bootstrap sample size must be greater than 0."),
-        (10, 0, "Number of boostrap samples must be greater than 0."),
-        (10, -1, "Number of boostrap samples must be greater than 0."),
+        (0, "Number of boostrap samples must be greater than 0."),
+        (-1, "Number of boostrap samples must be greater than 0."),
     ],
 )
-def test_bca_boot_conf_when_invalid_params_then_error(n, n_boot, expected_msg):
+def test_bca_boot_conf_when_invalid_params_then_error(n_boot, expected_msg):
     with pytest.raises(ValueError, match=re.escape(expected_msg)):
-        bca_boot_conf(np.random.rand(100), n, n_boot, profit_factor)
+        bca_boot_conf(np.random.rand(100), n_boot, profit_factor)
 
 
-@pytest.mark.parametrize("n, n_boot", [(1, 100), (1, 1), (10, 100), (10, 1)])
-def test_conf_profit_factor(n, n_boot, rand_values):
-    intervals = conf_profit_factor(rand_values, n, n_boot)
+@pytest.mark.parametrize("n_boot", [1, 100])
+def test_conf_profit_factor(n_boot, rand_values):
+    intervals = conf_profit_factor(rand_values, n_boot)
     assert len(intervals) == 6
 
 
-@pytest.mark.parametrize("n, n_boot", [(1, 100), (1, 1), (10, 100), (10, 1)])
-def test_conf_sharpe_ratio(n, n_boot, rand_values):
-    intervals = conf_sharpe_ratio(rand_values, n, n_boot)
+@pytest.mark.parametrize("n_boot", [1, 100])
+def test_conf_sharpe_ratio(n_boot, rand_values):
+    intervals = conf_sharpe_ratio(rand_values, n_boot)
     assert len(intervals) == 6
 
 
-@pytest.mark.parametrize("n, n_boot", [(1, 100), (1, 1), (10, 100), (10, 1)])
-def test_drawdown_conf(n, n_boot, rand_values):
-    dd, dd_pct = drawdown_conf(rand_values * 1000, rand_values, n, n_boot)
+@pytest.mark.parametrize("n_boot", [1, 100])
+def test_drawdown_conf(n_boot, rand_values):
+    dd, dd_pct = drawdown_conf(rand_values * 1000, rand_values, n_boot)
     assert len(dd) == 4
     assert len(dd_pct) == 4
 
 
 @pytest.mark.parametrize(
-    "n, n_boot, expected_msg",
+    "n_boot, expected_msg",
     [
-        (0, 100, "Bootstrap sample size must be greater than 0."),
-        (-1, 100, "Bootstrap sample size must be greater than 0."),
-        (10, 0, "Number of boostrap samples must be greater than 0."),
-        (10, -1, "Number of boostrap samples must be greater than 0."),
+        (0, "Number of boostrap samples must be greater than 0."),
+        (-1, "Number of boostrap samples must be greater than 0."),
     ],
 )
-def test_drawdown_conf_when_invalid_params_then_error(n, n_boot, expected_msg):
+def test_drawdown_conf_when_invalid_params_then_error(n_boot, expected_msg):
     values = np.random.rand(100)
     with pytest.raises(ValueError, match=re.escape(expected_msg)):
-        drawdown_conf(values, values, n, n_boot)
+        drawdown_conf(values, values, n_boot)
 
 
 def test_drawdown_conf_when_length_mismatch_then_error():
@@ -137,7 +148,59 @@ def test_drawdown_conf_when_length_mismatch_then_error():
         ValueError,
         match=re.escape("Param changes length does not match returns length."),
     ):
-        drawdown_conf(np.random.rand(100), np.random.rand(101), 10, 100)
+        drawdown_conf(np.random.rand(100), np.random.rand(101), 100)
+
+
+def test_bca_boot_conf_uses_full_data():
+    np.random.seed(123)
+    x = np.random.rand(50)
+    full = bca_boot_conf(x, 200, profit_factor)
+    np.random.seed(123)
+    prefix = bca_boot_conf(x[:10], 200, profit_factor)
+    assert full != prefix
+
+
+def test_bca_boot_conf_short_data_keeps_n_boot():
+    np.random.seed(456)
+    x = np.random.rand(5)
+    intervals = bca_boot_conf(x, 100, profit_factor)
+    assert intervals.low_2p5 != intervals.high_2p5
+
+
+def test_bca_boot_conf_does_not_mutate_input():
+    """The generic path jackknifes by building leave-one-out samples in a
+    scratch buffer. Swapping within x would mutate the caller's array, since
+    np.ascontiguousarray does not copy an already-contiguous float64 array."""
+    x = np.array([1.0, 2.0, -5.0, 3.0, -1.0, 4.0, -2.0])
+    original = x.copy()
+    bca_boot_conf(x, 100, max_drawdown)
+    assert np.array_equal(x, original)
+
+
+def test_bca_boot_conf_does_not_corrupt_input_when_fn_raises():
+    @njit
+    def raises_midway(a):
+        if len(a) == 6:
+            raise ValueError("boom")
+        return 0.0
+
+    x = np.array([1.0, 2.0, 3.0, 4.0, 5.0, -1.0, -2.0])
+    original = x.copy()
+    with pytest.raises(ValueError):
+        bca_boot_conf(x, 10, raises_midway)
+    assert np.array_equal(x, original)
+
+
+def test_drawdown_conf_uses_full_history():
+    np.random.seed(789)
+    changes = np.concatenate(
+        [np.full(20, 100.0), np.full(10, -150.0), np.full(20, 50.0)]
+    )
+    returns = changes / 10_000.0
+    full = drawdown_conf(changes, returns, 200)
+    np.random.seed(789)
+    short = drawdown_conf(changes[:10], returns[:10], 200)
+    assert full.confs.q_001 != short.confs.q_001
 
 
 @pytest.mark.parametrize(
@@ -178,20 +241,65 @@ def test_sharpe_ratio(values, obs, expected_sharpe):
 @pytest.mark.parametrize(
     "values, obs, expected_sortino",
     [
-        ([0.1, -0.2, 0.3, 0, -0.4, 0.5], None, 0.499999),
+        ([0.1, -0.2, 0.3, 0, -0.4, 0.5], None, 0.273861),
         (
             [0.1, -0.2, 0.3, 0, -0.4, 0.5],
             252,
-            0.4999999999999999 * np.sqrt(252),
+            0.273861278752583 * np.sqrt(252),
         ),
-        ([1, 1, 1, 1], None, 0),
-        ([1], None, 0),
+        ([-0.01, -0.02], None, -0.9486832980505139),
+        # No downside and no gain: 0, not unbounded.
+        ([0, 0, 0, 0], None, 0),
         ([], None, 0),
     ],
 )
 def test_sortino_ratio(values, obs, expected_sortino):
-    sortino = sortino_ratio(np.array(values), obs)
-    assert truncate(sortino, 6) == truncate(expected_sortino, 6)
+    assert_metric(sortino_ratio(np.array(values), obs), expected_sortino)
+
+
+@pytest.mark.parametrize("values", [[1, 1, 1, 1], [1], [0.01, 0.02, 0.03]])
+def test_sortino_ratio_when_no_downside_then_inf(values):
+    """A gain with no downside is unbounded, so it ranks best.
+
+    Returning 0 ranks the best possible input alongside a flat one. NaN is
+    worse still: a NaN score marks an Optuna trial FAILED, so the winning
+    candidate is discarded rather than ranked.
+    """
+    assert sortino_ratio(np.array(values, dtype=np.float64)) == np.inf
+
+
+def test_sortino_ratio_when_nan_returns_then_nan():
+    """Every ``r < 0`` test against NaN is False, so the downside deviation
+    comes out 0 and the degenerate branch reported the best possible score for
+    returns that are not computable at all."""
+    values = np.array([0.01, np.nan, 0.02], dtype=np.float64)
+    assert math.isnan(sortino_ratio(values))
+
+
+def test_sortino_ratio_matches_reference_definition():
+    """Denominator is downside deviation: negative returns squared about zero,
+    averaged over *all* observations. Matches quantstats.stats.sortino."""
+    rng = np.random.default_rng(11)
+    returns = rng.normal(0.0005, 0.01, 1000)
+    expected = returns.mean() / np.sqrt(
+        (returns[returns < 0] ** 2).sum() / len(returns)
+    )
+    assert sortino_ratio(returns) == pytest.approx(expected, rel=1e-12)
+
+
+def test_sortino_ratio_is_continuous_in_loss_count():
+    """Regression: np.std of a one-element array is 0, which used to trip the
+    zero-variance guard and collapse a single-loss series to 0."""
+    one_loss = np.concatenate([np.full(999, 0.001), [-0.0005]])
+    two_losses = np.concatenate([np.full(998, 0.001), [-0.0005, -0.0006]])
+    assert sortino_ratio(one_loss) > sortino_ratio(two_losses) > 0
+
+
+def test_sortino_ratio_accounts_for_loss_depth():
+    """Regression: a single loss used to score 0 regardless of magnitude."""
+    small = np.concatenate([np.full(99, 0.001), [-0.0005]])
+    large = np.concatenate([np.full(99, 0.001), [-0.5]])
+    assert sortino_ratio(small) > sortino_ratio(large)
 
 
 @pytest.mark.parametrize(
@@ -215,14 +323,16 @@ def test_max_drawdown(values, expected_dd):
     [
         ([0.1, 0.15, -0.05, 0.1, -0.25, -0.15, 0], 252, -9),
         ([0.1, -0.4], 252, -94.5),
-        ([1, 1, 1, 1], 252, 0),
-        ([1], 252, 0),
+        # No drawdown to divide by: unbounded, not worst-possible.
+        ([1, 1, 1, 1], 252, float("inf")),
+        ([1], 252, float("inf")),
         ([], 252, 0),
     ],
 )
 def test_calmar_ratio(values, bars_per_year, expected_calmar):
-    calmar = calmar_ratio(np.array(values), bars_per_year)
-    assert truncate(calmar, 6) == expected_calmar
+    assert_metric(
+        calmar_ratio(np.array(values), bars_per_year), expected_calmar
+    )
 
 
 @pytest.mark.parametrize(
@@ -302,6 +412,8 @@ def test_ulcer_index_when_invalid_period_then_error(values, period):
     "values, period, ui, expected_upi",
     [
         ([100, 101, 102, 100, 99, 103, 103, 102], 2, None, 0.329757),
+        # Explicit ui=0 with real mid-curve drawdowns: not genuinely
+        # drawdown-free, so no inf.
         ([100, 101, 102, 100, 99, 103, 103, 102], 2, 0, 0),
         ([100, 101, 102, 100, 99, 103, 103, 102], 2, 1, 0.299834),
         ([100, 101, 102, 100, 99, 103, 103, 102], 1, None, 0),
@@ -317,14 +429,13 @@ def test_ulcer_index_when_invalid_period_then_error(values, period):
         ([100], 14, 0, 0),
         ([100], 14, 1.5, 0),
         ([100], 1, None, 0),
-        ([100, 101], 14, None, 0),
-        ([100, 101], 14, 0, 0),
-        ([100, 101, 102], 2, 0, 0),
+        ([100, 101], 14, None, float("inf")),
+        ([100, 101], 14, 0, float("inf")),
+        ([100, 101, 102], 2, 0, float("inf")),
     ],
 )
 def test_upi(values, period, ui, expected_upi):
-    upi_ = upi(np.array(values), period=period, ui=ui)
-    assert truncate(upi_, 6) == expected_upi
+    assert_metric(upi(np.array(values), period=period, ui=ui), expected_upi)
 
 
 @pytest.mark.parametrize(
@@ -484,20 +595,17 @@ class TestEvaluateMixin:
     @pytest.mark.parametrize(
         "bars_per_year, expected_sharpe, expected_sortino",
         [
-            (None, 0.026013464180574847, 0.02727734785007549),
+            (None, 0.026013464180574847, 0.037930595687473444),
             (
                 252,
                 0.026013464180574847 * np.sqrt(252),
-                0.02727734785007549 * np.sqrt(252),
+                0.037930595687473444 * np.sqrt(252),
             ),
         ],
     )
-    @pytest.mark.parametrize(
-        "bootstrap_sample_size, bootstrap_samples", [(10, 100), (100_000, 100)]
-    )
+    @pytest.mark.parametrize("bootstrap_samples", [10, 100])
     def test_evaluate(
         self,
-        bootstrap_sample_size,
         bootstrap_samples,
         portfolio_df,
         trades_df,
@@ -511,7 +619,6 @@ class TestEvaluateMixin:
             portfolio_df,
             trades_df,
             calc_bootstrap,
-            bootstrap_sample_size=bootstrap_sample_size,
             bootstrap_samples=bootstrap_samples,
             bars_per_year=bars_per_year,
         )
@@ -601,7 +708,6 @@ class TestEvaluateMixin:
             pd.DataFrame(columns=["market_value", "fees"]),
             trades_df,
             calc_bootstrap,
-            bootstrap_sample_size=10,
             bootstrap_samples=100,
             bars_per_year=None,
         )
@@ -631,7 +737,6 @@ class TestEvaluateMixin:
             ),
             trades_df,
             calc_bootstrap,
-            bootstrap_sample_size=10,
             bootstrap_samples=100,
             bars_per_year=None,
         )
@@ -655,7 +760,6 @@ class TestEvaluateMixin:
             portfolio_df,
             pd.DataFrame(columns=["pnl", "return_pct", "bars"]),
             calc_bootstrap,
-            bootstrap_sample_size=10,
             bootstrap_samples=100,
             bars_per_year=None,
         )
@@ -696,3 +800,212 @@ class TestEvaluateMixin:
             assert result.bootstrap.drawdown is not None
         else:
             assert result.bootstrap is None
+
+    def test_evaluate_bootstrap_is_reproducible_with_seed(
+        self, portfolio_df, trades_df
+    ):
+        """Resampling happens inside @njit code, and Numba keeps a random state
+        separate from NumPy's. Seeding via np.random.seed() from Python left
+        the bootstrap non-reproducible despite the documented seed argument."""
+        mixin = EvaluateMixin()
+
+        def run(seed):
+            return mixin.evaluate(
+                portfolio_df,
+                trades_df,
+                calc_bootstrap=True,
+                bootstrap_samples=100,
+                bars_per_year=252,
+                seed=seed,
+            ).bootstrap
+
+        first, second = run(42), run(42)
+        assert first.profit_factor == second.profit_factor
+        assert first.sharpe == second.sharpe
+        assert first.drawdown == second.drawdown
+        assert run(7).sharpe != first.sharpe
+        assert run(None).sharpe != run(None).sharpe
+
+    @pytest.mark.parametrize("calc_bootstrap", [True, False])
+    def test_evaluate_preserves_global_numpy_random_state(
+        self, portfolio_df, trades_df, calc_bootstrap
+    ):
+        """evaluate() used to seed the process-global NumPy RNG and only
+        restore it on the bootstrap path, silently hijacking the caller's
+        stream on every other path."""
+        mixin = EvaluateMixin()
+        np.random.seed(999)
+        expected = np.random.rand(3)
+        np.random.seed(999)
+        mixin.evaluate(
+            portfolio_df,
+            trades_df,
+            calc_bootstrap,
+            bootstrap_samples=50,
+            bars_per_year=252,
+            seed=42,
+        )
+        assert np.array_equal(np.random.rand(3), expected)
+
+    def test_evaluate_when_market_value_reaches_zero(self, trades_df):
+        """A zero market value used to emit NaN returns, which poisoned
+        sharpe/sortino/calmar/volatility and desynced the date index used to
+        label max_drawdown_date."""
+        market_values = [100.0, 0.0, 0.0, 0.0, 100.0, 120.0, 150.0, 60.0]
+        index = pd.date_range("2023-04-12", periods=len(market_values))
+        mixin = EvaluateMixin()
+        metrics = mixin.evaluate(
+            pd.DataFrame(
+                {"market_value": market_values, "fees": 0.0}, index=index
+            ),
+            trades_df,
+            calc_bootstrap=False,
+            bootstrap_samples=100,
+            bars_per_year=252,
+        ).metrics
+        for field in (
+            "sharpe",
+            "sortino",
+            "calmar",
+            "annual_volatility_pct",
+            "max_drawdown_pct",
+        ):
+            assert np.isfinite(getattr(metrics, field)), field
+        # Ruin happens on the second bar; the date must name that bar.
+        assert metrics.max_drawdown_pct == -100.0
+        assert metrics.max_drawdown_date == index[1].to_pydatetime()
+
+
+def test_eval_metrics_to_json():
+    metrics = EvalMetrics(
+        trade_count=5,
+        sharpe=1.5,
+        max_drawdown_date=datetime(2023, 1, 15),
+        calmar=None,
+    )
+    payload = metrics.to_json()
+    assert payload["trade_count"] == 5
+    assert payload["sharpe"] == 1.5
+    assert payload["max_drawdown_date"] == "2023-01-15T00:00:00"
+    assert payload["calmar"] is None
+
+
+def test_bootstrap_result_to_json():
+    conf_intervals = pd.DataFrame(
+        [{"name": "sharpe", "conf": "95%", "lower": 0.1, "upper": 2.0}]
+    )
+    drawdown_conf = pd.DataFrame(
+        [{"name": "max_drawdown", "conf": "95%", "upper": 0.05}]
+    )
+    empty_dd = DrawdownConfs(0.0, 0.0, 0.0, 0.0)
+    bootstrap = BootstrapResult(
+        conf_intervals=conf_intervals,
+        drawdown_conf=drawdown_conf,
+        profit_factor=BootConfIntervals(0.1, 1.0, 0.2, 0.9, 0.3, 0.8),
+        sharpe=BootConfIntervals(0.0, 2.0, 0.1, 1.9, 0.2, 1.8),
+        drawdown=DrawdownMetrics(empty_dd, empty_dd),
+    )
+    payload = bootstrap.to_json()
+    assert len(payload["conf_intervals"]) == 1
+    assert payload["profit_factor"]["low_2p5"] == 0.1
+    assert payload["drawdown"]["confs"]["q_001"] == 0.0
+
+
+def test_upi_when_zero_market_value_bar_then_no_zero_division():
+    """A wipeout bar must not discard a completed TestResult.
+
+    ulcer_index guards the same division, and its guard means ui is non-zero
+    in exactly the case that used to kill upi, so the ``ui == 0`` early-out
+    does not cover it.
+    """
+    values = np.array([100.0, 50.0, 0.0, 10.0, 20.0])
+    result = upi(values, period=2)
+    assert np.isfinite(result) or np.isnan(result)
+
+
+def test_relative_entropy_ignores_non_finite_values():
+    """+/-inf must not index out of bounds.
+
+    ``factor`` becomes 0.0 with an infinite value, ``0.0 * inf`` is NaN, and
+    int(NaN) in numba is INT64_MIN -- an unchecked out-of-bounds write in a
+    kernel compiled without boundscheck.
+    """
+    finite = relative_entropy(np.array([1.0, 2.0, 3.0]))
+    with_inf = relative_entropy(np.array([1.0, 2.0, 3.0, np.inf]))
+    with_neg_inf = relative_entropy(np.array([1.0, 2.0, 3.0, -np.inf]))
+    assert np.isfinite(with_inf)
+    assert np.isfinite(with_neg_inf)
+    # The infinite observation is excluded, so the result matches the finite
+    # sample rather than being computed over a partially counted one.
+    assert with_inf == pytest.approx(finite)
+    assert with_neg_inf == pytest.approx(finite)
+
+
+@pytest.mark.parametrize(
+    "returns, market_values, label",
+    [
+        (np.zeros(50), np.full(50, 100_000.0), "no-trade"),
+        (
+            np.full(50, 0.01),
+            np.cumprod(np.full(50, 1.01)) * 100_000.0,
+            "all-winning",
+        ),
+        (
+            np.full(50, -0.01),
+            np.cumprod(np.full(50, 0.99)) * 100_000.0,
+            "all-losing",
+        ),
+    ],
+)
+def test_degenerate_metrics_never_fail_an_optuna_trial(
+    returns, market_values, label
+):
+    """An undefined ratio must rank, not abort the study.
+
+    optuna rejects a NaN objective outright, so pybroker records such a trial
+    as FAILED. Returning NaN for a degenerate-but-legitimate result therefore
+    discarded it -- including an all-winning trial, the one worth keeping --
+    and a window whose every trial failed made ``study.best_trial`` raise.
+    """
+    from pybroker.optimize import _is_failed_score
+
+    for name, value in (
+        ("sortino", sortino_ratio(returns)),
+        ("calmar", calmar_ratio(returns, 252)),
+        ("upi", upi(market_values)),
+        ("sharpe", sharpe_ratio(returns)),
+    ):
+        assert not _is_failed_score(value), f"{label}: {name} = {value!r}"
+
+
+def test_calmar_ratio_nan_returns_score_nan_not_inf():
+    """NaN comparisons are all False, so without the isnan guard a
+    non-computable input fell into the drawdown-free branch and scored inf --
+    the best possible rank. sortino_ratio carries the same guard."""
+    assert math.isnan(calmar_ratio(np.array([0.01, np.nan, 0.02]), 252))
+
+
+def test_upi_warmup_drawdown_does_not_score_inf():
+    """ulcer_index skips its first ``period`` bars, so a zero ulcer does not
+    prove the curve never drew down. A 50% drawdown confined to that warmup
+    must not score inf."""
+    values = np.array([100.0, 50.0, 100.0, 200.0])
+    assert ulcer_index(values, 3) == 0
+    assert upi(values, 3) == 0
+    # A genuinely drawdown-free gain still ranks best.
+    assert upi(np.array([100.0, 110.0, 120.0, 130.0]), 2) == np.inf
+
+
+def test_upi_nan_values_score_nan_regardless_of_direction():
+    """NaN means not-computable in both directions.
+
+    Testing direction before scanning for NaN scored the same corrupt series
+    0.0 on a net loss but NaN on a net gain -- one Optuna trial COMPLETE, the
+    other FAILED, for identical data -- and diverged from sortino_ratio and
+    calmar_ratio, which return NaN for both.
+    """
+    assert math.isnan(upi(np.array([100.0, np.nan, 200.0]), 3))
+    assert math.isnan(upi(np.array([100.0, 50.0, np.nan]), 3))
+    # Net loss and flat with an interior NaN: NaN, not rankable-worst.
+    assert math.isnan(upi(np.array([100.0, np.nan, 90.0]), 3))
+    assert math.isnan(upi(np.array([100.0, np.nan, 100.0]), 3))
