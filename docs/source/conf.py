@@ -102,3 +102,64 @@ locales = ["zh_CN"]
 locale_dirs = ["../locales/"]
 gettext_compact = False
 gettext_uuid = True
+
+# Framework types/functions stay on the indicator module page, but are omitted
+# from the index toctree under Indicators (built-in indicators only).
+_INDICATOR_TOC_EXCLUDE = frozenset(
+    {
+        "pybroker.indicator.Indicator",
+        "pybroker.indicator.IndicatorSet",
+        "pybroker.indicator.IndicatorsMixin",
+        "pybroker.indicator.indicator",
+    }
+)
+
+
+def _omit_indicator_framework_from_toc(app, doctree):
+    if app.env.docname != "reference/pybroker.indicator":
+        return
+    from sphinx import addnodes
+
+    for desc in doctree.findall(addnodes.desc):
+        for child in desc:
+            if not isinstance(child, addnodes.desc_signature):
+                continue
+            if not _INDICATOR_TOC_EXCLUDE.intersection(child.get("ids", [])):
+                continue
+            # Hide the object and its members; otherwise methods bubble up
+            # to the top-level Indicators toctree on the index.
+            for nested in desc.findall(addnodes.desc):
+                nested["no-contents-entry"] = True
+            break
+
+
+def _shorten_config_toc_names(app, doctree):
+    """Drop the StrategyConfig. prefix in the Configuration Options TOC.
+
+    Mutates ``env.tocs`` after TocTreeCollector so the index sidebar picks
+    up the short names.
+    """
+    if app.env.docname != "reference/pybroker.config":
+        return
+    from docutils import nodes
+
+    prefix = "StrategyConfig."
+    toc = app.env.tocs.get(app.env.docname)
+    if toc is None:
+        return
+    for ref in toc.findall(nodes.reference):
+        text = ref.astext()
+        if not text.startswith(prefix):
+            continue
+        short = text[len(prefix) :]
+        ref.clear()
+        ref.append(nodes.literal("", short))
+
+
+def setup(app):
+    # Run before TocTreeCollector (default priority 500).
+    app.connect(
+        "doctree-read", _omit_indicator_framework_from_toc, priority=400
+    )
+    # After TocTreeCollector has built env.tocs for this doc.
+    app.connect("doctree-read", _shorten_config_toc_names, priority=600)
