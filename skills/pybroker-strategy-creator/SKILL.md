@@ -1,6 +1,6 @@
 ---
 name: pybroker-strategy-creator
-description: Create, adapt, review, and debug PyBroker algorithmic trading strategy and backtest code using the bundled PyBroker wiki references generated from the local docs. Use when Codex needs to turn trading rules into PyBroker Strategy/ExecContext logic, add indicators, models, stops, ranking, position sizing, rebalancing, custom data sources, walkforward analysis, bootstrap metrics, or answer PyBroker usage questions.
+description: Create, adapt, review, and debug PyBroker algorithmic trading strategy and backtest code using the bundled PyBroker wiki references generated from the local docs. Use when an agent needs to turn trading rules into PyBroker Strategy/ExecContext logic, add indicators, models, stops, ranking, position sizing, rebalancing, custom data sources, walkforward analysis, bootstrap metrics, or answer PyBroker usage questions.
 ---
 
 # PyBroker Strategy Creator
