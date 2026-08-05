@@ -388,7 +388,7 @@ class Alpaca(DataSource):
             adjustment=adj_enum,
             feed=None,
         )
-        df = self._api.get_stock_bars(request).df
+        df = self._api.get_stock_bars(request).df  # type: ignore[union-attr]
         if df.columns.empty:
             return pd.DataFrame(
                 columns=[
