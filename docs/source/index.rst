@@ -9,7 +9,7 @@
 
    <style>
       .pybroker-logo {
-         max-width: min(600px, 100%);
+         max-width: min(450px, 100%);
          height: auto;
          margin-bottom: 0.25em;
       }
@@ -18,7 +18,7 @@
       }
    </style>
 
-.. image:: ../_static/pybroker-logo.png
+.. image:: ../_static/pybroker-logo-rtd.png
    :alt: PyBroker
    :class: pybroker-logo
 
