@@ -1,0 +1,296 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-04 18:14-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/notebooks/12. Optimization.ipynb:9 Parameter
+#: df96b35134004aa5a03b0e3ba4610d25
+msgid "Parameter Optimization"
+msgstr "参数优化"
+
+#: ../../source/notebooks/12. 3227d7fd384447dd995d6b2d0a334d6d
+#: Optimization.ipynb:11 Parameter
+msgid ""
+"**PyBroker v2** supports parameterized strategies. This allows you to "
+"backtest strategies using different combinations of parameters and "
+"automatically select the best performers. This process is known as "
+"**parameter optimization** and is handled via the `Optuna framework "
+"<https://optuna.org/>`__."
+msgstr ""
+"**PyBroker v2** 支持参数化策略。这使你可以使用不同的参数组合来回测策略，并自动选择表现最佳的组合。这一过程称为"
+"**参数优化**，由 `Optuna 框架 <https://optuna.org/>`__ 负责处理。"
+
+#: ../../source/notebooks/12. 8b9b477906b845a6aa0b8a0b78dcd0f9
+#: Optimization.ipynb:13 Parameter
+msgid ""
+"These strategy parameters are created as hyperparameters, as shown in the"
+" next section."
+msgstr "这些策略参数以超参数的形式创建，具体如下一节所示。"
+
+#: ../../source/notebooks/12. 6de81ba9313542e88406d8850749ca5f
+#: Optimization.ipynb:25 Parameter
+msgid "Declaring Hyperparameters"
+msgstr "声明超参数"
+
+#: ../../source/notebooks/12. Optimization.ipynb:27 Parameter
+#: c4a2e0ca22c546a0a0bee03719f96c71
+msgid ""
+"A hyperparameter is a named, tunable value created with `hyperparam "
+"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.hyperparam>`__."
+" Each one has a `default "
+"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.Hyperparam.default>`__"
+" that regular backtests use, and a search range given by `low "
+"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.Hyperparam.low>`__,"
+" `high "
+"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.Hyperparam.high>`__,"
+" and `step "
+"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.Hyperparam.step>`__."
+" The candidate values start at ``low`` (inclusive), and then increase by "
+"``step`` until ``high`` (inclusive)."
+msgstr ""
+"超参数是使用 `hyperparam "
+"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.hyperparam>`__"
+" 创建的一个具名的、可调节的值。每个超参数都有一个供常规回测使用的 `default "
+"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.Hyperparam.default>`__"
+"，以及一个由 `low "
+"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.Hyperparam.low>`__、"
+"`high "
+"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.Hyperparam.high>`__"
+" 和 `step "
+"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.Hyperparam.step>`__"
+" 给定的搜索范围。候选值从 ``low`` （含）开始，按 ``step`` 递增，直至 ``high`` （含）为止。"
+
+#: ../../source/notebooks/12. 9aa932e9765f4208be8dd567f15671f8
+#: Optimization.ipynb:30 Parameter
+msgid "A hyperparameter can be used to parameterize:"
+msgstr "超参数可用于参数化以下内容："
+
+#: ../../source/notebooks/12. 3ce116317c8840e782faa84c0d95feb7
+#: Optimization.ipynb:32 Parameter
+msgid ""
+"**Indicators**: pass it as a keyword argument to `indicator "
+"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.indicator>`__."
+msgstr ""
+"**指标**：作为关键字参数传给 `indicator "
+"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.indicator>`__。"
+
+#: ../../source/notebooks/12. 3ba9ce6b102e4d4c913eef2b8bf0631c
+#: Optimization.ipynb:33 Parameter
+msgid ""
+"**Executions**: attach it with ``hyperparams=`` on `add_execution "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__"
+" and read it with `ctx.hyperparam "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.hyperparam>`__"
+" in the execution function."
+msgstr ""
+"**执行函数**：通过 `add_execution "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__"
+" 上的 ``hyperparams=`` 参数附加，并在执行函数中使用 `ctx.hyperparam "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.hyperparam>`__"
+" 读取。"
+
+#: ../../source/notebooks/12. Optimization.ipynb:35 Parameter
+#: ff92e112c9ce43088af99d1b4b436d33
+msgid ""
+"To demonstrate, we will build a moving average crossover strategy with "
+"two hyperparameters: the moving average's ``period`` and a ``stop_pct`` "
+"stop loss."
+msgstr ""
+"为了演示这一点，我们将构建一个带有两个超参数的移动平均线交叉策略：移动平均线的 ``period``，以及一个 ``stop_pct`` 止损。"
+
+#: ../../source/notebooks/12. Optimization.ipynb:296 Parameter
+#: d68040ba64634ab4ad3edce2bb5c60d7
+msgid "Optimizing with Grid Search"
+msgstr "使用网格搜索进行优化"
+
+#: ../../source/notebooks/12. 4b44aab97b8c48148aea57915747ceb8
+#: Optimization.ipynb:298 Parameter
+msgid ""
+"The `optimize "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.optimize>`__"
+" method splits the data into train and test windows as specified by "
+"``train_size`` (``0.5`` for 50/50 by default). As Optuna searches the "
+"parameter space, each selected combination is backtested on the train "
+"window and scored with ``score_fn``. By default, this score is maximized "
+"(pass ``direction=\"minimize\"`` to minimize instead). To guard against "
+"overfitting, the backtests are run exclusively on the training window. "
+"Once finished, the best performing parameters on the in-sample train "
+"window are evaluated on the out-of-sample test window."
+msgstr ""
+"`optimize "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.optimize>`__"
+" 方法会按照 ``train_size`` （默认 ``0.5``，即 50/50）指定的比例，将数据拆分为训练窗口和测试窗口。当 Optuna "
+"搜索参数空间时，每个被选中的组合都会在训练窗口上进行回测，并使用 ``score_fn`` 打分。默认情况下，该分数会被最大化"
+"（传入 ``direction=\"minimize\"`` 则改为最小化）。为了防止过拟合，回测仅在训练窗口上运行。搜索结束后，"
+"在样本内训练窗口上表现最佳的参数会在样本外测试窗口上进行评估。"
+
+#: ../../source/notebooks/12. Optimization.ipynb:301 Parameter
+#: e6c6a45b8be948779f517e6af45eb1bb
+msgid ""
+"In Optuna, a sampler is the algorithm that decides which parameter "
+"combinations to test during the optimization process. The default sampler"
+" is ``grid``, which will evaluate every possible parameter combination. "
+"For our example, this results in 5 × 5 = 25 total trials. These trials "
+"are evaluated in parallel:"
+msgstr ""
+"在 Optuna 中，采样器是在优化过程中决定测试哪些参数组合的算法。默认的采样器是 ``grid``，它会评估每一种可能的参数组合。"
+"对于我们的示例，这会产生 5 × 5 = 25 次试验。这些试验会被并行评估："
+
+#: ../../source/notebooks/12. Optimization.ipynb:476 Parameter
+#: c25ac6759e624498a48d3f9447e018c5
+msgid ""
+"`best_params "
+"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.OptimizeResult.best_params>`__"
+" holds the best in-sample values, and `best_score "
+"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.OptimizeResult.best_score>`__"
+" is the score they earned on the train window."
+msgstr ""
+"`best_params "
+"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.OptimizeResult.best_params>`__"
+" 保存了最佳的样本内数值，而 `best_score "
+"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.OptimizeResult.best_score>`__"
+" 则是它们在训练窗口上获得的分数。"
+
+#: ../../source/notebooks/12. Optimization.ipynb:478 Parameter
+#: d833dbfe527345e5874be2767c3c3cc0
+msgid ""
+"Using the optimized parameters, we're able to see an improvment to the "
+"total return from before. The `result "
+"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.OptimizeResult.result>`__"
+" attribute contains the `TestResult "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.TestResult>`__"
+" of using the best parameters on the test window:"
+msgstr ""
+"使用优化后的参数，我们可以看到总回报相较之前有所提升。`result "
+"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.OptimizeResult.result>`__"
+" 属性包含了在测试窗口上使用最佳参数的 `TestResult "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.TestResult>`__："
+
+#: ../../source/notebooks/12. Optimization.ipynb:603 Parameter
+#: ca6d78a9b4a8492fb67fd46416b759b3
+msgid "Optimizing with Tree-structured Parzen Estimator (TPE)"
+msgstr "使用树形 Parzen 估计器（TPE）进行优化"
+
+#: ../../source/notebooks/12. Optimization.ipynb:605 Parameter
+#: d9be74a4b7ca4a5db34b0d9d35d828ec
+msgid ""
+"Grid search grows multiplicatively with each added hyperparameter. An "
+"alternative approach is using ``sampler=\"tpe\"``. Optuna's `TPESampler "
+"<https://optuna.readthedocs.io/en/stable/reference/samplers/generated/optuna.samplers.TPESampler.html>`__"
+" (Tree-structured Parzen Estimator) uses `Bayesian Optimization "
+"<https://en.wikipedia.org/wiki/Bayesian_optimization>`__ by fitting a "
+"probability model to completed trials to suggest promising values for the"
+" next run. Note that ``n_trials`` is required for every sampler except "
+"``\"grid\"``, and providing a seed makes the parameter search "
+"reproducible."
+msgstr ""
+"网格搜索的规模会随着每新增一个超参数而成倍增长。另一种替代方案是使用 ``sampler=\"tpe\"``。Optuna 的 `TPESampler "
+"<https://optuna.readthedocs.io/en/stable/reference/samplers/generated/optuna.samplers.TPESampler.html>`__"
+" （树形 Parzen 估计器）通过对已完成的试验拟合概率模型，采用 `贝叶斯优化 "
+"<https://en.wikipedia.org/wiki/Bayesian_optimization>`__ 的方式，为下一次运行提出有希望的取值。请注意，除 "
+"``\"grid\"`` 外，其余每种采样器都需要设置 ``n_trials``，并且提供随机种子可以使参数搜索结果可复现。"
+
+#: ../../source/notebooks/12. 7510065bf5784e48b8fe86504df8faff
+#: Optimization.ipynb:608 Parameter
+msgid ""
+"Because TPE adapts based on earlier results, its trials always run "
+"sequentially:"
+msgstr "由于 TPE 会根据先前的结果进行自适应调整，它的试验总是按顺序运行："
+
+#: ../../source/notebooks/12. 1ccae9ccc9ab4642a4d65a83a401de85
+#: Optimization.ipynb:731 Parameter
+msgid ""
+"TPE recovered the same best values as the exhaustive grid search while "
+"evaluating only 15 of the 25 combinations."
+msgstr "TPE 仅评估了 25 个组合中的 15 个，就得到了与穷举网格搜索相同的最佳数值。"
+
+#: ../../source/notebooks/12. Optimization.ipynb:743 Parameter
+#: b5ebb80203ac4e19bf2c9dc9ea7fdaa8
+msgid "Other Samplers"
+msgstr "其他采样器"
+
+#: ../../source/notebooks/12. 85b5d296cfbd44cf9e3cd13e89cda5fd
+#: Optimization.ipynb:745 Parameter
+msgid ""
+"``sampler=\"random\"`` chooses combinations uniformly at random with "
+"Optuna's `RandomSampler "
+"<https://optuna.readthedocs.io/en/stable/reference/samplers/generated/optuna.samplers.RandomSampler.html>`__."
+" Like grid, random trials can be evaluated in parallel:"
+msgstr ""
+"``sampler=\"random\"`` 使用 Optuna 的 `RandomSampler "
+"<https://optuna.readthedocs.io/en/stable/reference/samplers/generated/optuna.samplers.RandomSampler.html>`__"
+" 均匀随机地选择组合。与网格搜索一样，随机试验也可以并行评估："
+
+#: ../../source/notebooks/12. Optimization.ipynb:908 Parameter
+#: d9fbc0be8b824063aee9def8344bf88e
+msgid ""
+"Any `optuna.samplers.BaseSampler "
+"<https://optuna.readthedocs.io/en/stable/reference/samplers/index.html>`__"
+" instance can also be passed directly to `optimize "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.optimize>`__"
+" to customize the parameter search:"
+msgstr ""
+"任何 `optuna.samplers.BaseSampler "
+"<https://optuna.readthedocs.io/en/stable/reference/samplers/index.html>`__"
+" 实例也都可以直接传给 `optimize "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.optimize>`__"
+" 以自定义参数搜索："
+
+#: ../../source/notebooks/12. 7614d7d429bf4afd9a1d17bf4eb5f5c4
+#: Optimization.ipynb:1032 Parameter
+msgid ""
+"Every optimization also returns the underlying `optuna.Study "
+"<https://optuna.readthedocs.io/en/stable/reference/generated/optuna.study.Study.html>`__"
+" for inspecting the trials:"
+msgstr ""
+"每次优化还会返回底层的 `optuna.Study "
+"<https://optuna.readthedocs.io/en/stable/reference/generated/optuna.study.Study.html>`__"
+"，供你检查各次试验："
+
+#: ../../source/notebooks/12. 7c3d5ad1695a49ceb775c0fdbe62c23e
+#: Optimization.ipynb:1214 Parameter
+msgid "Walkforward Optimization"
+msgstr "前向优化"
+
+#: ../../source/notebooks/12. 18f44dc6b951477daf118b43d6e4afcd
+#: Optimization.ipynb:1225 Parameter
+msgid ""
+"Finally, `optimize "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.optimize>`__"
+" supports walkforward optimization. If you pass ``> 1`` to the "
+"``windows`` parameter, PyBroker will independently tune the "
+"hyperparameters for each window's in-sample split and then combine the "
+"out-of-sample results:"
+msgstr ""
+"最后，`optimize "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.optimize>`__"
+" 还支持前向优化。如果向 ``windows`` 参数传入 ``> 1``，PyBroker 会针对每个窗口的样本内拆分独立调优超参数，"
+"然后合并各窗口的样本外结果："
+
+#: ../../source/notebooks/12. Optimization.ipynb:1579 Parameter
+#: da394c6a77ab48f99cc59609d5870c56
+msgid ""
+"Each window is tuned separately, so the best parameters can differ "
+"between windows. The combined result contains the `best_params "
+"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.OptimizeResult.best_params>`__"
+" of the **last** (most recent) window:"
+msgstr ""
+"每个窗口都是单独调优的，因此不同窗口的最佳参数可能有所不同。合并后的结果包含**最后** （最近的）一个窗口的 "
+"`best_params "
+"<https://www.pybroker.com/en/latest/reference/pybroker.optimize.html#pybroker.optimize.OptimizeResult.best_params>`__："

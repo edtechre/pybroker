@@ -1,0 +1,317 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Edward West
+# This file is distributed under the same license as the PyBroker package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PyBroker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-04 18:14-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/notebooks/13. 99b8c1af7da5418e953c891d0f4b3e1a Margin
+#: Trading.ipynb:9
+msgid "Margin Trading"
+msgstr "保证金交易"
+
+#: ../../source/notebooks/13. 93fb0f8c16214900b1d9f6f972e274a4 Margin
+#: Trading.ipynb:11
+msgid ""
+"Until now, our backtests have been limited to cash-only trades. This "
+"notebook explores the margin trading features in **PyBroker v2**. We'll "
+"use `StrategyConfig "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig>`__"
+" to apply leverage to our buying power, calculate interest on borrowed "
+"funds, and set up collateral for short positions."
+msgstr ""
+"到目前为止，我们的回测一直局限于纯现金交易。本文档将探讨 **PyBroker v2** 中的保证金交易功能。我们将使用 "
+"`StrategyConfig "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig>`__"
+" 为购买力设置杠杆、计算借入资金的利息，并为空头仓位设置抵押品。"
+
+#: ../../source/notebooks/13. 39ed37b9a30949578353adf5cf520e8d Margin
+#: Trading.ipynb:61
+msgid "Configuring Leverage"
+msgstr "配置杠杆"
+
+#: ../../source/notebooks/13. 11528705d5c7481893fddd03093e4caa Margin
+#: Trading.ipynb:63
+msgid ""
+"Margin is enabled with the `leverage "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.leverage>`__"
+" config option, which multiplies buying power for both long and short "
+"positions. The default of ``1.0`` buys with cash only. Setting it to "
+"``2.0`` allows holding positions worth up to 2x our equity, and the "
+"borrowed remainder is tracked as a margin loan."
+msgstr ""
+"保证金通过 `leverage "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.leverage>`__"
+" 配置项启用，它会为多头和空头仓位放大购买力。默认值 ``1.0`` 表示仅使用现金买入。将其设置为 ``2.0`` "
+"则允许持有价值最高达自身权益 2 倍的仓位，借入的差额部分会作为保证金贷款进行跟踪。"
+
+#: ../../source/notebooks/13. 48e53aa402d94f528e70ce5f82a4b8dc Margin
+#: Trading.ipynb:65
+msgid ""
+"**PyBroker** does not model margin calls. Orders are instead limited to "
+"the available buying power at fill time:"
+msgstr "**PyBroker** 不模拟追加保证金通知。订单在成交时会受限于当时可用的购买力："
+
+#: ../../source/notebooks/13. 8c874324b9af43d3b96b2daeefbe0ec9 Margin
+#: Trading.ipynb:86
+msgid ""
+"Next, we define a simple trend-following rule: hold a symbol while it "
+"closes above its 50-day moving average."
+msgstr "接下来，我们定义一个简单的趋势跟踪规则：只要某个股票代码的收盘价高于其 50 日移动平均线，就持有该股票代码。"
+
+#: ../../source/notebooks/13. 7c3ffbc2f39849e6a7a32ae90325eda8 Margin
+#: Trading.ipynb:88
+msgid ""
+"Position sizing is where leverage takes effect. `set_target_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.set_target_shares>`__"
+" sizes orders as a fraction of deployable capital. This capital equals "
+"our equity multiplied by `leverage "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.leverage>`__."
+" As a result, targeting 25% across four stocks deploys up to roughly 2x "
+"our equity when trading on margin:"
+msgstr ""
+"杠杆正是在仓位规模计算中发挥作用的地方。`set_target_shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.set_target_shares>`__"
+" 会按可部署资本的一定比例来确定订单规模。这一资本等于我们的权益乘以 `leverage "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.leverage>`__"
+"。因此，在使用保证金交易时，对四只股票各设定 25% 的目标配置，最终部署的资金最多可达自身权益的约 2 倍："
+
+#: ../../source/notebooks/13. 07512f79989c44e1bbf4f21f09c2ca20 Margin
+#: Trading.ipynb:323
+msgid ""
+"`result.portfolio "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.TestResult.portfolio>`__"
+" records the margin balances on every bar. When a levered position is "
+"opened, a portion of cash (``notional / leverage``) is posted as "
+"collateral. The borrowed remainder is tracked in `margin_loan "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.margin_loan>`__,"
+" and the `net_cash_balance "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.net_cash_balance>`__"
+" equals ``cash - margin_loan``."
+msgstr ""
+"`result.portfolio "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.TestResult.portfolio>`__"
+" 会在每根 K 线记录保证金余额。开立杠杆仓位时，一部分现金（``notional / leverage``）会作为抵押品被占用。"
+"借入的差额部分会在 `margin_loan "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.margin_loan>`__"
+" 中进行跟踪，而 `net_cash_balance "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.net_cash_balance>`__"
+" 等于 ``cash - margin_loan``。"
+
+#: ../../source/notebooks/13. 1b0eb93109fc41299331a4a4e69a912f Margin
+#: Trading.ipynb:326
+msgid ""
+"To see the margin mechanics in effect, we filter the output to show only "
+"bars with an outstanding loan."
+msgstr "为了查看保证金机制的实际效果，我们对输出进行筛选，仅显示存在未偿还贷款的 K 线。"
+
+#: ../../source/notebooks/13. 14e9d386a26445a88cc7507735c98e16 Margin
+#: Trading.ipynb:328
+msgid ""
+"On the first of these filtered bars, a single entry was filled. Cash "
+"dropped by ``$25,413`` to post half of the roughly ``$51,000`` notional "
+"as collateral. The ``margin_loan`` column carries the borrowed half. "
+"Finally, the `notional "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.notional>`__"
+" column tracks the position's total exposure as it is marked to each "
+"close:"
+msgstr ""
+"在这些筛选出的 K 线中的第一根上，成交了一笔入场交易。现金减少了 ``$25,413``，用于将约 ``$51,000`` 名义价值的一半"
+"作为抵押品，``margin_loan`` 列则记录了借入的另一半。最后，`notional "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.notional>`__"
+" 列会随着每次按收盘价重新估值，跟踪该仓位的总敞口："
+
+#: ../../source/notebooks/13. Margin Trading.ipynb:523
+#: a0bf9269bc594735bf59bc6eea763315
+msgid "Comparing Against Cash-Only"
+msgstr "与纯现金交易进行比较"
+
+#: ../../source/notebooks/13. Margin Trading.ipynb:525
+#: e1d95b60b2414e4cbbd13c4d01a84b82
+msgid ""
+"To isolate the effects of leverage, we rerun the strategy with a cash-"
+"only `leverage "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.leverage>`__"
+" of ``1.0``. We also disable PyBroker's logging to keep the output clean "
+"for the remaining runs using `disable_logging "
+"<https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.disable_logging>`__:"
+msgstr ""
+"为了单独观察杠杆的影响，我们将 `leverage "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.leverage>`__"
+" 设置为纯现金的 ``1.0`` 并重新运行策略。我们还会使用 `disable_logging "
+"<https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.disable_logging>`__"
+" 禁用 PyBroker 的日志记录，以保持后续运行的输出简洁："
+
+#: ../../source/notebooks/13. 97098cbbe1e942b4bcb4a1927008066f Margin
+#: Trading.ipynb:597
+msgid "Charging Margin Interest"
+msgstr "收取保证金利息"
+
+#: ../../source/notebooks/13. 0ff4d3e1ad6742b7af0f3888e68f37ec Margin
+#: Trading.ipynb:599
+msgid ""
+"Leverage more than doubled the return and nearly doubled the max "
+"drawdown, but borrowing is not free. The `interest_rate "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.interest_rate>`__"
+" config option models this financing cost. It applies an annual "
+"percentage rate to the portfolio's net cash balance, accruing once per "
+"bar at ``interest_rate / bars_per_year``. Note that using this feature "
+"requires `bars_per_year "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.bars_per_year>`__"
+" to be set."
+msgstr ""
+"杠杆使回报率提高了一倍多，最大回撤也几乎翻倍，但借入资金并非没有成本。`interest_rate "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.interest_rate>`__"
+" 配置项对这一融资成本进行建模：它会对投资组合的净现金余额按年利率计息，并以 ``interest_rate / bars_per_year``"
+" 的比例按每根 K 线计提一次。请注意，使用此功能需要设置 `bars_per_year "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.bars_per_year>`__"
+"。"
+
+#: ../../source/notebooks/13. 98d1afc4ec3b47199fa228d32a5ee8b6 Margin
+#: Trading.ipynb:602
+msgid ""
+"Interest is charged when net cash is negative (the margin loan exceeds "
+"cash) and credited when net cash is positive. To isolate this financing "
+"cost, we will backtest a buy-and-hold execution. Because both runs will "
+"hold identical positions, the entire difference in their final market "
+"value represents the interest paid:"
+msgstr ""
+"当净现金为负（即保证金贷款超过现金）时会收取利息，当净现金为正时则会计入利息收益。为了单独观察这一融资成本，"
+"我们将回测一个买入并持有的执行。由于两次运行将持有完全相同的仓位，它们最终市值的全部差额就代表了所支付的利息："
+
+#: ../../source/notebooks/13. 2d8654b5592f45ef9a20924b381acabb Margin
+#: Trading.ipynb:670
+msgid ""
+"Looking at the tail of the portfolio, cash remains pinned at zero. "
+"Meanwhile, accrued interest is added to the `margin_loan "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.margin_loan>`__,"
+" causing it to increase with every bar:"
+msgstr ""
+"观察投资组合的末尾部分，现金始终固定为零。与此同时，计提的利息会被加到 `margin_loan "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.margin_loan>`__"
+" 中，使其随着每根 K 线不断增加："
+
+#: ../../source/notebooks/13. 855f2fce8ad24a2fb9f273189bcdf47a Margin
+#: Trading.ipynb:819
+msgid "Shorting on Margin"
+msgstr "使用保证金做空"
+
+#: ../../source/notebooks/13. 9716ad36dc4c44cd9b2a875674073535 Margin
+#: Trading.ipynb:821
+msgid ""
+"Short selling also uses margin. Opening a short position posts collateral"
+" equal to ``notional / leverage``, and shorts draw from the same shared "
+"buying power as long positions."
+msgstr ""
+"卖空同样会使用保证金。开立空头仓位时，会占用相当于 ``notional / leverage`` 的抵押品，且空头与多头共用同一份购买力。"
+
+#: ../../source/notebooks/13. 30f090840b42496dac552109988940b5 Margin
+#: Trading.ipynb:823
+msgid ""
+"The portfolio's `margin "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.margin>`__"
+" column tracks the notional exposure of open short positions at the "
+"current market price. Inside an execution, these same balances are "
+"accessible using `ctx.buying_power "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buying_power>`__,"
+" `ctx.margin_loan "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.margin_loan>`__,"
+" and `ctx.total_margin "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.total_margin>`__."
+msgstr ""
+"投资组合的 `margin "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.margin>`__"
+" 列会按当前市场价格跟踪未平仓空头仓位的名义敞口。在执行函数内部，可以通过 `ctx.buying_power "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.buying_power>`__、"
+"`ctx.margin_loan "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.margin_loan>`__"
+" 以及 `ctx.total_margin "
+"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.total_margin>`__"
+" 访问这些相同的余额。"
+
+#: ../../source/notebooks/13. Margin Trading.ipynb:826
+#: ef42fb1f19814f08a1cf22373e4d0057
+msgid ""
+"To demonstrate this, we invert our trend rule to short symbols trading "
+"below their moving average. We will use symbols that spent more of the "
+"backtest below trend, and we will enable `record_position_bars "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.record_position_bars>`__"
+" to capture per-position balances:"
+msgstr ""
+"为了演示这一点，我们将趋势规则反转，做空那些价格低于其移动平均线的股票代码。我们会选用在回测期间大部分时间处于趋势线以下的"
+"股票代码，并启用 `record_position_bars "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.record_position_bars>`__"
+" 来捕获每个仓位各自的余额："
+
+#: ../../source/notebooks/13. 86a8c6db1bc94b61b21e6b68178eeca1 Margin
+#: Trading.ipynb:860
+msgid ""
+"On bars with open short positions, the `margin "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.margin>`__"
+" column carries their notional exposure. Under leverage, this exposure "
+"can exceed your total equity. Collateral equal to ``notional / leverage``"
+" is posted from cash, while the `margin_loan "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.margin_loan>`__"
+" carries the borrowed remainder of the shorted notional. The "
+"`net_cash_balance "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.net_cash_balance>`__"
+" subtracts this loan from your remaining cash, dropping into the negative"
+" once the loan exceeds available cash."
+msgstr ""
+"在持有未平仓空头仓位的 K 线上，`margin "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.margin>`__"
+" 列会记录它们的名义敞口。在杠杆作用下，这一敞口可能超过你的总权益。相当于 ``notional / leverage`` "
+"的抵押品会从现金中扣除，而 `margin_loan "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.margin_loan>`__"
+" 则记录了做空名义价值中借入的剩余部分。`net_cash_balance "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.net_cash_balance>`__"
+" 会从你剩余的现金中减去这笔贷款，一旦贷款超过可用现金，其数值就会变为负数。"
+
+#: ../../source/notebooks/13. 59d2b7e758ca4d6a833f1ce06042be5e Margin
+#: Trading.ipynb:863
+msgid ""
+"Finally, note that `equity "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.equity>`__"
+" holds shorts at their entry cost, whereas `market_value "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.market_value>`__"
+" includes their unrealized PnL:"
+msgstr ""
+"最后请注意，`equity "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.equity>`__"
+" 按入场成本记录空头仓位，而 `market_value "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.market_value>`__"
+" 则包含了它们的未实现盈亏："
+
+#: ../../source/notebooks/13. 5025d1335713417c85cb3a402c359782 Margin
+#: Trading.ipynb:1057
+msgid ""
+"Because we enabled `record_position_bars "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.record_position_bars>`__,"
+" `result.positions "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.TestResult.positions>`__"
+" tracks the balances for each individual position. This includes each "
+"short's specific share of the portfolio's `margin "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.margin>`__,"
+" as well as its own unrealized PnL:"
+msgstr ""
+"由于我们启用了 `record_position_bars "
+"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.record_position_bars>`__"
+"，`result.positions "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.TestResult.positions>`__"
+" 会跟踪每个单独仓位的余额。这包括每个空头仓位在投资组合 `margin "
+"<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.margin>`__"
+" 中所占的具体份额，以及它自身的未实现盈亏："
