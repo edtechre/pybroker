@@ -33,8 +33,15 @@ Compare two commits:
 
 .. code-block:: bash
 
-   asv continuous master HEAD   # same invocation CI uses
+   asv continuous master HEAD   # local equivalent of the CI gate
    asv compare master HEAD      # diff table
+
+The PR gate adds ``--factor 1.1 --no-stats --machine ci-ubuntu-latest`` and
+resolves the base as ``origin/<base branch>``:
+
+.. code-block:: bash
+
+   asv continuous origin/master HEAD --factor 1.1 --no-stats
 
 Generate and preview the HTML dashboard:
 
@@ -43,35 +50,42 @@ Generate and preview the HTML dashboard:
    asv publish
    asv preview                # serves at http://127.0.0.1:8080
 
-Benchmark suite
+Benchmark Suite
 ---------------
 
-Currently one module: ``benchmarks/bench_backtest.py``.
+The asv suite lives in ``benchmarks/`` across four modules. CI fails PRs on
+regressions greater than 1.1x unless the PR carries the ``bench-override``
+label. New hot paths should add a benchmark.
 
-- ``Walkforward.time_walkforward`` — steady-state walkforward on the pinned
-  4-symbol / 2-year scenario. ``setup`` runs one warmup so Numba JIT
-  compile is not counted in the timed method.
-- ``Walkforward.peakmem_walkforward`` — peak RSS during the same call.
-- ``WalkforwardCold.time_cold_walkforward`` — same scenario without setup
-  warmup, so JIT compile is counted. Tracks the win from
-  ``@njit(cache=True)``.
+- ``bench_backtest.py`` - end-to-end walkforward (warm, cold, scaled,
+  models, intervals, slippage-free) plus microbenchmarks for the indicator
+  and eval kernels, ``SymbolArrayStore``, lag prep, and the caches. Also
+  tracks a hash of walkforward equity so numeric divergence is flagged.
+- ``bench_common.py`` - result-export quantize and interval compression.
+- ``bench_data.py`` - data-source cache I/O and yfinance reshape, on pinned
+  fixtures only.
+- ``bench_slippage.py`` - walkforward under the volume and volatility
+  slippage models.
 
-Reference dataset: ``tests/testdata/daily_1.pkl`` (4 symbols, 2 years daily,
-2020 rows). Same fixture the test suite uses via ``tests/fixtures.py``.
+Walkforward benches run on ``tests/testdata/daily_1.pkl`` (4 symbols, 2
+years daily, 2020 rows), the fixture the test suite uses via
+``tests/fixtures.py``; larger scenarios use synthetic OHLCV.
+``WalkforwardCold`` and ``WalkforwardProperCold`` deliberately pay Numba
+JIT compile cost, so never add warmup to either.
 
 Environment
 -----------
 
 ``asv.conf.json`` uses ``environment_type: virtualenv`` so each commit is
 benchmarked in a fresh virtualenv built from ``setup.cfg``. The install
-command is ``python -mpip install .`` — no Poetry, no tox; just pip.
+command is ``python -mpip install -e .`` - no Poetry, no tox; just pip.
 
 For local ad-hoc benchmarking you can switch the config to
 ``environment_type: existing`` (uses the currently activated venv) to
 skip the per-commit env rebuild. Revert before committing if you edit
 ``asv.conf.json``.
 
-Adding a benchmark
+Adding a Benchmark
 ------------------
 
 Create a new file under ``benchmarks/`` (or add a class to an existing
