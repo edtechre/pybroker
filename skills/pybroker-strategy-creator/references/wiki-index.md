@@ -25,7 +25,7 @@ Use this index to choose the smallest relevant reference file before writing or 
 - `wiki-10-rotational-trading.md` - Rotational Trading; 7 code cells.
   Topics: Rotational Trading.
 - `wiki-faqs.md` - FAQs; 15 code cells.
-  Topics: FAQs; How to...; ... get your version of PyBroker?; ... get data for another symbol?; ... set a limit price?; ... set the fill price?.
+  Topics: FAQs; How to...; See your version of PyBroker; Get data for another symbol; Set a limit price; Set the fill price; Get current positions; Use custom column data; Place an order more than one bar ahead; Cancel pending orders; Persist data across bars; Exit a position; Process multiple symbols at once; Annualize the Sharpe Ratio; Get and set a global parameter; Set a target allocation; Record position bars.
 
 ## API And Pattern References
 
