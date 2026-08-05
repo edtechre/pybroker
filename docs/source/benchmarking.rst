@@ -78,7 +78,7 @@ Environment
 
 ``asv.conf.json`` uses ``environment_type: virtualenv`` so each commit is
 benchmarked in a fresh virtualenv built from ``setup.cfg``. The install
-command is ``python -mpip install -e .`` - no Poetry, no tox; just pip.
+command is ``python -mpip install -e .``: no Poetry, no tox; just pip.
 
 For local ad-hoc benchmarking you can switch the config to
 ``environment_type: existing`` (uses the currently activated venv) to
