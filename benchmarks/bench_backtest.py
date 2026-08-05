@@ -1086,11 +1086,16 @@ class WalkforwardProperCold:
     timeout = 900
 
     def setup(self) -> None:
+        """Clear .nbi caches before every measured sample.
+
+        The clearing lives in ``setup`` rather than a custom hook because
+        asv has no per-iteration hook: it builds the timer as
+        ``timeit.Timer(stmt=func, setup=self.redo_setup)``, and
+        ``redo_setup`` re-runs teardown+setup between samples. A method
+        named ``setup_iteration`` would silently never be called.
+        """
         np.random.seed(SEED)
         self.df = _load_dataset()
-
-    def setup_iteration(self, *_args) -> None:
-        """Clear .nbi caches before every timed iteration."""
         for pkg_dir in (REPO_ROOT / "src" / "pybroker" / "__pycache__",):
             if pkg_dir.exists():
                 # Remove only the Numba artifacts, not the .pyc cache
