@@ -45,8 +45,11 @@ tox -e py311,py312,py313  # full test matrix
 asv run --quick             # fast feedback, one sample per benchmark
 asv continuous master HEAD  # what the CI PR gate runs (--factor 1.1)
 
-# Docs — `tox -e docs` is STALE (wrong paths); do not use or drive-by "fix" it
-sphinx-build -b html docs/source docs/_build
+# Docs — CI runs `tox -e docs` on Python 3.12; it is STRICT
+# (`sphinx-build -n -W --keep-going`), so any warning fails the build.
+# tox needs 3.11+, so run the same flags from a project venv instead;
+# a bare `sphinx-build -b html` hides warnings that fail CI.
+python -m sphinx -n -W --keep-going -b html docs/source/ docs/_build/
 ```
 
 ## Iron Rules
@@ -287,8 +290,13 @@ between runs on NumPy arrays and Numba kernels.
 - `docs/source/reference/pybroker.strategy.rst` carries a hand-curated
   `:exclude-members:` list — update it whenever public dataclass fields
   change.
-- Build with `sphinx-build -b html docs/source docs/_build` (see
-  Commands; `tox -e docs` is stale).
+- Build with `sphinx-build -n -W --keep-going -b html docs/source/
+  docs/_build/` (see Commands) — the strict flags CI runs via
+  `tox -e docs`. Any warning is a build failure; a bare
+  `sphinx-build -b html` will not catch what CI catches.
+- An include-only `.rst` under `docs/source/` is still discovered as its
+  own document and ships as a `<no title>` page; add it to
+  `exclude_patterns` in `conf.py` (`.. include::` still resolves it).
 - Never create or edit `docs/source/notebooks/*.ipynb` unless explicitly
   requested — document in docstrings instead.
 
