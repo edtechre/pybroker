@@ -8,14 +8,9 @@
 .. raw:: html
 
    <style>
-      @font-face {
-         font-family: Bosun;
-         src: url("_static/bosun03.otf") format("opentype");
-      }
-      #pybroker h1 {
-         font-family: Bosun;
-         font-weight: 900;
-         font-size: 3em;
+      .pybroker-logo {
+         max-width: min(600px, 100%);
+         height: auto;
          margin-bottom: 0.25em;
       }
       .shields a {
@@ -23,9 +18,9 @@
       }
    </style>
 
-================
-PyBroker
-================
+.. image:: ../_static/pybroker-logo.png
+   :alt: PyBroker
+   :class: pybroker-logo
 
 .. raw:: html
    
