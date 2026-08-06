@@ -1,0 +1,4 @@
+interface:
+  display_name: "PyBroker Model Trainer"
+  short_description: "Train and wire ML models into PyBroker backtests"
+  default_prompt: "Use $pybroker-model-trainer to train a machine learning model and evaluate it with a PyBroker walkforward backtest."

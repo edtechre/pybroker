@@ -151,3 +151,16 @@ pybroker-strategy-creator
 
 `See full SKILL.md on GitHub
 <https://github.com/edtechre/pybroker/blob/master/skills/pybroker-strategy-creator/SKILL.md>`_
+
+.. _skill-pybroker-model-trainer:
+
+pybroker-model-trainer
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. include:: ../../skills/pybroker-model-trainer/SKILL.md
+   :parser: myst_parser.sphinx_
+   :start-after: ## Overview
+   :end-before: ## Workflow
+
+`See full SKILL.md on GitHub
+<https://github.com/edtechre/pybroker/blob/master/skills/pybroker-model-trainer/SKILL.md>`_
