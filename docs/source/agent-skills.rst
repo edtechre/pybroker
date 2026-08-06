@@ -177,3 +177,16 @@ pybroker-model-trainer
 
 `See full SKILL.md on GitHub
 <https://github.com/edtechre/pybroker/blob/master/skills/pybroker-model-trainer/SKILL.md>`_
+
+.. _skill-pybroker-optimize:
+
+pybroker-optimize
+^^^^^^^^^^^^^^^^^
+
+.. include:: ../../skills/pybroker-optimize/SKILL.md
+   :parser: myst_parser.sphinx_
+   :start-after: ## Overview
+   :end-before: ## Workflow
+
+`See full SKILL.md on GitHub
+<https://github.com/edtechre/pybroker/blob/master/skills/pybroker-optimize/SKILL.md>`_

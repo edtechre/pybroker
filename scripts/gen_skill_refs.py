@@ -79,6 +79,11 @@ SKILLS: dict[str, dict[str, bool]] = {
         "index": False,
         "stubs": True,
     },
+    "pybroker-optimize": {
+        "all_wikis": False,
+        "index": False,
+        "stubs": True,
+    },
 }
 
 STUB_HEADER = """\
