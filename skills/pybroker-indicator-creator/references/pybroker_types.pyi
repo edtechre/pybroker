@@ -9,17 +9,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    Literal,
-    Mapping,
-    NamedTuple,
-    Optional,
-    Sequence,
-    Union,
-)
+from typing import Any, Callable, Iterable, Literal, Mapping, NamedTuple, Optional, Sequence, Union
 
 from numpy.typing import NDArray
 import numpy as np
@@ -34,19 +24,17 @@ class SymbolArrayStore: ...
 # --- src/pybroker/common.py ---
 class DataCol(Enum):
     """Default data column names."""
-
-    DATE = "date"
-    SYMBOL = "symbol"
-    OPEN = "open"
-    HIGH = "high"
-    LOW = "low"
-    CLOSE = "close"
-    VOLUME = "volume"
-    VWAP = "vwap"
+    DATE = 'date'
+    SYMBOL = 'symbol'
+    OPEN = 'open'
+    HIGH = 'high'
+    LOW = 'low'
+    CLOSE = 'close'
+    VOLUME = 'volume'
+    VWAP = 'vwap'
 
 class Day(Enum):
     """Enumeration of days."""
-
     MON = 0
     TUES = 1
     WEDS = 2
@@ -57,67 +45,51 @@ class Day(Enum):
 
 class FeeMode(Enum):
     """Brokerage fee mode to use for backtesting."""
-
-    ORDER_PERCENT = "order_percent"
-    PER_ORDER = "per_order"
-    PER_SHARE = "per_share"
+    ORDER_PERCENT = 'order_percent'
+    PER_ORDER = 'per_order'
+    PER_SHARE = 'per_share'
 
 class OrderType(Enum):
     """Order type classifications."""
-
-    MARKET = "market"
-    LIMIT = "limit"
-    STOP_BAR = "stop_bar"
-    STOP_LOSS = "stop_loss"
-    STOP_PROFIT = "stop_profit"
-    STOP_TRAILING = "stop_trailing"
+    MARKET = 'market'
+    LIMIT = 'limit'
+    STOP_BAR = 'stop_bar'
+    STOP_LOSS = 'stop_loss'
+    STOP_PROFIT = 'stop_profit'
+    STOP_TRAILING = 'stop_trailing'
 
 class PositionIntent(Enum):
     """Position intent of an order."""
-
-    BUY_TO_OPEN = "buy_to_open"
-    BUY_TO_CLOSE = "buy_to_close"
-    SELL_TO_OPEN = "sell_to_open"
-    SELL_TO_CLOSE = "sell_to_close"
+    BUY_TO_OPEN = 'buy_to_open'
+    BUY_TO_CLOSE = 'buy_to_close'
+    SELL_TO_OPEN = 'sell_to_open'
+    SELL_TO_CLOSE = 'sell_to_close'
 
 class PositionMode(Enum):
     """Position mode for backtesting."""
-
-    DEFAULT = "default"
-    LONG_ONLY = "long_only"
-    SHORT_ONLY = "short_only"
+    DEFAULT = 'default'
+    LONG_ONLY = 'long_only'
+    SHORT_ONLY = 'short_only'
 
 class PriceType(Enum):
     """Enumeration of price types used to specify fill price with :class:`pybroker.context.ExecContext`."""
-
-    OPEN = "open"
-    LOW = "low"
-    HIGH = "high"
-    CLOSE = "close"
-    MIDDLE = "middle"
-    AVERAGE = "average"
+    OPEN = 'open'
+    LOW = 'low'
+    HIGH = 'high'
+    CLOSE = 'close'
+    MIDDLE = 'middle'
+    AVERAGE = 'average'
 
 class StopType(Enum):
     """Stop types."""
-
-    BAR = "bar"
-    LOSS = "loss"
-    PROFIT = "profit"
-    TRAILING = "trailing"
+    BAR = 'bar'
+    LOSS = 'loss'
+    PROFIT = 'profit'
+    TRAILING = 'trailing'
 
 class BarData:
     """Contains data for a series of bars."""
-    def __init__(
-        self,
-        date: NDArray[np.datetime64],
-        open: NDArray[np.float64],
-        high: NDArray[np.float64],
-        low: NDArray[np.float64],
-        close: NDArray[np.float64],
-        volume: Optional[NDArray[np.float64]],
-        vwap: Optional[NDArray[np.float64]],
-        **kwargs,
-    ): ...
+    def __init__(self, date: NDArray[np.datetime64], open: NDArray[np.float64], high: NDArray[np.float64], low: NDArray[np.float64], close: NDArray[np.float64], volume: Optional[NDArray[np.float64]], vwap: Optional[NDArray[np.float64]], **kwargs): ...
     # Instance attributes assigned in __init__:
     date: NDArray[np.datetime64]
     open: NDArray[np.float64]
@@ -130,20 +102,16 @@ class BarData:
 
 class FeeInfo(NamedTuple):
     """Contains info for custom fee calculations."""
-
     symbol: str
     shares: Decimal
     fill_price: Decimal
-    order_type: Literal["buy", "sell"]
+    order_type: Literal['buy', 'sell']
 
 class TrainedModel(NamedTuple):
     """Trained model/symbol identifier."""
-
     name: str
     instance: Any
-    predict_fn: Optional[
-        Callable[[Any, Union[pd.DataFrame, NDArray]], NDArray]
-    ]
+    predict_fn: Optional[Callable[[Any, Union[pd.DataFrame, NDArray]], NDArray]]
     input_cols: Optional[tuple[str]]
     per_bar: bool = False
     lag_columns: Optional[tuple[str, ...]] = None
@@ -151,44 +119,33 @@ class TrainedModel(NamedTuple):
 SymbolSelector = Callable[[pd.DataFrame], Sequence[str]]
 
 # --- src/pybroker/interval.py ---
-CalendarInterval = Literal["daily", "weekly", "monthly", "quarterly", "yearly"]
+CalendarInterval = Literal['daily', 'weekly', 'monthly', 'quarterly', 'yearly']
 
 TimeframeInterval = Union[int, CalendarInterval, str]
 
 # --- src/pybroker/portfolio.py ---
 class Stop(NamedTuple):
     """Contains information about a stop set on :class:`.Entry`."""
-
     id: int
     symbol: str
     stop_type: StopType
-    pos_type: Literal["long", "short"]
+    pos_type: Literal['long', 'short']
     percent: Optional[Decimal]
     points: Optional[Decimal]
     bars: Optional[int]
-    fill_price: Optional[
-        Union[
-            int,
-            float,
-            np.floating,
-            Decimal,
-            PriceType,
-            Callable[[str, BarData], Union[int, float, Decimal]],
-        ]
-    ]
+    fill_price: Optional[Union[int, float, np.floating, Decimal, PriceType, Callable[[str, BarData], Union[int, float, Decimal]]]]
     limit_price: Optional[Decimal]
     exit_price: Optional[PriceType]
 
 @dataclass
 class Entry:
     """Contains information about an entry into a :class:`.Position`."""
-
     id: int
     date: np.datetime64
     symbol: str
     shares: Decimal
     price: Decimal
-    type: Literal["long", "short"]
+    type: Literal['long', 'short']
     bars: int = 0
     sym_bars: int = 0
     stops: list[Stop] = list()
@@ -198,10 +155,9 @@ class Entry:
 @dataclass
 class Position:
     """Contains information about an open position in ``symbol``."""
-
     symbol: str
     shares: Decimal
-    type: Literal["long", "short"]
+    type: Literal['long', 'short']
     close: Decimal = Decimal()
     equity: Decimal = Decimal()
     market_value: Decimal = Decimal()
@@ -215,9 +171,8 @@ class Position:
 
 class Trade(NamedTuple):
     """Holds information about a completed trade (entry and exit)."""
-
     id: int
-    type: Literal["long", "short"]
+    type: Literal['long', 'short']
     symbol: str
     entry_date: np.datetime64
     exit_date: np.datetime64
@@ -229,29 +184,19 @@ class Trade(NamedTuple):
     agg_pnl: Decimal
     bars: int
     pnl_per_bar: Decimal
-    stop: Optional[Literal["bar", "loss", "profit", "trailing"]]
+    stop: Optional[Literal['bar', 'loss', 'profit', 'trailing']]
     mae: Decimal
     mfe: Decimal
 
 class Order(NamedTuple):
     """Holds information about a filled order."""
-
     id: int
-    type: Literal["buy", "sell"]
+    type: Literal['buy', 'sell']
     symbol: str
     date: np.datetime64
     created: Optional[np.datetime64]
-    order_type: Literal[
-        "market",
-        "limit",
-        "stop_bar",
-        "stop_loss",
-        "stop_profit",
-        "stop_trailing",
-    ]
-    intent: Literal[
-        "buy_to_open", "buy_to_close", "sell_to_open", "sell_to_close"
-    ]
+    order_type: Literal['market', 'limit', 'stop_bar', 'stop_loss', 'stop_profit', 'stop_trailing']
+    intent: Literal['buy_to_open', 'buy_to_close', 'sell_to_open', 'sell_to_close']
     shares: Decimal
     limit_price: Optional[Decimal]
     market_price: Decimal
@@ -260,7 +205,6 @@ class Order(NamedTuple):
 
 class PortfolioBar(NamedTuple):
     """Snapshot of :class:`.Portfolio` state, captured per bar."""
-
     date: np.datetime64
     cash: Decimal
     equity: Decimal
@@ -275,7 +219,6 @@ class PortfolioBar(NamedTuple):
 
 class PositionBar(NamedTuple):
     """Snapshot of an open :class:`.Position`'s state, captured per bar."""
-
     symbol: str
     date: np.datetime64
     long_shares: Decimal
@@ -288,24 +231,7 @@ class PositionBar(NamedTuple):
 
 class Portfolio:
     """Class representing a portfolio of holdings."""
-    def __init__(
-        self,
-        cash: float,
-        fee_mode: Optional[
-            Union[FeeMode, Callable[[FeeInfo], Decimal], None]
-        ] = None,
-        fee_amount: Optional[float] = None,
-        enable_fractional_shares: bool = False,
-        position_mode: PositionMode = PositionMode.DEFAULT,
-        max_long_positions: Optional[int] = None,
-        max_short_positions: Optional[int] = None,
-        record_stops: Optional[bool] = False,
-        leverage: float = 1.0,
-        interest_rate: float = 0.0,
-        bars_per_year: Optional[int] = None,
-        record_portfolio_bars: bool = False,
-        record_position_bars: bool = False,
-    ): ...
+    def __init__(self, cash: float, fee_mode: Optional[Union[FeeMode, Callable[[FeeInfo], Decimal], None]]=None, fee_amount: Optional[float]=None, enable_fractional_shares: bool=False, position_mode: PositionMode=PositionMode.DEFAULT, max_long_positions: Optional[int]=None, max_short_positions: Optional[int]=None, record_stops: Optional[bool]=False, leverage: float=1.0, interest_rate: float=0.0, bars_per_year: Optional[int]=None, record_portfolio_bars: bool=False, record_position_bars: bool=False): ...
     # Instance attributes assigned in __init__:
     cash: Decimal
     equity: Decimal
@@ -325,92 +251,30 @@ class Portfolio:
     def win_rate(self) -> Decimal: ...
     @property
     def loss_rate(self) -> Decimal: ...
-    def buy(
-        self,
-        date: np.datetime64,
-        symbol: str,
-        shares: Decimal,
-        fill_price: Decimal,
-        limit_price: Optional[Decimal] = None,
-        stops: Optional[Iterable[Stop]] = None,
-        created: Optional[np.datetime64] = None,
-        order_type: OrderType = OrderType.MARKET,
-        market_price: Optional[Decimal] = None,
-    ) -> Optional[Order]: ...
-    def sell(
-        self,
-        date: np.datetime64,
-        symbol: str,
-        shares: Decimal,
-        fill_price: Decimal,
-        limit_price: Optional[Decimal] = None,
-        stops: Optional[Iterable[Stop]] = None,
-        created: Optional[np.datetime64] = None,
-        order_type: OrderType = OrderType.MARKET,
-        market_price: Optional[Decimal] = None,
-    ) -> Optional[Order]: ...
-    def exit_position(
-        self,
-        date: np.datetime64,
-        symbol: str,
-        buy_fill_price: Decimal,
-        sell_fill_price: Decimal,
-        col_scope: Optional[ColumnScope] = None,
-        ind_scope: Optional[IndicatorScope] = None,
-        sym_end_index: Optional[Mapping[str, int]] = None,
-        slippage_model: Optional["SlippageModel"] = None,
-    ): ...
-    def capture_bar(
-        self,
-        date: np.datetime64,
-        col_scope: ColumnScope,
-        sym_end_index: Mapping[str, int],
-        price_scope: Optional[PriceScope] = None,
-    ): ...
-    def incr_bars(
-        self,
-        date: Optional[np.datetime64] = None,
-        price_scope: Optional[PriceScope] = None,
-    ): ...
+    def buy(self, date: np.datetime64, symbol: str, shares: Decimal, fill_price: Decimal, limit_price: Optional[Decimal]=None, stops: Optional[Iterable[Stop]]=None, created: Optional[np.datetime64]=None, order_type: OrderType=OrderType.MARKET, market_price: Optional[Decimal]=None) -> Optional[Order]: ...
+    def sell(self, date: np.datetime64, symbol: str, shares: Decimal, fill_price: Decimal, limit_price: Optional[Decimal]=None, stops: Optional[Iterable[Stop]]=None, created: Optional[np.datetime64]=None, order_type: OrderType=OrderType.MARKET, market_price: Optional[Decimal]=None) -> Optional[Order]: ...
+    def exit_position(self, date: np.datetime64, symbol: str, buy_fill_price: Decimal, sell_fill_price: Decimal, col_scope: Optional[ColumnScope]=None, ind_scope: Optional[IndicatorScope]=None, sym_end_index: Optional[Mapping[str, int]]=None, slippage_model: Optional['SlippageModel']=None): ...
+    def capture_bar(self, date: np.datetime64, col_scope: ColumnScope, sym_end_index: Mapping[str, int], price_scope: Optional[PriceScope]=None): ...
+    def incr_bars(self, date: Optional[np.datetime64]=None, price_scope: Optional[PriceScope]=None): ...
     def remove_stop(self, stop_id: int) -> bool: ...
-    def remove_stops(
-        self,
-        val: Union[str, Position, Entry],
-        stop_type: Optional[StopType] = None,
-    ): ...
-    def check_stops(
-        self,
-        date: np.datetime64,
-        price_scope: PriceScope,
-        col_scope: Optional[ColumnScope] = None,
-        sym_end_index: Optional[Mapping[str, int]] = None,
-        ind_scope: Optional[IndicatorScope] = None,
-        slippage_model: Optional["SlippageModel"] = None,
-    ): ...
+    def remove_stops(self, val: Union[str, Position, Entry], stop_type: Optional[StopType]=None): ...
+    def check_stops(self, date: np.datetime64, price_scope: PriceScope, col_scope: Optional[ColumnScope]=None, sym_end_index: Optional[Mapping[str, int]]=None, ind_scope: Optional[IndicatorScope]=None, slippage_model: Optional['SlippageModel']=None): ...
 
 # --- src/pybroker/scope.py ---
 class PendingOrder(NamedTuple):
     """Holds data for a pending order."""
-
     id: int
-    type: Literal["buy", "sell"]
+    type: Literal['buy', 'sell']
     symbol: str
     created: np.datetime64
     exec_date: np.datetime64
     shares: Decimal
     limit_price: Optional[Decimal]
-    fill_price: Union[
-        int,
-        float,
-        np.floating,
-        Decimal,
-        PriceType,
-        Callable[[str, BarData], Union[int, float, Decimal]],
-    ]
+    fill_price: Union[int, float, np.floating, Decimal, PriceType, Callable[[str, BarData], Union[int, float, Decimal]]]
     exec_bar: int
     timeout_bars: Optional[int]
-    stops: Optional[frozenset["Stop"]]
-    exit_pos_type: Optional[Literal["long", "short"]] = None
+    stops: Optional[frozenset['Stop']]
+    exit_pos_type: Optional[Literal['long', 'short']] = None
 
 class ColumnScope:
     """Caches and retrieves column data from a :class:`SymbolArrayStore`."""
@@ -420,40 +284,24 @@ class ColumnScope:
     @property
     def symbols(self) -> frozenset[str]: ...
     def unique_dates(self) -> NDArray[np.datetime64]: ...
-    def fetch_dict(
-        self,
-        symbol: str,
-        names: Iterable[str],
-        end_index: Optional[int] = None,
-    ) -> dict[str, Optional[NDArray]]: ...
-    def fetch(
-        self, symbol: str, name: str, end_index: Optional[int] = None
-    ) -> Optional[NDArray]: ...
-    def fetch_value(
-        self, symbol: str, name: str, end_index: int
-    ) -> Optional[float]: ...
-    def bar_data_from_data_columns(
-        self, symbol: str, end_index: int
-    ) -> BarData: ...
+    def fetch_dict(self, symbol: str, names: Iterable[str], end_index: Optional[int]=None) -> dict[str, Optional[NDArray]]: ...
+    def fetch(self, symbol: str, name: str, end_index: Optional[int]=None) -> Optional[NDArray]: ...
+    def fetch_value(self, symbol: str, name: str, end_index: int) -> Optional[float]: ...
+    def bar_data_from_data_columns(self, symbol: str, end_index: int) -> BarData: ...
 
 class IndicatorScope:
     """Caches and retrieves :class:`pybroker.indicator.Indicator` data."""
     # Constructed by the framework; not user-instantiable.
-    def fetch(
-        self, symbol: str, name: str, end_index: Optional[int] = None
-    ) -> NDArray[np.float64]: ...
+    def fetch(self, symbol: str, name: str, end_index: Optional[int]=None) -> NDArray[np.float64]: ...
     def fetch_full(self, symbol: str, name: str) -> NDArray[np.float64]: ...
     def has_indicator(self, symbol: str, name: str) -> bool: ...
-    def fetch_history(
-        self, symbol: str, name: str, dates: NDArray[Any]
-    ) -> Optional[NDArray[np.float64]]: ...
+    def fetch_history(self, symbol: str, name: str, dates: NDArray[Any]) -> Optional[NDArray[np.float64]]: ...
     def fetch_value(self, symbol: str, name: str, end_index: int) -> float: ...
 
 # --- src/pybroker/eval.py ---
 @dataclass(frozen=True)
 class EvalMetrics:
     """Contains metrics for evaluating a :class:`pybroker.strategy.Strategy`."""
-
     trade_count: int = 0
     initial_market_value: float = 0
     end_market_value: float = 0
@@ -502,7 +350,6 @@ class EvalMetrics:
 
 class BootConfIntervals(NamedTuple):
     """Holds confidence intervals of bootstrap tests."""
-
     low_2p5: float
     high_2p5: float
     low_5: float
@@ -512,7 +359,6 @@ class BootConfIntervals(NamedTuple):
 
 class DrawdownConfs(NamedTuple):
     """Contains upper bounds of confidence intervals for maximum drawdown."""
-
     q_001: float
     q_01: float
     q_05: float
@@ -520,13 +366,11 @@ class DrawdownConfs(NamedTuple):
 
 class DrawdownMetrics(NamedTuple):
     """Contains drawdown metrics."""
-
     confs: DrawdownConfs
     pct_confs: DrawdownConfs
 
 class BootstrapResult(NamedTuple):
     """Contains results of bootstrap tests."""
-
     conf_intervals: pd.DataFrame
     drawdown_conf: pd.DataFrame
     profit_factor: BootConfIntervals

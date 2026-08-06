@@ -46,7 +46,7 @@ Use this index to choose the smallest relevant reference file before writing or 
 - `wiki-14-modeling-slippage.md` - Modeling Slippage; 6 code cells.
   Topics: Modeling Slippage; A Baseline Strategy; Fixed Slippage; Volatility Slippage; Volume Slippage; Writing a Custom Slippage Model.
 
-- `wiki-15-multiple-time-intervals.md` - Multiple Time Intervals; 6 code cells.
+- `wiki-15-multiple-time-intervals.md` - Multiple Time Intervals; 8 code cells.
   Topics: Multiple Time Intervals; Interval Types; Compressing Bars; A Multi-Timeframe Strategy; Binding an Indicator to an Interval; Training a Model on an Interval.
 
 - `wiki-16-time-series-models.md` - Time Series Models; 10 code cells.

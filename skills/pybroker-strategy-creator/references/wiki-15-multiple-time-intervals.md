@@ -112,9 +112,7 @@ result.metrics_df.head(20)
 
 ## Binding an Indicator to an Interval
 
-To compute an indicator on compressed bars, bind it to one or more intervals with [Indicator.intervals](https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.Indicator.intervals) and read its values with the [indicator](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.IntervalContext.indicator) method on that interval's context. Binding replaces the default base timeframe computation, so include `"base"` in the call to also compute the indicator on the base timeframe.
-
-**PyBroker** automatically unions bound intervals with the execution's `intervals` parameter. As a result, the `"weekly"` interval in the example below is accessible via [ctx.interval](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.interval) without declaring it again. The `intervals` parameter only needs to specify `"monthly"`, which provides the raw monthly bars.
+To compute an indicator on compressed bars, bind it to one or more intervals with [Indicator.intervals(...)](https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.Indicator.intervals).
 
 The example below upgrades the weekly trend rule to compare the weekly close against a 10-bar SMA calculated from the weekly bars:
 
@@ -147,13 +145,20 @@ strategy.add_execution(
     indicators=sma_10.intervals("weekly"),
     intervals="monthly",
 )
+```
+
+**PyBroker** automatically unions bound intervals with the execution's `intervals` parameter, and the `"weekly"` interval in the example is made accessible via [ctx.interval("weekly")](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.interval). The `intervals` parameter only needs to specify `"monthly"`, which provides the raw monthly bars.
+
+Note that binding will override computing the indicator on the base timeframe of the data source. Passing `"base"` to [Indicator.intervals()](https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.Indicator.intervals) will then also compute the indicator on the base timeframe of the data source.
+
+```python
 result = strategy.backtest(timeframe="1d")
 result.metrics_df.head(20)
 ```
 
 ## Training a Model on an Interval
 
-You can bind models in the exact same way with [ModelSource.intervals](https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.ModelSource.intervals). **PyBroker** then trains the model on the interval's compressed bars alongside any registered indicators. Binding replaces the default base timeframe training, so include `"base"` in the call to also train the model on the base timeframe. You can access the per-interval predictions by calling the [preds](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.IntervalContext.preds) method on that interval's context. During [Walkforward Analysis](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward), the `lookahead` between an interval model's train and test data is enforced with the compressed-bar units.
+You can bind models in the exact same way with [ModelSource.intervals(...)](https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.ModelSource.intervals). **PyBroker** will train models for each interval using the interval's compressed bars and any registered indicators. You can then access the per-interval predictions by calling the [preds](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.IntervalContext.preds) method on that interval's context.
 
 We train a [LinearRegression](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html) model to predict the next weekly return from the weekly close:
 
@@ -190,6 +195,11 @@ strategy.add_execution(
     ["AMD", "NVDA", "INTC"],
     models=model_weekly.intervals("weekly"),
 )
+```
+
+During [Walkforward Analysis](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward), the `lookahead` between an interval model's train and test data is enforced using the compressed-bar units to prevent future leakage.
+
+```python
 result = strategy.walkforward(windows=3, train_size=0.5, timeframe="1d")
 result.metrics_df.head(20)
 ```
