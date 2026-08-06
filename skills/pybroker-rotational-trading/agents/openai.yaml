@@ -1,0 +1,4 @@
+interface:
+  display_name: "PyBroker Rotational Trading"
+  short_description: "Build ranked and rotational PyBroker strategies"
+  default_prompt: "Use $pybroker-rotational-trading to rank symbols with long_score/short_score and rotate the top-ranked positions with enable_rotation in a PyBroker backtest."

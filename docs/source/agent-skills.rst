@@ -203,3 +203,16 @@ pybroker-multi-interval
 
 `See full SKILL.md on GitHub
 <https://github.com/edtechre/pybroker/blob/master/skills/pybroker-multi-interval/SKILL.md>`_
+
+.. _skill-pybroker-rotational-trading:
+
+pybroker-rotational-trading
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. include:: ../../skills/pybroker-rotational-trading/SKILL.md
+   :parser: myst_parser.sphinx_
+   :start-after: ## Overview
+   :end-before: ## Workflow
+
+`See full SKILL.md on GitHub
+<https://github.com/edtechre/pybroker/blob/master/skills/pybroker-rotational-trading/SKILL.md>`_

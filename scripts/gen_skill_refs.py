@@ -89,6 +89,11 @@ SKILLS: dict[str, dict[str, bool]] = {
         "index": False,
         "stubs": True,
     },
+    "pybroker-rotational-trading": {
+        "all_wikis": False,
+        "index": False,
+        "stubs": True,
+    },
 }
 
 STUB_HEADER = """\
