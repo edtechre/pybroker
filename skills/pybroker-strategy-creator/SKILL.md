@@ -1,6 +1,6 @@
 ---
 name: pybroker-strategy-creator
-description: Create, adapt, review, and debug PyBroker algorithmic trading strategy and backtest code using the bundled PyBroker wiki references generated from the local docs. Use when an agent needs to turn trading rules into PyBroker Strategy/ExecContext logic, add indicators, models, stops, ranking, position sizing, rebalancing, custom data sources, walkforward analysis, bootstrap metrics, or answer PyBroker usage questions.
+description: Create, adapt, review, and debug PyBroker algorithmic trading strategy and backtest code using the bundled PyBroker wiki references generated from the local docs. Use when an agent needs to turn trading rules into PyBroker Strategy/ExecContext logic, add indicators, models, stops, ranking, rotation, position sizing, rebalancing, custom data sources, walkforward analysis, bootstrap metrics, parameter optimization, multiple time intervals, slippage modeling, margin trading, parallelization, or dynamic symbol selection, or to answer PyBroker usage questions.
 ---
 
 # PyBroker Strategy Creator
@@ -15,24 +15,33 @@ Create practical PyBroker strategy code from user intent while preserving backte
 2. Ask only for missing blockers. If details are absent but noncritical, make conservative assumptions and state them in the final answer or code comments.
 3. Read `references/wiki-index.md` to choose the smallest relevant wiki page. For nontrivial strategy work, also read `references/pybroker-patterns.md`.
 4. Build a complete runnable strategy surface:
-   - create a `StrategyConfig` when cash, fees, position limits, delays, exits, or returned signals/stops matter
-   - define indicators with `highest`, `lowest`, `returns`, or `indicator`
+   - start scripts with `pybroker.disable_progress_bar()` and `pybroker.enable_data_source_cache("<name>")`
+   - create a `StrategyConfig` when cash, fees, delays, exits, margin, or returned signals/stops/positions matter
+   - define indicators with `highest`, `lowest`, `returns`, the built-in factories in `pybroker.indicator` (such as `atr`), or `indicator` with vectorized NumPy/Numba functions
    - define model sources with `pybroker.model` only when training or loading predictions is part of the request
    - write execution functions that use completed-bar arrays such as `ctx.close[-1]`, guard lookbacks with `ctx.bars` or `warmup`, and set at most one order side per symbol per bar
-   - add executions with `Strategy.add_execution`
-   - run `backtest` for a single train/test pass or `walkforward` for model/walk-forward evaluation
+   - add executions with `Strategy.add_execution`, passing `hyperparams=` or `intervals=` when optimization or multiple timeframes are involved, and cap positions with `strategy.set_max_long_positions` / `set_max_short_positions`
+   - run `backtest` for a single train/test pass, `walkforward` for model/walk-forward evaluation, or `optimize` for hyperparameter search; pass `timeframe=` whenever an execution declares `intervals=`
 5. Validate the produced code as far as the environment allows. At minimum, run syntax checks for created Python files. Run tests or a small local-data backtest when the repo and data make that practical.
 
 ## Implementation Rules
 
 - Treat PyBroker as a backtesting framework, not a source of financial advice. Make strategy assumptions explicit and avoid performance claims that are not supported by the produced backtest.
 - Use completed historical bar data only. Do not use future prices, future indicator values, or shuffled time series unless explicitly doing a model training split that PyBroker supports.
-- Use `ctx.calc_target_shares(target_size)` for allocation-based sizing. Use fixed `ctx.buy_shares` or `ctx.sell_shares` only when the user asks for fixed share sizing.
+- Start generated scripts with `pybroker.disable_progress_bar()` so backtest progress output does not flood agent context, and `pybroker.enable_data_source_cache("<strategy_name>")` (or `pybroker.enable_caches`) so repeated runs do not refetch data. Add `pybroker.disable_logging()` when running many backtests, such as parameter optimization.
+- Write indicator and execution logic with NumPy, not pandas. `BarData` and `ExecContext` price fields are NumPy arrays: operate on them directly, prefer the vectorized helpers (`highv`, `lowv`, `sumv`, `returnv`, `cross`, `atr`) when they fit, and JIT-compile explicit loops with Numba `@njit`. Never build DataFrames or call pandas `.apply`/`.rolling` inside indicator functions or per-bar execution functions.
+- If a Numba `@njit` function fails to compile or raises a cryptic error such as a `TypingError`, re-run once with the `NUMBA_DISABLE_JIT=1` environment variable to get a readable Python traceback, fix the underlying code, then remove the variable so the backtest runs compiled.
+- Use `ctx.calc_target_shares(target_size)` for allocation-based sizing and `ctx.set_target_shares(target, dir="long")` to rebalance toward a target allocation. Use fixed `ctx.buy_shares` or `ctx.sell_shares` only when the user asks for fixed share sizing.
 - Check `ctx.long_pos()` or `ctx.short_pos()` before entering or exiting positions. Use `ctx.sell_all_shares()` and `ctx.cover_all_shares()` for full exits.
 - Set entry-time stops on the same bar as the entry order: `hold_bars`, `stop_loss_pct`, `stop_profit_pct`, or `stop_trailing_pct`.
-- Use `ctx.score` with `StrategyConfig.max_long_positions` or `max_short_positions` for ranked selection across symbols.
-- Use `strategy.set_before_exec`, `strategy.set_after_exec`, or `strategy.set_pos_size_handler` for cross-symbol portfolio logic instead of hiding global state inside a per-symbol execution function.
+- Rank symbols with `ctx.long_score` and `ctx.short_score` (never the deprecated `ctx.score`) and cap positions with `strategy.set_max_long_positions(n)` / `strategy.set_max_short_positions(n)`; the `StrategyConfig` fields of the same names are deprecated. For rank-and-rotate portfolios call `strategy.enable_rotation(worst_rank_held=...)`; rotation is exclusive, so execution functions then only set scores and any order fields they set are ignored.
+- For parameter search, register values with `pybroker.hyperparam(name, default=..., low=..., high=..., step=...)`, attach them via indicator kwargs or `add_execution(..., hyperparams=[...])`, read them with `ctx.hyperparam("name")`, and run `strategy.optimize(score_fn, sampler="grid")` (or `"tpe"`/`"random"` with `n_trials=`). Optimization does not support trainable models; use pretrained models or indicator-based rules.
+- For multi-timeframe logic, declare `add_execution(..., intervals="weekly")` and read compressed bars with `ctx.interval("weekly")`. When any execution declares intervals, `backtest`/`walkforward` require `timeframe=` for the base data.
+- Model trading costs with `strategy.set_slippage_model(...)`: `FixedSlippageModel(bps=...)` for constant costs, `VolatilitySlippageModel` for ATR-scaled slippage, `VolumeSlippageModel` for volume-capped fills. Only enable margin (`StrategyConfig(leverage=..., interest_rate=...)`, which requires `bars_per_year`) when the user asks for it.
+- `result.positions` is empty unless `StrategyConfig(record_position_bars=True)`; enable it only when the user needs per-bar position output. The per-bar `result.portfolio` equity curve is always populated.
+- Use `strategy.set_before_exec` or `strategy.set_after_exec` for cross-symbol portfolio logic instead of hiding global state inside a per-symbol execution function.
 - If exact API names, constructor parameters, or methods matter, read `references/api-public-surface.md`.
+- For exact type signatures — the writable `ExecContext` order/stop attributes, property and parameter types, enum members — read the matching `references/pybroker_*.pyi` stub (`pybroker_context.pyi` for `ExecContext` and slippage).
 - If the user wants a standalone file, copy and adapt `assets/strategy_template.py`.
 
 ## Common Deliverables
@@ -53,10 +62,22 @@ Create practical PyBroker strategy code from user intent while preserving backte
 - `references/wiki-05-writing-indicators.md`: custom indicators, vector helpers, TA-Lib, built-in indicators, and indicator sets.
 - `references/wiki-06-training-a-model.md`: model training, model predictions, caching, and walkforward analysis.
 - `references/wiki-07-creating-a-custom-data-source.md`: extending `DataSource`, DataFrame inputs, CSV inputs, and custom columns.
-- `references/wiki-08-applying-stops.md`: stop loss, take profit, trailing stops, limit prices, exit prices, and stop cancellation.
+- `references/wiki-08-applying-stops.md`: stop loss, take profit, trailing stops, limit prices, stop exit prices, and stop cancellation.
 - `references/wiki-09-rebalancing-positions.md`: equal weighting, before/after execution hooks, and portfolio optimization.
-- `references/wiki-10-rotational-trading.md`: rotational strategy examples and universe rotation.
+- `references/wiki-10-rotational-trading.md`: rotational strategy examples, universe rotation, and custom position sizing.
+- `references/wiki-11-configuring-parallelization.md`: worker counts, parallel indicators and model training, and the Ray backend.
+- `references/wiki-12-parameter-optimization.md`: hyperparams, grid/TPE/random samplers, and walkforward optimization.
+- `references/wiki-13-margin-trading.md`: leverage, buying power, margin interest, and shorting on margin.
+- `references/wiki-14-modeling-slippage.md`: fixed, volatility, and volume slippage models plus custom slippage.
+- `references/wiki-15-multiple-time-intervals.md`: interval types, compressing bars, and multi-timeframe strategies.
+- `references/wiki-16-time-series-models.md`: GARCH volatility forecasting and models on lagged returns.
+- `references/wiki-17-multi-symbol-models.md`: pooled models trained across multiple symbols.
+- `references/wiki-18-dynamic-symbol-selection.md`: `SymbolSelector` and per-window universe selection.
 - `references/wiki-faqs.md`: common PyBroker usage questions and edge cases.
 - `references/api-public-surface.md`: generated public API signatures and first docstring sentences from local source.
+- `references/pybroker_context.pyi`: generated type stubs for `ExecContext` (including its writable order/stop attributes), `IntervalContext`, `RotationContext`, `ExecResult`, and the slippage models.
+- `references/pybroker_strategy.pyi`: generated type stubs for `Strategy`, `StrategyConfig`, `TestResult`, and the optimization types.
+- `references/pybroker_types.pyi`: generated type stubs for enums, `BarData`, `Portfolio`, order/trade/position records, and evaluation result types.
+- `references/pybroker_model.pyi`: generated type stubs for `model()`, `indicator()`, vector helpers, data sources, and top-level module functions.
 - `references/pybroker-patterns.md`: load when writing nontrivial strategy code, debugging PyBroker API usage, or adding indicators, stops, models, ranking, rebalancing, or walkforward analysis.
 - `assets/strategy_template.py`: copy and adapt when creating a new standalone strategy script.

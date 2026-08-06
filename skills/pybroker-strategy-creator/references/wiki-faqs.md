@@ -302,7 +302,7 @@ pybroker.param("lookback")
 
 ### Set a target allocation
 
-Use [set_target_shares](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.set_target_shares):
+[set_target_shares](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.set_target_shares) will buy and sell enough shares to approximate a target allocation:
 
 ```python
 from pybroker import ExecContext, Strategy, YFinance

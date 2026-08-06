@@ -6,10 +6,10 @@ This reference was generated from the local PyBroker documentation notebook. Use
 
 # Rotational Trading
 
-Rotational trading involves purchasing the best-performing assets while selling underperforming ones. As you may have guessed, **PyBroker** is an excellent tool for backtesting such strategies. So, let's dive in and get started with testing our rotational trading strategy!
+Rotational trading involves buying top-performing assets and selling underperforming ones. **PyBroker** can be used for backtesting these strategies.
 
 ```python
-import pybroker as pyb
+import pybroker
 from pybroker import ExecContext, Strategy, StrategyConfig, YFinance
 ```
 
@@ -18,8 +18,9 @@ Our strategy will involve ranking and buying stocks with the highest [price rate
 ```python
 import talib as ta
 
-roc_20 = pyb.indicator(
-    'roc_20', lambda data: ta.ROC(data.adj_close, timeperiod=20))
+roc_20 = pybroker.indicator(
+    "roc_20", lambda data: ta.ROC(data.adj_close, timeperiod=20)
+)
 ```
 
 Next, let's define the rules of our strategy:
@@ -29,75 +30,70 @@ Next, let's define the rules of our strategy:
 - If either of the stocks is no longer ranked among the top five 20-day ROCs, then we will liquidate that stock.
 - Trade these rules daily.
 
-Let's set up our config and some parameters for the above rules:
+Let’s set up our config for the above rules:
 
 ```python
 config = StrategyConfig(max_long_positions=2)
-pyb.param('target_size', 1 / config.max_long_positions)
-pyb.param('rank_threshold', 5)
 ```
 
-To proceed with our strategy, we will implement a ``rank`` function that ranks each stock by their 20-day ROC in descending order, from highest to lowest.
-
-```python
-def rank(ctxs: dict[str, ExecContext]):
-    scores = {
-        symbol: ctx.indicator('roc_20')[-1]
-        for symbol, ctx in ctxs.items()
-    }
-    sorted_scores = sorted(
-        scores.items(), 
-        key=lambda score: score[1],
-        reverse=True
-    )
-    threshold = pyb.param('rank_threshold')
-    top_scores = sorted_scores[:threshold]
-    top_symbols = [score[0] for score in top_scores]
-    pyb.param('top_symbols', top_symbols)
-```
-
-The ``top_symbols`` global parameter contains the symbols of the stocks with the top five highest 20-day ROCs.
-
-Now that we have a method for ranking stocks by their ROC, we can proceed with implementing a ``rotate`` function to manage the rotational trading.
+To implement the strategy, we write a `rotate` function that sets each stock's [long_score](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.long_score) to its 20-day ROC. **PyBroker** then ranks the stocks by their `long_score` in descending order.
 
 ```python
 def rotate(ctx: ExecContext):
-    if ctx.long_pos():
-        if ctx.symbol not in pyb.param('top_symbols'):
-            ctx.sell_all_shares()
-    else:
-        target_size = pyb.param('target_size')
-        ctx.buy_shares = ctx.calc_target_shares(target_size)
-        ctx.score = ctx.indicator('roc_20')[-1]
+    ctx.long_score = ctx.indicator("roc_20")[-1]
 ```
 
-We liquidate the currently held stock if it is no longer ranked among the top five 20-day ROCs. Otherwise, we rank all stocks by their 20-day ROC and buy up to the top two ranked. For more information on ranking when placing buy orders, see the [Ranking Long and Short Signals notebook](https://www.pybroker.com/en/latest/notebooks/4.%20Ranking%20Long%20and%20Short%20Signals.html).
+Now that we have a method for scoring stocks by their ROC, we can use the [enable_rotation](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.enable_rotation) method to turn on rotational trading.
 
-We will use the [set_before_exec](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_before_exec) method to execute our ranking with ``rank`` before running the ``rotate`` function. For this backtest, we will use a universe of 10 stocks:
+Setting `worst_rank_held` to `5` liquidates any currently held stock that falls outside the top five 20-day ROC rankings. Otherwise, **PyBroker** buys up to the top two ranked stocks, allocating 50% of the capital to each. This backtest uses a universe of 10 stocks:
 
 ```python
 strategy = Strategy(
-    YFinance(), 
-    start_date='1/1/2018', 
-    end_date='1/1/2023', 
-    config=config
+    YFinance(), start_date="1/1/2018", end_date="1/1/2023", config=config
 )
-strategy.set_before_exec(rank)
-strategy.add_execution(rotate, [
-    'TSLA', 
-    'NFLX', 
-    'AAPL', 
-    'NVDA', 
-    'AMZN',
-    'MSFT',
-    'GOOG',
-    'AMD',
-    'INTC',
-    'META'
-], indicators=roc_20)
+strategy.enable_rotation(worst_rank_held=5)
+strategy.add_execution(
+    rotate,
+    [
+        "TSLA",
+        "NFLX",
+        "AAPL",
+        "NVDA",
+        "AMZN",
+        "MSFT",
+        "GOOG",
+        "AMD",
+        "INTC",
+        "META",
+    ],
+    indicators=roc_20,
+)
 result = strategy.backtest(warmup=20)
 ```
 
 ```python
+result.orders
+```
+
+## Custom Position Sizing
+
+**PyBroker** will allocate our capital equally between positions by default. To customize this, we can pass a ``sizer`` function to [enable_rotation](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.enable_rotation). The ``sizer`` is called with a [RotationContext](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.RotationContext) after rotation has decided which stocks to buy, allowing us to override the size of each entry. The ``long_ranks`` attribute contains the rank of each stock, where ``1`` is the highest ranked.
+
+Let's reuse our strategy, but this time allocate 70% of our capital to the top-ranked stock and 30% to the second:
+
+```python
+from pybroker import RotationContext
+
+
+def size_by_rank(rotation: RotationContext):
+    weights = {1: 0.7, 2: 0.3}
+    for symbol, ctx in rotation.ctxs.items():
+        if ctx.buy_shares is not None:
+            rank = rotation.long_ranks[symbol]
+            ctx.buy_shares = ctx.calc_target_shares(weights[rank])
+
+
+strategy.enable_rotation(worst_rank_held=5, sizer=size_by_rank)
+result = strategy.backtest(warmup=20)
 result.orders
 ```
