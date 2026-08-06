@@ -45,7 +45,7 @@ result.trades
 
 ## Short Signals
 
-**PyBroker** can also rank short signals using [short_score](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.short_score), where short orders are placed for the ticker symbols with the highest `short_score` values. The following example buys the ticker symbol with the highest 5-day rate of change (ROC) while shorting the ticker symbol with the lowest 5-day ROC:
+**PyBroker** can also rank short signals using [short_score](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.short_score), where short orders are placed for the ticker symbols with the highest `short_score` values. The following example buys the ticker symbol with the highest 5-day rate of change (ROC) while shorting the ticker symbol with the most negative 5-day ROC:
 
 ```python
 def long_high_short_low(ctx):
@@ -63,7 +63,7 @@ def long_high_short_low(ctx):
         ctx.sell_shares = ctx.calc_target_shares(0.5)
         # Hold the short position for 2 bars
         ctx.hold_bars = 2
-        ctx.short_score = 1.0 / roc
+        ctx.short_score = -roc
 
 
 strategy = Strategy(YFinance(), "1/1/2025", "1/1/2026")
