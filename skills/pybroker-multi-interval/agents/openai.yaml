@@ -1,0 +1,4 @@
+interface:
+  display_name: "PyBroker Multi-Interval"
+  short_description: "Build multi-timeframe PyBroker strategies"
+  default_prompt: "Use $pybroker-multi-interval to trade a base timeframe with confirmation from weekly or monthly compressed bars in a PyBroker backtest."

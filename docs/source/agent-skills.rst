@@ -190,3 +190,16 @@ pybroker-optimize
 
 `See full SKILL.md on GitHub
 <https://github.com/edtechre/pybroker/blob/master/skills/pybroker-optimize/SKILL.md>`_
+
+.. _skill-pybroker-multi-interval:
+
+pybroker-multi-interval
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. include:: ../../skills/pybroker-multi-interval/SKILL.md
+   :parser: myst_parser.sphinx_
+   :start-after: ## Overview
+   :end-before: ## Workflow
+
+`See full SKILL.md on GitHub
+<https://github.com/edtechre/pybroker/blob/master/skills/pybroker-multi-interval/SKILL.md>`_

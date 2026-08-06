@@ -308,7 +308,7 @@ between runs on NumPy arrays and Numba kernels.
 
 ## Agent Skills
 
-`skills/pybroker-{strategy-creator,indicator-creator,model-trainer,optimize}/`
+`skills/pybroker-{strategy-creator,indicator-creator,model-trainer,optimize,multi-interval}/`
 are distributable skills that teach downstream coding agents PyBroker usage;
 users symlink them into their agent's skills directory
 (`docs/source/agent-skills.rst`).
