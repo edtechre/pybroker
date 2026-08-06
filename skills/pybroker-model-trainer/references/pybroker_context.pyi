@@ -8,23 +8,61 @@ from abc import ABC
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Callable, Iterator, Literal, Mapping, MutableMapping, Optional, Union
+from typing import (
+    Any,
+    Callable,
+    Iterator,
+    Literal,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Union,
+)
 
 from numpy.typing import NDArray
 import numpy as np
 import pandas as pd
 
 from pybroker_strategy import Strategy, StrategyConfig
-from pybroker_types import BarData, ColumnScope, Entry, IndicatorScope, Order, PendingOrder, Portfolio, Position, PriceType, Stop, StopType, TimeframeInterval, Trade
+from pybroker_types import (
+    BarData,
+    ColumnScope,
+    Entry,
+    IndicatorScope,
+    Order,
+    PendingOrder,
+    Portfolio,
+    Position,
+    PriceType,
+    Stop,
+    StopType,
+    TimeframeInterval,
+    Trade,
+)
 
 # --- src/pybroker/context.py ---
 @dataclass
 class ExecResult:
     """Holds data that was set during the execution of a :class:`pybroker.strategy.Strategy`."""
+
     symbol: str
     date: np.datetime64
-    buy_fill_price: Union[int, float, np.floating, Decimal, PriceType, Callable[[str, BarData], Union[int, float, Decimal]]]
-    sell_fill_price: Union[int, float, np.floating, Decimal, PriceType, Callable[[str, BarData], Union[int, float, Decimal]]]
+    buy_fill_price: Union[
+        int,
+        float,
+        np.floating,
+        Decimal,
+        PriceType,
+        Callable[[str, BarData], Union[int, float, Decimal]],
+    ]
+    sell_fill_price: Union[
+        int,
+        float,
+        np.floating,
+        Decimal,
+        PriceType,
+        Callable[[str, BarData], Union[int, float, Decimal]],
+    ]
     score: Optional[float]
     long_score: Optional[float]
     short_score: Optional[float]
@@ -39,7 +77,7 @@ class ExecResult:
     short_stops: Optional[frozenset[Stop]]
     cover: bool = False
     pending_order_id: Optional[int] = None
-    exit_pos_type: Optional[Literal['long', 'short']] = None
+    exit_pos_type: Optional[Literal["long", "short"]] = None
 
 class IntervalContext:
     """Read-only view of compressed bar data for a coarser interval."""
@@ -62,20 +100,41 @@ class IntervalContext:
     def model(self, name: str) -> Any: ...
     def input(self, model_name: str) -> pd.DataFrame: ...
     def preds(self, model_name: str) -> NDArray: ...
-    def __getattr__(self, attr: str) -> NDArray: ...  # registered custom columns
+    def __getattr__(
+        self, attr: str
+    ) -> NDArray: ...  # registered custom columns
 
 class ExecContext:
     """Contains context data during the execution of a :class:`pybroker.strategy.Strategy`."""
+
     # Constructed by the framework; not user-instantiable.
     # Instance attributes assigned in __init__:
     config: StrategyConfig
     rotation_enabled: bool
     symbol: str
-    buy_fill_price: Optional[Union[int, float, np.floating, Decimal, PriceType, Callable[[str, BarData], Union[int, float, Decimal]]]]
+    buy_fill_price: Optional[
+        Union[
+            int,
+            float,
+            np.floating,
+            Decimal,
+            PriceType,
+            Callable[[str, BarData], Union[int, float, Decimal]],
+        ]
+    ]
     buy_shares: Optional[Union[int, float, Decimal]]
     buy_limit_price: Optional[Union[int, float, Decimal]]
     buy_timeout_bars: Optional[int]
-    sell_fill_price: Optional[Union[int, float, np.floating, Decimal, PriceType, Callable[[str, BarData], Union[int, float, Decimal]]]]
+    sell_fill_price: Optional[
+        Union[
+            int,
+            float,
+            np.floating,
+            Decimal,
+            PriceType,
+            Callable[[str, BarData], Union[int, float, Decimal]],
+        ]
+    ]
     sell_shares: Optional[Union[int, float, Decimal]]
     sell_limit_price: Optional[Union[int, float, Decimal]]
     sell_timeout_bars: Optional[int]
@@ -118,12 +177,24 @@ class ExecContext:
     @property
     def loss_rate(self) -> Decimal: ...
     def orders(self) -> Iterator[Order]: ...
-    def pending_orders(self, symbol: Optional[str]=None) -> Iterator[PendingOrder]: ...
+    def pending_orders(
+        self, symbol: Optional[str] = None
+    ) -> Iterator[PendingOrder]: ...
     def trades(self) -> Iterator[Trade]: ...
-    def pos(self, symbol: str, pos_type: Literal['long', 'short']) -> Optional[Position]: ...
-    def positions(self, symbol: Optional[str]=None, pos_type: Optional[Literal['long', 'short']]=None) -> Iterator[Position]: ...
-    def long_positions(self, symbol: Optional[str]=None) -> Iterator[Position]: ...
-    def short_positions(self, symbol: Optional[str]=None) -> Iterator[Position]: ...
+    def pos(
+        self, symbol: str, pos_type: Literal["long", "short"]
+    ) -> Optional[Position]: ...
+    def positions(
+        self,
+        symbol: Optional[str] = None,
+        pos_type: Optional[Literal["long", "short"]] = None,
+    ) -> Iterator[Position]: ...
+    def long_positions(
+        self, symbol: Optional[str] = None
+    ) -> Iterator[Position]: ...
+    def short_positions(
+        self, symbol: Optional[str] = None
+    ) -> Iterator[Position]: ...
     def has_long_positions(self) -> bool: ...
     def has_short_positions(self) -> bool: ...
     @property
@@ -157,9 +228,32 @@ class ExecContext:
     @property
     def vwap_value(self) -> Optional[float]: ...
     @property
-    def cover_fill_price(self) -> Optional[Union[int, float, np.floating, Decimal, PriceType, Callable[[str, BarData], Union[int, float, Decimal]]]]: ...
+    def cover_fill_price(
+        self,
+    ) -> Optional[
+        Union[
+            int,
+            float,
+            np.floating,
+            Decimal,
+            PriceType,
+            Callable[[str, BarData], Union[int, float, Decimal]],
+        ]
+    ]: ...
     @cover_fill_price.setter
-    def cover_fill_price(self, fill_price: Optional[Union[int, float, np.floating, Decimal, PriceType, Callable[[str, BarData], Union[int, float, Decimal]]]]): ...
+    def cover_fill_price(
+        self,
+        fill_price: Optional[
+            Union[
+                int,
+                float,
+                np.floating,
+                Decimal,
+                PriceType,
+                Callable[[str, BarData], Union[int, float, Decimal]],
+            ]
+        ],
+    ): ...
     @property
     def cover_shares(self) -> Optional[Union[int, float, Decimal]]: ...
     @cover_shares.setter
@@ -167,30 +261,54 @@ class ExecContext:
     @property
     def cover_limit_price(self) -> Optional[Union[int, float, Decimal]]: ...
     @cover_limit_price.setter
-    def cover_limit_price(self, limit_price: Optional[Union[int, float, Decimal]]): ...
+    def cover_limit_price(
+        self, limit_price: Optional[Union[int, float, Decimal]]
+    ): ...
     def sell_all_shares(self): ...
     def cover_all_shares(self): ...
-    def foreign(self, symbol: str, col: Optional[str]=None) -> Union[BarData, Optional[NDArray]]: ...
+    def foreign(
+        self, symbol: str, col: Optional[str] = None
+    ) -> Union[BarData, Optional[NDArray]]: ...
     def interval(self, interval: TimeframeInterval) -> IntervalContext: ...
-    def model(self, name: str, symbol: Optional[str]=None) -> Any: ...
+    def model(self, name: str, symbol: Optional[str] = None) -> Any: ...
     def hyperparam(self, name: str) -> Any: ...
-    def indicator(self, name: str, symbol: Optional[str]=None) -> NDArray[np.float64]: ...
-    def input(self, model_name: str, symbol: Optional[str]=None) -> pd.DataFrame: ...
-    def preds(self, model_name: str, symbol: Optional[str]=None) -> NDArray: ...
-    def long_pos(self, symbol: Optional[str]=None) -> Optional[Position]: ...
-    def short_pos(self, symbol: Optional[str]=None) -> Optional[Position]: ...
-    def calc_target_shares(self, target_size: float, price: Optional[float]=None, cash: Optional[float]=None) -> Union[Decimal, int]: ...
-    def set_target_shares(self, target: float, *, dir: Literal['long', 'short']): ...
+    def indicator(
+        self, name: str, symbol: Optional[str] = None
+    ) -> NDArray[np.float64]: ...
+    def input(
+        self, model_name: str, symbol: Optional[str] = None
+    ) -> pd.DataFrame: ...
+    def preds(
+        self, model_name: str, symbol: Optional[str] = None
+    ) -> NDArray: ...
+    def long_pos(self, symbol: Optional[str] = None) -> Optional[Position]: ...
+    def short_pos(
+        self, symbol: Optional[str] = None
+    ) -> Optional[Position]: ...
+    def calc_target_shares(
+        self,
+        target_size: float,
+        price: Optional[float] = None,
+        cash: Optional[float] = None,
+    ) -> Union[Decimal, int]: ...
+    def set_target_shares(
+        self, target: float, *, dir: Literal["long", "short"]
+    ): ...
     def cancel_pending_order(self, order_id: int) -> bool: ...
-    def cancel_all_pending_orders(self, symbol: Optional[str]=None): ...
+    def cancel_all_pending_orders(self, symbol: Optional[str] = None): ...
     def cancel_stop(self, stop_id: int) -> bool: ...
-    def cancel_stops(self, val: Union[str, Position, Entry], stop_type: Optional[StopType]=None): ...
+    def cancel_stops(
+        self,
+        val: Union[str, Position, Entry],
+        stop_type: Optional[StopType] = None,
+    ): ...
     def to_result(self) -> Optional[ExecResult]: ...
     def __getattr__(self, attr): ...  # registered custom columns
 
 @dataclass(frozen=True)
 class RotationContext:
     """Context passed to a rotation sizer set with :meth:`pybroker.strategy.Strategy.enable_rotation`."""
+
     ctxs: Mapping[str, ExecContext]
     portfolio: Portfolio
     long_ranks: Mapping[str, int]
@@ -201,7 +319,8 @@ class RotationContext:
 @dataclass(frozen=True)
 class SlippageContext:
     """Context passed to slippage adjustments."""
-    side: Literal['buy', 'sell']
+
+    side: Literal["buy", "sell"]
     symbol: str
     shares: Decimal
     fill_price: Decimal
@@ -214,35 +333,57 @@ class SlippageModel(ABC):
     """Base class for implementing a slippage model."""
     @property
     def is_fill_noop(self) -> bool: ...
-    def apply_slippage(self, ctx: SlippageContext) -> tuple[Decimal, Decimal]: ...
-    def adjust_fill(self, side: Literal['buy', 'sell'], symbol: str, shares: Decimal, fill_price: Decimal, col_scope: Optional[ColumnScope]=None, ind_scope: Optional[IndicatorScope]=None, sym_end_index: Optional[Mapping[str, int]]=None, enable_fractional_shares: bool=True) -> tuple[Decimal, Decimal]: ...
-    def validate(self, strategy: 'Strategy') -> None: ...
+    def apply_slippage(
+        self, ctx: SlippageContext
+    ) -> tuple[Decimal, Decimal]: ...
+    def adjust_fill(
+        self,
+        side: Literal["buy", "sell"],
+        symbol: str,
+        shares: Decimal,
+        fill_price: Decimal,
+        col_scope: Optional[ColumnScope] = None,
+        ind_scope: Optional[IndicatorScope] = None,
+        sym_end_index: Optional[Mapping[str, int]] = None,
+        enable_fractional_shares: bool = True,
+    ) -> tuple[Decimal, Decimal]: ...
+    def validate(self, strategy: "Strategy") -> None: ...
 
 class FixedSlippageModel(SlippageModel):
     """Deterministic fixed-basis-point slippage on fill price."""
-    def __init__(self, bps: float=5): ...
+    def __init__(self, bps: float = 5): ...
     @property
     def is_fill_noop(self) -> bool: ...
-    def adjust_fill_price(self, side: Literal['buy', 'sell'], fill_price: Decimal) -> Decimal: ...
-    def apply_slippage(self, ctx: SlippageContext) -> tuple[Decimal, Decimal]: ...
+    def adjust_fill_price(
+        self, side: Literal["buy", "sell"], fill_price: Decimal
+    ) -> Decimal: ...
+    def apply_slippage(
+        self, ctx: SlippageContext
+    ) -> tuple[Decimal, Decimal]: ...
 
 class VolatilitySlippageModel(SlippageModel):
     """ATR-scaled slippage on fill price."""
-    def __init__(self, atr_period: int=14, scale: float=0.1): ...
+    def __init__(self, atr_period: int = 14, scale: float = 0.1): ...
     # Instance attributes assigned in __init__:
     atr_period: int
     scale: float
     @property
     def is_fill_noop(self) -> bool: ...
-    def apply_slippage(self, ctx: SlippageContext) -> tuple[Decimal, Decimal]: ...
+    def apply_slippage(
+        self, ctx: SlippageContext
+    ) -> tuple[Decimal, Decimal]: ...
 
 class VolumeSlippageModel(SlippageModel):
     """Volume-based participation cap and square-law price impact."""
-    def __init__(self, price_impact: float=0.1, volume_limit: Optional[float]=0.025): ...
+    def __init__(
+        self, price_impact: float = 0.1, volume_limit: Optional[float] = 0.025
+    ): ...
     # Instance attributes assigned in __init__:
     price_impact: float
     volume_limit: Optional[float]
     @property
     def is_fill_noop(self) -> bool: ...
-    def validate(self, strategy: 'Strategy') -> None: ...
-    def apply_slippage(self, ctx: SlippageContext) -> tuple[Decimal, Decimal]: ...
+    def validate(self, strategy: "Strategy") -> None: ...
+    def apply_slippage(
+        self, ctx: SlippageContext
+    ) -> tuple[Decimal, Decimal]: ...

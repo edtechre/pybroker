@@ -22,7 +22,13 @@ from pybroker.common import (
     to_datetime,
 )
 from pybroker.indicator import IndicatorsMixin, indicator
-from pybroker.model import ModelLoader, ModelsMixin, ModelTrainer, model
+from pybroker.model import (
+    IntervalBoundModel,
+    ModelLoader,
+    ModelsMixin,
+    ModelTrainer,
+    model,
+)
 from pybroker.parallel import set_parallel
 from pybroker.interval import (
     IntervalData,
@@ -156,6 +162,19 @@ def test_model_pooled_flag(indicators, pooled):
     assert source.pooled is pooled
 
 
+def test_model_when_interval_bound_indicator_then_error(hhv_ind):
+    with pytest.raises(
+        ValueError,
+        match="model\\(\\) indicators must contain Indicators, got "
+        "IntervalBoundIndicator",
+    ):
+        model(
+            "bound_ind_model",
+            lambda *args: args,
+            [hhv_ind.intervals("weekly")],
+        )
+
+
 class TestModelSource:
     @pytest.mark.parametrize("clazz", [ModelLoader, ModelTrainer])
     def test_model_prepare_input_fn(self, data_source_df, clazz):
@@ -194,6 +213,61 @@ class TestModelSource:
             match=re.escape("Indicator 'foo' not found in DataFrame."),
         ):
             source.prepare_input_data(ind_df)
+
+    def test_intervals(self):
+        source = ModelTrainer(
+            "model_source", lambda x: x, [], None, None, False, {}
+        )
+        bound = source.intervals("weekly", 5)
+        assert isinstance(bound, IntervalBoundModel)
+        assert bound.source is source
+        assert bound.intervals == frozenset(["weekly", 5])
+
+    def test_intervals_scalar(self):
+        source = ModelTrainer(
+            "model_source", lambda x: x, [], None, None, False, {}
+        )
+        assert source.intervals("monthly").intervals == frozenset(["monthly"])
+
+    def test_intervals_base_sentinel(self):
+        source = ModelTrainer(
+            "model_source", lambda x: x, [], None, None, False, {}
+        )
+        assert source.intervals("base", 5).intervals == frozenset(["base", 5])
+
+    def test_intervals_when_no_args_then_error(self):
+        source = ModelTrainer(
+            "model_source", lambda x: x, [], None, None, False, {}
+        )
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "ModelSource.intervals() requires at least one interval."
+            ),
+        ):
+            source.intervals()
+
+    def test_intervals_when_duplicate_then_error(self):
+        source = ModelTrainer(
+            "model_source", lambda x: x, [], None, None, False, {}
+        )
+        with pytest.raises(
+            ValueError, match=re.escape("Duplicate interval: '01d'.")
+        ):
+            source.intervals("1d", "01d")
+
+    def test_intervals_when_pretrained_then_error(self):
+        source = ModelLoader(
+            "model_source", lambda x: x, [], None, None, False, {}
+        )
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "Pretrained model 'model_source' is not trained per interval "
+                "and cannot be bound to intervals."
+            ),
+        ):
+            source.intervals("weekly")
 
     def test_model_loader_call_with_kwargs(self, start_date, end_date):
         load_fn = Mock()

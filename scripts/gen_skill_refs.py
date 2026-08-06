@@ -198,12 +198,19 @@ STUBS: dict[str, list[tuple[str, list[str]]]] = {
     "pybroker_model.pyi": [
         (
             "src/pybroker/model.py",
-            ["ModelSource", "ModelLoader", "ModelTrainer", "model"],
+            [
+                "ModelSource",
+                "IntervalBoundModel",
+                "ModelLoader",
+                "ModelTrainer",
+                "model",
+            ],
         ),
         (
             "src/pybroker/indicator.py",
             [
                 "Indicator",
+                "IntervalBoundIndicator",
                 "IndicatorSet",
                 "indicator",
                 "highest",

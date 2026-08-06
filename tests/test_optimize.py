@@ -521,7 +521,9 @@ def test_load_pretrained_models_threads_lookahead(data_source_df, monkeypatch):
     )
     strategy = _make_strategy(data_source_df)
     strategy.add_execution(
-        lambda _ctx: None, "AAPL", models=[trainable], intervals=["weekly"]
+        lambda _ctx: None,
+        "AAPL",
+        models=[trainable.intervals("base", "weekly")],
     )
     df = (
         data_source_df[data_source_df["symbol"] == "AAPL"]
@@ -565,6 +567,103 @@ def test_load_pretrained_models_threads_lookahead(data_source_df, monkeypatch):
         )
         in model_syms
     )
+
+
+def test_load_pretrained_models_pooled_interval_groups(
+    data_source_df, monkeypatch
+):
+    # An interval-bound pooled model must produce a pooled group for its
+    # suffixed name, mirroring the walkforward path.
+    pooled_model = model(
+        "pooled_interval_groups",
+        lambda syms, train, test: FakeModel("pooled", np.zeros(len(test))),
+        pretrained=False,
+        pooled=True,
+    )
+    strategy = _make_strategy(data_source_df)
+    strategy.add_execution(
+        lambda _ctx: None,
+        "AAPL",
+        models=[pooled_model.intervals("base", "weekly")],
+    )
+    df = (
+        data_source_df[data_source_df["symbol"] == "AAPL"]
+        .sort_values("date")
+        .reset_index(drop=True)
+    )
+    window = next(
+        iter(
+            strategy.walkforward_split(
+                df, windows=1, lookahead=1, train_size=0.5
+            )
+        )
+    )
+    captured: dict = {}
+
+    def capture_train_models(*args, **kwargs):
+        captured.update(kwargs)
+        return {}
+
+    monkeypatch.setattr(strategy, "train_models", capture_train_models)
+    strategy._load_pretrained_models(
+        df=df,
+        train_rows=window.train_data,
+        test_rows=window.test_data,
+        window_executions=strategy._executions,
+        indicator_data={},
+        master_store=symbol_array_store_from_frame(df),
+        interval_data=IntervalData(),
+        tf_seconds=86400,
+        between_time=None,
+        days=None,
+        lookahead=1,
+    )
+    exec_id = next(iter(strategy._executions)).id
+    groups = captured["pooled_model_groups"]
+    assert ("pooled_interval_groups", exec_id) in groups
+    assert (
+        model_interval_name("pooled_interval_groups", "weekly"),
+        exec_id,
+    ) in groups
+
+
+def test_collect_hyperparams_model_kwargs_error_names_base(data_source_df):
+    # The error must be deterministic and name the registered model, not the
+    # internal suffixed per-interval expansion.
+    depth = hyperparam("kw_depth", default=1, low=1, high=3, step=1)
+    trend = model(
+        "kwargs_hp_model",
+        lambda sym, train, test: FakeModel(sym, np.zeros(len(test))),
+        predict_fn=lambda m, d: np.zeros(len(d)),
+        depth=depth,
+    )
+    strategy = _make_strategy(data_source_df)
+    strategy.add_execution(
+        lambda _ctx: None, "AAPL", models=[trend.intervals("weekly")]
+    )
+    with pytest.raises(
+        ValueError,
+        match="Model 'kwargs_hp_model' has hyperparams in kwargs",
+    ):
+        collect_hyperparams(strategy)
+
+
+def test_validate_optimize_models_names_base_only(data_source_df):
+    from pybroker.optimize import _validate_optimize_models
+
+    trend = model(
+        "trainable_bound",
+        lambda sym, train, test: FakeModel(sym, np.zeros(len(test))),
+        predict_fn=lambda m, d: np.zeros(len(d)),
+    )
+    strategy = _make_strategy(data_source_df)
+    strategy.add_execution(
+        lambda _ctx: None, "AAPL", models=[trend.intervals("weekly")]
+    )
+    with pytest.raises(ValueError, match="trainable model sources") as exc:
+        _validate_optimize_models(strategy)
+    assert "trainable_bound" in str(exc.value)
+    assert "trainable_bound@weekly" not in str(exc.value)
 
 
 def test_optimize_trials_never_see_test_bars(data_source_df):

@@ -30,6 +30,7 @@ from pybroker.interval import (
     TimeframeInterval,
     build_compressed_symbol_arrays,
     lookahead_train_dates,
+    normalize_intervals,
     parse_indicator_interval_name,
     parse_model_interval_name,
     format_interval,
@@ -1225,6 +1226,71 @@ class ModelSource:
             return df[[*self.indicators]]
         return self._input_data_fn(df)
 
+    def intervals(self, *intervals: TimeframeInterval) -> "IntervalBoundModel":
+        r"""Binds this model to one or more compression intervals for use
+        with :meth:`pybroker.strategy.Strategy.add_execution`.
+
+        A bound model is trained on exactly the listed intervals' compressed
+        bars, together with any indicators registered on it. Binding
+        replaces the default base-timeframe training; include the literal
+        ``'base'`` in ``intervals`` to also train the model on the base
+        timeframe. Per-interval predictions are read with
+        :meth:`pybroker.context.IntervalContext.preds`. Bound intervals are
+        automatically made available through
+        :meth:`pybroker.context.ExecContext.interval` without also declaring
+        them in the ``intervals`` parameter of
+        :meth:`~pybroker.strategy.Strategy.add_execution`::
+
+            trend = pybroker.model("trend", train_fn, indicators=[sma_10])
+            strategy.add_execution(
+                fn, "SPY", models=trend.intervals("base", "weekly")
+            )
+
+        Only trainable models support interval binding. Calling this on a
+        pretrained model (a :class:`.ModelLoader`) raises ``ValueError``.
+
+        Args:
+            intervals: One or more
+                :class:`~pybroker.interval.TimeframeInterval`\ s to train
+                this model on, each strictly coarser than the base bar
+                spacing of the backtest data, or the literal ``'base'`` for
+                the base timeframe.
+
+        Returns:
+            :class:`.IntervalBoundModel` binding this model to ``intervals``.
+        """
+        if not isinstance(self, ModelTrainer):
+            raise ValueError(
+                f"Pretrained model {self.name!r} is not trained per interval "
+                "and cannot be bound to intervals."
+            )
+        if not intervals:
+            raise ValueError(
+                "ModelSource.intervals() requires at least one interval."
+            )
+        return IntervalBoundModel(
+            source=self,
+            intervals=normalize_intervals(
+                intervals, "intervals", allow_base=True
+            ),
+        )
+
+
+class IntervalBoundModel(NamedTuple):
+    """A :class:`.ModelSource` bound to one or more compression intervals,
+    returned by :meth:`ModelSource.intervals` and passed to the ``models``
+    parameter of :meth:`pybroker.strategy.Strategy.add_execution`.
+    """
+
+    source: ModelSource
+    """The bound :class:`.ModelSource`."""
+
+    intervals: frozenset[TimeframeInterval]
+    r"""Normalized :class:`~pybroker.interval.TimeframeInterval`\ s the
+    model is trained on. May include the literal ``'base'`` for the base
+    timeframe.
+    """
+
 
 class ModelLoader(ModelSource):
     r"""Loads a pre-trained model.
@@ -1643,16 +1709,27 @@ def model(
     validate_source_name(name, "model")
     scope = StaticScope.instance()
     lag_col_names, lag_col_inds = _parse_lag_cols(lag_cols, lags)
-    indicator_names = tuple(
-        sorted(
-            (
-                set(ind.name for ind in indicators)
-                if indicators is not None
-                else set()
+    ind_name_set: set[str] = set()
+    if indicators is not None:
+        # A binding NamedTuple is iterable, so a scalar one would silently
+        # unpack into its fields below; reject it by its own type name.
+        if isinstance(indicators, tuple) and hasattr(indicators, "_fields"):
+            raise ValueError(
+                "model() indicators must contain Indicators, got "
+                f"{type(indicators).__name__}. Interval bindings are only "
+                "valid in add_execution(); a model's input indicators "
+                "follow the model's own interval binding."
             )
-            | set(lag_col_inds)
-        )
-    )
+        for ind in indicators:
+            if not isinstance(ind, Indicator):
+                raise ValueError(
+                    "model() indicators must contain Indicators, got "
+                    f"{type(ind).__name__}. Interval bindings are only "
+                    "valid in add_execution(); a model's input indicators "
+                    "follow the model's own interval binding."
+                )
+            ind_name_set.add(ind.name)
+    indicator_names = tuple(sorted(ind_name_set | set(lag_col_inds)))
     if pretrained:
         loader = ModelLoader(
             name=name,

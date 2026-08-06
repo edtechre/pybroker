@@ -338,7 +338,6 @@ from pybroker.scope import (
     symbol_array_store_from_frame,
 )
 from pybroker.interval import (
-    model_interval_name,
     parse_indicator_interval_name,
     parse_model_interval_name,
     symbol_dates_from_frame,
@@ -416,42 +415,47 @@ def collect_hyperparams(strategy: _ExecutionsHost) -> dict[str, Hyperparam]:
             specs[value.name] = scope.get_hyperparam(value.name)
 
     def add_indicator_hyperparams(ind_name: str) -> None:
+        # Name the base (registered) indicator in errors: suffixed
+        # per-interval names are internal expansions.
         base, _ = parse_indicator_interval_name(ind_name)
         ind = scope.get_indicator(base)
         for hp_name in ind.hyperparam_names:
             if not scope.has_hyperparam(hp_name):
                 raise ValueError(
                     f"Hyperparam {hp_name!r} in indicator "
-                    f"{ind_name!r} is not registered."
+                    f"{base!r} is not registered."
                 )
             names.add(hp_name)
             specs[hp_name] = scope.get_hyperparam(hp_name)
 
-    for execution in strategy._executions:
-        for ind_name in execution.indicator_names:
+    # Iterate sorted so the first error raised is the same on every run:
+    # the executions set and the name frozensets otherwise vary with
+    # PYTHONHASHSEED.
+    for execution in sorted(strategy._executions, key=lambda e: e.id):
+        for ind_name in sorted(execution.indicator_names):
             add_indicator_hyperparams(ind_name)
 
         # Indicators registered on a model source are expanded by
         # Strategy._fetch_indicators even when they are not also listed on the
         # execution, so their hyperparams have to be collected here or the run
         # hyperparams dict is missing a name the indicator asks for.
-        for model_name in execution.model_names:
+        for model_name in sorted(execution.model_names):
             base_name, _ = parse_model_interval_name(model_name)
             for ind_name in scope.get_indicator_names(base_name):
                 add_indicator_hyperparams(ind_name)
 
-        for hp_name in execution.hyperparam_names:
+        for hp_name in sorted(execution.hyperparam_names):
             if not scope.has_hyperparam(hp_name):
                 raise ValueError(f"Hyperparam {hp_name!r} was not registered.")
             names.add(hp_name)
             specs[hp_name] = scope.get_hyperparam(hp_name)
 
-        for model_name in execution.model_names:
+        for model_name in sorted(execution.model_names):
             base_name, _ = parse_model_interval_name(model_name)
             source = scope.get_model_source(base_name)
             if _find_hyperparam_names(source._kwargs):
                 raise ValueError(
-                    f"Model {model_name!r} has hyperparams in kwargs; "
+                    f"Model {base_name!r} has hyperparams in kwargs; "
                     "models are excluded from optimize()."
                 )
 
@@ -490,7 +494,9 @@ def _validate_optimize_models(strategy: _ExecutionsHost) -> None:
             base_name, _ = parse_model_interval_name(model_name)
             source = scope.get_model_source(base_name)
             if _is_trainable_model_source(source):
-                trainable.append(model_name)
+                # Report the base (registered) name: suffixed per-interval
+                # names are internal expansions.
+                trainable.append(base_name)
     if trainable:
         raise ValueError(
             _MODEL_OPTIMIZE_ERROR.format(
@@ -1262,22 +1268,7 @@ class OptimizeMixin:
                 if sym not in _static_symbols(execution.symbols):
                     continue
                 for model_name in execution.model_names:
-                    base_name, token = parse_model_interval_name(model_name)
-                    if token is not None:
-                        model_syms.add(ModelSymbol(model_name, sym))
-                        continue
                     model_syms.add(ModelSymbol(model_name, sym))
-                    if not _is_trainable_model_source(
-                        StaticScope.instance().get_model_source(base_name)
-                    ):
-                        # Pretrained models stay bound to the base timeframe.
-                        continue
-                    for tf in execution.intervals:
-                        model_syms.add(
-                            ModelSymbol(
-                                model_interval_name(base_name, tf), sym
-                            )
-                        )
         pooled_model_groups: dict[tuple[str, int], frozenset[str]] = {}
         for execution in window_executions:
             exec_syms = frozenset(
@@ -1288,16 +1279,10 @@ class OptimizeMixin:
             if not exec_syms:
                 continue
             for model_name in execution.model_names:
-                base_name, token = parse_model_interval_name(model_name)
-                if token is not None:
-                    continue
+                base_name, _ = parse_model_interval_name(model_name)
                 source = StaticScope.instance().get_model_source(base_name)
                 if _is_trainable_model_source(source) and source.pooled:
                     pooled_model_groups[(model_name, execution.id)] = exec_syms
-                    for tf in execution.intervals:
-                        pooled_model_groups[
-                            (model_interval_name(base_name, tf), execution.id)
-                        ] = exec_syms
         train_dates = get_unique_sorted_dates(train_data[date_col])
         return self.train_models(
             model_syms=model_syms,
@@ -1560,8 +1545,8 @@ class OptimizeMixin:
             lookahead: Number of bars in the future of the target prediction.
                 Held out between train and test to prevent training data from
                 leaking across the boundary, in the bars of the timeframe
-                each model is fitted on: a model bound to an interval via
-                ``add_execution(..., intervals=[...])`` holds out
+                each model is fitted on: a model bound to an interval with
+                :meth:`pybroker.model.ModelSource.intervals` holds out
                 ``lookahead`` bars of that interval, not of the base
                 timeframe. Defaults to ``1``.
             start_date: Starting date of the optimization (inclusive). Must be

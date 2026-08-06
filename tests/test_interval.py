@@ -119,6 +119,13 @@ class TestIntervals:
         interval = f"1{letter}"
         assert normalize_interval(interval) == interval  # type: ignore[arg-type]
 
+    @pytest.mark.parametrize(
+        "value", [["weekly"], ("weekly",), 2.0, None, {"weekly"}]
+    )
+    def test_normalize_rejects_non_int_str(self, value):
+        with pytest.raises(ValueError, match="Invalid interval"):
+            normalize_interval(value)  # type: ignore[arg-type]
+
     def test_reject_one(self):
         with pytest.raises(ValueError, match="n > 1"):
             normalize_interval(1)

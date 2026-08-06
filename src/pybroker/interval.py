@@ -13,7 +13,16 @@ from dataclasses import dataclass, field
 from numba import njit
 from numpy.typing import NDArray
 from pybroker.common import BarData, DataCol, IndicatorSymbol, to_seconds
-from typing import Any, Iterable, Literal, Mapping, Optional, Union, cast
+from typing import (
+    Any,
+    Final,
+    Iterable,
+    Literal,
+    Mapping,
+    Optional,
+    Union,
+    cast,
+)
 
 _BASE_TIMEFRAME_TOLERANCE_SECONDS = 1.0
 
@@ -212,6 +221,11 @@ def normalize_interval(
     interval: TimeframeInterval,
 ) -> TimeframeInterval:
     """Normalizes and validates a compression interval."""
+    if not isinstance(interval, (int, str)):
+        raise ValueError(
+            f"Invalid interval {interval!r}: expected an int > 1, a duration "
+            "string like '5m', or a calendar string like 'weekly'."
+        )
     if isinstance(interval, int):
         if interval <= 1:
             raise ValueError("interval compression requires n > 1.")
@@ -227,6 +241,48 @@ def format_interval(interval: TimeframeInterval) -> str:
     if isinstance(interval, int):
         return str(interval)
     return interval
+
+
+BASE_INTERVAL: Final = "base"
+"""Sentinel accepted by :meth:`pybroker.indicator.Indicator.intervals` and
+:meth:`pybroker.model.ModelSource.intervals` to request the base-timeframe
+variant in addition to the listed compression intervals.
+"""
+
+
+def normalize_intervals(
+    intervals: Union[TimeframeInterval, Iterable[TimeframeInterval]],
+    param: str,
+    allow_base: bool = False,
+) -> frozenset[TimeframeInterval]:
+    """Normalizes one or more compression intervals into a
+    :class:`frozenset`, rejecting empty input and duplicates.
+
+    Args:
+        intervals: A single :class:`TimeframeInterval` or an
+            :class:`Iterable` of them.
+        param: Parameter name used in error messages.
+        allow_base: If ``True``, the literal ``'base'`` passes through
+            verbatim. Otherwise it is rejected like any other invalid
+            interval.
+    """
+    # str is Iterable, so 'weekly' must not split into characters.
+    declared = (
+        (intervals,) if isinstance(intervals, (int, str)) else tuple(intervals)
+    )
+    if not declared:
+        raise ValueError(f"{param} cannot be empty.")
+    seen: set[TimeframeInterval] = set()
+    for interval in declared:
+        norm = (
+            BASE_INTERVAL
+            if allow_base and interval == BASE_INTERVAL
+            else normalize_interval(interval)
+        )
+        if norm in seen:
+            raise ValueError(f"Duplicate interval: {interval!r}.")
+        seen.add(norm)
+    return frozenset(seen)
 
 
 INTERVAL_NAME_SEPARATOR = "@"
@@ -516,8 +572,9 @@ def build_compressed_symbol_arrays(
         if ind_sym not in indicator_data:
             raise ValueError(
                 f"Indicator {ind_name!r} was not computed for {symbol!r} on "
-                f"interval {interval!r}. Its model and the interval must be "
-                "declared on the same add_execution()."
+                f"interval {interval!r}. Bind its model to the interval with "
+                "ModelSource.intervals() on the add_execution() that owns "
+                f"{symbol!r}."
             )
         columns.append(ind_name)
         arrays[ind_name] = indicator_data[ind_sym].to_numpy(copy=False)

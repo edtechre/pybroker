@@ -23,6 +23,7 @@ from pybroker.indicator import (
     Indicator,
     IndicatorsMixin,
     IndicatorSet,
+    IntervalBoundIndicator,
     adx,
     aroon_diff,
     aroon_down,
@@ -151,6 +152,58 @@ class TestIndicator:
     def test_repr(self, hhv_ind):
         assert repr(hhv_ind) == "Indicator('hhv', {'n': 5})"
 
+    def test_intervals(self, hhv_ind):
+        bound = hhv_ind.intervals("weekly", 5)
+        assert isinstance(bound, IntervalBoundIndicator)
+        assert bound.indicator is hhv_ind
+        assert bound.intervals == frozenset(["weekly", 5])
+
+    def test_intervals_scalar(self, hhv_ind):
+        bound = hhv_ind.intervals("monthly")
+        assert bound.intervals == frozenset(["monthly"])
+
+    def test_intervals_normalizes_durations(self, hhv_ind):
+        assert hhv_ind.intervals("05m").intervals == frozenset(["5m"])
+
+    def test_intervals_when_no_args_then_error(self, hhv_ind):
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "Indicator.intervals() requires at least one interval."
+            ),
+        ):
+            hhv_ind.intervals()
+
+    def test_intervals_when_duplicate_then_error(self, hhv_ind):
+        with pytest.raises(
+            ValueError, match=re.escape("Duplicate interval: 'weekly'.")
+        ):
+            hhv_ind.intervals("weekly", "weekly")
+
+    def test_intervals_base_sentinel(self, hhv_ind):
+        bound = hhv_ind.intervals("base", "weekly")
+        assert bound.intervals == frozenset(["base", "weekly"])
+
+    def test_intervals_when_duplicate_base_then_error(self, hhv_ind):
+        with pytest.raises(
+            ValueError, match=re.escape("Duplicate interval: 'base'.")
+        ):
+            hhv_ind.intervals("base", "base")
+
+    def test_intervals_when_invalid_interval_then_error(self, hhv_ind):
+        with pytest.raises(
+            ValueError, match="interval compression requires n > 1."
+        ):
+            hhv_ind.intervals(1)
+
+    def test_intervals_when_list_then_error(self, hhv_ind):
+        # Mirroring add_execution(intervals=[...]) into the varargs binder
+        # must fail cleanly, not with an unhashable-type TypeError.
+        with pytest.raises(
+            ValueError, match=re.escape("Invalid interval ['weekly']")
+        ):
+            hhv_ind.intervals(["weekly"])
+
 
 @pytest.mark.usefixtures("setup_teardown")
 class TestIndicatorsMixin:
@@ -259,6 +312,16 @@ class TestIndicatorSet:
         ind_set = IndicatorSet()
         with pytest.raises(ValueError, match="No indicators were added."):
             ind_set(data_source_df)
+
+    @pytest.mark.parametrize("as_list", [False, True])
+    def test_add_when_interval_bound_then_error(self, hhv_ind, as_list):
+        bound = hhv_ind.intervals("weekly")
+        with pytest.raises(
+            ValueError,
+            match="IndicatorSet requires Indicators, got "
+            "IntervalBoundIndicator",
+        ):
+            IndicatorSet().add([bound] if as_list else bound)
 
     @pytest.mark.parametrize(
         "df", [pd.DataFrame(), LazyFixture("data_source_df")]

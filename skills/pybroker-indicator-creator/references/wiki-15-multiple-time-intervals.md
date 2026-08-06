@@ -74,30 +74,61 @@ bars_to_df(compress_bars(amd_df, 5, base_timeframe="1d")).head()
 
 ## A Multi-Timeframe Strategy
 
-When building a backtest, you can declare higher timeframes by passing the `intervals` parameter to [add_execution](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution). Your execution function can then read these compressed bars through [ctx.interval](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.interval), which returns a read-only [IntervalContext](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.IntervalContext).
-
-Both indicators and models attached to the execution are automatically computed on the base timeframe and across every declared interval. For example, an indicator with a `period=10` will instantly have a 10-week version available on the weekly bars, made accessible via the [indicator](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.IntervalContext.indicator) method on that context (`ctx.interval("weekly").indicator(...)`).
+When building a backtest, you can declare higher timeframes by passing the `intervals` parameter to [add_execution](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution). Your execution function can then read these compressed bars through [ctx.interval](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.interval), which returns a read-only [IntervalContext](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.IntervalContext). The `intervals` parameter provides bars only. Indicators and models are never computed on these intervals unless you bind them explicitly, as shown in the later sections.
 
 To prevent look-ahead bias, [ctx.interval](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.interval) only ever exposes *completed* bars. The week or month that is currently forming is never visible, ensuring that future data cannot leak into your daily trading decisions.
 
-To demonstrate this, we will execute trades on daily bars and assign a specific job to each higher timeframe:
+To demonstrate this, we will execute trades on daily bars and assign a specific job to each higher timeframe.
 
 *   **Monthly (Regime):** Only enter when the last completed monthly close is higher than the close from three months ago.
-*   **Weekly (Trend):** Only enter when the last completed weekly close is above its 10-week moving average, and exit when it falls below that average.
-*   **Daily (Timing):** Enter on the first daily close that crosses above the weekly moving average:
+*   **Weekly (Trend):** Only enter when the last completed weekly close is higher than the close from ten weeks ago, and exit when it falls below.
+*   **Daily (Timing):** Enter on the first daily close above the last completed weekly close.
 
 ```python
-from pybroker.vect import sumv
-
-
-sma_10 = pybroker.indicator("sma_10", lambda data: sumv(data.close, 10) / 10)
-
-
 def buy_with_trend(ctx):
     weekly = ctx.interval("weekly")
     monthly = ctx.interval("monthly")
     # Wait until enough completed weekly and monthly bars exist.
-    if len(weekly.close) == 0 or len(monthly.close) < 4:
+    if len(weekly.close) < 10 or len(monthly.close) < 4:
+        return
+    regime_up = monthly.close[-1] > monthly.close[-4]
+    trend_up = weekly.close[-1] > weekly.close[-10]
+    pos = ctx.long_pos()
+    if not pos and regime_up and trend_up and ctx.close[-1] > weekly.close[-1]:
+        ctx.buy_shares = 100
+    elif pos and not trend_up:
+        ctx.sell_all_shares()
+
+
+strategy = Strategy(yfinance, start_date="1/1/2021", end_date="1/1/2026")
+strategy.add_execution(
+    buy_with_trend,
+    ["AMD", "NVDA", "INTC"],
+    intervals=["weekly", "monthly"],
+)
+result = strategy.backtest(timeframe="1d")
+result.metrics_df.head(20)
+```
+
+## Binding an Indicator to an Interval
+
+To compute an indicator on compressed bars, bind it to one or more intervals with [Indicator.intervals](https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.Indicator.intervals) and read its values with the [indicator](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.IntervalContext.indicator) method on that interval's context. Binding replaces the default base timeframe computation, so include `"base"` in the call to also compute the indicator on the base timeframe.
+
+**PyBroker** automatically unions bound intervals with the execution's `intervals` parameter. As a result, the `"weekly"` interval in the example below is accessible via [ctx.interval](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.interval) without declaring it again. The `intervals` parameter only needs to specify `"monthly"`, which provides the raw monthly bars.
+
+The example below upgrades the weekly trend rule to compare the weekly close against a 10-bar SMA calculated from the weekly bars:
+
+```python
+from pybroker.vect import sumv
+
+sma_10 = pybroker.indicator("sma_10", lambda data: sumv(data.close, 10) / 10)
+
+
+def buy_with_indicator(ctx):
+    weekly = ctx.interval("weekly")
+    monthly = ctx.interval("monthly")
+    # Wait until enough completed weekly and monthly bars exist.
+    if len(weekly.close) < 10 or len(monthly.close) < 4:
         return
     wk_sma = weekly.indicator("sma_10")
     regime_up = monthly.close[-1] > monthly.close[-4]
@@ -111,11 +142,54 @@ def buy_with_trend(ctx):
 
 strategy = Strategy(yfinance, start_date="1/1/2021", end_date="1/1/2026")
 strategy.add_execution(
-    buy_with_trend,
+    buy_with_indicator,
     ["AMD", "NVDA", "INTC"],
-    indicators=sma_10,
-    intervals=["weekly", "monthly"],
+    indicators=sma_10.intervals("weekly"),
+    intervals="monthly",
 )
 result = strategy.backtest(timeframe="1d")
+result.metrics_df.head(20)
+```
+
+## Training a Model on an Interval
+
+You can bind models in the exact same way with [ModelSource.intervals](https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.ModelSource.intervals). **PyBroker** then trains the model on the interval's compressed bars alongside any registered indicators. Binding replaces the default base timeframe training, so include `"base"` in the call to also train the model on the base timeframe. You can access the per-interval predictions by calling the [preds](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.IntervalContext.preds) method on that interval's context. During [Walkforward Analysis](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward), the `lookahead` between an interval model's train and test data is enforced with the compressed-bar units.
+
+We train a [LinearRegression](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html) model to predict the next weekly return from the weekly close:
+
+```python
+from sklearn.linear_model import LinearRegression
+
+
+def train_weekly(symbol, train_data, test_data):
+    # Predict the next weekly return from the weekly close.
+    returns = train_data["close"].pct_change().shift(-1)
+    train_rows = train_data.assign(pred=returns).dropna()
+    model = LinearRegression()
+    model.fit(train_rows[["close"]], train_rows[["pred"]])
+    return model, ["close"]
+
+
+model_weekly = pybroker.model("weekly_slr", train_weekly)
+
+
+def hold_with_model(ctx):
+    preds = ctx.interval("weekly").preds("weekly_slr")
+    if len(preds) == 0:
+        return
+    if not ctx.long_pos():
+        if preds[-1] > 0:
+            ctx.buy_shares = 100
+    elif preds[-1] < 0:
+        ctx.sell_all_shares()
+
+
+strategy = Strategy(yfinance, start_date="1/1/2021", end_date="1/1/2026")
+strategy.add_execution(
+    hold_with_model,
+    ["AMD", "NVDA", "INTC"],
+    models=model_weekly.intervals("weekly"),
+)
+result = strategy.walkforward(windows=3, train_size=0.5, timeframe="1d")
 result.metrics_df.head(20)
 ```

@@ -15,17 +15,36 @@ import optuna
 import pandas as pd
 
 from pybroker_context import ExecContext, RotationContext, SlippageModel
-from pybroker_model import DataSource, Indicator, ModelSource
-from pybroker_types import BarData, BootstrapResult, Day, EvalMetrics, FeeInfo, FeeMode, Portfolio, PositionMode, PriceType, SymbolSelector, TimeframeInterval
+from pybroker_model import (
+    DataSource,
+    Indicator,
+    IntervalBoundIndicator,
+    IntervalBoundModel,
+    ModelSource,
+)
+from pybroker_types import (
+    BarData,
+    BootstrapResult,
+    Day,
+    EvalMetrics,
+    FeeInfo,
+    FeeMode,
+    Portfolio,
+    PositionMode,
+    PriceType,
+    SymbolSelector,
+    TimeframeInterval,
+)
 
-P = ParamSpec('P')
+P = ParamSpec("P")
 StrategySetting = Union[int, Hyperparam, None]
-_DEFAULT_JSON_INCLUDE = frozenset({'metrics', 'trades', 'orders', 'bootstrap'})
+_DEFAULT_JSON_INCLUDE = frozenset({"metrics", "trades", "orders", "bootstrap"})
 
 # --- src/pybroker/config.py ---
 @dataclass(frozen=True)
 class StrategyConfig:
     """Configuration options for :class:`pybroker.strategy.Strategy`."""
+
     initial_cash: float = 100000
     fee_mode: Optional[Union[FeeMode, Callable[[FeeInfo], Decimal]]] = None
     fee_amount: float = 0
@@ -38,8 +57,12 @@ class StrategyConfig:
     sell_delay: int = 1
     bootstrap_samples: int = 10000
     exit_on_last_bar: bool = False
-    exit_cover_fill_price: Union[PriceType, Callable[[str, BarData], Union[int, float, Decimal]]] = PriceType.MIDDLE
-    exit_sell_fill_price: Union[PriceType, Callable[[str, BarData], Union[int, float, Decimal]]] = PriceType.MIDDLE
+    exit_cover_fill_price: Union[
+        PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
+    ] = PriceType.MIDDLE
+    exit_sell_fill_price: Union[
+        PriceType, Callable[[str, BarData], Union[int, float, Decimal]]
+    ] = PriceType.MIDDLE
     bars_per_year: Optional[int] = None
     return_signals: bool = False
     return_stops: bool = False
@@ -52,22 +75,121 @@ class StrategyConfig:
 # --- src/pybroker/strategy.py ---
 class Strategy:
     """Class representing a trading strategy to backtest."""
-    def __init__(self, data_source: Union[DataSource, pd.DataFrame], start_date: Union[str, datetime], end_date: Union[str, datetime], config: Optional[StrategyConfig]=None): ...
+    def __init__(
+        self,
+        data_source: Union[DataSource, pd.DataFrame],
+        start_date: Union[str, datetime],
+        end_date: Union[str, datetime],
+        config: Optional[StrategyConfig] = None,
+    ): ...
     def set_max_long_positions(self, max_long: StrategySetting) -> None: ...
     def set_max_short_positions(self, max_short: StrategySetting) -> None: ...
-    def enable_rotation(self, worst_rank_held: StrategySetting, sizer: Optional[Callable[[RotationContext], None]]=None) -> None: ...
+    def enable_rotation(
+        self,
+        worst_rank_held: StrategySetting,
+        sizer: Optional[Callable[[RotationContext], None]] = None,
+    ) -> None: ...
     def set_slippage_model(self, slippage_model: Optional[SlippageModel]): ...
-    def add_execution(self, fn: Optional[Callable[Concatenate[ExecContext, P], None]], symbols: Union[str, Iterable[str], SymbolSelector], models: Optional[Union[ModelSource, Iterable[ModelSource]]]=None, indicators: Optional[Union[Indicator, Iterable[Indicator]]]=None, hyperparams: Optional[Iterable[Hyperparam]]=None, intervals: Optional[Union[TimeframeInterval, Iterable[TimeframeInterval]]]=None, *args: P.args, **kwargs: P.kwargs): ...
-    def set_before_exec(self, fn: Optional[Callable[[Mapping[str, ExecContext]], None]]): ...
-    def set_after_exec(self, fn: Optional[Callable[[Mapping[str, ExecContext]], None]]): ...
+    def add_execution(
+        self,
+        fn: Optional[Callable[Concatenate[ExecContext, P], None]],
+        symbols: Union[str, Iterable[str], SymbolSelector],
+        models: Optional[
+            Union[
+                ModelSource,
+                IntervalBoundModel,
+                Iterable[Union[ModelSource, IntervalBoundModel]],
+            ]
+        ] = None,
+        indicators: Optional[
+            Union[
+                Indicator,
+                IntervalBoundIndicator,
+                Iterable[Union[Indicator, IntervalBoundIndicator]],
+            ]
+        ] = None,
+        hyperparams: Optional[Iterable[Hyperparam]] = None,
+        intervals: Optional[
+            Union[TimeframeInterval, Iterable[TimeframeInterval]]
+        ] = None,
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ): ...
+    def set_before_exec(
+        self, fn: Optional[Callable[[Mapping[str, ExecContext]], None]]
+    ): ...
+    def set_after_exec(
+        self, fn: Optional[Callable[[Mapping[str, ExecContext]], None]]
+    ): ...
     def clear_executions(self): ...
-    def backtest(self, start_date: Optional[Union[str, datetime]]=None, end_date: Optional[Union[str, datetime]]=None, timeframe: str='', between_time: Optional[tuple[str, str]]=None, days: Optional[Union[str, Day, Iterable[Union[str, Day]]]]=None, lookahead: int=1, train_size: float=0, shuffle: bool=False, calc_bootstrap: bool=False, parallel_indicators: bool=False, parallel_models: bool=False, warmup: Optional[int]=None, portfolio: Optional[Portfolio]=None, adjust: Optional[Any]=None, seed: Optional[int]=42, params: Optional[dict[str, Any]]=None) -> TestResult: ...
-    def walkforward(self, windows: int, lookahead: int=1, start_date: Optional[Union[str, datetime]]=None, end_date: Optional[Union[str, datetime]]=None, timeframe: str='', between_time: Optional[tuple[str, str]]=None, days: Optional[Union[str, Day, Iterable[Union[str, Day]]]]=None, train_size: float=0.5, shuffle: bool=False, calc_bootstrap: bool=False, parallel_indicators: bool=False, parallel_models: bool=False, warmup: Optional[int]=None, portfolio: Optional[Portfolio]=None, adjust: Optional[Any]=None, seed: Optional[int]=42, params: Optional[dict[str, Any]]=None) -> TestResult: ...
-    def optimize(self, score_fn: Callable[[TestResult], float], *, sampler: Union[str, BaseSampler]='grid', n_trials: Optional[int]=None, direction: str='maximize', seed: Optional[int]=None, windows: Optional[int]=None, study: Optional[optuna.Study]=None, pruner: Optional[optuna.pruners.BasePruner]=None, train_size: float=0.5, lookahead: int=1, start_date: Optional[Union[str, datetime]]=None, end_date: Optional[Union[str, datetime]]=None, timeframe: str='', between_time: Optional[tuple[str, str]]=None, days: Optional[Any]=None, warmup: Optional[int]=None, parallel_indicators: bool=False, adjust: Optional[Any]=None, calc_bootstrap: bool=False, verbose: bool=False) -> OptimizeResult: ...  # from OptimizeMixin (src/pybroker/optimize.py)
+    def backtest(
+        self,
+        start_date: Optional[Union[str, datetime]] = None,
+        end_date: Optional[Union[str, datetime]] = None,
+        timeframe: str = "",
+        between_time: Optional[tuple[str, str]] = None,
+        days: Optional[Union[str, Day, Iterable[Union[str, Day]]]] = None,
+        lookahead: int = 1,
+        train_size: float = 0,
+        shuffle: bool = False,
+        calc_bootstrap: bool = False,
+        parallel_indicators: bool = False,
+        parallel_models: bool = False,
+        warmup: Optional[int] = None,
+        portfolio: Optional[Portfolio] = None,
+        adjust: Optional[Any] = None,
+        seed: Optional[int] = 42,
+        params: Optional[dict[str, Any]] = None,
+    ) -> TestResult: ...
+    def walkforward(
+        self,
+        windows: int,
+        lookahead: int = 1,
+        start_date: Optional[Union[str, datetime]] = None,
+        end_date: Optional[Union[str, datetime]] = None,
+        timeframe: str = "",
+        between_time: Optional[tuple[str, str]] = None,
+        days: Optional[Union[str, Day, Iterable[Union[str, Day]]]] = None,
+        train_size: float = 0.5,
+        shuffle: bool = False,
+        calc_bootstrap: bool = False,
+        parallel_indicators: bool = False,
+        parallel_models: bool = False,
+        warmup: Optional[int] = None,
+        portfolio: Optional[Portfolio] = None,
+        adjust: Optional[Any] = None,
+        seed: Optional[int] = 42,
+        params: Optional[dict[str, Any]] = None,
+    ) -> TestResult: ...
+    def optimize(
+        self,
+        score_fn: Callable[[TestResult], float],
+        *,
+        sampler: Union[str, BaseSampler] = "grid",
+        n_trials: Optional[int] = None,
+        direction: str = "maximize",
+        seed: Optional[int] = None,
+        windows: Optional[int] = None,
+        study: Optional[optuna.Study] = None,
+        pruner: Optional[optuna.pruners.BasePruner] = None,
+        train_size: float = 0.5,
+        lookahead: int = 1,
+        start_date: Optional[Union[str, datetime]] = None,
+        end_date: Optional[Union[str, datetime]] = None,
+        timeframe: str = "",
+        between_time: Optional[tuple[str, str]] = None,
+        days: Optional[Any] = None,
+        warmup: Optional[int] = None,
+        parallel_indicators: bool = False,
+        adjust: Optional[Any] = None,
+        calc_bootstrap: bool = False,
+        verbose: bool = False,
+    ) -> OptimizeResult: ...  # from OptimizeMixin (src/pybroker/optimize.py)
 
 @dataclass(frozen=True)
 class TestResult:
     """Contains the results of backtesting a :class:`.Strategy`."""
+
     start_date: datetime
     end_date: datetime
     portfolio: pd.DataFrame
@@ -79,36 +201,70 @@ class TestResult:
     bootstrap: Optional[BootstrapResult]
     signals: Optional[dict[str, pd.DataFrame]]
     stops: Optional[pd.DataFrame]
-    def to_json(self, *, include: frozenset[str]=_DEFAULT_JSON_INCLUDE, max_rows: Optional[int]=100, symbols: Optional[frozenset[str]]=None) -> dict[str, Any]: ...
-    def to_json_str(self, *, include: frozenset[str]=_DEFAULT_JSON_INCLUDE, max_rows: Optional[int]=100, symbols: Optional[frozenset[str]]=None) -> str: ...
+    def to_json(
+        self,
+        *,
+        include: frozenset[str] = _DEFAULT_JSON_INCLUDE,
+        max_rows: Optional[int] = 100,
+        symbols: Optional[frozenset[str]] = None,
+    ) -> dict[str, Any]: ...
+    def to_json_str(
+        self,
+        *,
+        include: frozenset[str] = _DEFAULT_JSON_INCLUDE,
+        max_rows: Optional[int] = 100,
+        symbols: Optional[frozenset[str]] = None,
+    ) -> str: ...
 
 # --- src/pybroker/optimize.py ---
 @dataclass(frozen=True)
 class Hyperparam:
     """Declares a named hyperparameter with bounds and step size."""
+
     name: str
     default: Union[int, float]
     low: Union[int, float]
     high: Union[int, float]
     step: Union[int, float]
 
-def hyperparam(name: str, *, default: Union[int, float], low: Union[int, float], high: Union[int, float], step: Union[int, float]) -> Hyperparam:
+def hyperparam(
+    name: str,
+    *,
+    default: Union[int, float],
+    low: Union[int, float],
+    high: Union[int, float],
+    step: Union[int, float],
+) -> Hyperparam:
     """Creates and registers a :class:`Hyperparam`."""
 
 @dataclass(frozen=True)
 class OptimizeResult:
     """Result of ``Strategy.optimize()``."""
+
     best_params: dict[str, Any]
     best_score: float
     result: TestResult
     study: optuna.Study
     windows: Optional[tuple[WindowOptimizeResult, ...]] = None
-    def to_json(self, *, include: Optional[frozenset[str]]=None, max_rows: Optional[int]=100, symbols: Optional[frozenset[str]]=None) -> dict[str, Any]: ...
-    def to_json_str(self, *, include: Optional[frozenset[str]]=None, max_rows: Optional[int]=100, symbols: Optional[frozenset[str]]=None) -> str: ...
+    def to_json(
+        self,
+        *,
+        include: Optional[frozenset[str]] = None,
+        max_rows: Optional[int] = 100,
+        symbols: Optional[frozenset[str]] = None,
+    ) -> dict[str, Any]: ...
+    def to_json_str(
+        self,
+        *,
+        include: Optional[frozenset[str]] = None,
+        max_rows: Optional[int] = 100,
+        symbols: Optional[frozenset[str]] = None,
+    ) -> str: ...
 
 @dataclass(frozen=True)
 class WindowOptimizeResult:
     """Per-window walk-forward optimization result."""
+
     params: dict[str, Any]
     study: optuna.Study
     train_score: float

@@ -1081,6 +1081,22 @@ class IndicatorScope:
             cached = self._sym_inds[ind_sym]
             return cached if end_index is None else cached[:end_index]
         if ind_sym not in self._indicator_data:
+            if token is not None:
+                raise ValueError(
+                    f"Indicator {name!r} not found for {symbol}. Indicators "
+                    "are computed on an interval only when bound to it with "
+                    f"Indicator.intervals({token!r}) — or, for a model's "
+                    "input features, when the model is bound with "
+                    f"ModelSource.intervals({token!r})."
+                )
+            if StaticScope.instance().has_indicator(name):
+                raise ValueError(
+                    f"Indicator {name!r} not found for {symbol}. Pass it to "
+                    "add_execution(indicators=...) for this symbol's "
+                    "execution. If it is bound with Indicator.intervals(), "
+                    "include 'base' in the binding to compute it on the "
+                    "base timeframe."
+                )
             raise ValueError(f"Indicator {name!r} not found for {symbol}.")
         raw = self._indicator_data[ind_sym]
         if isinstance(raw, np.ndarray):
@@ -1335,6 +1351,11 @@ class IntervalScope:
                     f"interval. Access it on the base timeframe with "
                     f"ctx.preds({base_model_name!r})."
                 )
+            return (
+                f"Model {base_model_name!r} not found for {symbol}. Models "
+                "are trained on an interval only when bound to it with "
+                "ModelSource.intervals()."
+            )
         return f"Model {base_model_name!r} not found for {symbol}."
 
     def completed_index(
@@ -1839,7 +1860,12 @@ class ModelInputScope:
             raise ValueError(f"Model {name!r} not found.")
         model_source = self._scope.get_model_source(name)
         if model_sym not in self._models:
-            raise ValueError(f"Model {name!r} not found for {symbol}.")
+            raise ValueError(
+                f"Model {name!r} not found for {symbol}. Pass it to "
+                "add_execution(models=...) for this symbol's execution. If "
+                "it is bound with ModelSource.intervals(), include 'base' "
+                "in the binding to train it on the base timeframe."
+            )
         trained_model = self._models[model_sym]
         date_col = DataCol.DATE.value
         ind_names = self._scope.get_indicator_names(name)

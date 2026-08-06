@@ -49,8 +49,13 @@ from pybroker.context import (
 from pybroker.data import AlpacaCrypto, DataSource
 from pybroker.eval import BootstrapResult, EvalMetrics, EvaluateMixin
 from pybroker.optimize import Hyperparam, OptimizeMixin, build_run_hyperparams
-from pybroker.indicator import Indicator, IndicatorsMixin
+from pybroker.indicator import (
+    Indicator,
+    IndicatorsMixin,
+    IntervalBoundIndicator,
+)
 from pybroker.model import (
+    IntervalBoundModel,
     ModelSource,
     ModelTrainer,
     ModelsMixin,
@@ -87,10 +92,10 @@ from pybroker.interval import (
     _iter_symbol_date_groups,
     base_timeframe_to_seconds,
     compress_intervals_from_frame,
+    BASE_INTERVAL,
     indicator_interval_name,
     model_interval_name,
-    normalize_interval,
-    parse_indicator_interval_name,
+    normalize_intervals,
     parse_model_interval_name,
     symbol_dates_from_frame,
     validate_interval,
@@ -609,11 +614,16 @@ class Execution(NamedTuple):
         symbols: Ticker symbols used for execution of ``fn``.
         fn: Implements trading logic.
         model_names: Names of :class:`pybroker.model.ModelSource`\ s used for
-            execution of ``fn``.
+            execution of ``fn``, including the suffixed per-interval names of
+            interval-bound models.
         indicator_names: Names of :class:`pybroker.indicator.Indicator`\ s
-            used for execution of ``fn``.
+            used for execution of ``fn``, including the suffixed per-interval
+            names of interval-bound indicators.
         intervals: Compression intervals available to ``fn`` through
-            :meth:`pybroker.context.ExecContext.interval`.
+            :meth:`pybroker.context.ExecContext.interval`: the union of the
+            ``intervals`` declared on
+            :meth:`pybroker.strategy.Strategy.add_execution` and the
+            intervals bound to the execution's models and indicators.
         args: Additional positional arguments for ``fn``.
         kwargs: Additional keyword arguments for ``fn``.
     """
@@ -732,6 +742,9 @@ class BacktestMixin:
             Dictionary of :class:`pandas.DataFrame`\ s containing bar data,
             indicator data, and model predictions for each symbol when
             :attr:`pybroker.config.StrategyConfig.return_signals` is ``True``.
+            Signals contain base-timeframe values only; an interval-bound
+            indicator or model appears only when ``'base'`` is included in
+            its binding.
         """
         if (
             rotation_sizer is not None
@@ -1573,8 +1586,8 @@ class WalkforwardMixin:
                 ``lookahead`` of ``1``. This quantity is needed to prevent
                 training data from leaking into the test boundary. It is
                 expressed in the bars of the timeframe each model is fitted
-                on: a model bound to an interval via
-                ``add_execution(..., intervals=[...])`` holds out
+                on: a model bound to an interval with
+                :meth:`pybroker.model.ModelSource.intervals` holds out
                 ``lookahead`` bars of that interval, not of the base
                 timeframe. No bar in a window's test set is ever used to fit
                 that window's models.
@@ -1750,6 +1763,9 @@ class TestResult:
         signals: Dictionary of :class:`pandas.DataFrame`\ s containing bar
             data, indicator data, and model predictions for each symbol when
             :attr:`pybroker.config.StrategyConfig.return_signals` is ``True``.
+            Signals contain base-timeframe values only; an interval-bound
+            indicator or model appears only when ``'base'`` is included in
+            its binding.
         stops: :class:`pandas.DataFrame` containing stop data per-bar when
             :attr:`pybroker.config.StrategyConfig.return_stops` is ``True``.
     """
@@ -2098,18 +2114,6 @@ class Strategy(
         """
         self._slippage_model = slippage_model
 
-    def _supports_interval_training(self, base_model_name: str) -> bool:
-        """Returns whether a model source can be trained per interval.
-
-        Pretrained models (:class:`pybroker.model.ModelLoader`) are loaded
-        rather than trained, so they stay bound to the base timeframe and are
-        accessed with :meth:`pybroker.context.ExecContext.preds` instead of
-        ``ctx.interval(interval).preds()``.
-        """
-        return isinstance(
-            self._scope.get_model_source(base_model_name), ModelTrainer
-        )
-
     def _build_interval_data(
         self, df: pd.DataFrame, timeframe: str
     ) -> IntervalData:
@@ -2125,9 +2129,12 @@ class Strategy(
             return IntervalData()
         if not timeframe.strip():
             raise ValueError(
-                "add_execution(intervals=...) needs the base bar spacing of "
-                "the data: pass timeframe= to backtest() or walkforward() "
-                "(e.g. walkforward(windows=1, timeframe='1d'))."
+                "Compression intervals — declared with "
+                "add_execution(intervals=...) or bound with "
+                "ModelSource.intervals() / Indicator.intervals() — need the "
+                "base bar spacing of the data: pass timeframe= to backtest() "
+                "or walkforward() (e.g. walkforward(windows=1, "
+                "timeframe='1d'))."
             )
         base_bar_seconds = base_timeframe_to_seconds(timeframe)
         # Validate the union rather than the per-symbol map so an interval
@@ -2145,8 +2152,20 @@ class Strategy(
         self,
         fn: Optional[Callable[Concatenate[ExecContext, P], None]],
         symbols: Union[str, Iterable[str], SymbolSelector],
-        models: Optional[Union[ModelSource, Iterable[ModelSource]]] = None,
-        indicators: Optional[Union[Indicator, Iterable[Indicator]]] = None,
+        models: Optional[
+            Union[
+                ModelSource,
+                IntervalBoundModel,
+                Iterable[Union[ModelSource, IntervalBoundModel]],
+            ]
+        ] = None,
+        indicators: Optional[
+            Union[
+                Indicator,
+                IntervalBoundIndicator,
+                Iterable[Union[Indicator, IntervalBoundIndicator]],
+            ]
+        ] = None,
         hyperparams: Optional[Iterable[Hyperparam]] = None,
         intervals: Optional[
             Union[TimeframeInterval, Iterable[TimeframeInterval]]
@@ -2171,14 +2190,14 @@ class Strategy(
           Weeks start on Monday, months on the first of the month, quarters
           in January, April, July, and October, and years on January 1.
 
-        For example, to use weekly bars, 5-bar bins, and 1-hour duration bars
-        on a 1-minute feed::
+        For example, to read 5-bar bins and 1-hour duration bars on a
+        1-minute feed, and additionally compute ``sma`` on weekly bars::
 
             strategy.add_execution(
                 fn,
                 "SPY",
-                indicators=[sma],
-                intervals=["weekly", 5, "1h"],
+                indicators=sma.intervals("weekly"),
+                intervals=[5, "1h"],
             )
             strategy.walkforward(windows=1, timeframe="1m")
 
@@ -2203,28 +2222,50 @@ class Strategy(
                 Note that ``shuffle=True`` randomizes the training frame's row
                 order, so avoid it with a selector that depends on bar order.
             models: :class:`Iterable` of :class:`pybroker.model.ModelSource`\ s
-                to train/load for backtesting.
+                to train/load for backtesting. A model passed directly is
+                trained on the base timeframe. Bind a model to compression
+                intervals with :meth:`pybroker.model.ModelSource.intervals`
+                to instead train it on exactly the listed intervals'
+                compressed bars, together with the indicators registered on
+                it; include the literal ``'base'`` in the binding to also
+                train on the base timeframe. Per-interval predictions are
+                read with :meth:`pybroker.context.IntervalContext.preds`. An
+                interval-bound model honors the ``lookahead`` passed to
+                :meth:`.backtest`, :meth:`.walkforward`, or :meth:`.optimize`
+                in the interval's units: ``lookahead`` compressed bars are
+                held out between its train and test rows.
             indicators: :class:`Iterable` of
                 :class:`pybroker.indicator.Indicator`\ s to compute for
-                backtesting.
+                backtesting. An indicator passed directly is computed on the
+                base timeframe. Bind an indicator to compression intervals
+                with :meth:`pybroker.indicator.Indicator.intervals` to
+                instead compute it on exactly the listed intervals'
+                compressed bars, read with
+                :meth:`pybroker.context.IntervalContext.indicator`; include
+                the literal ``'base'`` in the binding to also compute it on
+                the base timeframe.
             hyperparams: :class:`Iterable` of
                 :class:`pybroker.optimize.Hyperparam`\ s that ``fn`` can read with
                 :meth:`pybroker.context.ExecContext.hyperparam`.
-            intervals: One or more compression intervals made available to
-                ``fn`` through :meth:`pybroker.context.ExecContext.interval`.
-                Each must be strictly coarser than the base bar spacing passed
-                as ``timeframe`` to :meth:`.backtest` or :meth:`.walkforward`;
-                invalid combinations raise ``ValueError`` when the backtest
-                runs. Intervals are scoped to this execution, so another
+            intervals: One or more compression intervals whose bars are made
+                available to ``fn`` through
+                :meth:`pybroker.context.ExecContext.interval`. Declaring an
+                interval here provides compressed bars only. It does *not*
+                compute indicators or train models on that interval. Bind
+                those per source with
+                :meth:`pybroker.indicator.Indicator.intervals` and
+                :meth:`pybroker.model.ModelSource.intervals` instead; bound
+                intervals are automatically made available through
+                :meth:`~pybroker.context.ExecContext.interval` without
+                repeating them here. Each interval must be strictly coarser
+                than the base bar spacing passed as ``timeframe`` to
+                :meth:`.backtest` or :meth:`.walkforward`; invalid
+                combinations raise ``ValueError`` when the backtest runs.
+                Intervals are scoped to this execution, so another
                 execution's :class:`pybroker.context.ExecContext` cannot read
                 them — including inside a :meth:`.set_before_exec` or
                 :meth:`.set_after_exec` callback, which receives contexts from
-                every execution. Models declared alongside an interval are
-                trained on its compressed bars and honor the ``lookahead``
-                passed to :meth:`.backtest`, :meth:`.walkforward`, or
-                :meth:`.optimize` in that interval's units: ``lookahead``
-                compressed bars are held out between their train and test
-                rows.
+                every execution.
             args: Positional arguments passed to ``fn``.
             kwargs: Keyword arguments passed to ``fn``.
         """
@@ -2246,13 +2287,46 @@ class Strategy(
                         raise ValueError(
                             f"{sym} was already added to an execution."
                         )
+        bound_intervals: set[TimeframeInterval] = set()
         if models is not None:
             model_name_set: set[str] = set()
-            for model in (
-                (models,) if isinstance(models, ModelSource) else models
+            for model_entry in (
+                (models,)
+                if isinstance(
+                    models,
+                    (
+                        ModelSource,
+                        IntervalBoundModel,
+                        IntervalBoundIndicator,
+                        Indicator,
+                    ),
+                )
+                else models
             ):
+                model = (
+                    model_entry.source
+                    if isinstance(model_entry, IntervalBoundModel)
+                    else model_entry
+                )
                 if not isinstance(model, ModelSource):
-                    raise TypeError(f"Invalid model type: {type(model)!r}.")
+                    raise TypeError(
+                        f"Invalid model type: {type(model_entry)!r}."
+                    )
+                if isinstance(model_entry, IntervalBoundModel):
+                    # Re-validate: the binding NamedTuple is public and can
+                    # be constructed without going through
+                    # ModelSource.intervals().
+                    if not isinstance(model, ModelTrainer):
+                        raise ValueError(
+                            f"Pretrained model {model.name!r} is not "
+                            "trained per interval and cannot be bound to "
+                            "intervals."
+                        )
+                    model_intervals = normalize_intervals(
+                        model_entry.intervals, "intervals", allow_base=True
+                    )
+                else:
+                    model_intervals = frozenset()
                 if not self._scope.has_model_source(model.name):
                     raise ValueError(
                         f"ModelSource {model.name!r} was not registered."
@@ -2262,19 +2336,53 @@ class Strategy(
                         f"ModelSource {model.name!r} does not match "
                         "registered ModelSource."
                     )
-                model_name_set.add(model.name)
+                # A binding is exhaustive: the base variant is trained only
+                # when 'base' is listed. Unbound models default to base.
+                if isinstance(model_entry, IntervalBoundModel):
+                    if BASE_INTERVAL in model_intervals:
+                        model_name_set.add(model.name)
+                        model_intervals -= frozenset((BASE_INTERVAL,))
+                else:
+                    model_name_set.add(model.name)
+                for tf in model_intervals:
+                    model_name_set.add(model_interval_name(model.name, tf))
+                bound_intervals.update(model_intervals)
         model_names = (
             frozenset(model_name_set) if models is not None else frozenset()
         )
         if indicators is not None:
             ind_name_set: set[str] = set()
-            for ind in (
+            for ind_entry in (
                 (indicators,)
-                if isinstance(indicators, Indicator)
+                if isinstance(
+                    indicators,
+                    (
+                        Indicator,
+                        IntervalBoundIndicator,
+                        IntervalBoundModel,
+                        ModelSource,
+                    ),
+                )
                 else indicators
             ):
+                ind = (
+                    ind_entry.indicator
+                    if isinstance(ind_entry, IntervalBoundIndicator)
+                    else ind_entry
+                )
                 if not isinstance(ind, Indicator):
-                    raise TypeError(f"Invalid indicator type: {type(ind)!r}.")
+                    raise TypeError(
+                        f"Invalid indicator type: {type(ind_entry)!r}."
+                    )
+                if isinstance(ind_entry, IntervalBoundIndicator):
+                    # Re-normalize: the binding NamedTuple is public and can
+                    # be constructed without going through
+                    # Indicator.intervals().
+                    ind_intervals = normalize_intervals(
+                        ind_entry.intervals, "intervals", allow_base=True
+                    )
+                else:
+                    ind_intervals = frozenset()
                 if not self._scope.has_indicator(ind.name):
                     raise ValueError(
                         f"Indicator {ind.name!r} was not registered."
@@ -2284,7 +2392,17 @@ class Strategy(
                         f"Indicator {ind.name!r} does not match registered "
                         "Indicator."
                     )
-                ind_name_set.add(ind.name)
+                # A binding is exhaustive: the base variant is computed only
+                # when 'base' is listed. Unbound indicators default to base.
+                if isinstance(ind_entry, IntervalBoundIndicator):
+                    if BASE_INTERVAL in ind_intervals:
+                        ind_name_set.add(ind.name)
+                        ind_intervals -= frozenset((BASE_INTERVAL,))
+                else:
+                    ind_name_set.add(ind.name)
+                for tf in ind_intervals:
+                    ind_name_set.add(indicator_interval_name(ind.name, tf))
+                bound_intervals.update(ind_intervals)
             ind_names = frozenset(ind_name_set)
         else:
             ind_names = frozenset()
@@ -2306,21 +2424,11 @@ class Strategy(
         if intervals is None:
             interval_set: frozenset[TimeframeInterval] = frozenset()
         else:
-            # str is Iterable, so 'weekly' must not split into characters.
-            declared = (
-                (intervals,)
-                if isinstance(intervals, (int, str))
-                else tuple(intervals)
-            )
-            if not declared:
-                raise ValueError("intervals cannot be empty.")
-            seen_intervals: set[TimeframeInterval] = set()
-            for interval in declared:
-                norm = normalize_interval(interval)
-                if norm in seen_intervals:
-                    raise ValueError(f"Duplicate interval: {interval!r}.")
-                seen_intervals.add(norm)
-            interval_set = frozenset(seen_intervals)
+            interval_set = normalize_intervals(intervals, "intervals")
+        # Bound model/indicator intervals union into the execution's interval
+        # set so their ctx.interval() contexts are available without also
+        # declaring them in ``intervals``.
+        interval_set |= bound_intervals
         self._execution_id += 1
         self._executions.add(
             Execution(
@@ -2417,8 +2525,8 @@ class Strategy(
                 ``lookahead`` of ``1``. This quantity is needed to prevent
                 training data from leaking into the test boundary. It is
                 expressed in the bars of the timeframe each model is fitted
-                on: a model bound to an interval via
-                ``add_execution(..., intervals=[...])`` holds out
+                on: a model bound to an interval with
+                :meth:`pybroker.model.ModelSource.intervals` holds out
                 ``lookahead`` bars of that interval, not of the base
                 timeframe. No bar in a window's test set is ever used to fit
                 that window's models.
@@ -2530,8 +2638,8 @@ class Strategy(
                 ``lookahead`` of ``1``. This quantity is needed to prevent
                 training data from leaking into the test boundary. It is
                 expressed in the bars of the timeframe each model is fitted
-                on: a model bound to an interval via
-                ``add_execution(..., intervals=[...])`` holds out
+                on: a model bound to an interval with
+                :meth:`pybroker.model.ModelSource.intervals` holds out
                 ``lookahead`` bars of that interval, not of the base
                 timeframe. No bar in a window's test set is ever used to fit
                 that window's models.
@@ -2969,22 +3077,7 @@ class Strategy(
                         if sym not in _static_symbols(execution.symbols):
                             continue
                         for model_name in execution.model_names:
-                            base_name, token = parse_model_interval_name(
-                                model_name
-                            )
-                            if token is not None:
-                                model_syms.add(ModelSymbol(model_name, sym))
-                                continue
                             model_syms.add(ModelSymbol(model_name, sym))
-                            if not self._supports_interval_training(base_name):
-                                continue
-                            for tf in execution.intervals:
-                                model_syms.add(
-                                    ModelSymbol(
-                                        model_interval_name(base_name, tf),
-                                        sym,
-                                    )
-                                )
                 pooled_model_groups: dict[tuple[str, int], frozenset[str]] = {}
                 for execution in window_executions:
                     exec_syms = frozenset(
@@ -2995,23 +3088,12 @@ class Strategy(
                     if not exec_syms:
                         continue
                     for model_name in execution.model_names:
-                        base_name, token = parse_model_interval_name(
-                            model_name
-                        )
-                        if token is not None:
-                            continue
+                        base_name, _ = parse_model_interval_name(model_name)
                         source = self._scope.get_model_source(base_name)
                         if isinstance(source, ModelTrainer) and source.pooled:
                             pooled_model_groups[(model_name, execution.id)] = (
                                 exec_syms
                             )
-                            for tf in execution.intervals:
-                                pooled_model_groups[
-                                    (
-                                        model_interval_name(base_name, tf),
-                                        execution.id,
-                                    )
-                                ] = exec_syms
                 train_dates = get_unique_sorted_dates(train_data[date_col])
                 models = self.train_models(
                     model_syms=model_syms,
@@ -3222,36 +3304,22 @@ class Strategy(
                 for model_name in execution.model_names:
                     base_name, token = parse_model_interval_name(model_name)
                     ind_names = self._scope.get_indicator_names(base_name)
+                    # A model's registered indicators are its input
+                    # features, so each model variant needs them computed
+                    # on its own timeframe only: the base variant on base,
+                    # an interval variant on its interval.
                     for ind_name in ind_names:
-                        indicator_syms.add(IndicatorSymbol(ind_name, sym))
-                        if token is not None:
+                        if token is None:
+                            indicator_syms.add(IndicatorSymbol(ind_name, sym))
+                        else:
                             indicator_syms.add(
                                 IndicatorSymbol(
                                     indicator_interval_name(ind_name, token),
                                     sym,
                                 )
                             )
-                        elif execution.intervals and (
-                            self._supports_interval_training(base_name)
-                        ):
-                            for tf in execution.intervals:
-                                indicator_syms.add(
-                                    IndicatorSymbol(
-                                        indicator_interval_name(ind_name, tf),
-                                        sym,
-                                    )
-                                )
                 for ind_name in execution.indicator_names:
-                    base_name, token = parse_indicator_interval_name(ind_name)
                     indicator_syms.add(IndicatorSymbol(ind_name, sym))
-                    if token is None and execution.intervals:
-                        for tf in execution.intervals:
-                            indicator_syms.add(
-                                IndicatorSymbol(
-                                    indicator_interval_name(base_name, tf),
-                                    sym,
-                                )
-                            )
         return indicator_syms
 
     def _fetch_indicators(

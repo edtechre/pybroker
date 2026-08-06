@@ -270,7 +270,11 @@ class IntervalContext:
                 f"Access it on the base timeframe with ctx.model({name!r}) / "
                 f"ctx.preds({name!r})."
             )
-        return f"Model {name!r} not found for {self._symbol}."
+        return (
+            f"Model {name!r} not found for {self._symbol}. Models are "
+            "trained on an interval only when bound to it with "
+            "ModelSource.intervals()."
+        )
 
     def input(self, model_name: str) -> pd.DataFrame:
         """Returns model input data on the compressed interval."""
@@ -947,7 +951,10 @@ class ExecContext:
 
         ``interval`` must match a value this execution declared with
         ``intervals`` in
-        :meth:`pybroker.strategy.Strategy.add_execution`. Intervals are
+        :meth:`pybroker.strategy.Strategy.add_execution`, or an interval
+        bound to one of the execution's models or indicators with
+        :meth:`pybroker.model.ModelSource.intervals` /
+        :meth:`pybroker.indicator.Indicator.intervals`. Intervals are
         scoped per execution: reading an interval that another execution
         declared raises ``ValueError``, the same way :meth:`.hyperparam` is
         gated by the execution's ``hyperparams``. The same
@@ -969,8 +976,8 @@ class ExecContext:
             strategy.add_execution(
                 exec_fn,
                 "SPY",
-                indicators=[sma20],
-                intervals=["weekly", "5m"],
+                indicators=[sma20.intervals("weekly")],
+                intervals=["5m"],
             )
             strategy.walkforward(windows=1, timeframe="1m")
 
@@ -982,7 +989,8 @@ class ExecContext:
 
         Args:
             interval: Compression interval declared for this execution with
-                :meth:`pybroker.strategy.Strategy.add_execution`.
+                :meth:`pybroker.strategy.Strategy.add_execution`, or bound
+                to one of its models or indicators.
 
         Returns:
             :class:`pybroker.context.IntervalContext` exposing read-only
@@ -992,7 +1000,9 @@ class ExecContext:
         if interval not in self._declared_intervals:
             raise ValueError(
                 f"Interval {interval!r} was not declared for this execution. "
-                "Add it with add_execution(..., intervals=[...])."
+                "Add it with add_execution(..., intervals=[...]), or bind a "
+                "model or indicator to it with ModelSource.intervals() / "
+                "Indicator.intervals()."
             )
         if interval not in self._interval:
             self._interval[interval] = IntervalContext(
@@ -1019,6 +1029,14 @@ class ExecContext:
         symbol = self._get_symbol(symbol)
         model_sym = ModelSymbol(name, symbol)
         if model_sym not in self._models:
+            if self._scope.has_model_source(name):
+                raise ValueError(
+                    f"Model {name!r} not found for {symbol}. Pass it to "
+                    "add_execution(models=...) for this symbol's execution. "
+                    "If it is bound with ModelSource.intervals(), include "
+                    "'base' in the binding to train it on the base "
+                    "timeframe."
+                )
             raise ValueError(f"Model {name!r} not found for {symbol}.")
         return self._models[model_sym].instance
 

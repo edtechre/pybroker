@@ -3347,9 +3347,8 @@ class TestStrategy:
         strategy.add_execution(
             exec_fn,
             ["AAPL", "MSFT"],
-            models=[exec_pooled_model_source],
+            models=[exec_pooled_model_source.intervals("base", "weekly")],
             indicators=indicators,
-            intervals=["weekly"],
         )
         result = strategy.walkforward(
             windows=1,
@@ -5614,8 +5613,7 @@ class TestStrategyIntervals:
         strategy.add_execution(
             exec_fn,
             "SPY",
-            indicators=[sma_ind],
-            intervals=["weekly"],
+            indicators=[sma_ind.intervals("weekly")],
         )
         strategy.walkforward(
             windows=1,
@@ -5687,8 +5685,7 @@ class TestStrategyIntervals:
         strategy.add_execution(
             exec_fn,
             "SPY",
-            models=[wk_model],
-            intervals=["weekly"],
+            models=[wk_model.intervals("weekly")],
         )
         strategy.walkforward(
             windows=1,
@@ -5791,10 +5788,12 @@ class TestStrategyIntervals:
                 )
 
         strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        # Redundantly declaring the bound interval in ``intervals`` is
+        # allowed: the union dedupes it.
         strategy.add_execution(
             exec_fn,
             "SPY",
-            indicators=[sma_ind],
+            indicators=[sma_ind.intervals(interval)],
             intervals=[interval],
         )
         strategy.walkforward(windows=1, timeframe="1d")
@@ -5830,8 +5829,7 @@ class TestStrategyIntervals:
         strategy.add_execution(
             exec_fn,
             "SPY",
-            models=[wk_model],
-            intervals=[interval],
+            models=[wk_model.intervals(interval)],
         )
         strategy.walkforward(
             windows=1,
@@ -5874,9 +5872,8 @@ class TestStrategyIntervals:
         strategy.add_execution(
             exec_fn,
             "SPY",
-            indicators=[sma_ind],
-            models=[wk_model],
-            intervals=["weekly"],
+            indicators=[sma_ind.intervals("weekly")],
+            models=[wk_model.intervals("weekly")],
         )
         strategy.walkforward(windows=1, timeframe="1d")
         assert seen
@@ -5931,8 +5928,7 @@ class TestStrategyIntervals:
         strategy.add_execution(
             exec_fn,
             "SPY",
-            models=[per_bar_model],
-            intervals=["weekly"],
+            models=[per_bar_model.intervals("weekly")],
         )
         strategy.walkforward(windows=1, train_size=0.9, timeframe="1d")
         assert seen
@@ -5971,8 +5967,7 @@ class TestStrategyIntervals:
         strategy.add_execution(
             exec_fn,
             "SPY",
-            models=[tf_model, base_model],
-            intervals=["weekly"],
+            models=[tf_model.intervals("weekly"), base_model],
         )
         strategy.walkforward(windows=3, train_size=0.5, timeframe="1d")
         assert seen
@@ -6064,8 +6059,7 @@ class TestStrategyIntervals:
         strategy.add_execution(
             exec_fn,
             "SPY",
-            indicators=[sma_ind],
-            intervals=["weekly"],
+            indicators=[sma_ind.intervals("weekly")],
         )
         strategy.walkforward(windows=1, timeframe="1d")
         assert errors
@@ -6098,8 +6092,7 @@ class TestStrategyIntervals:
         strategy.add_execution(
             exec_fn,
             "SPY",
-            models=[counted],
-            intervals=["weekly"],
+            models=[counted.intervals("weekly")],
         )
         strategy.walkforward(windows=1, timeframe="1d")
         assert len(calls) == 1
@@ -6122,8 +6115,7 @@ class TestStrategyIntervals:
         strategy.add_execution(
             exec_fn,
             "SPY",
-            indicators=[vwap_ind],
-            intervals=["weekly"],
+            indicators=[vwap_ind.intervals("weekly")],
         )
         strategy.walkforward(windows=1, timeframe="1d")
         assert seen
@@ -6392,8 +6384,7 @@ class TestStrategyIntervals:
         strategy.add_execution(
             lambda ctx: None,
             "SPY",
-            models=[wk_model],
-            intervals=["weekly"],
+            models=[wk_model.intervals("weekly")],
         )
         strategy.walkforward(
             windows=1,
@@ -6425,8 +6416,7 @@ class TestStrategyIntervals:
             strategy.add_execution(
                 lambda ctx: None,
                 "SPY",
-                models=[wk_model],
-                intervals=["weekly"],
+                models=[wk_model.intervals("weekly")],
             )
             run_fn(strategy)
             return self._interval_gaps(wk_dates, calls)
@@ -6453,8 +6443,7 @@ class TestStrategyIntervals:
         strategy.add_execution(
             lambda ctx: None,
             "SPY",
-            models=[wk_model],
-            intervals=["weekly"],
+            models=[wk_model.intervals("weekly")],
         )
         strategy.walkforward(
             windows=3, lookahead=2, train_size=0.5, timeframe="1d"
@@ -6497,15 +6486,13 @@ class TestStrategyIntervals:
                     strategy.add_execution(
                         lambda ctx: None,
                         "SPY",
-                        models=[rec_model],
-                        intervals=["weekly"],
+                        models=[rec_model.intervals("weekly")],
                     )
                 else:
                     strategy.add_execution(
                         lambda ctx: None,
                         "SPY",
-                        models=[rec_model],
-                        intervals=["weekly"],
+                        models=[rec_model.intervals("weekly")],
                     )
                     strategy.add_execution(
                         lambda ctx: None, "AAPL", models=[rec_model]
@@ -6521,6 +6508,597 @@ class TestStrategyIntervals:
                     assert not (train_dates & test_dates)
                     if train_dates and test_dates:
                         assert max(train_dates) < min(test_dates)
+
+    def test_unbound_sources_are_base_only(self, data_source_df, scope):
+        # intervals= provides compressed bars only: unbound models and
+        # indicators are never generated per interval.
+        sma_ind = indicator("sma2", _sma, period=2)
+
+        def train_fn(sym, train_data, test_data):
+            return FakeModel(sym, np.zeros(len(test_data)))
+
+        base_model = model(
+            "base_only",
+            train_fn,
+            [sma_ind],
+            predict_fn=lambda _m, df: np.zeros(len(df)),
+        )
+        seen = []
+
+        def exec_fn(ctx):
+            if seen:
+                return
+            wk = ctx.interval("weekly")
+            if not (len(wk.close) and len(ctx.preds("base_only"))):
+                return
+            assert len(ctx.indicator("sma2"))
+            with pytest.raises(
+                ValueError,
+                match=re.escape("Indicator.intervals('weekly')"),
+            ):
+                wk.indicator("sma2")
+            with pytest.raises(
+                ValueError, match=re.escape("ModelSource.intervals()")
+            ):
+                wk.preds("base_only")
+            seen.append(True)
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(
+            exec_fn,
+            "SPY",
+            models=[base_model],
+            indicators=[sma_ind],
+            intervals=["weekly"],
+        )
+        strategy.walkforward(windows=1, train_size=0.5, timeframe="1d")
+        assert seen
+        execution = next(iter(strategy._executions))
+        assert execution.model_names == frozenset(["base_only"])
+        assert execution.indicator_names == frozenset(["sma2"])
+
+    def test_bound_interval_unions_into_declared(self, data_source_df, scope):
+        # A bound interval gets a ctx.interval() context without being
+        # repeated in intervals=, while a bar-data interval generates no
+        # indicator variants.
+        sma_ind = indicator("sma2", _sma, period=2)
+        seen = []
+
+        def exec_fn(ctx):
+            wk = ctx.interval("weekly")
+            mo = ctx.interval("monthly")
+            if len(wk.close) and len(mo.close):
+                seen.append((len(wk.indicator("sma2")), len(wk.close)))
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(
+            exec_fn,
+            "SPY",
+            indicators=[sma_ind.intervals("weekly")],
+            intervals=["monthly"],
+        )
+        strategy.walkforward(windows=1, timeframe="1d")
+        assert seen
+        for n_ind, n_bars in seen:
+            assert n_ind == n_bars
+        execution = next(iter(strategy._executions))
+        assert execution.intervals == frozenset(["weekly", "monthly"])
+        # A binding is exhaustive: no base variant unless 'base' is listed.
+        assert execution.indicator_names == frozenset(["sma2@weekly"])
+
+    def test_bound_sources_override_base_variant(self, data_source_df, scope):
+        # A binding is exhaustive: interval-only bindings produce no base
+        # variant, and base access raises with the 'base' sentinel hint.
+        sma_ind = indicator("sma2", _sma, period=2)
+
+        def train_fn(sym, train_data, test_data):
+            return FakeModel(sym, np.zeros(len(test_data)))
+
+        bound_model = model(
+            "bound_base",
+            train_fn,
+            [sma_ind],
+            predict_fn=lambda _m, df: np.zeros(len(df)),
+        )
+        seen = []
+
+        def exec_fn(ctx):
+            if seen:
+                return
+            wk = ctx.interval("weekly")
+            if not len(wk.preds("bound_base")):
+                return
+            with pytest.raises(
+                ValueError, match="include 'base' in the binding"
+            ):
+                ctx.preds("bound_base")
+            with pytest.raises(
+                ValueError, match="include 'base' in the binding"
+            ):
+                ctx.model("bound_base")
+            with pytest.raises(
+                ValueError, match="include 'base' in the binding"
+            ):
+                ctx.indicator("sma2")
+            seen.append(True)
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(
+            exec_fn,
+            "SPY",
+            models=[bound_model.intervals("weekly")],
+            indicators=[sma_ind.intervals("weekly")],
+        )
+        strategy.walkforward(windows=1, train_size=0.5, timeframe="1d")
+        assert seen
+        execution = next(iter(strategy._executions))
+        assert execution.model_names == frozenset(["bound_base@weekly"])
+        assert execution.indicator_names == frozenset(["sma2@weekly"])
+
+    def test_base_sentinel_keeps_base_variant(self, data_source_df, scope):
+        # Listing 'base' in the binding trains/computes the base variant in
+        # addition to the interval ones.
+        sma_ind = indicator("sma2", _sma, period=2)
+
+        def train_fn(sym, train_data, test_data):
+            return FakeModel(sym, np.zeros(len(test_data)))
+
+        bound_model = model(
+            "bound_with_base",
+            train_fn,
+            [sma_ind],
+            predict_fn=lambda _m, df: np.zeros(len(df)),
+        )
+        seen = []
+
+        def exec_fn(ctx):
+            base_preds = ctx.preds("bound_with_base")
+            wk_preds = ctx.interval("weekly").preds("bound_with_base")
+            if len(base_preds) and len(wk_preds):
+                seen.append(
+                    (
+                        len(base_preds),
+                        len(wk_preds),
+                        len(ctx.indicator("sma2")),
+                        len(ctx.interval("weekly").indicator("sma2")),
+                    )
+                )
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(
+            exec_fn,
+            "SPY",
+            models=[bound_model.intervals("base", "weekly")],
+            indicators=[sma_ind.intervals("base", "weekly")],
+        )
+        strategy.walkforward(windows=1, train_size=0.5, timeframe="1d")
+        assert seen
+        for counts in seen:
+            assert all(n > 0 for n in counts)
+        execution = next(iter(strategy._executions))
+        assert execution.model_names == frozenset(
+            ["bound_with_base", "bound_with_base@weekly"]
+        )
+        assert execution.indicator_names == frozenset(["sma2", "sma2@weekly"])
+        # 'base' never becomes a compression interval.
+        assert execution.intervals == frozenset(["weekly"])
+
+    def test_base_only_binding_equals_unbound(self, data_source_df, scope):
+        sma_ind = indicator("sma2", _sma, period=2)
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(
+            lambda ctx: None,
+            "SPY",
+            indicators=[sma_ind.intervals("base")],
+        )
+        execution = next(iter(strategy._executions))
+        assert execution.indicator_names == frozenset(["sma2"])
+        assert execution.intervals == frozenset()
+
+    def test_base_rejected_outside_bindings(self, data_source_df, scope):
+        # 'base' is a binding-only sentinel, not a compression interval.
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        with pytest.raises(ValueError, match="Invalid interval 'base'"):
+            strategy.add_execution(lambda ctx: None, "SPY", intervals=["base"])
+        errors = []
+
+        def exec_fn(ctx):
+            if errors:
+                return
+            try:
+                ctx.interval("base")
+            except ValueError as e:
+                errors.append(str(e))
+
+        strategy.add_execution(exec_fn, "SPY")
+        strategy.walkforward(windows=1)
+        assert errors
+        assert "Invalid interval 'base'" in errors[0]
+
+    def test_mixed_bound_and_unbound_models(self, data_source_df, scope):
+        sma_ind = indicator("sma2", _sma, period=2)
+
+        def make(name):
+            return model(
+                name,
+                lambda sym, train_data, test_data: FakeModel(
+                    sym, np.zeros(len(test_data))
+                ),
+                [sma_ind],
+                predict_fn=lambda _m, df: np.zeros(len(df)),
+            )
+
+        bound, unbound = make("m_bound"), make("m_unbound")
+        seen = []
+
+        def exec_fn(ctx):
+            if seen:
+                return
+            wk = ctx.interval("weekly")
+            if not len(wk.preds("m_bound")):
+                return
+            with pytest.raises(
+                ValueError, match=re.escape("ModelSource.intervals()")
+            ):
+                wk.preds("m_unbound")
+            seen.append(True)
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(
+            exec_fn, "SPY", models=[bound.intervals("weekly"), unbound]
+        )
+        strategy.walkforward(windows=1, train_size=0.5, timeframe="1d")
+        assert seen
+
+    def test_same_indicator_bound_twice_unions(self, data_source_df, scope):
+        sma_ind = indicator("sma2", _sma, period=2)
+        seen = []
+
+        def exec_fn(ctx):
+            wk = ctx.interval("weekly")
+            every5 = ctx.interval(5)
+            if len(wk.close) and len(every5.close):
+                seen.append(
+                    (
+                        len(wk.indicator("sma2")),
+                        len(every5.indicator("sma2")),
+                    )
+                )
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(
+            exec_fn,
+            "SPY",
+            indicators=[sma_ind.intervals("weekly"), sma_ind.intervals(5)],
+        )
+        strategy.walkforward(windows=1, timeframe="1d")
+        assert seen
+        execution = next(iter(strategy._executions))
+        assert execution.intervals == frozenset(["weekly", 5])
+        assert execution.indicator_names == frozenset(
+            ["sma2@weekly", "sma2@5"]
+        )
+
+    def test_bound_interval_granularity_validated(self, data_source_df, scope):
+        # A bound-only interval still goes through base-spacing validation.
+        sma_ind = indicator("sma2", _sma, period=2)
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(
+            lambda ctx: None,
+            "SPY",
+            indicators=[sma_ind.intervals("daily")],
+        )
+        with pytest.raises(ValueError, match="Cannot compress daily bars"):
+            strategy.walkforward(windows=1, timeframe="1d")
+
+    def test_bound_intervals_require_base_timeframe(
+        self, data_source_df, scope
+    ):
+        # Bound intervals require timeframe= just like declared ones.
+        sma_ind = indicator("sma2", _sma, period=2)
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(
+            lambda ctx: None,
+            "SPY",
+            indicators=[sma_ind.intervals("weekly")],
+        )
+        with pytest.raises(ValueError, match="timeframe"):
+            strategy.walkforward(windows=1)
+
+    def test_manual_loader_binding_rejected(self, data_source_df, scope):
+        # IntervalBoundModel is public: hand-building one around a
+        # pretrained loader must fail at add_execution, not mid-walkforward.
+        from pybroker.model import IntervalBoundModel
+
+        pretrained = model(
+            "pre_manual",
+            lambda sym, *args, **kwargs: object(),
+            pretrained=True,
+            predict_fn=lambda m, d: np.zeros(len(d)),
+        )
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        with pytest.raises(
+            ValueError,
+            match="Pretrained model 'pre_manual' is not trained per interval",
+        ):
+            strategy.add_execution(
+                lambda ctx: None,
+                "SPY",
+                models=[
+                    IntervalBoundModel(
+                        source=pretrained, intervals=frozenset({"weekly"})
+                    )
+                ],
+            )
+
+    def test_manual_binding_intervals_normalized(self, data_source_df, scope):
+        # Hand-built bindings bypass Indicator.intervals(), so add_execution
+        # re-normalizes: a scalar string must not iterate as characters and
+        # un-normalized tokens must not desync from Execution.intervals.
+        from pybroker.indicator import IntervalBoundIndicator
+
+        sma_ind = indicator("sma2", _sma, period=2)
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(
+            lambda ctx: None,
+            "SPY",
+            indicators=[
+                IntervalBoundIndicator(indicator=sma_ind, intervals="weekly")
+            ],
+        )
+        execution = next(iter(strategy._executions))
+        assert execution.intervals == frozenset(["weekly"])
+        assert execution.indicator_names == frozenset(["sma2@weekly"])
+        # A hand-built binding may also carry the 'base' sentinel.
+        strategy.add_execution(
+            lambda ctx: None,
+            "AAPL",
+            indicators=[
+                IntervalBoundIndicator(
+                    indicator=sma_ind, intervals=("base", "weekly")
+                )
+            ],
+        )
+        execution = max(strategy._executions, key=lambda e: e.id)
+        assert execution.intervals == frozenset(["weekly"])
+        assert execution.indicator_names == frozenset(["sma2", "sma2@weekly"])
+
+    def test_scalar_cross_type_binding_then_error(self, data_source_df, scope):
+        sma_ind = indicator("sma2", _sma, period=2)
+
+        def train_fn(sym, train_data, test_data):
+            return FakeModel(sym, np.zeros(len(test_data)))
+
+        trend = model(
+            "cross_type_m",
+            train_fn,
+            predict_fn=lambda _m, df: np.zeros(len(df)),
+        )
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        with pytest.raises(
+            TypeError, match="Invalid model type.*IntervalBoundIndicator"
+        ):
+            strategy.add_execution(
+                lambda ctx: None, "SPY", models=sma_ind.intervals("weekly")
+            )
+        with pytest.raises(
+            TypeError, match="Invalid indicator type.*IntervalBoundModel"
+        ):
+            strategy.add_execution(
+                lambda ctx: None,
+                "AAPL",
+                indicators=trend.intervals("weekly"),
+            )
+
+    @pytest.mark.parametrize("bind_base", [False, True])
+    @pytest.mark.parametrize("pooled", [False, True])
+    def test_interval_binding_does_not_look_ahead(
+        self, scope, pooled, bind_base
+    ):
+        # House perturbation pattern (see test_indicator_does_not_look_ahead
+        # in tests/test_vect.py): bump only future bars and assert every
+        # strategy-observable interval value before the perturbation is
+        # bit-identical, so no future bar can leak backward.
+        n = 240
+        dates = pd.date_range("2021-01-01", periods=n, freq="B")
+        frames = []
+        for k, sym in enumerate(("AAA", "BBB")):
+            close = (
+                100.0 * (k + 1)
+                + np.arange(n)
+                + 5.0 * np.sin(np.arange(n) / 7.0)
+            )
+            frames.append(
+                pd.DataFrame(
+                    {
+                        "symbol": sym,
+                        "date": dates,
+                        "open": close - 0.5,
+                        "high": close + 1.0,
+                        "low": close - 1.0,
+                        "close": close,
+                        "volume": 1e6,
+                    }
+                )
+            )
+        df = pd.concat(frames, ignore_index=True)
+        # Inside the final window's test region, so no train data changes.
+        cutoff = pd.Timestamp(dates[-15])
+
+        sma_ind = indicator("sma2", _sma, period=2)
+
+        class _Mean:
+            def __init__(self, mean):
+                self.mean = mean
+
+        def train_fn(sym_or_syms, train_data, test_data):
+            return _Mean(float(train_data["close"].mean()))
+
+        wk_model = model(
+            f"la_model_pooled_{pooled}_{bind_base}",
+            train_fn,
+            [sma_ind],
+            predict_fn=lambda m, d: np.full(len(d), m.mean),
+            pooled=pooled,
+        )
+        bound = ("base", "weekly") if bind_base else ("weekly",)
+
+        def run(data):
+            records = []
+
+            def exec_fn(ctx):
+                wk = ctx.interval("weekly")
+                e5 = ctx.interval(5)
+                preds = wk.preds(wk_model.name)
+                base_preds = (
+                    ctx.preds(wk_model.name) if bind_base else np.array([])
+                )
+                records.append(
+                    (
+                        pd.Timestamp(ctx.dt),
+                        ctx.symbol,
+                        len(wk.close),
+                        float(wk.close[-1]) if len(wk.close) else None,
+                        (
+                            float(wk.indicator("sma2")[-1])
+                            if len(wk.close) >= 2
+                            else None
+                        ),
+                        float(e5.close[-1]) if len(e5.close) else None,
+                        float(preds[-1]) if len(preds) else None,
+                        float(base_preds[-1]) if len(base_preds) else None,
+                        float(ctx.close[-1]),
+                    )
+                )
+
+            strategy = Strategy(data, dates[0], dates[-1])
+            strategy.add_execution(
+                exec_fn,
+                ["AAA", "BBB"],
+                models=[wk_model.intervals(*bound)],
+                indicators=[sma_ind.intervals("weekly", 5)],
+            )
+            strategy.walkforward(
+                windows=3, train_size=0.5, lookahead=2, timeframe="1d"
+            )
+            return records
+
+        base_records = run(df)
+        perturbed = df.copy()
+        mask = perturbed["date"] >= cutoff
+        for col in ("open", "high", "low", "close"):
+            perturbed.loc[mask, col] *= 7.77
+        pert_records = run(perturbed)
+
+        def split(records):
+            pre = [r for r in records if r[0] < cutoff]
+            post = [r for r in records if r[0] >= cutoff]
+            return pre, post
+
+        base_pre, base_post = split(base_records)
+        pert_pre, pert_post = split(pert_records)
+        assert base_pre
+        assert base_post
+        assert base_pre == pert_pre
+        # Sensitivity guard: the recorded values must react to the
+        # perturbation after the cutoff, or the equality above is vacuous.
+        assert base_post != pert_post
+
+    def test_interval_indicator_disk_cache_round_trip(
+        self, data_source_df, scope, tmp_path
+    ):
+        from pybroker.cache import (
+            clear_indicator_cache,
+            disable_indicator_cache,
+            enable_indicator_cache,
+        )
+
+        enable_indicator_cache("interval_ind_cache", str(tmp_path))
+        clear_indicator_cache()
+        sma_ind = indicator("sma2", _sma, period=2)
+
+        def run():
+            strategy = Strategy(data_source_df, START_DATE, END_DATE)
+            strategy.add_execution(
+                lambda ctx: None,
+                "SPY",
+                indicators=[sma_ind.intervals("base", "weekly")],
+            )
+            uncached_names: list[str] = []
+            real_get = strategy._get_cached_indicators
+
+            def track(ind_syms, cache_date_fields, hyperparams=None):
+                data, uncached = real_get(
+                    ind_syms, cache_date_fields, hyperparams
+                )
+                uncached_names.extend(p.ind_name for p in uncached)
+                return data, uncached
+
+            with patch.object(
+                strategy, "_get_cached_indicators", side_effect=track
+            ):
+                result = strategy.walkforward(windows=1, timeframe="1d")
+            return uncached_names, result
+
+        try:
+            first_uncached, first_result = run()
+            second_uncached, second_result = run()
+        finally:
+            disable_indicator_cache()
+        # Both the base and the @weekly series are cached on the first run
+        # and served from the disk cache on the second.
+        assert set(first_uncached) == {"sma2", "sma2@weekly"}
+        assert second_uncached == []
+        pd.testing.assert_frame_equal(
+            first_result.portfolio, second_result.portfolio
+        )
+
+    def test_interval_model_disk_cache_round_trip(
+        self, data_source_df, scope, tmp_path
+    ):
+        from pybroker.cache import (
+            clear_model_cache,
+            disable_model_cache,
+            enable_model_cache,
+        )
+
+        enable_model_cache("interval_model_cache", str(tmp_path))
+        clear_model_cache()
+        calls = []
+
+        def train_fn(sym, train_data, test_data):
+            calls.append(len(train_data))
+            return FakeModel(sym, np.zeros(len(test_data)))
+
+        wk_model = model(
+            "wk_cached",
+            train_fn,
+            predict_fn=lambda _m, df: np.zeros(len(df)),
+        )
+
+        def run():
+            strategy = Strategy(data_source_df, START_DATE, END_DATE)
+            strategy.add_execution(
+                lambda ctx: None,
+                "SPY",
+                models=[wk_model.intervals("base", "weekly")],
+            )
+            return strategy.walkforward(
+                windows=1, lookahead=2, train_size=0.5, timeframe="1d"
+            )
+
+        try:
+            first = run()
+            n_first = len(calls)
+            second = run()
+            n_second = len(calls) - n_first
+        finally:
+            disable_model_cache()
+        # First run trains the base and @weekly variants; the second serves
+        # both from the disk cache, keyed by the interval lookahead.
+        assert n_first == 2
+        assert n_second == 0
+        pd.testing.assert_frame_equal(first.portfolio, second.portfolio)
 
 
 def test_backtest_when_target_shares_exit_then_stops_disarmed(data_source_df):

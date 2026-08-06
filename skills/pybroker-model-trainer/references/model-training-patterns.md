@@ -56,10 +56,15 @@ def exec_fn(ctx):
     wk = ctx.interval("weekly").preds("model_name")  # interval-bound model
 ```
 
-Models bound to an interval via `add_execution(..., intervals=["weekly"])`
-train on compressed bars and hold out `lookahead` bars in that interval's
-units; read their predictions with `ctx.interval(...).preds`, not
-`ctx.preds`.
+Bind a model to an interval with `model_source.intervals("weekly")` when
+passing it to `add_execution(models=...)`; it then trains on exactly the
+listed intervals' compressed bars (together with its registered
+indicators) and holds out `lookahead` bars in that interval's units. The
+base-timeframe model is trained only when `"base"` is included in the
+binding; an unbound model trains on the base timeframe. Read the
+per-interval predictions with `ctx.interval(...).preds`, not `ctx.preds`.
+The `intervals=` parameter of `add_execution` provides bars only and
+never trains models.
 
 ## Library Recipes
 

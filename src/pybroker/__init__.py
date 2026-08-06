@@ -57,12 +57,14 @@ from pybroker.optimize import (
 from pybroker.indicator import (
     Indicator as Indicator,
     IndicatorSet as IndicatorSet,
+    IntervalBoundIndicator as IntervalBoundIndicator,
     highest as highest,
     indicator as indicator,
     lowest as lowest,
     returns as returns,
 )
 from pybroker.model import (
+    IntervalBoundModel as IntervalBoundModel,
     ModelLoader as ModelLoader,
     ModelSource as ModelSource,
     ModelTrainer as ModelTrainer,

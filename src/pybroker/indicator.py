@@ -8,7 +8,6 @@ This code is licensed under Apache 2.0 with Commons Clause license
 
 import itertools
 import numpy as np
-import operator as op
 import pandas as pd
 import pybroker.vect as vect
 from pybroker.cache import CacheDateFields, IndicatorCacheKey
@@ -31,7 +30,9 @@ from pybroker.scope import (
 from pybroker.interval import (
     IntervalData,
     CompressedBars,
+    TimeframeInterval,
     compressed_bars_to_bar_data,
+    normalize_intervals,
     parse_indicator_interval_name,
     validate_source_name,
 )
@@ -45,6 +46,7 @@ from typing import (
     Collection,
     Iterable,
     Mapping,
+    NamedTuple,
     Optional,
     Union,
 )
@@ -122,6 +124,49 @@ class Indicator:
         """
         return iqr(self(data).values)
 
+    def intervals(
+        self, *intervals: TimeframeInterval
+    ) -> "IntervalBoundIndicator":
+        r"""Binds this indicator to one or more compression intervals for use
+        with :meth:`pybroker.strategy.Strategy.add_execution`.
+
+        A bound indicator is computed on exactly the listed intervals, where
+        its values are read with
+        :meth:`pybroker.context.IntervalContext.indicator`. Binding replaces
+        the default base-timeframe computation; include the literal
+        ``'base'`` in ``intervals`` to also compute the indicator on the
+        base timeframe. Bound intervals are automatically made available
+        through :meth:`pybroker.context.ExecContext.interval` without also
+        declaring them in the ``intervals`` parameter of
+        :meth:`~pybroker.strategy.Strategy.add_execution`::
+
+            sma_10 = pybroker.indicator("sma_10", sma_fn)
+            strategy.add_execution(
+                fn, "SPY", indicators=sma_10.intervals("base", "weekly")
+            )
+
+        Args:
+            intervals: One or more
+                :class:`~pybroker.interval.TimeframeInterval`\ s to compute
+                this indicator on, each strictly coarser than the base bar
+                spacing of the backtest data, or the literal ``'base'`` for
+                the base timeframe.
+
+        Returns:
+            :class:`.IntervalBoundIndicator` binding this indicator to
+            ``intervals``.
+        """
+        if not intervals:
+            raise ValueError(
+                "Indicator.intervals() requires at least one interval."
+            )
+        return IntervalBoundIndicator(
+            indicator=self,
+            intervals=normalize_intervals(
+                intervals, "intervals", allow_base=True
+            ),
+        )
+
     def __call__(
         self,
         data: Union[BarData, pd.DataFrame],
@@ -159,6 +204,22 @@ class Indicator:
         return f"Indicator({self.name!r}, {self._kwargs})"
 
 
+class IntervalBoundIndicator(NamedTuple):
+    """An :class:`.Indicator` bound to one or more compression intervals,
+    returned by :meth:`Indicator.intervals` and passed to the ``indicators``
+    parameter of :meth:`pybroker.strategy.Strategy.add_execution`.
+    """
+
+    indicator: Indicator
+    """The bound :class:`.Indicator`."""
+
+    intervals: frozenset[TimeframeInterval]
+    r"""Normalized :class:`~pybroker.interval.TimeframeInterval`\ s the
+    indicator is computed on. May include the literal ``'base'`` for the
+    base timeframe.
+    """
+
+
 def _compressed_to_bar_data(bars):
     if not isinstance(bars, CompressedBars):
         raise TypeError(f"Expected CompressedBars, received {type(bars)!r}.")
@@ -180,9 +241,10 @@ def _indicator_args(
         ):
             raise ValueError(
                 f"Timeframe indicator {ind_name!r} requires compressed data "
-                f"for {sym!r} on interval {token!r}. Declare it with "
-                "add_execution(..., intervals=[...]) on the execution that "
-                f"owns {sym!r}."
+                f"for {sym!r} on interval {token!r}. Bind the indicator with "
+                "Indicator.intervals() (or its model with "
+                "ModelSource.intervals()) on the execution that owns "
+                f"{sym!r}."
             )
         key = (sym, token)
         bars = sym_interval_data.compressed[key].bars
@@ -570,23 +632,40 @@ class IndicatorSet(IndicatorsMixin):
     def __init__(self):
         self._ind_names: set[str] = set()
 
+    @staticmethod
+    def _names(
+        indicators: Union[Indicator, Iterable[Indicator]],
+        args: tuple[Indicator, ...],
+    ) -> tuple[str, ...]:
+        # A binding NamedTuple is iterable, so treat any scalar NamedTuple
+        # as a single entry to reject it by its own type name.
+        entries = (
+            (indicators, *args)
+            if isinstance(indicators, (Indicator, IntervalBoundIndicator))
+            or (
+                isinstance(indicators, tuple)
+                and hasattr(indicators, "_fields")
+            )
+            else (*indicators, *args)
+        )
+        names: list[str] = []
+        for ind in entries:
+            if not isinstance(ind, Indicator):
+                raise ValueError(
+                    "IndicatorSet requires Indicators, got "
+                    f"{type(ind).__name__}. Interval bindings are only "
+                    "valid in add_execution()."
+                )
+            names.append(ind.name)
+        return tuple(names)
+
     def add(self, indicators: Union[Indicator, Iterable[Indicator]], *args):
         """Adds indicators."""
-        if isinstance(indicators, Indicator):
-            indicators = (indicators, *args)
-        else:
-            indicators = (*indicators, *args)
-        self._ind_names.update(map(op.attrgetter("name"), indicators))
+        self._ind_names.update(self._names(indicators, args))
 
     def remove(self, indicators: Union[Indicator, Iterable[Indicator]], *args):
         """Removes indicators."""
-        if isinstance(indicators, Indicator):
-            indicators = (indicators, *args)
-        else:
-            indicators = (*indicators, *args)
-        self._ind_names.difference_update(
-            map(op.attrgetter("name"), indicators)
-        )
+        self._ind_names.difference_update(self._names(indicators, args))
 
     def clear(self):
         """Removes all indicators."""

@@ -347,9 +347,14 @@ across script runs.
 
 ## Interval Indicators
 
-`indicator()` takes no interval argument. Declaring
-`add_execution(..., intervals=[...])` computes every indicator on that
-execution once per interval in addition to the base timeframe:
+`indicator()` takes no interval argument. Bind the registered indicator
+to one or more intervals with `Indicator.intervals(...)` when passing it
+to `add_execution`; it is then computed on exactly those intervals, and
+the base-timeframe variant exists only when `"base"` is included in the
+binding (an unbound indicator is computed on the base timeframe).
+`intervals=` on `add_execution` provides bars only and never computes
+indicators. A bound interval is available through `ctx.interval(...)`
+without declaring it in `intervals=`:
 
 ```python
 sma_10 = pybroker.indicator(
@@ -365,7 +370,7 @@ def buy_with_trend(ctx):
         ctx.buy_shares = ctx.calc_target_shares(0.25)
 
 strategy.add_execution(
-    buy_with_trend, ["AMD", "NVDA"], indicators=sma_10, intervals="weekly"
+    buy_with_trend, ["AMD", "NVDA"], indicators=sma_10.intervals("weekly")
 )
 result = strategy.backtest(timeframe="1d")
 ```
@@ -375,7 +380,8 @@ result = strategy.backtest(timeframe="1d")
   `"monthly"`, `"quarterly"`, `"yearly"`). Each must be strictly
   coarser than the base timeframe.
 - `timeframe=` is required on `backtest`/`walkforward` whenever an
-  execution declares `intervals=`.
+  execution declares `intervals=` or binds an indicator/model to an
+  interval.
 - `ctx.interval(...)` exposes only completed compressed bars, which is
   what prevents lookahead into a partially formed bar.
 - Internally the interval copy is named `"sma_10@weekly"` — never type
@@ -484,7 +490,8 @@ columns) — not just `close` — so the test covers all of its inputs.
 - Imports are correct for the collision-prone names: vect kernels from
   `pybroker`, factories from `pybroker.indicator`.
 - `timeframe=` is passed to `backtest`/`walkforward` whenever an
-  execution declares `intervals=`.
+  execution declares `intervals=` or binds an indicator/model to an
+  interval.
 - Third-party wrappers name their `pip install` and do not assume the
   library is importable; multi-output wrappers register one indicator
   per column.

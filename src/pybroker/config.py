@@ -73,7 +73,10 @@ class StrategyConfig:
             required when ``interest_rate`` is set.
         return_signals: When ``True``, then bar data, indicator data, and model
             predictions are returned with
-            :class:`pybroker.strategy.TestResult`. Defaults to ``False``.
+            :class:`pybroker.strategy.TestResult`. Signals contain
+            base-timeframe values only; an interval-bound indicator or model
+            appears only when ``'base'`` is included in its binding.
+            Defaults to ``False``.
         return_stops: When ``True``, then stop values are returned with
             :class:`pybroker.strategy.TestResult`. Defaults to ``False``.
         round_test_result: When ``True``, round values in

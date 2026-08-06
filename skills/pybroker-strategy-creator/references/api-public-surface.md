@@ -569,7 +569,15 @@ Class representing an indicator.
 - `hyperparam_names() -> frozenset[str]`
 - `relative_entropy(data: Union[BarData, pd.DataFrame]) -> float`: Generates indicator data with ``data`` and computes its relative `entropy <https://en.wikipedia.org/wiki/Entropy_(information_theory)>`_.
 - `iqr(data: Union[BarData, pd.DataFrame]) -> float`: Generates indicator data with ``data`` and computes its `interquartile range (IQR) <https://en.wikipedia.org/wiki/Interquartile_range>`_.
+- `intervals(*intervals: TimeframeInterval) -> 'IntervalBoundIndicator'`: Binds this indicator to one or more compression intervals for use with :meth:`pybroker.strategy.Strategy.add_execution`.
 - `__call__(data: Union[BarData, pd.DataFrame], hyperparams: Optional[dict[str, Any]]=None) -> pd.Series`: Computes indicator values.
+
+### `class IntervalBoundIndicator`
+
+An :class:`.Indicator` bound to one or more compression intervals, returned by :meth:`Indicator.intervals` and passed to the ``indicators`` parameter of :meth:`pybroker.strategy.Strategy.add_execution`.
+
+- `indicator: Indicator`
+- `intervals: frozenset[TimeframeInterval]`
 
 - `indicator(name: str, fn: Callable[..., NDArray[np.float64]], **kwargs) -> Indicator`: Creates an :class:`.Indicator` instance and registers it globally with ``name``.
 
@@ -656,6 +664,7 @@ Compressed data keyed by ``(symbol, interval)``.
 
 - `normalize_interval(interval: TimeframeInterval) -> TimeframeInterval`: Normalizes and validates a compression interval.
 - `format_interval(interval: TimeframeInterval) -> str`: Returns a stable string representation of ``interval``.
+- `normalize_intervals(intervals: Union[TimeframeInterval, Iterable[TimeframeInterval]], param: str, allow_base: bool=False) -> frozenset[TimeframeInterval]`: Normalizes one or more compression intervals into a :class:`frozenset`, rejecting empty input and duplicates.
 - `validate_source_name(name: str, kind: str) -> None`: Raises if ``name`` cannot be used as an indicator or model name.
 - `indicator_interval_name(base: str, interval: TimeframeInterval) -> str`: Returns the suffixed indicator name for an interval binding.
 - `parse_indicator_interval_name(name: str) -> tuple[str, Optional[TimeframeInterval]]`: Parses a suffixed indicator name into base name and interval.
@@ -746,6 +755,14 @@ Base class of a model source.
 - `per_bar: bool`
 - `pooled: bool`
 - `prepare_input_data(df: pd.DataFrame) -> pd.DataFrame`: Prepares a :class:`pandas.DataFrame` of input data for passing to a model when making predictions.
+- `intervals(*intervals: TimeframeInterval) -> 'IntervalBoundModel'`: Binds this model to one or more compression intervals for use with :meth:`pybroker.strategy.Strategy.add_execution`.
+
+### `class IntervalBoundModel`
+
+A :class:`.ModelSource` bound to one or more compression intervals, returned by :meth:`ModelSource.intervals` and passed to the ``models`` parameter of :meth:`pybroker.strategy.Strategy.add_execution`.
+
+- `source: ModelSource`
+- `intervals: frozenset[TimeframeInterval]`
 
 ### `class ModelLoader(name: str, load_fn: Callable[..., Union[Any, tuple[Any, Iterable[str]]]], indicator_names: Iterable[str], input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]], predict_fn: Optional[Callable[[Any, Union[pd.DataFrame, NDArray]], NDArray]], pooled: bool, kwargs: dict[str, Any], lags: Optional[int]=None, lag_cols: tuple[str, ...]=(), per_bar: bool=False)`
 
@@ -1309,7 +1326,7 @@ Class representing a trading strategy to backtest.
 - `set_max_short_positions(max_short: StrategySetting) -> None`: Sets the maximum number of short positions held at any time.
 - `enable_rotation(worst_rank_held: StrategySetting, sizer: Optional[Callable[[RotationContext], None]]=None) -> None`: Enables rotational hold-band logic and optional custom sizing.
 - `set_slippage_model(slippage_model: Optional[SlippageModel])`: Sets :class:`pybroker.slippage.SlippageModel`.
-- `add_execution(fn: Optional[Callable[Concatenate[ExecContext, P], None]], symbols: Union[str, Iterable[str], SymbolSelector], models: Optional[Union[ModelSource, Iterable[ModelSource]]]=None, indicators: Optional[Union[Indicator, Iterable[Indicator]]]=None, hyperparams: Optional[Iterable[Hyperparam]]=None, intervals: Optional[Union[TimeframeInterval, Iterable[TimeframeInterval]]]=None, *args: P.args, **kwargs: P.kwargs)`: Adds an execution to backtest.
+- `add_execution(fn: Optional[Callable[Concatenate[ExecContext, P], None]], symbols: Union[str, Iterable[str], SymbolSelector], models: Optional[Union[ModelSource, IntervalBoundModel, Iterable[Union[ModelSource, IntervalBoundModel]]]]=None, indicators: Optional[Union[Indicator, IntervalBoundIndicator, Iterable[Union[Indicator, IntervalBoundIndicator]]]]=None, hyperparams: Optional[Iterable[Hyperparam]]=None, intervals: Optional[Union[TimeframeInterval, Iterable[TimeframeInterval]]]=None, *args: P.args, **kwargs: P.kwargs)`: Adds an execution to backtest.
 - `set_before_exec(fn: Optional[Callable[[Mapping[str, ExecContext]], None]])`: ``Callable[[Mapping[str, ExecContext]], None]`` that runs before all execution functions.
 - `set_after_exec(fn: Optional[Callable[[Mapping[str, ExecContext]], None]])`: ``Callable[[Mapping[str, ExecContext]], None]`` that runs after all execution functions.
 - `clear_executions()`: Clears executions that were added with :meth:`.add_execution`.

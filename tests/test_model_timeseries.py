@@ -391,8 +391,7 @@ class TestIntervalPerBar:
         strategy.add_execution(
             exec_fn,
             ["SPY"],
-            models=m,
-            intervals=["weekly"],
+            models=m.intervals("weekly"),
         )
         strategy.walkforward(
             windows=1,
@@ -431,8 +430,7 @@ class TestIntervalPerBar:
         strategy.add_execution(
             exec_fn,
             ["SPY"],
-            models=m,
-            intervals=["weekly"],
+            models=m.intervals("weekly"),
         )
         strategy.walkforward(windows=1, train_size=0.5, timeframe="1d")
         assert calls
@@ -470,9 +468,7 @@ class TestIntervalPerBar:
             if len(preds):
                 shapes.append(np.asarray(preds).shape)
 
-        strategy.add_execution(
-            exec_fn, ["SPY"], models=m, intervals=["weekly"]
-        )
+        strategy.add_execution(exec_fn, ["SPY"], models=m.intervals("weekly"))
         strategy.walkforward(windows=1, train_size=0.5, timeframe="1d")
         assert shapes
         # Two columns survive, and the warmup rows are NaN in both.
@@ -501,9 +497,7 @@ class TestIntervalPerBar:
         def exec_fn(ctx):
             ctx.interval("weekly").preds("tf_shortpred")
 
-        strategy.add_execution(
-            exec_fn, ["SPY"], models=m, intervals=["weekly"]
-        )
+        strategy.add_execution(exec_fn, ["SPY"], models=m.intervals("weekly"))
         with pytest.raises(ValueError, match="predictions for"):
             strategy.walkforward(windows=1, train_size=0.5, timeframe="1d")
 
@@ -541,9 +535,7 @@ class TestIntervalPerBar:
             if len(preds):
                 preds_seen.append(np.asarray(preds))
 
-        strategy.add_execution(
-            exec_fn, ["SPY"], models=m, intervals=[interval]
-        )
+        strategy.add_execution(exec_fn, ["SPY"], models=m.intervals(interval))
         strategy.walkforward(windows=1, train_size=0.5, timeframe="1d")
         assert seen_matrices
         assert preds_seen
@@ -591,9 +583,7 @@ class TestIntervalPerBar:
             if len(preds):
                 seen.append(len(preds))
 
-        strategy.add_execution(
-            exec_fn, ["SPY"], models=m, intervals=[interval]
-        )
+        strategy.add_execution(exec_fn, ["SPY"], models=m.intervals(interval))
         strategy.walkforward(
             windows=1,
             lookahead=lookahead,
@@ -660,9 +650,7 @@ class TestIntervalPerBar:
         def exec_fn(ctx):
             ctx.interval("weekly").preds("tf_pb_reset")
 
-        strategy.add_execution(
-            exec_fn, ["SPY"], models=m, intervals=["weekly"]
-        )
+        strategy.add_execution(exec_fn, ["SPY"], models=m.intervals("weekly"))
         strategy.walkforward(
             windows=2, lookahead=2, train_size=0.5, timeframe="1d"
         )
@@ -715,8 +703,7 @@ class TestIndicatorLagColumns:
             strategy.add_execution(
                 lambda ctx: ctx.interval(intervals[0]).preds(m.name),
                 syms,
-                models=m,
-                intervals=intervals,
+                models=m.intervals(*intervals),
             )
             strategy.walkforward(windows=1, train_size=0.5, timeframe="1d")
         else:

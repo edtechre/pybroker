@@ -211,8 +211,14 @@ Optimization does not support trainable models — only `pretrained=True` models
 or indicator-based rules.
 
 Multiple time intervals (`timeframe=` is required whenever an execution
-declares `intervals=`; intervals are readable only by the declaring
-execution):
+declares `intervals=` or binds an indicator/model to an interval;
+intervals are readable only by the declaring execution). `intervals=`
+provides bars only; bind an indicator/model to an interval with
+`.intervals(...)` to compute/train it there — the bound interval is
+available through `ctx.interval(...)` without declaring it again.
+Binding is exhaustive: include `"base"` (e.g.
+`sma_10.intervals("base", "weekly")`) to keep the base-timeframe
+variant, while unbound sources default to base:
 
 ```python
 sma_10 = pyb.indicator("sma_10", lambda data: pyb.sumv(data.close, 10) / 10)
@@ -224,7 +230,7 @@ def buy_with_trend(ctx: ExecContext):
     if weekly.close[-1] > weekly.indicator("sma_10")[-1] and not ctx.long_pos():
         ctx.buy_shares = ctx.calc_target_shares(0.25)
 
-strategy.add_execution(buy_with_trend, ["AMD", "NVDA"], indicators=sma_10, intervals="weekly")
+strategy.add_execution(buy_with_trend, ["AMD", "NVDA"], indicators=sma_10.intervals("weekly"))
 result = strategy.backtest(timeframe="1d")
 ```
 
@@ -263,7 +269,7 @@ result = strategy.walkforward(windows=3, train_size=0.5)
 - Syntax-check created Python files with `python -m py_compile <file>`.
 - Generated scripts start with `pybroker.disable_progress_bar()` and `pybroker.enable_data_source_cache(...)`.
 - No pandas operations inside indicator functions or per-bar execution functions — NumPy/Numba only.
-- `timeframe=` is passed to `backtest`/`walkforward` whenever an execution declares `intervals=`.
+- `timeframe=` is passed to `backtest`/`walkforward` whenever an execution declares `intervals=` or binds an indicator/model to an interval.
 - `StrategyConfig(record_position_bars=True)` is set when the user needs `result.positions`.
 - Grep deliverables for removed/deprecated names: `ctx.score`, `bootstrap_sample_size`, `disable_parallel`, `set_pos_size_handler`, `StrategyConfig(max_long_positions=...)`.
 - If using DataFrame data, include a tiny local fixture and run the backtest without network access.
