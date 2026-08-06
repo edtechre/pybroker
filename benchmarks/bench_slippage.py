@@ -93,14 +93,9 @@ class WalkforwardVolatilitySlippage:
         self.df = _synthetic_ohlcv(
             n_symbols=_N_SYMBOLS, n_days=_N_DAYS, seed=SEED
         )
-        atr_14 = pybroker.indicator(
-            "atr_14",
-            lambda bar_data: sumv(bar_data.high - bar_data.low, 14) / 14,
-        )
-        model = VolatilitySlippageModel(atr_indicator="atr_14", scale=0.1)
-        _build_slippage_strategy(
-            self.df, model, indicators=[atr_14]
-        ).walkforward(
+        # The model computes ATR from bar data itself; no indicator wiring.
+        model = VolatilitySlippageModel(atr_period=14, scale=0.1)
+        _build_slippage_strategy(self.df, model).walkforward(
             windows=_WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
@@ -108,14 +103,8 @@ class WalkforwardVolatilitySlippage:
         )
 
     def time_walkforward_volatility_slippage(self) -> None:
-        atr_14 = pybroker.indicator(
-            "atr_14",
-            lambda bar_data: sumv(bar_data.high - bar_data.low, 14) / 14,
-        )
-        model = VolatilitySlippageModel(atr_indicator="atr_14", scale=0.1)
-        _build_slippage_strategy(
-            self.df, model, indicators=[atr_14]
-        ).walkforward(
+        model = VolatilitySlippageModel(atr_period=14, scale=0.1)
+        _build_slippage_strategy(self.df, model).walkforward(
             windows=_WINDOWS,
             lookahead=LOOKAHEAD,
             calc_bootstrap=False,
