@@ -20,7 +20,8 @@ Finance, AKShare) or any user-supplied DataFrame/`DataSource`.
 Import name `pybroker`, PyPI name `lib-pybroker`. Version is
 single-sourced at `src/pybroker/__init__.py:__version__` (setup.cfg reads
 it via `attr:`). Active branch is `v2_preview`; PRs target `master`. This
-file governs changes to the core library (`src/pybroker/`).
+file governs changes to the core library (`src/pybroker/`) and the
+distributable agent skills (`skills/`).
 
 ## Commands
 
@@ -300,6 +301,82 @@ between runs on NumPy arrays and Numba kernels.
 - Never create or edit `docs/source/notebooks/*.ipynb` unless explicitly
   requested — document in docstrings instead.
 
+## Agent Skills
+
+`skills/pybroker-{strategy-creator,indicator-creator,model-trainer}/` are
+distributable skills that teach downstream coding agents PyBroker usage;
+users symlink them into their agent's skills directory
+(`docs/source/agent-skills.rst`).
+
+- **Generated vs hand-authored.** `references/wiki-*.md`,
+  `references/api-public-surface.md`, and `references/pybroker_*.pyi` are
+  generated from the local notebooks and source — never hand-edit them;
+  regenerate with `.venv12/bin/python scripts/gen_skill_refs.py` and
+  verify with `--check`. Hand-authored: `SKILL.md`, `assets/*_template.py`,
+  the `*-patterns.md` references, and `wiki-index.md` outside the strategy
+  creator's generated `## User Guide Wiki` block.
+- **`SKILL.md` Overviews ship to the docs verbatim.**
+  `docs/source/agent-skills.rst` includes the slice between the literal
+  headings `## Overview` and `## Workflow` — keep both headings intact and
+  put new guidance in `## Implementation Rules`, never in the Overview.
+- **Shared skeleton & progressive disclosure.** Every skill keeps the
+  frontmatter (`name` + trigger-phrase `description`) and the section
+  order `Overview / Workflow / Implementation Rules / Common Deliverables
+  / Resources`. `SKILL.md` stays lean; depth lives in the `*-patterns.md`
+  reference, routed via `wiki-index.md` → smallest relevant wiki page.
+  `assets/*_template.py` is the executable embodiment of the rules — keep
+  it runnable and in sync when rules change.
+- **Project Rules apply to skill content** (skills are public docs): no
+  competitor platform names; parallelism documented via
+  `set_parallel(n_jobs=...)` with Ray the only named backend;
+  short-position docs show only `margin`/`unrealized_pnl`.
+- **Non-negotiable requirements every skill must keep teaching** in its
+  `SKILL.md` rules, pattern reference, and template:
+  1. No lookahead in indicator logic: strictly forbid negative indexing
+     into full-length arrays (a negative index silently wraps to the end
+     of the series — the future) and backward shifts such as `shift(-1)`;
+     a value at bar `i` may depend only on inputs at index `i` and
+     earlier. (A per-symbol `shift(-1)` building the training *target*
+     inside `train_fn` remains the sanctioned pattern.) Novel indicator
+     logic self-tests with the bump-last-bar check: change only the final
+     input bar and assert every earlier output is unchanged.
+  2. Vectorization first: indicator and execution-function logic is
+     NumPy + Numba `@njit` — never pandas inside indicator functions or
+     per-bar execution functions.
+  3. Indicator output contract: a full-length one-dimensional array, one
+     value per input bar, warmup left-padded with NaN — never a shortened
+     array (pad third-party TA library outputs).
+  4. Session hygiene: generated scripts start with
+     `pybroker.disable_progress_bar()` (progress output floods agent
+     context) and `pybroker.enable_data_source_cache("<name>")` (or
+     `pybroker.enable_caches`) so reruns do not refetch data; add
+     `pybroker.disable_logging()` for many-backtest runs such as
+     `optimize`.
+  5. Numba debug toggle: on an `@njit` compile or typing error, re-run
+     once with the `NUMBA_DISABLE_JIT=1` environment variable to get a
+     readable Python traceback, fix the code, then remove the variable —
+     never leave JIT disabled in a final script. Debug indicator failures
+     serially before `parallel_indicators=True` (joblib wraps worker
+     tracebacks).
+  6. Exact API shapes come from the bundled references: agents read the
+     matching `references/pybroker_*.pyi` stub and
+     `references/api-public-surface.md` instead of guessing signatures,
+     and use current API only (`ctx.long_score`/`ctx.short_score`, never
+     the deprecated `ctx.score`; `strategy.set_max_*_positions`, not the
+     deprecated `StrategyConfig` fields).
+  7. Never widen or mutate the user's input DataFrame; feature data stays
+     out-of-band (work on a `.copy()` inside `train_fn` when adding a
+     target column).
+  8. Execution-function hygiene: guard lookbacks with `ctx.bars` or
+     `warmup=`, and set at most one order side per symbol per bar.
+  9. Backtesting framework, not financial advice: state assumptions
+     explicitly and make no performance claims unsupported by the
+     produced backtest.
+  10. Validation without network: syntax-check generated files, prefer
+      tiny local DataFrame fixtures for runs, and never assume optional
+      packages (yfinance, TA-Lib, ML libraries) are installed — name the
+      required `pip install`s.
+
 ## Project Rules
 
 - **Never add columns to, widen, or copy the user's input DataFrame.**
@@ -342,3 +419,6 @@ done.
    > 1.1×.
 9. If the public API changed: export added in `__init__.py`, docstrings
    complete, `:exclude-members:` in `pybroker.strategy.rst` updated.
+10. If `skills/`, public signatures/docstrings in `src/`, or the doc
+    notebooks changed: `.venv12/bin/python scripts/gen_skill_refs.py
+    --check`; regenerate on drift.
