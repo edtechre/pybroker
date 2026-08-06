@@ -25,7 +25,8 @@ cmma_20 = close_minus_ma("cmma_20", lookback=LOOKBACK, atr_length=14)
 
 
 def train_fn(symbol: str, train_data, test_data):
-    # Copy so the input frame is never widened or mutated.
+    # train_fn is the sanctioned pandas boundary: PyBroker hands it
+    # DataFrames. Copy so the input frame is never widened or mutated.
     df = train_data.copy()
     # Target is the NEXT bar's return, matching walkforward lookahead=1.
     df["target"] = df["close"].shift(-1) / df["close"] - 1
@@ -39,6 +40,7 @@ def train_fn(symbol: str, train_data, test_data):
 model_source = pybroker.model(MODEL_NAME, train_fn, indicators=[cmma_20])
 
 
+# Execution logic reads ctx.* NumPy arrays — never pandas.
 def exec_fn(ctx: ExecContext):
     pred = ctx.preds(MODEL_NAME)[-1]
     if not ctx.long_pos():

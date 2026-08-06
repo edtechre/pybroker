@@ -29,6 +29,7 @@ LOOKBACK = 20
 TREND_LOOKBACK = 63
 
 
+# Indicator logic is NumPy over BarData arrays — never pandas.
 def sma(data, period: int):
     # Vector helpers consume BarData arrays directly.
     return sumv(data.close, period) / period
@@ -56,6 +57,7 @@ sma_20 = indicator("sma_20", sma, period=LOOKBACK)
 cmma_20 = indicator("cmma_20", cmma, lookback=LOOKBACK)
 
 
+# Execution logic reads ctx.* NumPy arrays — never pandas.
 def exec_fn(ctx: ExecContext):
     if ctx.bars <= TREND_LOOKBACK:
         return

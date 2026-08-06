@@ -169,6 +169,11 @@ between runs on NumPy arrays and Numba kernels.
   bit-identical.
 - **Never** in the per-bar loop, in any njit kernel or its per-bar caller,
   or in per-symbol inner loops.
+- **Example code follows the same rule:** indicator functions and
+  per-bar execution functions written anywhere — docstrings, docs,
+  notebooks, skill content, answers — are implemented with NumPy
+  (+ `@njit`), never pandas. Pandas is confined to the third-party TA
+  wrapper boundary and the `train_fn`/`input_data_fn` model boundary.
 - `SymbolArrayStore` hands out **read-only views** (buffers frozen with
   `writeable=False`; custom `__getstate__` rebuilds views after pickling).
   Never flip the writeable flag — copy if you must mutate.
@@ -340,9 +345,14 @@ users symlink them into their agent's skills directory
      inside `train_fn` remains the sanctioned pattern.) Novel indicator
      logic self-tests with the bump-last-bar check: change only the final
      input bar and assert every earlier output is unchanged.
-  2. Vectorization first: indicator and execution-function logic is
-     NumPy + Numba `@njit` — never pandas inside indicator functions or
-     per-bar execution functions.
+  2. Never use pandas to implement indicator or execution logic:
+     indicator and execution-function logic is NumPy + Numba `@njit` —
+     no `pd.Series`/`pd.DataFrame` construction and no pandas calls
+     such as `.rolling`/`.ewm`/`.shift`/`.apply` inside indicator
+     functions or per-bar execution functions. The only sanctioned
+     pandas: the minimal frame built at a third-party TA wrapper
+     boundary (indicator skill), and the `train_fn`/`input_data_fn`
+     frames PyBroker hands to model code.
   3. Indicator output contract: a full-length one-dimensional array, one
      value per input bar, warmup left-padded with NaN — never a shortened
      array (pad third-party TA library outputs).

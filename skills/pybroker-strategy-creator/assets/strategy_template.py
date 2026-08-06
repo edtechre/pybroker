@@ -18,6 +18,7 @@ END_DATE = "1/1/2024"
 LOOKBACK = 20
 
 
+# Execution logic reads ctx.* NumPy arrays — never pandas.
 def exec_fn(ctx: ExecContext):
     if ctx.bars < LOOKBACK + 1:
         return

@@ -402,11 +402,12 @@ pybroker.enable_caches("my_strategy")   # data + indicators + trained models
 pybroker.disable_progress_bar()  # progress bars flood AI token context
 ```
 
-Vectorize first: indicators are plain NumPy over `BarData` arrays (use Numba
-`@njit` for explicit loops), and execution functions read `ctx.*` NumPy
-arrays. Do not use pandas inside indicator or execution functions — pandas
-belongs only in `train_fn`/`input_data_fn`, where PyBroker hands you
-DataFrames.
+Never use pandas to implement indicator or execution logic. Indicators are
+plain NumPy over `BarData` arrays (use Numba `@njit` for explicit loops),
+and execution functions read `ctx.*` NumPy arrays — no
+`pd.Series`/`pd.DataFrame` construction and no
+`.rolling`/`.ewm`/`.shift`/`.apply` in either. Pandas belongs only in
+`train_fn`/`input_data_fn`, where PyBroker hands you DataFrames.
 
 ```python
 # Good: vectorized NumPy indicator.

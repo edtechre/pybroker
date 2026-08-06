@@ -92,7 +92,7 @@ More built-in factories (`adx`, `macd`, `stochastic`, `close_minus_ma`, ...)
 live in the `pybroker.indicator` module. Note the top-level `pybroker.atr` is
 the vectorized kernel `atr(high, low, close, lookback)`, not this factory.
 
-Custom indicator functions receive `BarData` and must return a one-dimensional array aligned to the input dates. `BarData` fields are NumPy arrays: compute with vectorized NumPy or the built-in helpers (`highv`, `lowv`, `sumv`, `returnv`, `cross`, `atr` from `pybroker`) — never pandas:
+Custom indicator functions receive `BarData` and must return a one-dimensional array aligned to the input dates. `BarData` fields are NumPy arrays: compute with vectorized NumPy or the built-in helpers (`highv`, `lowv`, `sumv`, `returnv`, `cross`, `atr` from `pybroker`) — never pandas. No `pd.Series`/`pd.DataFrame` construction and no `.rolling`/`.ewm`/`.shift`/`.apply` inside an indicator function or a per-bar execution function:
 
 ```python
 from pybroker import indicator, sumv
@@ -101,6 +101,10 @@ def sma(data, period: int):
     return sumv(data.close, period) / period
 
 sma_50 = indicator("sma_50", sma, period=50)
+
+# Bad: pandas inside an indicator (slow, unnecessary).
+def sma_slow(data, period: int):
+    return pd.Series(data.close).rolling(period).mean().to_numpy()
 ```
 
 For logic that needs an explicit loop, JIT-compile a nested kernel with Numba `@njit` (see the `cmma` example in `wiki-05-writing-indicators.md`). If an `@njit` function fails to compile or raises a cryptic `TypingError`, re-run once with the `NUMBA_DISABLE_JIT=1` environment variable to get a readable Python traceback, fix the code, then remove the variable.

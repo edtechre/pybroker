@@ -6,7 +6,7 @@ Use these imports for most indicator work:
 
 ```python
 import numpy as np
-import pandas as pd
+import pandas as pd  # fixtures/TA wrappers only — never indicator logic
 import pybroker
 from pybroker import indicator, highest, lowest, returns
 from pybroker import highv, lowv, sumv, returnv, cross, atr
@@ -55,7 +55,12 @@ are computed automatically for that model's execution.
 
 ## Vectorized NumPy and Numba Kernels
 
-Write indicator logic with vectorized NumPy — never pandas:
+Never use pandas to implement indicator logic, and never use it inside
+per-bar execution functions: no `pd.Series`/`pd.DataFrame`
+construction, no `.rolling`/`.ewm`/`.shift`/`.apply`. `BarData` fields
+are already NumPy arrays — compute with vectorized NumPy. The only
+sanctioned pandas in indicator code is the wrapper boundary in
+"Wrapping Third-Party TA Libraries" below:
 
 ```python
 # Good: vectorized NumPy indicator.
@@ -171,7 +176,9 @@ that apply to every wrapper:
 - NumPy-native libraries (TA-Lib, tulipy) consume `BarData` arrays
   directly. Pandas-based libraries (pandas-ta, `ta`, finta) get a
   minimal `pd.Series`/`pd.DataFrame` built from `BarData` arrays at the
-  wrapper boundary — the only sanctioned pandas in indicator code.
+  wrapper boundary — the only sanctioned pandas in indicator code: it
+  carries data into the library call and never implements indicator
+  math itself.
 - Output must be full length and one-dimensional. A returned
   `pd.Series` is converted automatically; pad libraries that drop
   warmup rows (tulipy).
