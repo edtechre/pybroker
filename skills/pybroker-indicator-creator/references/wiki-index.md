@@ -8,8 +8,8 @@ Use this index to choose the smallest relevant reference file before writing or 
   Topics: Writing Indicators; Using the Indicator in a Strategy; Vectorized Helpers; Computing Multiple Indicators; Using TA-Lib; Built-In Indicators.
 - `wiki-11-configuring-parallelization.md` - Configuring Parallelization; 7 code cells.
   Topics: Configuring Parallelization; Setting Workers; Parallel Indicators; Parallel Model Training; Using Ray as the Backend.
-- `wiki-15-multiple-time-intervals.md` - Multiple Time Intervals; 4 code cells.
-  Topics: Multiple Time Intervals; Interval Types; Compressing Bars; A Multi-Timeframe Strategy.
+- `wiki-15-multiple-time-intervals.md` - Multiple Time Intervals; 8 code cells.
+  Topics: Multiple Time Intervals; Interval Types; Compressing Bars; A Multi-Timeframe Strategy; Binding an Indicator to an Interval; Training a Model on an Interval.
 
 ## API And Pattern References
 
