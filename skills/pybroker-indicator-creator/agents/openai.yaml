@@ -1,0 +1,4 @@
+interface:
+  display_name: "PyBroker Indicator Creator"
+  short_description: "Write and register PyBroker indicators"
+  default_prompt: "Use $pybroker-indicator-creator to write vectorized PyBroker indicators or wrap a technical analysis library."

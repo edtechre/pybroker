@@ -69,6 +69,11 @@ SKILLS: dict[str, dict[str, bool]] = {
         "index": True,
         "stubs": True,
     },
+    "pybroker-indicator-creator": {
+        "all_wikis": False,
+        "index": False,
+        "stubs": True,
+    },
     "pybroker-model-trainer": {
         "all_wikis": False,
         "index": False,
