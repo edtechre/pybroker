@@ -7,6 +7,7 @@ import pytest
 from pybroker import Strategy, indicator, model
 from pybroker.common import DataCol
 from pybroker.config import StrategyConfig
+from pybroker.interval import compress
 from pybroker.scope import StaticScope
 from .fixtures import *  # noqa: F401
 
@@ -335,6 +336,20 @@ class TestLagColumnContract:
             strategy.walkforward(windows=1, train_size=0.5)
 
 
+def _compress_symbol(df, interval):
+    """Recomputes compressed bar dates and closes for a one-symbol frame."""
+    bars, _ = compress(
+        df["date"].to_numpy(dtype="datetime64[ns]"),
+        df["open"].to_numpy(dtype=float),
+        df["high"].to_numpy(dtype=float),
+        df["low"].to_numpy(dtype=float),
+        df["close"].to_numpy(dtype=float),
+        df["volume"].to_numpy(dtype=float),
+        interval,
+    )
+    return np.asarray(bars.dates), np.asarray(bars.close)
+
+
 class TestIntervalPerBar:
     """Per-bar predictions on a compressed interval must not look ahead."""
 
@@ -354,7 +369,8 @@ class TestIntervalPerBar:
             }
         )
 
-    def test_no_lookahead(self, df):
+    @pytest.mark.parametrize("lookahead", [1, 3])
+    def test_no_lookahead(self, df, lookahead):
         # Anchoring each prediction to its own bar's close makes a prediction
         # built from future rows immediately visible.
         m = model(
@@ -378,7 +394,12 @@ class TestIntervalPerBar:
             models=m,
             intervals=["weekly"],
         )
-        strategy.walkforward(windows=1, train_size=0.5, timeframe="1d")
+        strategy.walkforward(
+            windows=1,
+            lookahead=lookahead,
+            train_size=0.5,
+            timeframe="1d",
+        )
         assert seen
         for preds, closes in seen:
             np.testing.assert_array_equal(preds, closes)
@@ -531,12 +552,25 @@ class TestIntervalPerBar:
         assert np.isnan(longest[:3]).all()
         assert np.isfinite(longest[3:]).all()
 
+    @pytest.mark.parametrize("lookahead", [1, 3])
     @pytest.mark.parametrize("interval", ["weekly", 5])
-    def test_lagged_model_on_interval(self, df, interval):
+    def test_lagged_model_on_interval(self, df, interval, lookahead):
         # The interval lag cache is keyed by the *string* form of the
         # interval. Writing it under one key type and reading it under
         # another silently misses, surfacing as "Lag history missing".
         widths_seen = []
+        train_calls = []
+
+        def train_fn(_s, train_data, test_data, **kwargs):
+            date_col = DataCol.DATE.value
+            train_calls.append(
+                (
+                    train_data[date_col].to_numpy(dtype="datetime64[ns]"),
+                    test_data[date_col].to_numpy(dtype="datetime64[ns]"),
+                    kwargs["lag_test"],
+                )
+            )
+            return object()
 
         def predict_fn(_m, matrix):
             widths_seen.append(matrix.shape[1])
@@ -544,7 +578,7 @@ class TestIntervalPerBar:
 
         m = model(
             "tf_lag",
-            lambda s, t, u, **kwargs: object(),
+            train_fn,
             predict_fn=predict_fn,
             lags=2,
             lag_cols=["close"],
@@ -560,11 +594,98 @@ class TestIntervalPerBar:
         strategy.add_execution(
             exec_fn, ["SPY"], models=m, intervals=[interval]
         )
-        strategy.walkforward(windows=1, train_size=0.5, timeframe="1d")
+        strategy.walkforward(
+            windows=1,
+            lookahead=lookahead,
+            train_size=0.5,
+            timeframe="1d",
+        )
         assert seen
         assert widths_seen
         # lags=2 over one lag column: current value plus lags 1 and 2.
         assert all(n == 3 for n in widths_seen)
+        bar_dates, bar_close = _compress_symbol(df, interval)
+        bar_set = set(bar_dates)
+        # The interval model's train call is the one whose dates are all
+        # compressed closing dates; the base model's call carries base
+        # dates that include non-closing dates.
+        interval_calls = [
+            call
+            for call in train_calls
+            if set(call[0]) <= bar_set and set(call[1]) <= bar_set
+        ]
+        assert len(interval_calls) == 1
+        train_dates, test_dates, lag_test = interval_calls[0]
+        last_train = int(np.nonzero(bar_dates == train_dates.max())[0][0])
+        first_test = int(np.nonzero(bar_dates == test_dates.min())[0][0])
+        # Training holds out ``lookahead`` compressed bars.
+        assert first_test - last_train == lookahead
+        # The first test row's lag-1 feature is the close of the
+        # compressed bar immediately preceding the first test bar --
+        # held-out history from before the test window, never a test bar.
+        assert lag_test[0][1] == bar_close[first_test - 1]
+        if lookahead == 1:
+            # With the default lookahead that source bar is exactly the
+            # last train compressed bar.
+            assert bar_dates[first_test - 1] == train_dates.max()
+
+    def test_per_bar_interval_fresh_model_each_window(self, df):
+        train_calls = []
+        predict_model_ids = []
+
+        def train_fn(symbol, train_data, test_data):
+            mdl = {"symbol": symbol}
+            date_col = DataCol.DATE.value
+            train_calls.append(
+                (
+                    mdl,
+                    train_data[date_col].to_numpy(dtype="datetime64[ns]"),
+                    test_data[date_col].to_numpy(dtype="datetime64[ns]"),
+                )
+            )
+            return mdl
+
+        def predict_fn(mdl, data):
+            predict_model_ids.append(id(mdl))
+            return 1.0
+
+        m = model(
+            "tf_pb_reset",
+            train_fn,
+            predict_fn=predict_fn,
+            per_bar=True,
+        )
+        strategy = Strategy(df, df["date"].iloc[0], df["date"].iloc[-1])
+
+        def exec_fn(ctx):
+            ctx.interval("weekly").preds("tf_pb_reset")
+
+        strategy.add_execution(
+            exec_fn, ["SPY"], models=m, intervals=["weekly"]
+        )
+        strategy.walkforward(
+            windows=2, lookahead=2, train_size=0.5, timeframe="1d"
+        )
+        bar_dates, _ = _compress_symbol(df, "weekly")
+        bar_set = set(bar_dates)
+        weekly_calls = [
+            call
+            for call in train_calls
+            if set(call[1]) <= bar_set and set(call[2]) <= bar_set
+        ]
+        # One fresh interval model per walkforward window.
+        assert len(weekly_calls) == 2
+        weekly_ids = {id(call[0]) for call in weekly_calls}
+        assert len(weekly_ids) == 2
+        # Every per-bar prediction came from a window's own model, and
+        # both windows' models predicted.
+        assert set(predict_model_ids) == weekly_ids
+        for _mdl, train_dates, test_dates in weekly_calls:
+            last_train = int(np.nonzero(bar_dates == train_dates.max())[0][0])
+            first_test = int(np.nonzero(bar_dates == test_dates.min())[0][0])
+            # Each window's train rows end at least ``lookahead``
+            # compressed bars before its first test compressed bar.
+            assert first_test - last_train >= 2
 
 
 def _sma(bar_data, period):

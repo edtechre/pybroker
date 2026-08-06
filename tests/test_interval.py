@@ -23,10 +23,12 @@ from pybroker.interval import (
     format_interval,
     indicator_interval_name,
     is_valid_interval,
+    lookahead_train_dates,
     model_interval_name,
     normalize_interval,
     parse_indicator_interval_name,
     parse_model_interval_name,
+    slice_arrays_by_dates,
     slice_compressed_df_by_dates,
     validate_base_timeframe_data,
     validate_interval,
@@ -875,6 +877,121 @@ class TestBuildCompressedSymbolDf:
         ]
         sliced = slice_compressed_df_by_dates(built, dates[:2])
         assert len(sliced) == 1
+
+
+LOOKAHEAD_INTERVALS = ("weekly", "monthly", 5)
+
+
+class TestLookaheadTrainDates:
+    def _compressed(self, interval, periods=420):
+        """Compresses ``periods`` business days; returns base dates + bars."""
+        dates = pd.date_range("2020-01-06", periods=periods, freq="B")
+        d, o, h, low, c, v = _ohlcv_from_dates(dates)
+        bars, _ = compress(d, o, h, low, c, v, interval)
+        return d, bars
+
+    def _slice_close(self, bars, selected):
+        columns = (DataCol.CLOSE.value,)
+        arrays = {DataCol.CLOSE.value: bars.close}
+        _, sliced, sliced_dates = slice_arrays_by_dates(
+            columns, arrays, bars.dates, selected
+        )
+        return sliced[DataCol.CLOSE.value], sliced_dates
+
+    @pytest.mark.parametrize("interval", LOOKAHEAD_INTERVALS)
+    def test_lookahead_one_is_passthrough(self, interval):
+        d, bars = self._compressed(interval)
+        train_dates, test_dates = d[:300], d[300:]
+        result, dropped = lookahead_train_dates(
+            bars.dates, train_dates, test_dates, 1
+        )
+        assert dropped == 0
+        expected_close, expected_dates = self._slice_close(bars, train_dates)
+        actual_close, actual_dates = self._slice_close(bars, result)
+        assert len(expected_dates) > 0
+        np.testing.assert_array_equal(actual_dates, expected_dates)
+        np.testing.assert_array_equal(actual_close, expected_close)
+
+    @pytest.mark.parametrize("lookahead", (1, 2, 3, 5))
+    @pytest.mark.parametrize("interval", LOOKAHEAD_INTERVALS)
+    def test_compressed_gap_equals_lookahead(self, interval, lookahead):
+        d, bars = self._compressed(interval)
+        train_dates, test_dates = d[:300], d[300:]
+        result, dropped = lookahead_train_dates(
+            bars.dates, train_dates, test_dates, lookahead
+        )
+        kept_idx = np.nonzero(np.isin(bars.dates, result))[0]
+        test_idx = np.nonzero(np.isin(bars.dates, test_dates))[0]
+        train_idx = np.nonzero(np.isin(bars.dates, train_dates))[0]
+        assert kept_idx.size > 0
+        assert test_idx[0] - kept_idx[-1] == lookahead
+        if lookahead <= 1:
+            assert dropped == 0
+        else:
+            assert dropped == train_idx.size - kept_idx.size
+
+    def test_empty_test_dates_returns_selection_unchanged(self):
+        d, bars = self._compressed("weekly")
+        train_dates = d[:300]
+        empty = np.array([], dtype="datetime64[ns]")
+        result, dropped = lookahead_train_dates(
+            bars.dates, train_dates, empty, 3
+        )
+        assert dropped == 0
+        train_idx = np.nonzero(np.isin(bars.dates, train_dates))[0]
+        assert train_idx.size > 0
+        np.testing.assert_array_equal(result, bars.dates[train_idx])
+        expected_close, expected_dates = self._slice_close(bars, train_dates)
+        actual_close, actual_dates = self._slice_close(bars, result)
+        np.testing.assert_array_equal(actual_dates, expected_dates)
+        np.testing.assert_array_equal(actual_close, expected_close)
+
+    def test_empty_train_dates_returns_empty(self):
+        d, bars = self._compressed("weekly")
+        empty = np.array([], dtype="datetime64[ns]")
+        result, dropped = lookahead_train_dates(bars.dates, empty, d[300:], 3)
+        assert dropped == 0
+        assert result.size == 0
+
+    def test_lookahead_exceeds_train_span_drops_all(self):
+        d, bars = self._compressed("weekly", periods=60)
+        train_dates, test_dates = d[:30], d[30:]
+        train_idx = np.nonzero(np.isin(bars.dates, train_dates))[0]
+        assert train_idx.size > 0
+        result, dropped = lookahead_train_dates(
+            bars.dates, train_dates, test_dates, 50
+        )
+        assert result.size == 0
+        assert dropped == train_idx.size
+
+    def test_empty_bar_dates_passthrough(self):
+        d = (
+            pd.date_range("2020-01-06", periods=10, freq="B")
+            .to_numpy()
+            .astype("datetime64[ns]")
+        )
+        empty = np.array([], dtype="datetime64[ns]")
+        result, dropped = lookahead_train_dates(empty, d[:6], d[6:], 5)
+        assert dropped == 0
+        np.testing.assert_array_equal(result, d[:6])
+
+    @pytest.mark.parametrize("interval", LOOKAHEAD_INTERVALS)
+    def test_kept_indices_are_contiguous_prefix(self, interval):
+        d, bars = self._compressed(interval)
+        train_dates, test_dates = d[:300], d[300:]
+        result, dropped = lookahead_train_dates(
+            bars.dates, train_dates, test_dates, 3
+        )
+        train_idx = np.nonzero(np.isin(bars.dates, train_dates))[0]
+        kept_idx = np.nonzero(np.isin(bars.dates, result))[0]
+        positions = np.nonzero(np.isin(train_idx, kept_idx))[0]
+        assert positions.size > 0
+        # Only a suffix of the compressed train history is dropped: the
+        # kept bars are a contiguous prefix, so lag features keep their
+        # per-bar offsets intact.
+        assert positions[0] == 0
+        assert np.all(np.diff(positions) == 1)
+        assert positions[-1] == train_idx.size - dropped - 1
 
 
 class TestIntervalIndicatorCompute:

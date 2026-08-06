@@ -10,6 +10,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 
 import functools
 import inspect
+import warnings
 import numpy as np
 import pandas as pd
 from numba import njit
@@ -28,6 +29,7 @@ from pybroker.interval import (
     IntervalData,
     TimeframeInterval,
     build_compressed_symbol_arrays,
+    lookahead_train_dates,
     parse_indicator_interval_name,
     parse_model_interval_name,
     format_interval,
@@ -619,6 +621,41 @@ def history_date_offset(
     if not np.array_equal(history_dates[offset:end], row_dates):
         raise ValueError("Row dates are not contiguous in history.")
     return offset
+
+
+def _empty_interval_train_warning(
+    model_name: str,
+    interval: TimeframeInterval,
+    symbols_desc: str,
+    lookahead: int,
+    dropped: int,
+) -> str:
+    """Returns the warning for a train set emptied by the lookahead
+    hold-out.
+
+    Without it, the downstream symptom is unrecognizable: the pooled path
+    raises a lag-column error that never mentions lookahead, and the
+    per-symbol path silently hands ``train_fn`` an empty frame.
+    """
+    return (
+        f"Model {model_name!r} on interval {format_interval(interval)!r} "
+        f"has no training bars left for {symbols_desc} after holding out "
+        f"lookahead={lookahead} compressed bars ({dropped} dropped). Lower "
+        "lookahead, raise train_size, or use a finer interval."
+    )
+
+
+def _model_cache_lookahead(model_name: str, lookahead: int) -> Optional[int]:
+    """Returns the ``lookahead`` to key a model cache entry with.
+
+    Interval-bound models hold out ``lookahead`` *compressed* bars from the
+    train set, so two lookaheads that yield the same base-timeframe train_end
+    still fit on different data. Base-timeframe models are fully described by
+    :class:`pybroker.cache.CacheDateFields`' train start/end, so their keys
+    stay lookahead-free.
+    """
+    _, interval = parse_model_interval_name(model_name)
+    return None if interval is None else lookahead
 
 
 def _checked_stacked_lags(
@@ -1844,6 +1881,7 @@ class ModelsMixin:
         history_store: Optional[SymbolArrayStore] = None,
         train_store: Optional[SymbolArrayStore] = None,
         test_store: Optional[SymbolArrayStore] = None,
+        lookahead: int = 1,
     ) -> dict[ModelSymbol, TrainedModel]:
         """Trains models for the provided :class:`pybroker.common.ModelSymbol`
         pairs.
@@ -1864,6 +1902,11 @@ class ModelsMixin:
             pooled_model_groups: ``Mapping`` of ``(model_name, execution_id)``
                 pairs to ``frozenset[str]`` of symbols for pooled training.
                 Defaults to ``None``.
+            lookahead: Number of bars in the future of the target prediction,
+                expressed in the bars of the timeframe each model is fitted
+                on: a model bound to an interval holds out ``lookahead``
+                compressed bars between its train and test rows. Defaults to
+                ``1``.
 
         Returns:
             ``dict`` mapping each :class:`pybroker.common.ModelSymbol` pair
@@ -1904,7 +1947,7 @@ class ModelsMixin:
         scope.logger.train_split_start(train_dates)
         scope.logger.info_train_split_start(model_syms)
         models, uncached_model_syms = self._get_cached_models(
-            model_syms, cache_date_fields, pooled_model_groups
+            model_syms, cache_date_fields, pooled_model_groups, lookahead
         )
         if not uncached_model_syms and not self._has_uncached_pooled_groups(
             model_syms, models, pooled_model_groups
@@ -1950,6 +1993,7 @@ class ModelsMixin:
                         source,
                         interval_data,
                         lag_series_cache,
+                        lookahead,
                     )
                 )
             else:
@@ -2008,6 +2052,7 @@ class ModelsMixin:
                         source,
                         interval_data,
                         lag_series_cache,
+                        lookahead,
                     )
                 )
             elif isinstance(source, ModelTrainer):
@@ -2120,6 +2165,7 @@ class ModelsMixin:
                         cache_date_fields,
                         lag_columns,
                         pooled_symbols=frozenset(symbols),
+                        lookahead=lookahead,
                     )
                     scope.logger.info_train_model_completed(model_sym)
             else:
@@ -2142,6 +2188,7 @@ class ModelsMixin:
                     model_sym,
                     cache_date_fields,
                     lag_columns,
+                    lookahead=lookahead,
                 )
                 scope.logger.info_train_model_completed(model_sym)
         for source, model_sym in loader_syms:
@@ -2177,6 +2224,7 @@ class ModelsMixin:
                 model_sym,
                 cache_date_fields,
                 lag_columns=lag_columns,
+                lookahead=lookahead,
             )
         scope.logger.train_split_completed()
         return models
@@ -2296,6 +2344,7 @@ class ModelsMixin:
         source: ModelTrainer,
         interval_data: IntervalData,
         lag_series_cache: LagSeriesCache,
+        lookahead: int = 1,
     ) -> tuple[ModelInput, ModelInput]:
         sym_col = DataCol.SYMBOL.value
         scope = StaticScope.instance()
@@ -2304,6 +2353,7 @@ class ModelsMixin:
         columns: tuple[str, ...] = ()
         history_dates: dict[str, np.ndarray] = {}
         full_arrays: dict[str, ArrayDict] = {}
+        total_dropped = 0
         for sym in symbols:
             key = (sym, interval)
             if key not in interval_data.compressed:
@@ -2324,11 +2374,17 @@ class ModelsMixin:
             # Retained for the lag cache: these hold full-history indicator
             # values, which compressed bars do not carry.
             full_arrays[sym] = arrays
+            # Per symbol, not hoisted: each symbol has its own compressed bar
+            # history and therefore its own first test compressed index.
+            effective_train_dates, dropped = lookahead_train_dates(
+                bar_dates, train_dates, test_dates, lookahead
+            )
+            total_dropped += dropped
             _, train_arrays, train_dates_arr = slice_arrays_by_dates(
                 sym_columns,
                 arrays,
                 bar_dates,
-                train_dates,
+                effective_train_dates,
             )
             _, test_arrays, test_dates_arr = slice_arrays_by_dates(
                 sym_columns,
@@ -2408,6 +2464,16 @@ class ModelsMixin:
                 interval=interval_str,
             )
             pooled_train_input = pooled_train_input.drop_lag_warmup()
+        if total_dropped and pooled_train_input.empty():
+            warnings.warn(
+                _empty_interval_train_warning(
+                    source.name,
+                    interval,
+                    ", ".join(repr(sym) for sym in sorted(symbols)),
+                    lookahead,
+                    total_dropped,
+                )
+            )
         return pooled_train_input, pooled_test_input
 
     def _prepare_interval_symbol_data(
@@ -2420,6 +2486,7 @@ class ModelsMixin:
         source: ModelSource,
         interval_data: IntervalData,
         lag_series_cache: LagSeriesCache,
+        lookahead: int = 1,
     ) -> tuple[ModelInput, ModelInput]:
         scope = StaticScope.instance()
         key = (symbol, interval)
@@ -2436,11 +2503,17 @@ class ModelsMixin:
             source.indicators,
             sorted(scope.custom_data_cols),
         )
+        # The walkforward split holds out lookahead bars of the base
+        # timeframe, but this model is fitted on compressed bars — re-measure
+        # the hold-out in compressed-bar units or it silently collapses.
+        effective_train_dates, dropped = lookahead_train_dates(
+            bar_dates, train_dates, test_dates, lookahead
+        )
         _, train_arrays, train_dates = slice_arrays_by_dates(
             columns,
             arrays,
             bar_dates,
-            train_dates,
+            effective_train_dates,
         )
         _, test_arrays, test_dates = slice_arrays_by_dates(
             columns,
@@ -2500,6 +2573,12 @@ class ModelsMixin:
                 interval_str,
             )
             sym_train_data = sym_train_data.drop_lag_warmup()
+        if dropped and sym_train_data.empty():
+            warnings.warn(
+                _empty_interval_train_warning(
+                    source.name, interval, repr(symbol), lookahead, dropped
+                )
+            )
         return sym_train_data, sym_test_data
 
     def _load_pooled_group_cache(
@@ -2507,6 +2586,7 @@ class ModelsMixin:
         model_name: str,
         symbols: frozenset[str],
         cache_date_fields: CacheDateFields,
+        lookahead: int = 1,
     ) -> tuple[bool, dict[ModelSymbol, TrainedModel]]:
         """Loads a fully cached pooled group in a single cache pass."""
         scope = StaticScope.instance()
@@ -2521,6 +2601,9 @@ class ModelsMixin:
                 model_name=group_model_sym.model_name,
                 fields=cache_date_fields,
                 pooled_symbols=symbols,
+                lookahead=_model_cache_lookahead(
+                    group_model_sym.model_name, lookahead
+                ),
             )
             scope.logger.debug_get_model_cache(cache_key)
             cached_data = model_cache.get(cache_key)
@@ -2584,6 +2667,7 @@ class ModelsMixin:
         model_syms: Iterable[ModelSymbol],
         cache_date_fields: CacheDateFields,
         pooled_model_groups: Mapping[tuple[str, int], frozenset[str]],
+        lookahead: int = 1,
     ) -> tuple[dict[ModelSymbol, TrainedModel], list[ModelSymbol]]:
         model_syms = sorted(model_syms)
         models: dict[ModelSymbol, TrainedModel] = {}
@@ -2620,7 +2704,7 @@ class ModelsMixin:
                     continue
                 processed_pooled_groups.add(group_key)
                 group_cached, loaded = self._load_pooled_group_cache(
-                    model_sym.model_name, symbols, cache_date_fields
+                    model_sym.model_name, symbols, cache_date_fields, lookahead
                 )
                 if group_cached:
                     models.update(loaded)
@@ -2631,6 +2715,9 @@ class ModelsMixin:
                 symbol=model_sym.symbol,
                 model_name=model_sym.model_name,
                 fields=cache_date_fields,
+                lookahead=_model_cache_lookahead(
+                    model_sym.model_name, lookahead
+                ),
             )
             scope.logger.debug_get_model_cache(cache_key)
             cached_data = scope.model_cache.get(cache_key)
@@ -2669,6 +2756,7 @@ class ModelsMixin:
         cache_date_fields: CacheDateFields,
         lag_columns: Optional[tuple[str, ...]] = None,
         pooled_symbols: Optional[frozenset[str]] = None,
+        lookahead: int = 1,
     ):
         scope = StaticScope.instance()
         if scope.model_cache is None:
@@ -2682,6 +2770,7 @@ class ModelsMixin:
             model_name=model_sym.model_name,
             fields=cache_date_fields,
             pooled_symbols=pooled_symbols,
+            lookahead=_model_cache_lookahead(model_sym.model_name, lookahead),
         )
         cached_model = CachedModel(model, input_cols, lag_columns)
         scope.logger.debug_set_model_cache(cache_key)

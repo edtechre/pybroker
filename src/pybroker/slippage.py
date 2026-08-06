@@ -40,12 +40,18 @@ class SlippageContext:
         symbol: Ticker symbol of the order.
         shares: Number of shares to fill before slippage.
         fill_price: Base fill price resolved on the fill bar.
-        col_scope: Column scope for bar data on the fill bar. ``None`` when
-            bar data is unavailable, in which case volume- and
-            volatility-based models leave the fill unadjusted.
-        ind_scope: Indicator scope for indicator data on the fill bar.
-            ``None`` when indicator data is unavailable, in which case
-            indicator-based models leave the fill unadjusted.
+        col_scope: Column scope over the whole test window — **not**
+            pre-sliced to the fill bar. Causal reads must bound every fetch
+            with the fill bar's index, e.g.
+            ``ctx.col_scope.fetch(ctx.symbol, "close",
+            end_index=ctx.sym_end_index[ctx.symbol])``; fetching without
+            ``end_index`` returns the full window, including bars after the
+            fill. ``None`` when bar data is unavailable, in which case
+            volume- and volatility-based models leave the fill unadjusted.
+        ind_scope: Indicator scope over the whole test window — the same
+            ``end_index`` bound applies as for ``col_scope``. ``None`` when
+            indicator data is unavailable, in which case indicator-based
+            models leave the fill unadjusted.
         sym_end_index: Current bar index per symbol, or ``None`` when
             unavailable.
         enable_fractional_shares: Whether fractional shares are enabled. When

@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import re
+import warnings
 from .fixtures import *  # noqa: F401
 from unittest.mock import Mock, patch
 from pybroker.cache import CacheDateFields
@@ -25,6 +26,7 @@ from pybroker.model import ModelLoader, ModelsMixin, ModelTrainer, model
 from pybroker.parallel import set_parallel
 from pybroker.interval import (
     IntervalData,
+    compress,
     compress_symbol_df,
     indicator_interval_name,
     model_interval_name,
@@ -1145,6 +1147,415 @@ class TestIntervalModels:
         }
         assert len(instances) == 1
 
+    @staticmethod
+    def _make_symbol_df(sym, dates):
+        n = len(dates)
+        close = np.arange(n, dtype=np.float64) + 1
+        return pd.DataFrame(
+            {
+                DataCol.SYMBOL.value: [sym] * n,
+                DataCol.DATE.value: dates,
+                DataCol.OPEN.value: close,
+                DataCol.HIGH.value: close + 1,
+                DataCol.LOW.value: close - 1,
+                DataCol.CLOSE.value: close,
+                DataCol.VOLUME.value: np.ones(n),
+            }
+        )
+
+    @staticmethod
+    def _compressed_bar_dates(sym_df, interval):
+        bars, _ = compress(
+            sym_df[DataCol.DATE.value].to_numpy(),
+            sym_df[DataCol.OPEN.value].to_numpy(),
+            sym_df[DataCol.HIGH.value].to_numpy(),
+            sym_df[DataCol.LOW.value].to_numpy(),
+            sym_df[DataCol.CLOSE.value].to_numpy(),
+            sym_df[DataCol.VOLUME.value].to_numpy(),
+            interval,
+        )
+        return np.asarray(bars.dates, dtype="datetime64[ns]")
+
+    @staticmethod
+    def _bar_index(bar_dates, date):
+        (indices,) = np.nonzero(bar_dates == date)
+        assert len(indices) == 1
+        return int(indices[0])
+
+    @pytest.mark.parametrize("interval", ["weekly", 5])
+    @pytest.mark.parametrize("lookahead", [1, 2, 3])
+    def test_train_models_interval_honors_lookahead(
+        self, scope, cache_date_fields, lookahead, interval
+    ):
+        sym = "SPY"
+        dates = np.array(
+            pd.date_range("2020-01-06", periods=30, freq="B"),
+            dtype="datetime64[D]",
+        )
+        df = self._make_symbol_df(sym, dates)
+        interval_data = IntervalData()
+        interval_data.compressed[(sym, interval)] = compress_symbol_df(
+            df, interval, frozenset(), 86400.0
+        )
+        recorded = {}
+
+        def train_fn(symbol, train_df, test_df):
+            recorded["train"] = train_df
+            recorded["test"] = test_df
+            return FakeModel(symbol, np.zeros(len(test_df)))
+
+        m = model("la_model", train_fn, [])
+        tf_model_name = model_interval_name(m.name, interval)
+        train_dates = dates[:15]
+        test_dates = dates[15:]
+        mixin = ModelsMixin()
+        models = mixin.train_models(
+            model_syms=[ModelSymbol(tf_model_name, sym)],
+            train_data=df[df[DataCol.DATE.value].isin(train_dates)],
+            test_data=df[df[DataCol.DATE.value].isin(test_dates)],
+            indicator_data={},
+            cache_date_fields=cache_date_fields,
+            interval_data=interval_data,
+            lookahead=lookahead,
+        )
+        assert ModelSymbol(tf_model_name, sym) in models
+        bar_dates = self._compressed_bar_dates(df, interval)
+        train_idx = np.nonzero(np.isin(bar_dates, train_dates))[0]
+        test_idx = np.nonzero(np.isin(bar_dates, test_dates))[0]
+        got_train = recorded["train"][DataCol.DATE.value].to_numpy()
+        got_test = recorded["test"][DataCol.DATE.value].to_numpy()
+        # Test input is never truncated.
+        assert np.array_equal(got_test, bar_dates[test_idx])
+        # Kept train bars are a leading run of the untruncated selection.
+        assert len(got_train) > 0
+        assert np.array_equal(
+            got_train, bar_dates[train_idx][: len(got_train)]
+        )
+        last_train_i = self._bar_index(bar_dates, got_train[-1])
+        first_test_i = self._bar_index(bar_dates, got_test[0])
+        assert first_test_i - last_train_i == lookahead
+        if lookahead == 1:
+            # Regression lock: lookahead=1 passes the train window through
+            # unchanged, matching test_train_models_interval.
+            assert np.array_equal(got_train, bar_dates[train_idx])
+
+    @pytest.mark.parametrize("lookahead", [1, 2, 3])
+    def test_train_models_pooled_interval_honors_lookahead(
+        self, scope, cache_date_fields, lookahead
+    ):
+        # An every-5-bars interval bins each symbol from its own first bar,
+        # so histories starting on different dates produce misaligned
+        # compressed calendars and different first test compressed indices.
+        interval = 5
+        dates = np.array(
+            pd.date_range("2020-01-06", periods=40, freq="B"),
+            dtype="datetime64[D]",
+        )
+        sym_dates = {"SPY": dates, "AAPL": dates[3:]}
+        frames = {
+            sym: self._make_symbol_df(sym, sym_dates[sym]) for sym in sym_dates
+        }
+        df = pd.concat(frames.values(), ignore_index=True)
+        interval_data = IntervalData()
+        for sym, sym_df in frames.items():
+            interval_data.compressed[(sym, interval)] = compress_symbol_df(
+                sym_df, interval, frozenset(), 86400.0
+            )
+        recorded = {}
+
+        def train_fn(symbols_arg, train_df, test_df):
+            recorded["train"] = train_df
+            recorded["test"] = test_df
+            return FakeModel("pooled", np.array([1.0]))
+
+        model("pooled_la_model", train_fn, [], pooled=True)
+        tf_model_name = model_interval_name("pooled_la_model", interval)
+        pooled_syms = frozenset(sym_dates)
+        train_dates = dates[:20]
+        test_dates = dates[20:]
+        mixin = ModelsMixin()
+        models = mixin.train_models(
+            model_syms=[
+                ModelSymbol(tf_model_name, sym) for sym in sorted(pooled_syms)
+            ],
+            train_data=df[df[DataCol.DATE.value].isin(train_dates)],
+            test_data=df[df[DataCol.DATE.value].isin(test_dates)],
+            indicator_data={},
+            cache_date_fields=cache_date_fields,
+            pooled_model_groups={(tf_model_name, 1): pooled_syms},
+            interval_data=interval_data,
+            lookahead=lookahead,
+        )
+        assert len(models) == len(pooled_syms)
+        sym_col = DataCol.SYMBOL.value
+        date_col = DataCol.DATE.value
+        first_test_indices = {}
+        for sym, sym_df in frames.items():
+            bar_dates = self._compressed_bar_dates(sym_df, interval)
+            sym_train = (
+                recorded["train"]
+                .loc[recorded["train"][sym_col] == sym, date_col]
+                .to_numpy()
+            )
+            sym_test = (
+                recorded["test"]
+                .loc[recorded["test"][sym_col] == sym, date_col]
+                .to_numpy()
+            )
+            assert len(sym_train) > 0
+            assert len(sym_test) > 0
+            last_train_i = self._bar_index(bar_dates, sym_train[-1])
+            first_test_i = self._bar_index(bar_dates, sym_test[0])
+            assert first_test_i - last_train_i == lookahead
+            if lookahead == 1:
+                train_idx = np.nonzero(np.isin(bar_dates, train_dates))[0]
+                assert np.array_equal(sym_train, bar_dates[train_idx])
+            first_test_indices[sym] = first_test_i
+        # The premise that makes this test meaningful: the symbols reach
+        # their test windows at different compressed indices, so a
+        # truncation hoisted out of the per-symbol loop cannot satisfy
+        # both gaps.
+        assert len(set(first_test_indices.values())) == len(frames)
+
+    def test_pooled_interval_cache_distinct_by_lookahead(
+        self, scope, setup_enabled_model_cache, cache_date_fields
+    ):
+        interval = "weekly"
+        dates = np.array(
+            pd.date_range("2020-01-06", periods=20, freq="B"),
+            dtype="datetime64[D]",
+        )
+        symbols = ["SPY", "AAPL"]
+        frames = {sym: self._make_symbol_df(sym, dates) for sym in symbols}
+        df = pd.concat(frames.values(), ignore_index=True)
+        interval_data = IntervalData()
+        for sym, sym_df in frames.items():
+            interval_data.compressed[(sym, interval)] = compress_symbol_df(
+                sym_df, interval, frozenset(), 86400.0
+            )
+        calls = []
+
+        def train_fn(symbols_arg, train_df, test_df):
+            calls.append(symbols_arg)
+            return FakeModel("pooled", np.array([1.0]))
+
+        model("pooled_la_cache", train_fn, [], pooled=True)
+        tf_model_name = model_interval_name("pooled_la_cache", interval)
+        pooled_syms = frozenset(symbols)
+        train_dates = dates[:10]
+        test_dates = dates[10:]
+        mixin = ModelsMixin()
+        kwargs = dict(
+            model_syms=[
+                ModelSymbol(tf_model_name, sym) for sym in sorted(pooled_syms)
+            ],
+            train_data=df[df[DataCol.DATE.value].isin(train_dates)],
+            test_data=df[df[DataCol.DATE.value].isin(test_dates)],
+            indicator_data={},
+            cache_date_fields=cache_date_fields,
+            pooled_model_groups={(tf_model_name, 1): pooled_syms},
+            interval_data=interval_data,
+        )
+        mixin.train_models(**kwargs, lookahead=2)
+        assert len(calls) == 1
+        # A different lookahead trims a different train set, so the
+        # lookahead=2 fit must not be served here.
+        mixin.train_models(**kwargs, lookahead=1)
+        assert len(calls) == 2
+        # Same lookahead as the first run: served from cache.
+        mixin.train_models(**kwargs, lookahead=2)
+        assert len(calls) == 2
+
+    @pytest.mark.parametrize("mode", ["per_symbol", "pooled", "lags"])
+    def test_train_models_interval_lookahead_empties_train_warns(
+        self, scope, cache_date_fields, mode
+    ):
+        interval = 2
+        dates = np.array(
+            ["2020-01-06", "2020-01-07", "2020-01-08", "2020-01-09"],
+            dtype="datetime64[D]",
+        )
+        symbols = ["SPY", "AAPL"] if mode == "pooled" else ["SPY"]
+        frames = {sym: self._make_symbol_df(sym, dates) for sym in symbols}
+        df = pd.concat(frames.values(), ignore_index=True)
+        interval_data = IntervalData()
+        for sym, sym_df in frames.items():
+            interval_data.compressed[(sym, interval)] = compress_symbol_df(
+                sym_df, interval, frozenset(), 86400.0
+            )
+        pooled_model_groups = None
+        if mode == "pooled":
+
+            def train_fn(symbols_arg, train_df, test_df):
+                return FakeModel("pooled", np.array([1.0]))
+
+            model("empty_la_model", train_fn, [], pooled=True)
+        elif mode == "lags":
+
+            def train_fn(symbol, train_df, test_df, **kwargs):
+                return FakeModel(symbol, np.zeros(len(test_df)))
+
+            model("empty_la_model", train_fn, [], lags=1)
+        else:
+
+            def train_fn(symbol, train_df, test_df):
+                return FakeModel(symbol, np.zeros(len(test_df)))
+
+            model("empty_la_model", train_fn, [])
+        tf_model_name = model_interval_name("empty_la_model", interval)
+        if mode == "pooled":
+            pooled_model_groups = {(tf_model_name, 1): frozenset(symbols)}
+        model_syms = [
+            ModelSymbol(tf_model_name, sym) for sym in sorted(symbols)
+        ]
+        # Two compressed bars total: one train, one test. lookahead=2
+        # exceeds the compressed train span, leaving zero train bars.
+        train_dates = dates[:2]
+        test_dates = dates[2:]
+        mixin = ModelsMixin()
+        with pytest.warns(UserWarning, match="lookahead"):
+            models = mixin.train_models(
+                model_syms=model_syms,
+                train_data=df[df[DataCol.DATE.value].isin(train_dates)],
+                test_data=df[df[DataCol.DATE.value].isin(test_dates)],
+                indicator_data={},
+                cache_date_fields=cache_date_fields,
+                pooled_model_groups=pooled_model_groups,
+                interval_data=interval_data,
+                lookahead=2,
+            )
+        assert set(models.keys()) == set(model_syms)
+
+    def test_pooled_interval_partial_empty_is_silent(
+        self, scope, cache_date_fields
+    ):
+        """One pooled symbol's train contribution emptying is by design
+        silent: the symbol is skipped (matching the pre-existing pooled
+        behavior for symbols with no train rows) and the group still trains
+        on the surviving symbols. Only a fully emptied pooled train set
+        warns.
+        """
+        interval = 2
+        lookahead = 2
+        long_dates = np.array(
+            pd.date_range("2020-01-06", periods=12, freq="B"),
+            dtype="datetime64[D]",
+        )
+        # The short-history symbol's compressed train span is smaller than
+        # lookahead, so its whole train contribution is dropped.
+        short_dates = long_dates[6:]
+        frames = {
+            "LONG": self._make_symbol_df("LONG", long_dates),
+            "SHRT": self._make_symbol_df("SHRT", short_dates),
+        }
+        df = pd.concat(frames.values(), ignore_index=True)
+        interval_data = IntervalData()
+        for sym, sym_df in frames.items():
+            interval_data.compressed[(sym, interval)] = compress_symbol_df(
+                sym_df, interval, frozenset(), 86400.0
+            )
+        train_frames = []
+
+        def train_fn(symbols_arg, train_df, test_df):
+            train_frames.append(train_df.copy())
+            return FakeModel("pooled", np.array([1.0]))
+
+        model("partial_empty_model", train_fn, [], pooled=True)
+        tf_model_name = model_interval_name("partial_empty_model", interval)
+        symbols = frozenset(frames)
+        model_syms = [
+            ModelSymbol(tf_model_name, sym) for sym in sorted(symbols)
+        ]
+        train_dates = long_dates[:8]
+        test_dates = long_dates[8:]
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            models = ModelsMixin().train_models(
+                model_syms=model_syms,
+                train_data=df[df[DataCol.DATE.value].isin(train_dates)],
+                test_data=df[df[DataCol.DATE.value].isin(test_dates)],
+                indicator_data={},
+                cache_date_fields=cache_date_fields,
+                pooled_model_groups={(tf_model_name, 1): symbols},
+                interval_data=interval_data,
+                lookahead=lookahead,
+            )
+        assert set(models.keys()) == set(model_syms)
+        assert len(train_frames) == 1
+        # SHRT's contribution emptied; LONG's survived, trimmed to the
+        # lookahead hold-out computed from its own compressed history.
+        assert set(train_frames[0][DataCol.SYMBOL.value]) == {"LONG"}
+        bars = interval_data.compressed[("LONG", interval)].bars
+        bar_dates = np.asarray(bars.dates)
+        train_idx = np.nonzero(
+            np.isin(bar_dates, train_dates.astype("datetime64[ns]"))
+        )[0]
+        test_idx = np.nonzero(
+            np.isin(bar_dates, test_dates.astype("datetime64[ns]"))
+        )[0]
+        kept = np.nonzero(
+            np.isin(
+                bar_dates,
+                train_frames[0][DataCol.DATE.value].to_numpy(
+                    dtype="datetime64[ns]"
+                ),
+            )
+        )[0]
+        assert kept.size == train_idx.size - 1
+        assert test_idx[0] - kept[-1] == lookahead
+
+    def test_interval_cache_not_shared_across_lookaheads(
+        self, scope, setup_enabled_model_cache, cache_date_fields
+    ):
+        sym = "SPY"
+        interval = "weekly"
+        dates = np.array(
+            pd.date_range("2020-01-06", periods=20, freq="B"),
+            dtype="datetime64[D]",
+        )
+        df = self._make_symbol_df(sym, dates)
+        interval_data = IntervalData()
+        interval_data.compressed[(sym, interval)] = compress_symbol_df(
+            df, interval, frozenset(), 86400.0
+        )
+        base_calls = []
+        tf_calls = []
+
+        def base_train_fn(symbol, train_df, test_df):
+            base_calls.append(symbol)
+            return FakeModel(symbol, np.zeros(len(test_df)))
+
+        def tf_train_fn(symbol, train_df, test_df):
+            tf_calls.append(symbol)
+            return FakeModel(symbol, np.zeros(len(test_df)))
+
+        model("base_la_cache", base_train_fn, [])
+        model("tf_la_cache", tf_train_fn, [])
+        tf_model_name = model_interval_name("tf_la_cache", interval)
+        train_dates = dates[:10]
+        test_dates = dates[10:]
+        mixin = ModelsMixin()
+        kwargs = dict(
+            model_syms=[
+                ModelSymbol("base_la_cache", sym),
+                ModelSymbol(tf_model_name, sym),
+            ],
+            train_data=df[df[DataCol.DATE.value].isin(train_dates)],
+            test_data=df[df[DataCol.DATE.value].isin(test_dates)],
+            indicator_data={},
+            cache_date_fields=cache_date_fields,
+            interval_data=interval_data,
+        )
+        mixin.train_models(**kwargs, lookahead=1)
+        assert len(base_calls) == 1
+        assert len(tf_calls) == 1
+        mixin.train_models(**kwargs, lookahead=2)
+        # The interval model fits on a lookahead-truncated compressed train
+        # set, so its cache entry is keyed by lookahead and it retrains.
+        assert len(tf_calls) == 2
+        # The base model's train set is unchanged by lookahead: cache hit.
+        assert len(base_calls) == 1
+
 
 class TestTimeSeriesModelOptions:
     def test_lags_metadata_on_train(
@@ -1486,3 +1897,45 @@ def test_pooled_model_cache_key_carries_group_composition(
         fields=cache_date_fields,
         pooled_symbols=["AAPL", "SPY"],
     )
+
+
+def test_model_cache_key_distinct_by_lookahead(cache_date_fields):
+    """An interval-bound model holds out ``lookahead`` compressed bars, so
+    identical date fields still describe different fits across lookaheads.
+
+    Base-timeframe models are fully described by their train start/end, so
+    their keys stay lookahead-free.
+    """
+    from pybroker.cache import ModelCacheKey
+    from pybroker.model import _model_cache_lookahead
+
+    tf_model_name = model_interval_name("m", "weekly")
+    assert _model_cache_lookahead(tf_model_name, 2) == 2
+    assert _model_cache_lookahead("m", 2) is None
+    tf_one = ModelCacheKey.from_date_fields(
+        symbol="SPY",
+        model_name=tf_model_name,
+        fields=cache_date_fields,
+        lookahead=_model_cache_lookahead(tf_model_name, 1),
+    )
+    tf_two = ModelCacheKey.from_date_fields(
+        symbol="SPY",
+        model_name=tf_model_name,
+        fields=cache_date_fields,
+        lookahead=_model_cache_lookahead(tf_model_name, 2),
+    )
+    assert tf_one != tf_two
+    base_one = ModelCacheKey.from_date_fields(
+        symbol="SPY",
+        model_name="m",
+        fields=cache_date_fields,
+        lookahead=_model_cache_lookahead("m", 1),
+    )
+    base_two = ModelCacheKey.from_date_fields(
+        symbol="SPY",
+        model_name="m",
+        fields=cache_date_fields,
+        lookahead=_model_cache_lookahead("m", 2),
+    )
+    assert base_one.lookahead is None
+    assert base_one == base_two

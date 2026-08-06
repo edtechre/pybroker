@@ -1135,6 +1135,17 @@ class IndicatorScope:
 
     def fetch_value(self, symbol: str, name: str, end_index: int) -> float:
         """Returns the scalar value at ``end_index - 1`` without slicing."""
+        base_name, token = parse_indicator_interval_name(name)
+        if token is not None:
+            # Interval series are indexed by compressed bar, so indexing one
+            # with a base bar index would expose future data. fetch_full
+            # bypasses the equivalent guard in fetch by passing
+            # end_index=None, so it must be enforced here too.
+            raise ValueError(
+                f"Indicator {name!r} is bound to interval {token!r} and "
+                "cannot be read from the base context. Use "
+                f"ctx.interval({token!r}).indicator({base_name!r}) instead."
+            )
         array = self.fetch_full(symbol, name)
         if end_index <= 0:
             raise ValueError(f"{name!r} value not found.")
@@ -1488,6 +1499,15 @@ class IntervalScope:
                 pred = np.concatenate((pad, tail))
             else:
                 pred = self._run_predict(trained_model, input_)
+                if len(pred) != len(input_):
+                    # Same hazard as the warmup branch above: a wrong-length
+                    # result would misalign pred[: idx + 1] with compressed
+                    # bars for the whole run.
+                    raise ValueError(
+                        f"predict for model {base_model_name!r} returned "
+                        f"{len(pred)} predictions for "
+                        f"{len(input_)} input rows."
+                    )
             self._sym_preds[model_sym] = pred
         pred = self._sym_preds[model_sym]
         return pred[: idx + 1]
@@ -1966,6 +1986,14 @@ class PredictionScope:
             raise ValueError(f"Model {name!r} not found for {symbol}.")
         trained_model = self._models[model_sym]
         pred = self._run_predict(trained_model, model_input)
+        if len(pred) != len(model_input):
+            # Silently caching a wrong-length result would left-align the
+            # predictions, so pred[:end_index] would serve a future bar's
+            # prediction as the current bar's for the whole run.
+            raise ValueError(
+                f"predict for model {name!r} returned {len(pred)} "
+                f"predictions for {len(model_input)} input rows."
+            )
         self._sym_preds[model_sym] = pred
         return pred[:end_index]
 
@@ -2028,8 +2056,12 @@ class PredictionScope:
         pred_arr = np.asarray(pred)
         if pred_arr.ndim == 0:
             return np.array([pred_arr.item()])
-        if len(pred_arr.shape) > 1:
-            pred_arr = np.squeeze(pred_arr)
+        if pred_arr.ndim > 1:
+            # Squeeze singleton axes except axis 0: np.squeeze would also
+            # collapse a single-row (1, n_classes) predict_proba result to
+            # (n_classes,), misaligning predictions with input rows.
+            tail_shape = tuple(s for s in pred_arr.shape[1:] if s != 1)
+            pred_arr = pred_arr.reshape((pred_arr.shape[0], *tail_shape))
         return pred_arr
 
     @staticmethod

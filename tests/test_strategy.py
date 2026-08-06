@@ -25,6 +25,7 @@ from pybroker.common import DataCol, FeeMode, PriceType, to_datetime
 from pybroker.config import StrategyConfig
 from pybroker.context import ExecContext, RotationContext
 from pybroker.indicator import indicator
+from pybroker.interval import compress
 from pybroker.model import model
 from pybroker.data import DataSource
 from pybroker.eval import EvalMetrics
@@ -6321,6 +6322,205 @@ class TestStrategyIntervals:
         strategy.add_execution(lambda ctx: None, "SPY", intervals=intervals)
         execution = next(iter(strategy._executions))
         assert execution.intervals == expected
+
+    @staticmethod
+    def _weekly_compressed_dates(data_source_df, symbol):
+        """Recomputes the weekly compressed closing dates for ``symbol``
+        over the same date range the strategy backtests."""
+        sym_df = data_source_df[data_source_df["symbol"] == symbol]
+        sym_df = sym_df[
+            (sym_df["date"] >= to_datetime(START_DATE))
+            & (sym_df["date"] <= to_datetime(END_DATE))
+        ].sort_values("date")
+        bars, _ = compress(
+            sym_df["date"].to_numpy(dtype="datetime64[ns]"),
+            sym_df["open"].to_numpy(dtype=float),
+            sym_df["high"].to_numpy(dtype=float),
+            sym_df["low"].to_numpy(dtype=float),
+            sym_df["close"].to_numpy(dtype=float),
+            sym_df["volume"].to_numpy(dtype=float),
+            "weekly",
+        )
+        return np.asarray(bars.dates)
+
+    @staticmethod
+    def _interval_gaps(bar_dates, calls):
+        """Returns the compressed-index gap between the last train date and
+        the first test date for every recorded interval-model train call.
+
+        Interval-model calls are recognized by membership: their train and
+        test dates are compressed-bar closing dates, while base-model calls
+        carry base dates that include non-closing dates.
+        """
+        bar_set = set(bar_dates)
+        gaps = []
+        for train_dates, test_dates in calls:
+            if not (
+                set(train_dates) <= bar_set and set(test_dates) <= bar_set
+            ):
+                continue
+            last_train = int(np.nonzero(bar_dates == train_dates.max())[0][0])
+            first_test = int(np.nonzero(bar_dates == test_dates.min())[0][0])
+            gaps.append(first_test - last_train)
+        return gaps
+
+    @staticmethod
+    def _recording_train_fn(calls):
+        def train_fn(sym, train_data, test_data):
+            date_col = DataCol.DATE.value
+            calls.append(
+                (
+                    train_data[date_col].to_numpy(dtype="datetime64[ns]"),
+                    test_data[date_col].to_numpy(dtype="datetime64[ns]"),
+                )
+            )
+            return FakeModel(sym, np.zeros(len(test_data)))
+
+        return train_fn
+
+    @pytest.mark.parametrize("parallel_models", [True, False])
+    def test_weekly_interval_model_lookahead_gap(
+        self, data_source_df, scope, parallel_models
+    ):
+        calls = []
+        wk_model = model(
+            "wk_gap",
+            self._recording_train_fn(calls),
+            predict_fn=lambda _model, df: np.zeros(len(df)),
+        )
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(
+            lambda ctx: None,
+            "SPY",
+            models=[wk_model],
+            intervals=["weekly"],
+        )
+        strategy.walkforward(
+            windows=1,
+            lookahead=3,
+            train_size=0.5,
+            parallel_models=parallel_models,
+            timeframe="1d",
+        )
+        wk_dates = self._weekly_compressed_dates(data_source_df, "SPY")
+        # The @weekly model's hold-out is re-measured in compressed bars:
+        # its last train date and first test date map to compressed
+        # indices exactly ``lookahead`` apart.
+        assert self._interval_gaps(wk_dates, calls) == [3]
+
+    def test_backtest_interval_lookahead_matches_walkforward(
+        self, data_source_df, scope
+    ):
+        calls = []
+        wk_model = model(
+            "wk_parity",
+            self._recording_train_fn(calls),
+            predict_fn=lambda _model, df: np.zeros(len(df)),
+        )
+        wk_dates = self._weekly_compressed_dates(data_source_df, "SPY")
+
+        def run(run_fn):
+            calls.clear()
+            strategy = Strategy(data_source_df, START_DATE, END_DATE)
+            strategy.add_execution(
+                lambda ctx: None,
+                "SPY",
+                models=[wk_model],
+                intervals=["weekly"],
+            )
+            run_fn(strategy)
+            return self._interval_gaps(wk_dates, calls)
+
+        wf_gaps = run(
+            lambda s: s.walkforward(
+                windows=1, lookahead=3, train_size=0.5, timeframe="1d"
+            )
+        )
+        bt_gaps = run(
+            lambda s: s.backtest(lookahead=3, train_size=0.5, timeframe="1d")
+        )
+        assert wf_gaps
+        assert bt_gaps == wf_gaps
+
+    def test_interval_lookahead_gap_every_window(self, data_source_df, scope):
+        calls = []
+        wk_model = model(
+            "wk_windows",
+            self._recording_train_fn(calls),
+            predict_fn=lambda _model, df: np.zeros(len(df)),
+        )
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(
+            lambda ctx: None,
+            "SPY",
+            models=[wk_model],
+            intervals=["weekly"],
+        )
+        strategy.walkforward(
+            windows=3, lookahead=2, train_size=0.5, timeframe="1d"
+        )
+        wk_dates = self._weekly_compressed_dates(data_source_df, "SPY")
+        gaps = self._interval_gaps(wk_dates, calls)
+        # One @weekly train call per walkforward window, each holding out
+        # exactly ``lookahead`` compressed bars.
+        assert len(gaps) == 3
+        assert all(gap == 2 for gap in gaps)
+
+    def test_train_test_dates_disjoint_invariant(self, data_source_df, scope):
+        calls = []
+
+        def train_fn(sym, train_data, test_data):
+            date_col = DataCol.DATE.value
+            calls.append(
+                (
+                    set(train_data[date_col].to_numpy("datetime64[ns]")),
+                    set(test_data[date_col].to_numpy("datetime64[ns]")),
+                )
+            )
+            return FakeModel(sym, np.zeros(len(test_data)))
+
+        rec_model = model(
+            "disjoint_rec",
+            train_fn,
+            predict_fn=lambda _model, df: np.zeros(len(df)),
+        )
+        df = data_source_df[data_source_df["symbol"].isin(["SPY", "AAPL"])]
+        for lookahead_bars in (1, 3):
+            for config in ("base", "interval", "base_and_interval"):
+                calls.clear()
+                strategy = Strategy(df, START_DATE, END_DATE)
+                if config == "base":
+                    strategy.add_execution(
+                        lambda ctx: None, "SPY", models=[rec_model]
+                    )
+                elif config == "interval":
+                    strategy.add_execution(
+                        lambda ctx: None,
+                        "SPY",
+                        models=[rec_model],
+                        intervals=["weekly"],
+                    )
+                else:
+                    strategy.add_execution(
+                        lambda ctx: None,
+                        "SPY",
+                        models=[rec_model],
+                        intervals=["weekly"],
+                    )
+                    strategy.add_execution(
+                        lambda ctx: None, "AAPL", models=[rec_model]
+                    )
+                strategy.walkforward(
+                    windows=2,
+                    lookahead=lookahead_bars,
+                    train_size=0.5,
+                    timeframe="1d",
+                )
+                assert calls
+                for train_dates, test_dates in calls:
+                    assert not (train_dates & test_dates)
+                    if train_dates and test_dates:
+                        assert max(train_dates) < min(test_dates)
 
 
 def test_backtest_when_target_shares_exit_then_stops_disarmed(data_source_df):

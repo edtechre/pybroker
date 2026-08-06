@@ -20,12 +20,12 @@ from pybroker.optimize import (
 )
 from pybroker.indicator import indicator
 from pybroker.model import ModelLoader, model
-from pybroker.scope import StaticScope
+from pybroker.scope import StaticScope, symbol_array_store_from_frame
 from pybroker.slippage import (
     VolumeSlippageModel,
 )
 from pybroker.strategy import Strategy
-from pybroker.interval import compress_symbol_df
+from pybroker.interval import compress_symbol_df, model_interval_name
 from pybroker.vect import highv
 from .fixtures import *  # noqa: F401,F403
 
@@ -369,12 +369,16 @@ def test_optimize_model_loader_integration(data_source_df):
         lambda data, period: highv(data.high, period),
         period=lookback,
     )
-    n = data_source_df[data_source_df["symbol"] == "AAPL"].shape[0]
     load_calls: list[tuple[str, object, object]] = []
 
     def load_fn(sym, train_start_date, train_end_date):
         load_calls.append((sym, train_start_date, train_end_date))
-        return FakeModel(sym, np.full(n, 1.0))
+        m = MagicMock()
+        # One prediction per input row: PredictionScope.fetch now rejects
+        # fixed-length predictions spanning the full history when trials
+        # predict over the train window alone.
+        m.predict = lambda X: np.full(len(X), 1.0)
+        return m
 
     m = model(
         "loader_opt",
@@ -503,6 +507,133 @@ def test_optimize_trial_interval_alignment_matches_walkforward(
         idx = int(np.searchsorted(base_dates, date))
         assert base_dates[idx] == date
         assert count == int(reference.completed[idx]) + 1
+
+
+def test_load_pretrained_models_threads_lookahead(data_source_df, monkeypatch):
+    # optimize() rejects trainable ModelTrainers up front
+    # (_validate_optimize_models), so the lookahead threading into
+    # train_models is locked by calling _load_pretrained_models directly with
+    # a trainable interval model registered on the execution.
+    trainable = model(
+        "lookahead_thread_model",
+        lambda sym, train, test: FakeModel(sym, np.zeros(len(test))),
+        pretrained=False,
+    )
+    strategy = _make_strategy(data_source_df)
+    strategy.add_execution(
+        lambda _ctx: None, "AAPL", models=[trainable], intervals=["weekly"]
+    )
+    df = (
+        data_source_df[data_source_df["symbol"] == "AAPL"]
+        .sort_values("date")
+        .reset_index(drop=True)
+    )
+    window = next(
+        iter(
+            strategy.walkforward_split(
+                df, windows=1, lookahead=3, train_size=0.5
+            )
+        )
+    )
+    captured: dict = {}
+
+    def capture_train_models(*args, **kwargs):
+        captured.update(kwargs)
+        return {}
+
+    monkeypatch.setattr(strategy, "train_models", capture_train_models)
+    result = strategy._load_pretrained_models(
+        df=df,
+        train_rows=window.train_data,
+        test_rows=window.test_data,
+        window_executions=strategy._executions,
+        indicator_data={},
+        master_store=symbol_array_store_from_frame(df),
+        interval_data=IntervalData(),
+        tf_seconds=86400,
+        between_time=None,
+        days=None,
+        lookahead=3,
+    )
+    assert result == {}
+    assert captured["lookahead"] == 3
+    model_syms = set(captured["model_syms"])
+    assert ModelSymbol("lookahead_thread_model", "AAPL") in model_syms
+    assert (
+        ModelSymbol(
+            model_interval_name("lookahead_thread_model", "weekly"), "AAPL"
+        )
+        in model_syms
+    )
+
+
+def test_optimize_trials_never_see_test_bars(data_source_df):
+    # Trials tune on the train window only; the test window is reserved for
+    # the final replay of the winning params. The losing grid value runs
+    # only inside trials, so the dates it saw pin what the trials saw.
+    lookback = hyperparam("lookback", default=10, low=5, high=10, step=5)
+    pretrained = model(
+        "trial_phase_model",
+        lambda sym, train_start_date, train_end_date: FakeModel(
+            sym, np.zeros(1)
+        ),
+        pretrained=True,
+        predict_fn=lambda m, d: np.zeros(len(d)),
+    )
+    seen: list[tuple[int, pd.Timestamp]] = []
+
+    def exec_fn(ctx):
+        seen.append((ctx.hyperparam("lookback"), pd.Timestamp(ctx.dt)))
+
+    strategy = _make_strategy(data_source_df)
+    strategy.add_execution(
+        exec_fn,
+        "AAPL",
+        models=[pretrained],
+        intervals=["weekly"],
+        hyperparams=[lookback],
+    )
+    opt = strategy.optimize(
+        lambda r: r.metrics.total_pnl,
+        sampler="grid",
+        train_size=0.5,
+        parallel_indicators=False,
+        timeframe="1d",
+    )
+    sym_df = data_source_df[data_source_df["symbol"] == "AAPL"]
+    sym_df = (
+        sym_df[
+            (sym_df["date"] >= pd.Timestamp(START_DATE))
+            & (sym_df["date"] <= pd.Timestamp(END_DATE))
+        ]
+        .sort_values("date")
+        .reset_index(drop=True)
+    )
+    window = next(
+        iter(
+            strategy.walkforward_split(
+                sym_df, windows=1, lookahead=1, train_size=0.5
+            )
+        )
+    )
+    train_dates = {
+        pd.Timestamp(date) for date in sym_df["date"].iloc[window.train_data]
+    }
+    test_dates = {
+        pd.Timestamp(date) for date in sym_df["date"].iloc[window.test_data]
+    }
+    assert train_dates and test_dates
+    best = opt.best_params["lookback"]
+    assert best in (5, 10)
+    losing = 5 if best == 10 else 10
+    trial_only_dates = {date for value, date in seen if value == losing}
+    assert trial_only_dates
+    assert not (trial_only_dates & test_dates)
+    assert trial_only_dates <= train_dates
+    # Sanity: the final replay (best params) did cover the test window, so
+    # the disjointness above is not vacuous.
+    replay_dates = {date for value, date in seen if value == best}
+    assert test_dates <= replay_dates
 
 
 def test_optimize_when_volume_column_missing_then_error(data_source_df):

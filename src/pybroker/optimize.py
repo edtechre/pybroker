@@ -1234,6 +1234,7 @@ class OptimizeMixin:
         tf_seconds: int,
         between_time: Optional[tuple[str, str]],
         days: Optional[Any],
+        lookahead: int,
     ) -> dict[ModelSymbol, TrainedModel]:
         if not any(execution.model_names for execution in window_executions):
             return {}
@@ -1315,6 +1316,7 @@ class OptimizeMixin:
             history_store=history_store,
             train_store=train_store,
             test_store=test_store,
+            lookahead=lookahead,
         )
 
     def _run_optimize_trial(
@@ -1557,7 +1559,11 @@ class OptimizeMixin:
                 ``0`` and ``1``. Defaults to ``0.5``.
             lookahead: Number of bars in the future of the target prediction.
                 Held out between train and test to prevent training data from
-                leaking across the boundary. Defaults to ``1``.
+                leaking across the boundary, in the bars of the timeframe
+                each model is fitted on: a model bound to an interval via
+                ``add_execution(..., intervals=[...])`` holds out
+                ``lookahead`` bars of that interval, not of the base
+                timeframe. Defaults to ``1``.
             start_date: Starting date of the optimization (inclusive). Must be
                 within the range passed to the
                 :class:`pybroker.strategy.Strategy` constructor.
@@ -1777,6 +1783,7 @@ class OptimizeMixin:
                 tf_seconds=tf_seconds,
                 between_time=between_time,
                 days=day_ids,
+                lookahead=lookahead,
             )
             bundle = make_objective(
                 self,
@@ -2080,6 +2087,7 @@ class OptimizeMixin:
                     tf_seconds=cache_date_fields.tf_seconds,
                     between_time=cache_date_fields.between_time,
                     days=cache_date_fields.days,
+                    lookahead=lookahead,
                 )
                 bundle = make_objective(
                     self,
@@ -2231,6 +2239,7 @@ class OptimizeMixin:
                 tf_seconds=cache_date_fields.tf_seconds,
                 between_time=cache_date_fields.between_time,
                 days=cache_date_fields.days,
+                lookahead=lookahead,
             )
             _, test_store, history_store = self._build_window_stores(
                 master_store=master_store,

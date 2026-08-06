@@ -542,6 +542,58 @@ def slice_arrays_by_dates(
     return columns, sliced, dates[mask]
 
 
+def lookahead_train_dates(
+    bar_dates: NDArray[np.datetime64],
+    train_dates: Iterable[np.datetime64],
+    test_dates: Iterable[np.datetime64],
+    lookahead: int,
+) -> tuple[NDArray[np.datetime64], int]:
+    """Trims compressed train bar dates so the train/test hold-out is
+    ``lookahead`` compressed bars wide.
+
+    The walkforward split holds out ``lookahead`` bars of the *base*
+    timeframe, but a model bound to an interval is fitted on compressed
+    bars, so the hold-out must be re-measured in compressed-bar units:
+    every kept train bar satisfies
+    ``compressed_index <= first_test_compressed_index - lookahead``.
+
+    Args:
+        bar_dates: Dates of the full compressed bar history for one symbol.
+        train_dates: Base-timeframe train window dates; compressed bars are
+            selected by membership of their closing date.
+        test_dates: Base-timeframe test window dates.
+        lookahead: Number of compressed bars to hold out.
+
+    Returns:
+        ``(dates_to_select, n_dropped)`` — the train bar dates to keep and
+        how many train compressed bars were dropped. With ``lookahead <= 1``
+        the requested train dates are returned unchanged, which matches the
+        one-bar gap that date membership already produces.
+    """
+    if lookahead <= 1 or len(bar_dates) == 0:
+        return (
+            np.asarray(list(train_dates), dtype="datetime64[ns]"),
+            0,
+        )
+    train_idx = np.nonzero(
+        np.isin(
+            bar_dates,
+            np.asarray(list(train_dates), dtype="datetime64[ns]"),
+        )
+    )[0]
+    test_idx = np.nonzero(
+        np.isin(
+            bar_dates,
+            np.asarray(list(test_dates), dtype="datetime64[ns]"),
+        )
+    )[0]
+    if train_idx.size == 0 or test_idx.size == 0:
+        # No train bars to trim, or no test bars to leak into.
+        return bar_dates[train_idx], 0
+    kept = train_idx[train_idx <= test_idx[0] - lookahead]
+    return bar_dates[kept], int(train_idx.size - kept.size)
+
+
 def build_compressed_symbol_df(
     symbol: str,
     interval: TimeframeInterval,

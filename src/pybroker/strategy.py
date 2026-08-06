@@ -1571,7 +1571,13 @@ class WalkforwardMixin:
             lookahead: Number of bars in the future of the target prediction.
                 For example, predicting returns for the next bar would have a
                 ``lookahead`` of ``1``. This quantity is needed to prevent
-                training data from leaking into the test boundary.
+                training data from leaking into the test boundary. It is
+                expressed in the bars of the timeframe each model is fitted
+                on: a model bound to an interval via
+                ``add_execution(..., intervals=[...])`` holds out
+                ``lookahead`` bars of that interval, not of the base
+                timeframe. No bar in a window's test set is ever used to fit
+                that window's models.
             train_size: Amount of data in ``df`` to use for training, where
                 the max ``train_size`` is ``1``. For example, a ``train_size``
                 of ``0.9`` would result in 90% of data in ``df`` being used for
@@ -2213,7 +2219,12 @@ class Strategy(
                 execution's :class:`pybroker.context.ExecContext` cannot read
                 them — including inside a :meth:`.set_before_exec` or
                 :meth:`.set_after_exec` callback, which receives contexts from
-                every execution.
+                every execution. Models declared alongside an interval are
+                trained on its compressed bars and honor the ``lookahead``
+                passed to :meth:`.backtest`, :meth:`.walkforward`, or
+                :meth:`.optimize` in that interval's units: ``lookahead``
+                compressed bars are held out between their train and test
+                rows.
             args: Positional arguments passed to ``fn``.
             kwargs: Keyword arguments passed to ``fn``.
         """
@@ -2404,7 +2415,13 @@ class Strategy(
             lookahead: Number of bars in the future of the target prediction.
                 For example, predicting returns for the next bar would have a
                 ``lookahead`` of ``1``. This quantity is needed to prevent
-                training data from leaking into the test boundary.
+                training data from leaking into the test boundary. It is
+                expressed in the bars of the timeframe each model is fitted
+                on: a model bound to an interval via
+                ``add_execution(..., intervals=[...])`` holds out
+                ``lookahead`` bars of that interval, not of the base
+                timeframe. No bar in a window's test set is ever used to fit
+                that window's models.
             train_size: Amount of :class:`pybroker.data.DataSource` data to use
                 for training, where the max ``train_size`` is ``1``. For
                 example, a ``train_size`` of ``0.9`` would result in 90% of
@@ -2511,7 +2528,13 @@ class Strategy(
             lookahead: Number of bars in the future of the target prediction.
                 For example, predicting returns for the next bar would have a
                 ``lookahead`` of ``1``. This quantity is needed to prevent
-                training data from leaking into the test boundary.
+                training data from leaking into the test boundary. It is
+                expressed in the bars of the timeframe each model is fitted
+                on: a model bound to an interval via
+                ``add_execution(..., intervals=[...])`` holds out
+                ``lookahead`` bars of that interval, not of the base
+                timeframe. No bar in a window's test set is ever used to fit
+                that window's models.
             train_size: Amount of :class:`pybroker.data.DataSource` data to use
                 for training, where the max ``train_size`` is ``1``. For
                 example, a ``train_size`` of ``0.9`` would result in 90% of
@@ -3008,6 +3031,7 @@ class Strategy(
                     history_store=history_store,
                     train_store=train_store,
                     test_store=test_store,
+                    lookahead=lookahead,
                 )
             if test_data.empty:
                 # ``continue``, not ``return``: one window with no test bars

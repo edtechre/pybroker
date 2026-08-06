@@ -239,6 +239,12 @@ class ModelCacheKey:
     # on a symbol set it never asked for. Two executions sharing one pooled
     # model over overlapping symbols clobber each other the same way.
     pooled_symbols: Optional[tuple[str, ...]] = None
+    # Interval-bound models hold out ``lookahead`` *compressed* bars from the
+    # train set, so two lookaheads that yield the same base-timeframe train
+    # end_date still fit on different data. Base-timeframe models are fully
+    # described by CacheDateFields' train start/end, so their keys stay
+    # lookahead-free (``None``).
+    lookahead: Optional[int] = None
 
     @classmethod
     def from_date_fields(
@@ -248,6 +254,7 @@ class ModelCacheKey:
         model_name: str,
         fields: CacheDateFields,
         pooled_symbols: Optional[Iterable[str]] = None,
+        lookahead: Optional[int] = None,
     ) -> ModelCacheKey:
         return cls(
             symbol=symbol,
@@ -262,6 +269,7 @@ class ModelCacheKey:
                 if pooled_symbols is None
                 else tuple(sorted(pooled_symbols))
             ),
+            lookahead=lookahead,
         )
 
 

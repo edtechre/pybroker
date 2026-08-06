@@ -15,6 +15,12 @@ from .fixtures import *
 from decimal import Decimal
 from pybroker.common import PriceType
 from pybroker.indicator import IndicatorSymbol
+from pybroker.interval import (
+    CompressedSymbolData,
+    compress,
+    compress_symbol_df,
+    model_interval_name,
+)
 from pybroker.model import model
 from pybroker.scope import (
     ModelInputScope,
@@ -305,6 +311,27 @@ class TestIndicatorScope:
         ):
             ind_scope.fetch_value("SPY", "foo", 1)
 
+    def test_fetch_value_interval_bound_raises(
+        self, ind_scope, symbol, ind_data, ind_name
+    ):
+        end_index = 10
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "Indicator 'sma@weekly' is bound to interval 'weekly' and "
+                "cannot be read from the base context. Use "
+                "ctx.interval('weekly').indicator('sma') instead."
+            ),
+        ):
+            ind_scope.fetch_value(symbol, "sma@weekly", end_index)
+        # Base-name reads are unchanged.
+        expected = ind_data[IndicatorSymbol(ind_name, symbol)].values[
+            end_index - 1
+        ]
+        assert ind_scope.fetch_value(symbol, ind_name, end_index) == float(
+            expected
+        )
+
 
 class TestModelInputScope:
     def test_fetch(
@@ -486,6 +513,132 @@ class TestPredictionScope:
             ),
         ):
             pred_scope.fetch("SPY", model_name)
+
+    def test_predict_length_mismatch_raises(
+        self, col_scope, ind_scope, indicators, symbol, data_source_df
+    ):
+        n_rows = data_source_df[data_source_df["symbol"] == symbol].shape[0]
+        # A predict output shorter than its input must raise instead of
+        # being cached left-aligned against the bars.
+        short_name = "short_pred_model"
+        model(short_name, lambda sym, train, test: None, indicators)
+        short_model = TrainedModel(
+            name=short_name,
+            instance=None,
+            predict_fn=lambda instance, df: np.zeros(len(df))[1:],
+            input_cols=None,
+        )
+        short_models = {ModelSymbol(short_name, symbol): short_model}
+        short_pred_scope = PredictionScope(
+            short_models, ModelInputScope(col_scope, ind_scope, short_models)
+        )
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                f"predict for model {short_name!r} returned {n_rows - 1} "
+                f"predictions for {n_rows} input rows."
+            ),
+        ):
+            short_pred_scope.fetch(symbol, short_name)
+        # A predict_proba-shaped (n_rows, n_classes) result is one prediction
+        # per row and must still pass.
+        proba_name = "proba_pred_model"
+        model(proba_name, lambda sym, train, test: None, indicators)
+        proba_model = TrainedModel(
+            name=proba_name,
+            instance=None,
+            predict_fn=lambda instance, df: np.zeros((len(df), 2)),
+            input_cols=None,
+        )
+        proba_models = {ModelSymbol(proba_name, symbol): proba_model}
+        proba_pred_scope = PredictionScope(
+            proba_models, ModelInputScope(col_scope, ind_scope, proba_models)
+        )
+        values = proba_pred_scope.fetch(symbol, proba_name)
+        assert values.shape == (n_rows, 2)
+        # A single-row (1, n_classes) predict_proba result stays row-aligned
+        # and passes the length check. Regression: np.squeeze used to
+        # collapse it to (n_classes,), which the length check would then
+        # reject, aborting 1-row windows.
+        one_row = pd.DataFrame({"feature": [1.0]})
+        single = PredictionScope._run_predict(proba_model, one_row)
+        assert single.shape == (1, 2)
+        # The IntervalScope.fetch_preds warmup==0 branch raises the same way
+        # for a model bound to a compressed interval.
+        tf_name = "tf_short_pred"
+        model(
+            tf_name,
+            lambda sym, train, test: None,
+            input_data_fn=lambda df: df,
+        )
+        tf_sym = "TFSYM"
+        tf_dates = pd.date_range("2020-01-06", periods=15, freq="B")
+        close = np.linspace(100.0, 110.0, len(tf_dates))
+        sym_df = pd.DataFrame(
+            {
+                "date": tf_dates,
+                "open": close,
+                "high": close + 1.0,
+                "low": close - 1.0,
+                "close": close,
+                "volume": np.ones(len(tf_dates)),
+            }
+        )
+        interval_data = IntervalData()
+        interval_data.compressed[(tf_sym, "weekly")] = compress_symbol_df(
+            sym_df, "weekly", frozenset(), 86400.0
+        )
+        tf_model_name = model_interval_name(tf_name, "weekly")
+        tf_model = TrainedModel(
+            name=tf_model_name,
+            instance=None,
+            predict_fn=lambda instance, df: np.zeros(len(df))[1:],
+            input_cols=None,
+        )
+        tf_scope = IntervalScope(
+            interval_data,
+            IndicatorScope({}, []),
+            models={ModelSymbol(tf_model_name, tf_sym): tf_model},
+        )
+        n_input = tf_scope.window_len(tf_sym, "weekly")
+        assert n_input > 1
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                f"predict for model {tf_name!r} returned {n_input - 1} "
+                f"predictions for {n_input} input rows."
+            ),
+        ):
+            tf_scope.fetch_preds(tf_sym, "weekly", tf_name, len(tf_dates))
+
+
+class TestIntervalScope:
+    def test_completed_index_clamps_overshoot(self, ind_scope):
+        sym = "TFSYM"
+        dates = np.asarray(
+            pd.date_range("2020-01-06", periods=15, freq="B"),
+            dtype="datetime64[ns]",
+        )
+        n = len(dates)
+        close = np.linspace(100.0, 110.0, n)
+        bars, completed = compress(
+            dates, close, close + 1.0, close - 1.0, close, np.ones(n), "weekly"
+        )
+        interval_data = IntervalData()
+        interval_data.compressed[(sym, "weekly")] = CompressedSymbolData(
+            bars=bars, completed=completed, base_dates=dates
+        )
+        tf_scope = IntervalScope(interval_data, ind_scope)
+        assert len(completed) == n
+        at_end = tf_scope.completed_index(sym, "weekly", len(completed))
+        assert at_end == int(completed[-1])
+        assert at_end >= 0
+        # Overshooting end indexes clamp to the final completed bar rather
+        # than wrapping to a negative index that would expose future data.
+        for overshoot in (len(completed) + 1, len(completed) + 100):
+            assert tf_scope.completed_index(sym, "weekly", overshoot) == at_end
+        for end_index in (0, -1, -100):
+            assert tf_scope.completed_index(sym, "weekly", end_index) == -1
 
 
 class TestPriceScope:
