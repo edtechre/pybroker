@@ -109,3 +109,5 @@ if __name__ == "__main__":
         timeframe=BASE_TIMEFRAME,
     )
     print(result.metrics_df)
+    # Structured output for agents/reports: result.to_json_str() serializes
+    # metrics, trades, orders, and bootstrap; cap tables with max_rows=.

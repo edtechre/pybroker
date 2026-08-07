@@ -344,6 +344,19 @@ Match the exact message before changing code:
 | `DeprecationWarning: ExecContext.score is deprecated; use long_score or short_score instead.` | Legacy `ctx.score` code | Migrate to `long_score`/`short_score` |
 | Warning that `Strategy.set_max_long_positions` takes precedence over `StrategyConfig.max_long_positions` | Both the deprecated config field and the setter in use | Delete the `StrategyConfig` field |
 
+## Reporting Results
+
+Print `result.metrics_df` as the human-readable summary and inspect
+`result.orders` to confirm rotation entries and hold-band exits. For
+structured output (agent parsing, saved report files, downstream
+tools), `result.to_json()` returns a JSON-safe dict and
+`result.to_json_str()` strict JSON text. The default payload carries
+metrics, trades, orders, and bootstrap capped at `max_rows=100` rows
+per table; `symbols=` filters to specific tickers; `include=` opts
+into `portfolio`/`positions`/`metrics_df`/`signals`/`stops`. Dates
+serialize as naive-UTC ISO strings, NaN as `null`, and legitimately
+infinite metrics as `"Infinity"`/`"-Infinity"`.
+
 ## Session Hygiene and Debugging
 
 Put these at the top of agent-run rotation scripts:

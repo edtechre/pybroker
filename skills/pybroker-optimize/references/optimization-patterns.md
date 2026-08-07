@@ -324,7 +324,11 @@ Without `params=`, backtests resolve every hyperparam to its
 `trades`, `orders`, `positions`, and `portfolio` DataFrames, plus
 `bootstrap` when `calc_bootstrap=True`. `opt.to_json()` /
 `opt.to_json_str()` serialize `best_params`, `best_score`, a study
-summary, the test result, and any windows for reports.
+summary, the test result, and any windows for reports. The test
+result accepts the same `include=`/`max_rows=`/`symbols=` controls as
+`TestResult.to_json`, and each window payload carries its winning
+params, train score, date bounds, study summary, and any
+selector-resolved `execution_symbols`.
 
 ## Models and Optimization
 

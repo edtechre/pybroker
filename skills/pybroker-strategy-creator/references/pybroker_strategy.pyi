@@ -79,6 +79,7 @@ class TestResult:
     bootstrap: Optional[BootstrapResult]
     signals: Optional[dict[str, pd.DataFrame]]
     stops: Optional[pd.DataFrame]
+    symbols: frozenset[str] = frozenset()
     def to_json(self, *, include: frozenset[str]=_DEFAULT_JSON_INCLUDE, max_rows: Optional[int]=100, symbols: Optional[frozenset[str]]=None) -> dict[str, Any]: ...
     def to_json_str(self, *, include: frozenset[str]=_DEFAULT_JSON_INCLUDE, max_rows: Optional[int]=100, symbols: Optional[frozenset[str]]=None) -> str: ...
 

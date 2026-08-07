@@ -42,7 +42,7 @@ Backtest choices:
 - `strategy.optimize(score_fn, ...)` searches registered hyperparams (see Strategy Patterns).
 - Use `warmup` at least as large as the largest indicator/model lookback before running entries.
 - Indicator computation and model training parallelize only when `parallel_indicators=True` / `parallel_models=True` are passed; tune workers with `pyb.set_parallel(n_jobs=...)`.
-- `TestResult` exposes `portfolio`, `positions`, `orders`, `trades`, `metrics`, `metrics_df`, optionally `signals`/`stops`, and `to_json()`/`to_json_str()` for compact agent-readable output. `positions` is empty unless `StrategyConfig(record_position_bars=True)`; the per-bar `portfolio` equity curve is always populated.
+- `TestResult` exposes `portfolio`, `positions`, `orders`, `trades`, `metrics`, `metrics_df`, optionally `signals`/`stops`, and `to_json()`/`to_json_str()` for compact agent-readable output: the default payload carries metrics, trades, orders, and bootstrap capped at `max_rows=100` rows per table, `symbols=` filters to specific tickers, and `include=` opts into `portfolio`/`positions`/`metrics_df`/`signals`/`stops`. Dates serialize as naive-UTC ISO strings, NaN as `null`, and legitimately infinite metrics as `"Infinity"`/`"-Infinity"`. `positions` is empty unless `StrategyConfig(record_position_bars=True)`; the per-bar `portfolio` equity curve is always populated.
 
 ## ExecContext Rules
 

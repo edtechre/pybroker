@@ -27,7 +27,8 @@ Cache key used for :class:`pybroker.data.DataSource` data.
 - `start_date: datetime`
 - `end_date: datetime`
 - `adjust: Optional[str]`
-- `from_date_fields(*, symbol: str, adjust: Optional[str], fields: CacheDateFields) -> DataSourceCacheKey`
+- `source: str`
+- `from_date_fields(*, symbol: str, adjust: Optional[str], source: str, fields: CacheDateFields) -> DataSourceCacheKey`
 
 ### `class IndicatorCacheKey`
 
@@ -1074,6 +1075,7 @@ A static registry of data and object references.
 - `ordered_data_cols() -> tuple[str, ...]`: All registered data column names in deterministic order.
 - `freeze_data_cols()`: Prevents additional data columns from being registered.
 - `unfreeze_data_cols()`: Allows additional data columns to be registered if :func:`pybroker.scope.StaticScope.freeze_data_cols` was called.
+- `validate_registered_names(indicators: Optional[Iterable[str]]=None, models: Optional[Iterable[str]]=None)`: Raises when an indicator used by a run or one of its models' prediction columns shares a name with a data column or another registered source.
 - `param(name: str, value: Optional[Any]=_EMPTY_PARAM) -> Optional[Any]`: Get or set a global parameter.
 - `clear_params()`: Clears all global parameters.
 - `set_hyperparam(hyperparam: Any) -> None`: Stores a :class:`pybroker.optimize.Hyperparam` in static scope.
@@ -1315,6 +1317,7 @@ Contains the results of backtesting a :class:`.Strategy`.
 - `bootstrap: Optional[BootstrapResult]`
 - `signals: Optional[dict[str, pd.DataFrame]]`
 - `stops: Optional[pd.DataFrame]`
+- `symbols: frozenset[str] = frozenset()`
 - `to_json(*, include: frozenset[str]=_DEFAULT_JSON_INCLUDE, max_rows: Optional[int]=100, symbols: Optional[frozenset[str]]=None) -> dict[str, Any]`: Returns JSON-serializable backtest results.
 - `to_json_str(*, include: frozenset[str]=_DEFAULT_JSON_INCLUDE, max_rows: Optional[int]=100, symbols: Optional[frozenset[str]]=None) -> str`: Returns strict JSON text from :meth:`to_json`.
 

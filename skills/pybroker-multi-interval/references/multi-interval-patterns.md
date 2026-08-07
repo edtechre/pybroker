@@ -392,6 +392,18 @@ Match the message before changing code — each one names the fix.
   the first compressed bar completes. Fix:
   `if len(weekly.close) < N: return` before indexing.
 
+## Reporting Results
+
+Print `result.metrics_df` as the human-readable summary. For
+structured output (agent parsing, saved report files, downstream
+tools), `result.to_json()` returns a JSON-safe dict and
+`result.to_json_str()` strict JSON text. The default payload carries
+metrics, trades, orders, and bootstrap capped at `max_rows=100` rows
+per table; `symbols=` filters to specific tickers; `include=` opts
+into `portfolio`/`positions`/`metrics_df`/`signals`/`stops`. Dates
+serialize as naive-UTC ISO strings, NaN as `null`, and legitimately
+infinite metrics as `"Infinity"`/`"-Infinity"`.
+
 ## Session Hygiene and Debugging
 
 Put these at the top of agent-run scripts:

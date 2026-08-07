@@ -54,3 +54,5 @@ def build_strategy() -> Strategy:
 if __name__ == "__main__":
     result = build_strategy().backtest(warmup=LOOKBACK)
     print(result.metrics_df)
+    # Structured output for agents/reports: result.to_json_str() serializes
+    # metrics, trades, orders, and bootstrap; cap tables with max_rows=.

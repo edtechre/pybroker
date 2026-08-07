@@ -87,5 +87,7 @@ if __name__ == "__main__":
     print(opt.best_score)
     # Held-out test metrics — never report the in-sample best_score.
     print(opt.result.metrics_df)
+    # Structured output for agents/reports: opt.to_json_str() serializes
+    # best_params, a study summary, the test result, and any windows.
     # Pin the winners into a regular backtest:
     # result = strategy.backtest(params=opt.best_params, seed=42)

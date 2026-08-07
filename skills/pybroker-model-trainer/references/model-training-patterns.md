@@ -392,6 +392,20 @@ pybroker.register_columns("sentiment")
 # 'sentiment' now flows into train/test frames and inferred input columns.
 ```
 
+## Reporting Results
+
+Print `result.metrics_df` as the human-readable summary. For
+structured output (agent parsing, saved report files, downstream
+tools), `result.to_json()` returns a JSON-safe dict and
+`result.to_json_str()` strict JSON text. The default payload carries
+metrics, trades, orders, and bootstrap capped at `max_rows=100` rows
+per table; `symbols=` filters to specific tickers; `include=` opts
+into `portfolio`/`positions`/`metrics_df`/`signals`/`stops` (with
+`StrategyConfig(return_signals=True)`, `signals` carries per-symbol
+model predictions). Dates serialize as naive-UTC ISO strings, NaN as
+`null`, and legitimately infinite metrics as
+`"Infinity"`/`"-Infinity"`.
+
 ## Session Hygiene and Debugging
 
 Put these at the top of agent-run scripts:

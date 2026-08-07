@@ -386,6 +386,12 @@ users symlink them into their agent's skills directory
       tiny local DataFrame fixtures for runs, and never assume optional
       packages (yfinance, TA-Lib, ML libraries) are installed — name the
       required `pip install`s.
+  11. Machine-readable results: report `result.metrics_df` as the
+      human-readable summary and teach `result.to_json()` /
+      `result.to_json_str()` (and `opt.to_json()` for optimization) as
+      the structured output path, with the `include=`/`max_rows=`/
+      `symbols=` controls — not a blanket replacement for the metrics
+      print, since the default JSON payload is usually larger.
 
 ## Project Rules
 
