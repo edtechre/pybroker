@@ -53,9 +53,7 @@ result_2x = strategy.backtest()
 
 [result.portfolio](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.TestResult.portfolio) records the margin balances on every bar. When a levered position is opened, a portion of cash (`notional / leverage`) is posted as collateral. The borrowed remainder is tracked in [margin_loan](https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.margin_loan), and the [net_cash_balance](https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.net_cash_balance) equals `cash - margin_loan`.
 
-To see the margin mechanics in effect, we filter the output to show only bars with an outstanding loan.
-
-On the first of these filtered bars, a single entry was filled. Cash dropped by `$25,413` to post half of the roughly `$51,000` notional as collateral. The `margin_loan` column carries the borrowed half. Finally, the [notional](https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.notional) column tracks the position's total exposure as it is marked to each close:
+To see the margin mechanics in effect, we filter the output to show only bars with an outstanding loan:
 
 ```python
 levered = result_2x.portfolio[result_2x.portfolio["margin_loan"] > 0]
@@ -70,6 +68,8 @@ levered[
     ]
 ].head()
 ```
+
+On the first of these filtered bars, a single entry was filled. Cash dropped by `$25,413` to post half of the roughly `$51,000` notional as collateral. The `margin_loan` column carries the borrowed half. The [notional](https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.PortfolioBar.notional) column tracks the position's total exposure as it is marked to each close.
 
 ## Comparing Against Cash-Only
 
