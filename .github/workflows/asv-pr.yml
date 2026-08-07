@@ -12,30 +12,40 @@ permissions:
   contents: read
   pull-requests: write
 
-# Two thresholds, declared once so the flags and the prose describing them
-# cannot drift apart.
+# Gate thresholds, declared once so the flags and the prose describing
+# them cannot drift apart.
 #
-# REPORT_FACTOR is what gets shown: every benchmark that moved by 10% or
-# more lands in the PR comment for a human to read.
+# A factor alone does not work on a shared runner. Measured across roughly
+# ten `asv continuous` legs whose `src/` and `benchmarks/` were
+# byte-identical between base and head -- so every flagged result was
+# noise:
 #
-# GATE_FACTOR is what blocks the PR, and it is deliberately looser, because
-# 1.1 is below this runner's noise floor. Measured on six `asv continuous`
-# runs whose `src/` and `benchmarks/` were byte-identical between base and
-# head -- so every flagged result was noise:
-#
-#   1.18  CacheDiskHit.time_cache_disk_get            (429us)
+#   1.29  EvalKernels.time_sharpe_ratio               (16.5us)
+#   1.18  CacheDiskHit.time_cache_disk_get             (429us)
 #   1.17  StoreBuildKernels...from_frame(10, 504)     (1.39ms)
-#   1.11  ModelPrepKernels.time_indicator_values...   (60us)
+#   1.12  IndicatorKernels.time_cross(1000)           (7.25us)
+#   1.11  ModelPrepKernels.time_indicator_values...     (60us)
 #   1.11  ModelTrainPrep.time_train_models_per_symbol (1.92ms)
+#   0.65  CacheDiskHit.time_cache_disk_get             (633us)
 #
-# One in six runs flagged something at 1.1, and every false positive was a
-# sub-2ms microbenchmark; the walkforward macrobenchmarks (100ms and up)
-# never moved. 1.25 clears the observed noise with margin. Raise the
-# sampling (`--attribute rounds=N`) rather than this number if that stops
-# being true -- loosening it further trades away real coverage.
+# Every one is under 2ms, and the same benchmark read 1.12 on one leg and
+# 0.83 on another *in the same run*. The walkforward macrobenchmarks
+# (100ms and up) have never been flagged. A 1.25 gate was tried first and
+# the very next run produced a 1.29 on a 16us benchmark: the noise is a
+# property of how short the benchmark is, so no factor separates signal
+# from noise down there.
+#
+# So the gate needs both axes. GATE_MIN_SECONDS is the baseline runtime a
+# benchmark must reach before it is allowed to block; GATE_FACTOR is the
+# slowdown that blocks once it does. REPORT_FACTOR is purely what gets
+# shown -- everything that moved is reported either way, so a
+# microbenchmark regression stays visible, it just cannot block a PR on a
+# coin flip.
 env:
   REPORT_FACTOR: "1.1"
   GATE_FACTOR: "1.25"
+  GATE_MIN_SECONDS: "0.01"
+
 
 jobs:
   # Matrix comes from .github/python-versions.json, the same source the
@@ -107,7 +117,7 @@ jobs:
           asv continuous "origin/${BASE_REF}" HEAD \
             --python="${PY_VERSION}" \
             --machine "ci-ubuntu-latest-py${PY_VERSION}" \
-            --factor "${GATE_FACTOR}" \
+            --factor "${REPORT_FACTOR}" \
             --interleave-rounds \
             >asv-continuous.log 2>&1
           EXIT=$?
@@ -138,33 +148,27 @@ jobs:
             exit 1
           fi
 
-      # Reads the results the step above already stored -- no benchmark is
-      # re-run, so the reporting threshold costs nothing. Non-fatal: a
-      # missing table must not fail a PR that the gate passed.
-      - name: Compare at the reporting threshold
-        id: compare
+      # Decides the gate from the JSON asv already wrote under
+      # .asv/results/, via asv's own reader -- no rendered table is parsed
+      # and no units are converted, because the stored values are floats
+      # in seconds. Its output doubles as the human-readable report.
+      - name: Decide the gate
+        id: gate
         env:
           BASE_REF: ${{ github.base_ref }}
           PY_VERSION: ${{ matrix.python }}
         run: |
           set +e
-          asv compare "origin/${BASE_REF}" HEAD \
-            --python="${PY_VERSION}" \
+          python .github/scripts/asv_gate.py \
             --machine "ci-ubuntu-latest-py${PY_VERSION}" \
-            --factor "${REPORT_FACTOR}" \
-            --only-changed \
-            >asv-compare.log 2>&1
-          RC=$?
-          if [ "$RC" -ne 0 ]; then
-            echo "" >>asv-compare.log
-            echo "(asv compare exited ${RC}; the table above may be" \
-                 "incomplete. The gate verdict is unaffected.)" \
-              >>asv-compare.log
-          elif [ ! -s asv-compare.log ]; then
-            echo "No benchmark moved by ${REPORT_FACTOR}x or more." \
-              >asv-compare.log
-          fi
-          cat asv-compare.log
+            --base "$(git rev-parse "origin/${BASE_REF}")" \
+            --head "$(git rev-parse HEAD)" \
+            --factor "${GATE_FACTOR}" \
+            --report-factor "${REPORT_FACTOR}" \
+            --min-seconds "${GATE_MIN_SECONDS}" \
+            >asv-gate.log 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          cat asv-gate.log
           exit 0
 
       - name: Write diff to job summary
@@ -178,10 +182,10 @@ jobs:
             echo ""
             echo "Exit code: $ASV_EXIT (1 = flagged regression at --factor ${GATE_FACTOR}; 2 = a benchmark raised, nothing compared)"
             echo ""
-            echo "### Moved by ${REPORT_FACTOR}x or more"
+            echo "### Gate"
             echo ""
             echo '```'
-            cat asv-compare.log
+            cat asv-gate.log
             echo '```'
             echo ""
             echo "### Full run"
@@ -202,10 +206,10 @@ jobs:
             echo ""
             echo "Exit code: \`$ASV_EXIT\` (\`1\` = flagged regression at \`--factor ${GATE_FACTOR}\`; \`2\` = a benchmark raised, so nothing was compared)"
             echo ""
-            echo "**Moved by ${REPORT_FACTOR}x or more** — reported, not blocking:"
+            echo "**Gate** — blocks only at or above \`${GATE_MIN_SECONDS}s\`, where this runner can measure reliably:"
             echo ""
             echo '```'
-            cat asv-compare.log
+            cat asv-gate.log
             echo '```'
             echo ""
             echo "<details>"
@@ -222,7 +226,7 @@ jobs:
             elif [ "$ASV_EXIT" != "0" ] && [ "$OVERRIDE" = "true" ]; then
               echo "_Gate forced green by \`bench-override\` label._"
             else
-              echo "_Blocking at \`--factor ${GATE_FACTOR}\`, reporting from \`--factor ${REPORT_FACTOR}\`: 1.1 sits below this runner's noise floor, where identical code has flagged sub-2ms microbenchmarks at up to 1.18. Override via the \`bench-override\` PR label. For the trend view, run \`asv publish && asv preview\` locally against committed \`.asv/results/\`._"
+              echo "_Blocks only when a benchmark of at least \`${GATE_MIN_SECONDS}s\` regresses by \`${GATE_FACTOR}x\`. Shorter benchmarks are reported, never blocking: on this runner, identical code has produced ratios from 0.65 to 1.29 on sub-2ms benchmarks. Override via the \`bench-override\` PR label._"
             fi
           } > sticky-comment.md
 
@@ -241,23 +245,18 @@ jobs:
       - name: Enforce regression gate
         env:
           ASV_EXIT: ${{ steps.continuous.outputs.exit_code }}
+          GATE_EXIT: ${{ steps.gate.outputs.exit_code }}
           OVERRIDE: ${{ contains(github.event.pull_request.labels.*.name, 'bench-override') }}
           PY_VERSION: ${{ matrix.python }}
         run: |
-          if [ "$ASV_EXIT" = "0" ]; then
-            echo "No regression flagged at ${GATE_FACTOR}x on Python ${PY_VERSION}."
-            exit 0
-          fi
-          # asv distinguishes the two non-zero exits and the gate must too.
-          # `asv run` returns 2 when any benchmark raised, and `asv
-          # continuous` propagates that immediately -- before it compares
-          # anything -- so exit 2 means "a benchmark is broken", not "this PR
-          # is slower". Reporting it as a regression is the same conflation
-          # that made a config drift look like one.
+          # `asv run` returns 2 when a benchmark raised, and `asv
+          # continuous` propagates that before comparing anything -- so
+          # exit 2 means "a benchmark is broken", not "this PR is slower".
+          # Reporting it as a regression is the same conflation that made a
+          # config drift look like one.
           #
-          # bench-override deliberately does not apply here: it exists to
-          # accept a measured slowdown, not to merge a benchmark that cannot
-          # run.
+          # bench-override deliberately does not apply: it exists to accept
+          # a measured slowdown, not to merge a benchmark that cannot run.
           if [ "$ASV_EXIT" = "2" ]; then
             echo "::error::asv exited 2 -- at least one benchmark raised an" \
                  "exception, so nothing was compared. This is not a" \
@@ -265,9 +264,16 @@ jobs:
             grep -nE "failed" asv-continuous.log | head -20
             exit 1
           fi
-          if [ "$OVERRIDE" = "true" ]; then
-            echo "Regression flagged (exit $ASV_EXIT) but 'bench-override' label is set — forcing green."
+          # Everything else is decided by asv_gate.py, not by asv's own
+          # exit code: asv flags on factor alone, which is what produced
+          # the false positives above.
+          if [ "$GATE_EXIT" = "0" ]; then
+            echo "No benchmark at or above ${GATE_MIN_SECONDS}s regressed by ${GATE_FACTOR}x on Python ${PY_VERSION}."
             exit 0
           fi
-          echo "Regression flagged (exit $ASV_EXIT) and no 'bench-override' label — failing the gate."
-          exit "$ASV_EXIT"
+          if [ "$OVERRIDE" = "true" ]; then
+            echo "Regression flagged but 'bench-override' label is set — forcing green."
+            exit 0
+          fi
+          echo "Regression flagged and no 'bench-override' label — failing the gate."
+          exit 1
