@@ -38,9 +38,41 @@ env:
   GATE_FACTOR: "1.25"
 
 jobs:
-  benchmark:
-    name: asv continuous
+  # Matrix comes from .github/python-versions.json, the same source the
+  # test matrix and the nightly read.
+  versions:
+    name: Resolve Python versions
     runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.read.outputs.versions }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read .github/python-versions.json
+        id: read
+        run: |
+          set -euo pipefail
+          # jq -e exits non-zero on a null result, and assigning a failed
+          # command substitution aborts under `set -e`, so a renamed key
+          # fails here instead of emitting an empty matrix that silently
+          # runs no benchmarks at all.
+          VERSIONS="$(jq -ce '.versions' .github/python-versions.json)"
+          echo "versions=${VERSIONS}" >> "$GITHUB_OUTPUT"
+
+  # One leg per supported version. `asv continuous` benchmarks both commits
+  # in the same job on the same runner with the same interpreter, so each
+  # leg is self-contained -- no stored baseline, no results branch, no
+  # retention policy. That is what makes per-version regression detection
+  # affordable here and impossible in the nightly, whose legs use distinct
+  # machine identities and are not comparable to each other by design.
+  benchmark:
+    name: asv continuous (Python ${{ matrix.python }})
+    needs: versions
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ${{ fromJSON(needs.versions.outputs.versions) }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -55,12 +87,15 @@ jobs:
           python-version: "3.11"
 
       - name: Configure asv machine identity
-        run: asv machine --yes --machine ci-ubuntu-latest
+        env:
+          PY_VERSION: ${{ matrix.python }}
+        run: asv machine --yes --machine "ci-ubuntu-latest-py${PY_VERSION}"
 
       - name: Run asv continuous (base vs PR head)
         id: continuous
         env:
           BASE_REF: ${{ github.base_ref }}
+          PY_VERSION: ${{ matrix.python }}
         run: |
           set +e
           # No --no-stats: it means "do not use result statistics in
@@ -134,9 +169,12 @@ jobs:
         env:
           ASV_EXIT: ${{ steps.continuous.outputs.exit_code }}
           BASE_REF: ${{ github.base_ref }}
+          PY_VERSION: ${{ matrix.python }}
         run: |
           {
-            echo "## ASV continuous — ${BASE_REF} → PR HEAD"
+            echo "## ASV continuous (Python ${PY_VERSION}) — ${BASE_REF} → PR HEAD"
+            echo ""
+            echo "Exit code: $ASV_EXIT (1 = flagged regression at --factor ${GATE_FACTOR}; 2 = a benchmark raised, nothing compared)"
             echo ""
             echo "Exit code: $ASV_EXIT (1 = flagged regression at --factor ${GATE_FACTOR}; 2 = a benchmark raised, nothing compared)"
             echo ""
@@ -157,9 +195,10 @@ jobs:
         env:
           ASV_EXIT: ${{ steps.continuous.outputs.exit_code }}
           OVERRIDE: ${{ contains(github.event.pull_request.labels.*.name, 'bench-override') }}
+          PY_VERSION: ${{ matrix.python }}
         run: |
           {
-            echo "## ASV continuous — benchmark diff"
+            echo "## ASV continuous — benchmark diff (Python ${PY_VERSION})"
             echo ""
             echo "Exit code: \`$ASV_EXIT\` (\`1\` = flagged regression at \`--factor ${GATE_FACTOR}\`; \`2\` = a benchmark raised, so nothing was compared)"
             echo ""
@@ -187,6 +226,8 @@ jobs:
             fi
           } > sticky-comment.md
 
+      # One comment per version: the legs run in parallel, so a shared
+      # header would have them overwrite each other's results.
       - name: Post sticky PR comment
         # Skip for fork PRs — GITHUB_TOKEN is read-only for PRs from forks
         # and this step would fail with "Resource not accessible by integration".
@@ -194,13 +235,14 @@ jobs:
         if: github.event.pull_request.head.repo.full_name == github.repository
         uses: marocchino/sticky-pull-request-comment@v3
         with:
-          header: asv-continuous
+          header: asv-continuous-py${{ matrix.python }}
           path: sticky-comment.md
 
       - name: Enforce regression gate
         env:
           ASV_EXIT: ${{ steps.continuous.outputs.exit_code }}
           OVERRIDE: ${{ contains(github.event.pull_request.labels.*.name, 'bench-override') }}
+          PY_VERSION: ${{ matrix.python }}
         run: |
           if [ "$ASV_EXIT" = "0" ]; then
             echo "No regression flagged at ${GATE_FACTOR}x."

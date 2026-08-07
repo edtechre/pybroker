@@ -13,16 +13,35 @@ permissions:
   contents: read
 
 jobs:
+  # Matrix comes from .github/python-versions.json so the nightly, the PR
+  # gate and the test matrix cannot disagree about which versions exist.
+  versions:
+    name: Resolve Python versions
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.read.outputs.versions }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read .github/python-versions.json
+        id: read
+        run: |
+          set -euo pipefail
+          # jq -e exits non-zero on a null result, and assigning a failed
+          # command substitution aborts under `set -e`, so a renamed key
+          # fails here instead of emitting an empty matrix that silently
+          # runs no benchmarks at all.
+          VERSIONS="$(jq -ce '.versions' .github/python-versions.json)"
+          echo "versions=${VERSIONS}" >> "$GITHUB_OUTPUT"
+
   benchmark:
-    name: asv run (Python ${{ matrix.python.version }})
+    name: asv run (Python ${{ matrix.python }})
+    needs: versions
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python:
-          - version: "3.11"
-          - version: "3.12"
-          - version: "3.13"
+        python: ${{ fromJSON(needs.versions.outputs.versions) }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -30,16 +49,16 @@ jobs:
 
       - uses: ./.github/actions/setup-pybroker
         with:
-          python-version: ${{ matrix.python.version }}
+          python-version: ${{ matrix.python }}
 
       - name: Configure asv machine identity
         env:
-          PY_VERSION: ${{ matrix.python.version }}
+          PY_VERSION: ${{ matrix.python }}
         run: asv machine --yes --machine "ci-ubuntu-latest-py${PY_VERSION}"
 
       - name: Run asv against master HEAD
         env:
-          PY_VERSION: ${{ matrix.python.version }}
+          PY_VERSION: ${{ matrix.python }}
         run: |
           set -o pipefail
           asv run HEAD^! \
@@ -72,7 +91,7 @@ jobs:
       - name: Upload asv results
         uses: actions/upload-artifact@v7
         with:
-          name: asv-results-py${{ matrix.python.version }}-${{ github.run_id }}
+          name: asv-results-py${{ matrix.python }}-${{ github.run_id }}
           path: .asv/results/
           if-no-files-found: error
           retention-days: 30
