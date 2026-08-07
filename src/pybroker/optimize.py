@@ -719,6 +719,23 @@ def _study_summary(study: optuna.Study) -> dict[str, Any]:
     return _json_safe(summary)
 
 
+def _require_completed_trials(study: optuna.Study) -> None:
+    """Raises when no trial completed, so callers reading
+    ``study.best_params`` fail with the actual cause instead of optuna's
+    internal "No trials are completed yet" error."""
+    if not study.get_trials(
+        deepcopy=False, states=(optuna.trial.TrialState.COMPLETE,)
+    ):
+        raise ValueError(
+            f"All {len(study.trials)} optimize trial(s) failed: score_fn "
+            "did not return a finite score for any combination searched. "
+            "This happens when a metric is undefined for every trial, "
+            "e.g. a Sharpe-based score on a window with no trades. Return "
+            "a finite fallback score (such as float('-inf')) from "
+            "score_fn to rank such trials instead of failing them."
+        )
+
+
 def _frame_date_bounds(
     frame: pd.DataFrame,
 ) -> tuple[Optional[datetime], Optional[datetime]]:
@@ -731,6 +748,13 @@ def _frame_date_bounds(
         pd.Timestamp(dates.min()).to_pydatetime(),
         pd.Timestamp(dates.max()).to_pydatetime(),
     )
+
+
+def _frame_symbols(frame: pd.DataFrame) -> frozenset[str]:
+    """Returns the ticker symbols present in ``frame``."""
+    if frame.empty:
+        return frozenset()
+    return frozenset(frame[DataCol.SYMBOL.value].unique())
 
 
 @dataclass(frozen=True)
@@ -757,6 +781,9 @@ class WindowOptimizeResult:
             is empty.
         test_end_date: Last date of the window's test data, or ``None`` when
             the test split is empty.
+        execution_symbols: Symbols each execution id resolved to for this
+            window when a :data:`pybroker.common.SymbolSelector` chose them,
+            or ``None`` when no execution uses a selector.
     """
 
     params: dict[str, Any]
@@ -774,17 +801,23 @@ class WindowOptimizeResult:
 
     def to_json(self) -> dict[str, Any]:
         """Returns JSON-serializable walk-forward optimization window results."""
-        return _json_safe(
-            {
-                "params": self.params,
-                "train_score": self.train_score,
-                "train_start_date": self.train_start_date,
-                "train_end_date": self.train_end_date,
-                "test_start_date": self.test_start_date,
-                "test_end_date": self.test_end_date,
-                "study": _study_summary(self.study),
+        payload: dict[str, Any] = {
+            "params": self.params,
+            "train_score": self.train_score,
+            "train_start_date": self.train_start_date,
+            "train_end_date": self.train_end_date,
+            "test_start_date": self.test_start_date,
+            "test_end_date": self.test_end_date,
+            "study": _study_summary(self.study),
+        }
+        if self.execution_symbols is not None:
+            # str keys keep the JSON object shape explicit; sorting keeps
+            # multi-execution output deterministic.
+            payload["execution_symbols"] = {
+                str(exec_id): symbols
+                for exec_id, symbols in sorted(self.execution_symbols.items())
             }
-        )
+        return _json_safe(payload)
 
     def to_json_str(self) -> str:
         """Returns strict JSON text from :meth:`to_json`."""
@@ -1418,6 +1451,7 @@ class OptimizeMixin:
             train_only=False,
             signals=signals if self._config.return_signals else None,
             seed=None,
+            symbols=_frame_symbols(train_data),
         )
 
     def _partition_indicator_syms(
@@ -1624,6 +1658,12 @@ class OptimizeMixin:
         scope.freeze_data_cols()
         self._indicator_memo_max = _DEFAULT_INDICATOR_MEMO_MAX
         try:
+            # Inside the try so the finally's unfreeze_data_cols runs if
+            # the validation raises.
+            scope.validate_registered_names(
+                (n for e in self._executions for n in e.indicator_names),
+                (n for e in self._executions for n in e.model_names),
+            )
             start_dt = (
                 self._start_date
                 if start_date is None
@@ -1803,6 +1843,7 @@ class OptimizeMixin:
             n_trials = _resolve_n_trials(n_trials, built_sampler, search_space)
             _log_optimize_trials(n_trials, built_sampler, search_space)
             _run_study(study, bundle, n_trials, built_sampler)
+            _require_completed_trials(study)
             best_params = build_run_hyperparams(hyperparams, study.best_params)
             test_result = self._run_optimize_test(
                 df=df,
@@ -1949,6 +1990,7 @@ class OptimizeMixin:
             train_only=False,
             signals=signals if self._config.return_signals else None,
             seed=seed,
+            symbols=_frame_symbols(test_data),
         )
 
     def _optimize_walkforward(
@@ -2101,6 +2143,7 @@ class OptimizeMixin:
                 _run_study(
                     window_study, bundle, window_n_trials, window_sampler
                 )
+                _require_completed_trials(window_study)
                 best_params = build_run_hyperparams(
                     hyperparams, window_study.best_params
                 )
@@ -2306,6 +2349,7 @@ class OptimizeMixin:
             train_only=False,
             signals=stitched_signals,
             seed=seed,
+            symbols=_frame_symbols(df),
         )
         last = window_results[-1]
         return OptimizeResult(

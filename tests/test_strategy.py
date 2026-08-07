@@ -3801,6 +3801,311 @@ class TestStrategy:
         assert len(truncated["orders"]) <= 1
         result.to_json_str()
 
+    def test_backtest_to_json_stops_exit_price(self, data_source_df):
+        """StopRecord.exit_price holds a raw PriceType enum; serializing
+        the stops section must unwrap it instead of crashing json.dumps."""
+
+        def exec_fn(ctx):
+            if not ctx.long_pos():
+                ctx.buy_shares = 100
+                ctx.stop_loss_pct = 5
+                ctx.stop_loss_exit_price = PriceType.CLOSE
+
+        config = StrategyConfig(return_stops=True)
+        strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+        strategy.add_execution(exec_fn, ["AAPL", "SPY"])
+        result = strategy.backtest()
+        include = _DEFAULT_JSON_INCLUDE | frozenset({"stops"})
+        payload = result.to_json(include=include)
+        assert payload["stops"]
+        assert all(
+            record["exit_price"] == PriceType.CLOSE.value
+            for record in payload["stops"]
+        )
+        assert "index" not in payload["stops"][0]
+        json.loads(result.to_json_str(include=include))
+
+    def test_backtest_to_json_signals_date_column(self, scope, data_source_df):
+        """A registered custom column of datetime.date values survives into
+        result.signals; serializing it must emit ISO dates, not crash."""
+        from pybroker.scope import register_columns
+
+        def exec_fn(ctx):
+            if not ctx.long_pos():
+                ctx.buy_shares = 100
+
+        df = data_source_df.copy()
+        df["earnings_date"] = df["date"].dt.date
+        register_columns("earnings_date")
+        config = StrategyConfig(return_signals=True)
+        strategy = Strategy(df, START_DATE, END_DATE, config)
+        strategy.add_execution(exec_fn, ["AAPL"])
+        result = strategy.backtest()
+        include = frozenset({"signals"})
+        payload = result.to_json(include=include)
+        records = payload["signals"]["AAPL"]
+        assert records
+        assert all(
+            re.fullmatch(r"\d{4}-\d{2}-\d{2}", record["earnings_date"])
+            for record in records
+        )
+        assert "index" not in records[0]
+        json.loads(result.to_json_str(include=include))
+
+    def test_walkforward_signals_2d_predictions(self, scope, data_source_df):
+        """A model emitting (n_rows, n_classes) predictions (e.g.
+        predict_proba) must not crash signals construction; each class
+        becomes its own column."""
+        proba_model = model(
+            "proba_model",
+            lambda sym, train_data, test_data: object(),
+            predict_fn=lambda _model, df: np.column_stack(
+                (np.full(len(df), 0.4), np.full(len(df), 0.6))
+            ),
+        )
+
+        def exec_fn(ctx):
+            if not ctx.long_pos():
+                ctx.buy_shares = 100
+
+        config = StrategyConfig(return_signals=True)
+        strategy = Strategy(data_source_df, START_DATE, END_DATE, config)
+        strategy.add_execution(exec_fn, ["AAPL"], models=proba_model)
+        result = strategy.walkforward(windows=2)
+        frame = result.signals["AAPL"]
+        assert "proba_model_pred_0" in frame.columns
+        assert "proba_model_pred_1" in frame.columns
+        assert (frame["proba_model_pred_0"] == 0.4).all()
+        payload = result.to_json(include=frozenset({"signals"}))
+        records = payload["signals"]["AAPL"]
+        assert records
+        assert records[0]["proba_model_pred_1"] == 0.6
+        json.loads(result.to_json_str(include=frozenset({"signals"})))
+
+    def test_walkforward_when_model_unpicklable_then_cache_skipped(
+        self, scope, data_source_df, setup_enabled_model_cache
+    ):
+        """An unpicklable model must not kill the walkforward at
+        cache-write time after training already succeeded; it is skipped
+        with a warning and the run completes as if uncached."""
+
+        class LambdaModel:
+            def __init__(self):
+                self.fn = lambda x: x
+
+        unpicklable = model(
+            "unpicklable_model",
+            lambda sym, train_data, test_data: LambdaModel(),
+            predict_fn=lambda _model, df: np.zeros(len(df)),
+        )
+
+        def exec_fn(ctx):
+            if not ctx.long_pos():
+                ctx.buy_shares = 100
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn, ["AAPL"], models=unpicklable)
+        with patch.object(scope.logger, "warn_set_model_cache_failed") as warn:
+            result = strategy.walkforward(windows=2)
+        assert warn.called
+        assert isinstance(result, TestResult)
+        assert not result.portfolio.empty
+
+    def test_backtest_when_indicator_collides_with_column_then_error(
+        self, scope, data_source_df
+    ):
+        colliding = indicator("close", lambda data: data.close)
+
+        def exec_fn(ctx):
+            pass
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn, ["AAPL"], indicators=colliding)
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "Indicator name(s) collide with data column(s): ['close']"
+            ),
+        ):
+            strategy.backtest()
+
+    def test_backtest_when_unused_collision_then_no_error(
+        self, scope, data_source_df
+    ):
+        """A registered-but-unattached colliding indicator must not block
+        an unrelated strategy in the same process."""
+        indicator("close", lambda data: data.close)
+
+        def exec_fn(ctx):
+            pass
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn, ["AAPL"])
+        result = strategy.backtest()
+        assert isinstance(result, TestResult)
+
+    def test_backtest_when_model_pred_collides_then_error(
+        self, scope, data_source_df
+    ):
+        colliding = indicator("prob_pred", lambda data: data.close)
+        prob = model(
+            "prob",
+            lambda sym, train_data, test_data: object(),
+            predict_fn=lambda _model, df: np.zeros(len(df)),
+        )
+
+        def exec_fn(ctx):
+            pass
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(
+            exec_fn, ["AAPL"], indicators=colliding, models=prob
+        )
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "Model prediction column(s) collide with existing "
+                "column(s): ['prob_pred']"
+            ),
+        ):
+            strategy.backtest()
+
+    def test_backtest_when_numbered_pred_collides_then_error(
+        self, scope, data_source_df
+    ):
+        """Multi-output models emit {name}_pred_{i} columns, so numbered
+        variants are reserved along with the base name."""
+        colliding = indicator("prob_pred_0", lambda data: data.close)
+        prob = model(
+            "prob",
+            lambda sym, train_data, test_data: object(),
+            predict_fn=lambda _model, df: np.zeros(len(df)),
+        )
+
+        def exec_fn(ctx):
+            pass
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(
+            exec_fn, ["AAPL"], indicators=colliding, models=prob
+        )
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "Model prediction column(s) collide with existing "
+                "column(s): ['prob_pred_0']"
+            ),
+        ):
+            strategy.backtest()
+
+    def test_optimize_when_indicator_collides_then_error(
+        self, scope, data_source_df
+    ):
+        """strategy.optimize has its own setup path and must validate name
+        collisions just like backtest and walkforward."""
+        from pybroker.optimize import hyperparam
+
+        colliding = indicator("close", lambda data: data.close)
+        lookback = hyperparam("lookback", default=5, low=5, high=10, step=5)
+
+        def exec_fn(ctx):
+            pass
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(
+            exec_fn, ["AAPL"], indicators=colliding, hyperparams=[lookback]
+        )
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "Indicator name(s) collide with data column(s): ['close']"
+            ),
+        ):
+            strategy.optimize(
+                lambda r: 0.0,
+                sampler="grid",
+                train_size=0.5,
+                parallel_indicators=False,
+            )
+
+    def test_backtest_to_json_validation(
+        self, executions_only, data_source_df
+    ):
+        """Typos in include= and symbols= must raise instead of silently
+        returning empty payload sections."""
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        for exec in executions_only:
+            strategy.add_execution(**exec)
+        result = strategy.backtest()
+        assert "AAPL" in result.symbols
+        with pytest.raises(TypeError, match="frozenset of section names"):
+            result.to_json(include="metrics")  # type: ignore[arg-type]
+        with pytest.raises(
+            ValueError,
+            match=re.escape("Unknown to_json include section(s): ['metricz']"),
+        ):
+            result.to_json(include=frozenset({"metricz", "trades"}))
+        with pytest.raises(ValueError, match="Symbols cannot be empty"):
+            result.to_json(symbols=frozenset())
+        with pytest.raises(
+            ValueError, match=re.escape("Symbol not found: ZZZ.")
+        ):
+            result.to_json(symbols=frozenset({"ZZZ"}))
+        with pytest.raises(TypeError, match="frozenset of ticker symbols"):
+            result.to_json(symbols="AAPL")  # type: ignore[arg-type]
+        payload = result.to_json(symbols=frozenset({"AAPL"}))
+        assert all(record["symbol"] == "AAPL" for record in payload["trades"])
+        # One-shot iterables must be materialized, not consumed by the
+        # validation pass.
+        generated = result.to_json(
+            include=(name for name in ("metrics", "trades")),
+            symbols=(sym for sym in ("AAPL",)),
+        )
+        assert generated["metrics"]
+        assert "orders" not in generated
+
+    def test_test_result_to_json_naive_utc_dates(self):
+        """start_date/end_date must serialize in the same naive-UTC form
+        as every row date in the payload."""
+        start = pd.Timestamp("2021-03-01 09:30", tz="America/New_York")
+        end = pd.Timestamp("2021-03-02 16:00", tz="America/New_York")
+        result = TestResult(
+            start_date=start.to_pydatetime(),
+            end_date=end.to_pydatetime(),
+            portfolio=pd.DataFrame(),
+            positions=pd.DataFrame(),
+            orders=pd.DataFrame(),
+            trades=pd.DataFrame(),
+            metrics=EvalMetrics(),
+            metrics_df=pd.DataFrame(),
+            bootstrap=None,
+            signals=None,
+            stops=None,
+        )
+        payload = result.to_json()
+        assert payload["start_date"] == "2021-03-01T14:30:00"
+        assert payload["end_date"] == "2021-03-02T21:00:00"
+
+    def test_backtest_to_json_metrics_df_int_values(self, data_source_df):
+        """With no drawdown date in the run, pandas would infer float64 for
+        the metrics_df value column and coerce integer metrics."""
+
+        def exec_fn(ctx):
+            pass
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn, ["AAPL"])
+        result = strategy.backtest()
+        assert result.metrics.max_drawdown_date is None
+        include = frozenset({"metrics", "metrics_df"})
+        payload = result.to_json(include=include)
+        values = {
+            record["name"]: record["value"] for record in payload["metrics_df"]
+        }
+        assert values["trade_count"] == 0
+        assert isinstance(values["trade_count"], int)
+        assert payload["metrics"]["trade_count"] == 0
+
     @pytest.mark.parametrize("tz", ["UTC", None])
     @pytest.mark.parametrize(
         "between_time, expected_hour",
@@ -4353,6 +4658,7 @@ class TestStrategy:
             train_only=False,
             signals=None,
             seed=42,
+            symbols=frozenset(),
         )
         assert np.issubdtype(
             result.positions["long_shares"].dtype, expected_shares_type
@@ -4466,6 +4772,7 @@ class TestStrategy:
             train_only=False,
             signals=None,
             seed=42,
+            symbols=frozenset(),
         )
         assert result.positions["long_shares"].values[0] == 3.144
         assert result.positions["short_shares"].values[0] == 0.111
@@ -4484,6 +4791,7 @@ class TestStrategy:
             train_only=False,
             signals=None,
             seed=42,
+            symbols=frozenset(),
         )
         assert result.portfolio.empty
         assert result.positions.empty

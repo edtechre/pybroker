@@ -13,6 +13,7 @@ import pybroker
 from pybroker.config import StrategyConfig
 from pybroker.optimize import (
     SearchSpace,
+    WindowOptimizeResult,
     _build_sampler,
     collect_hyperparams,
     collect_search_space,
@@ -204,6 +205,57 @@ def test_optimize_result_to_json(data_source_df):
     }
     json.dumps(payload, allow_nan=False)
     opt.to_json_str()
+
+
+def test_optimize_when_all_trials_fail_then_clear_error(data_source_df):
+    """Every-trial-failed runs must name the actual cause instead of
+    surfacing optuna's internal "No trials are completed yet" error."""
+    strategy = _make_strategy(data_source_df)
+    _add_tuned_execution(strategy)
+    with pytest.raises(
+        ValueError, match=r"optimize trial\(s\) failed: score_fn"
+    ):
+        strategy.optimize(
+            lambda r: float("nan"),
+            sampler="grid",
+            train_size=0.5,
+            parallel_indicators=False,
+        )
+
+
+def test_windowed_optimize_when_all_trials_fail_then_clear_error(
+    data_source_df,
+):
+    strategy = _make_strategy(data_source_df)
+    _add_tuned_execution(strategy)
+    with pytest.raises(
+        ValueError, match=r"optimize trial\(s\) failed: score_fn"
+    ):
+        strategy.optimize(
+            lambda r: float("nan"),
+            sampler="grid",
+            windows=2,
+            parallel_indicators=False,
+        )
+
+
+def test_window_optimize_result_to_json_execution_symbols():
+    """Selector-resolved symbols must serialize (sorted, string keys)
+    instead of being silently dropped from the window payload."""
+    study = optuna.create_study()
+    result = WindowOptimizeResult(
+        params={"lookback": 5},
+        study=study,
+        train_score=1.0,
+        execution_symbols={1: frozenset({"SPY", "AAPL"})},
+    )
+    payload = result.to_json()
+    assert payload["execution_symbols"] == {"1": ["AAPL", "SPY"]}
+    json.dumps(payload, allow_nan=False)
+    result_no_selector = WindowOptimizeResult(
+        params={"lookback": 5}, study=study, train_score=1.0
+    )
+    assert "execution_symbols" not in result_no_selector.to_json()
 
 
 def test_optimize_indicator_integration(data_source_df):

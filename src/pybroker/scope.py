@@ -290,6 +290,57 @@ class StaticScope:
         self._ordered_data_cols = None
         self._bar_data_cols = None
 
+    def validate_registered_names(
+        self,
+        indicators: Optional[Iterable[str]] = None,
+        models: Optional[Iterable[str]] = None,
+    ):
+        """Raises when an indicator used by a run or one of its models'
+        prediction columns shares a name with a data column or another
+        registered source.
+
+        A colliding name is resolved differently by different consumers:
+        model training reads the data column while prediction reads the
+        indicator, and signals output silently overwrites one value with
+        the other -- so the collision is rejected outright.
+
+        Args:
+            indicators: Indicator names the run uses. Defaults to every
+                registered indicator.
+            models: Model names the run uses. Defaults to every registered
+                model.
+        """
+        ind_names = frozenset(
+            self._indicators.keys() if indicators is None else indicators
+        )
+        model_names = frozenset(
+            self._model_sources.keys() if models is None else models
+        )
+        cols = self.default_data_cols | self.custom_data_cols
+        ind_collisions = sorted(name for name in ind_names if name in cols)
+        if ind_collisions:
+            raise ValueError(
+                "Indicator name(s) collide with data column(s): "
+                f"{ind_collisions}"
+            )
+        taken = cols | ind_names
+        pred_collisions = set()
+        for name in model_names:
+            # Multi-output models emit numbered {name}_pred_{i} columns,
+            # so those are reserved along with the base {name}_pred.
+            prefix = f"{name}_pred"
+            for existing in taken:
+                if existing == prefix or (
+                    existing.startswith(f"{prefix}_")
+                    and existing[len(prefix) + 1 :].isdigit()
+                ):
+                    pred_collisions.add(existing)
+        if pred_collisions:
+            raise ValueError(
+                "Model prediction column(s) collide with existing "
+                f"column(s): {sorted(pred_collisions)}"
+            )
+
     def param(
         self, name: str, value: Optional[Any] = _EMPTY_PARAM
     ) -> Optional[Any]:
@@ -440,6 +491,16 @@ class _StoreBacking:
         for arr in self.other.values():
             arr.flags.writeable = False
 
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        # Unpickling bypasses __init__, so __post_init__'s freeze never
+        # runs and the buffers arrive writable. Re-freeze before views()
+        # is called so every rebuilt view inherits read-only.
+        for name, value in state.items():
+            object.__setattr__(self, name, value)
+        self.stack.flags.writeable = False
+        for arr in self.other.values():
+            arr.flags.writeable = False
+
     def views(self) -> dict[str, dict[str, NDArray]]:
         """Returns per-symbol column views into the backing buffers."""
         sym_arrays: dict[str, dict[str, NDArray]] = {}
@@ -513,6 +574,13 @@ class SymbolArrayStore:
         sym_arrays = state["sym_arrays"]
         if sym_arrays is None:
             sym_arrays = backing.views()
+        else:
+            # Unpickled arrays come back as writable copies regardless of
+            # the original flags; re-freeze to keep the read-only guard.
+            for arrays in sym_arrays.values():
+                for arr in arrays.values():
+                    if arr is not None:
+                        arr.flags.writeable = False
         object.__setattr__(self, "symbols", state["symbols"])
         object.__setattr__(self, "sym_arrays", sym_arrays)
         object.__setattr__(self, "backing", backing)
@@ -2572,8 +2640,17 @@ def get_signals(
                 continue
         for model in models:
             try:
-                data[f"{model}_pred"] = pred_scope.fetch(sym, model)
+                pred = pred_scope.fetch(sym, model)
             except ValueError:
                 continue
+            if pred.ndim == 1:
+                data[f"{model}_pred"] = pred
+            else:
+                # Multi-output predictions (e.g. predict_proba's
+                # (n_rows, n_classes)) cannot become a single frame column;
+                # emit one column per trailing component instead.
+                flat = pred.reshape(len(pred), -1)
+                for i in range(flat.shape[1]):
+                    data[f"{model}_pred_{i}"] = flat[:, i]
         dfs[sym] = pd.DataFrame(data)
     return dfs

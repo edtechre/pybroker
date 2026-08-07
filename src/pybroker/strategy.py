@@ -1729,6 +1729,27 @@ class WalkforwardMixin:
 
 
 _DEFAULT_JSON_INCLUDE = frozenset({"metrics", "trades", "orders", "bootstrap"})
+_VALID_JSON_SECTIONS = frozenset(
+    {
+        "metrics",
+        "metrics_df",
+        "trades",
+        "orders",
+        "portfolio",
+        "positions",
+        "bootstrap",
+        "signals",
+        "stops",
+    }
+)
+
+
+def _naive_utc(dt: datetime) -> datetime:
+    """Converts a tz-aware datetime to naive UTC, matching the row dates
+    in :class:`.TestResult` DataFrames, which are tz-stripped to UTC."""
+    if dt.tzinfo is None:
+        return dt
+    return pd.Timestamp(dt).tz_convert(None).to_pydatetime()
 
 
 def _filter_df_symbols(
@@ -1768,6 +1789,7 @@ class TestResult:
             its binding.
         stops: :class:`pandas.DataFrame` containing stop data per-bar when
             :attr:`pybroker.config.StrategyConfig.return_stops` is ``True``.
+        symbols: Ticker symbols that were backtested.
     """
 
     start_date: datetime
@@ -1781,6 +1803,7 @@ class TestResult:
     bootstrap: Optional[BootstrapResult]
     signals: Optional[dict[str, pd.DataFrame]]
     stops: Optional[pd.DataFrame]
+    symbols: frozenset[str] = frozenset()
 
     def to_json(
         self,
@@ -1794,16 +1817,55 @@ class TestResult:
         By default includes ``start_date``, ``end_date``, ``metrics``,
         ``trades``, ``orders``, and ``bootstrap`` (when present). Large
         time series such as ``portfolio``, ``positions``, ``signals``, and
-        ``stops`` are opt-in via ``include``.
+        ``stops`` are opt-in via ``include``. Dates serialize as naive UTC,
+        NaN as ``null``, and infinite metric values as the string sentinels
+        ``"Infinity"``/``"-Infinity"``.
 
         Args:
-            include: Names of optional result sections to include.
+            include: Names of optional result sections to include. Valid
+                names are ``metrics``, ``metrics_df``, ``trades``,
+                ``orders``, ``portfolio``, ``positions``, ``bootstrap``,
+                ``signals``, and ``stops``. Note that ``positions`` has
+                rows only when
+                :attr:`pybroker.config.StrategyConfig.record_position_bars`
+                is ``True``, and ``signals``/``stops`` only with their
+                matching config flags.
             max_rows: Maximum rows per tabular section. ``None`` for no limit.
-            symbols: When set, filter symbol-specific sections to these tickers.
+            symbols: When set, filter symbol-specific sections to these
+                tickers. Must be a non-empty subset of :attr:`.symbols`.
         """
+        if isinstance(include, str):
+            raise TypeError(
+                "include must be a frozenset of section names, not a str."
+            )
+        # Materialized before use: a one-shot iterable would otherwise be
+        # consumed by validation and read as empty by the section checks.
+        include = frozenset(include)
+        unknown = include - _VALID_JSON_SECTIONS
+        if unknown:
+            raise ValueError(
+                "Unknown to_json include section(s): "
+                f"{sorted(map(str, unknown))}"
+            )
+        if symbols is not None:
+            if isinstance(symbols, str):
+                # frozenset() would split a str into characters and report
+                # a misleading per-character "Symbol not found" error.
+                raise TypeError(
+                    "symbols must be a frozenset of ticker symbols, not a str."
+                )
+            symbols = frozenset(symbols)
+            if not symbols:
+                raise ValueError("Symbols cannot be empty.")
+            missing = symbols - self.symbols
+            if missing:
+                raise ValueError(
+                    "Symbol not found: "
+                    f"{', '.join(sorted(map(str, missing)))}."
+                )
         payload: dict[str, Any] = {
-            "start_date": _json_safe(self.start_date),
-            "end_date": _json_safe(self.end_date),
+            "start_date": _json_safe(_naive_utc(self.start_date)),
+            "end_date": _json_safe(_naive_utc(self.end_date)),
         }
         if "metrics" in include:
             payload["metrics"] = self.metrics.to_json()
@@ -2676,6 +2738,10 @@ class Strategy(
         scope = StaticScope.instance()
         try:
             scope.freeze_data_cols()
+            scope.validate_registered_names(
+                (n for e in self._executions for n in e.indicator_names),
+                (n for e in self._executions for n in e.model_names),
+            )
             if not self._executions:
                 raise ValueError("No executions were added.")
             if self._slippage_model is not None:
@@ -2802,6 +2868,7 @@ class Strategy(
                 train_only,
                 signals if self._config.return_signals else None,
                 seed,
+                frozenset(df[DataCol.SYMBOL.value].unique()),
             )
         finally:
             scope.unfreeze_data_cols()
@@ -3425,6 +3492,7 @@ class Strategy(
         train_only: bool,
         signals: Optional[dict[str, pd.DataFrame]],
         seed: Optional[int],
+        symbols: frozenset[str],
     ) -> TestResult:
         if train_only:
             return TestResult(
@@ -3439,6 +3507,7 @@ class Strategy(
                 bootstrap=None,
                 signals=signals,
                 stops=None,
+                symbols=symbols,
             )
         pos_df = pd.DataFrame.from_records(
             portfolio.position_bars, columns=PositionBar._fields
@@ -3519,7 +3588,12 @@ class Strategy(
             for k, v in dataclasses.asdict(eval_result.metrics).items()
             if v is not None
         ]
-        metrics_df = pd.DataFrame(metrics, columns=["name", "value"])
+        # dtype=object skips numeric inference: without a datetime metric
+        # (e.g. no drawdown date), pandas would otherwise infer float64 and
+        # coerce integer metrics like trade_count to floats.
+        metrics_df = pd.DataFrame(
+            metrics, columns=["name", "value"], dtype=object
+        )
         stops_df = None
         if self._config.return_stops:
             stops_df = pd.DataFrame.from_records(
@@ -3538,4 +3612,5 @@ class Strategy(
             bootstrap=eval_result.bootstrap,
             signals=signals,
             stops=stops_df,
+            symbols=symbols,
         )

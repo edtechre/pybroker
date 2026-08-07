@@ -782,6 +782,51 @@ def test_column_scope_from_frame_fetch_parity(data_source_df, symbols):
             assert np.array_equal(flat_vals, indexed_vals)
 
 
+@pytest.mark.parametrize("protocol", [2, 3, 4, 5])
+def test_symbol_array_store_pickle_round_trip_read_only(
+    data_source_df, protocol
+):
+    """Unpickling bypasses __post_init__, so without an explicit re-freeze
+    a round-tripped store came back fully writable."""
+    import copy
+    import pickle
+
+    from pybroker.scope import SymbolArrayStore
+
+    def assert_frozen(store):
+        if store.backing is not None:
+            assert not store.backing.stack.flags.writeable
+            for arr in store.backing.other.values():
+                assert not arr.flags.writeable
+        for arrays in store.sym_arrays.values():
+            for arr in arrays.values():
+                if arr is not None:
+                    assert not arr.flags.writeable
+        sym = next(iter(store.sym_arrays))
+        with pytest.raises(ValueError, match="read-only"):
+            store.sym_arrays[sym]["close"][0] = 0.0
+
+    backed = symbol_array_store_from_frame(data_source_df)
+    assert backed.backing is not None
+    assert_frozen(pickle.loads(pickle.dumps(backed, protocol=protocol)))
+    assert_frozen(copy.deepcopy(backed))
+
+    unbacked = SymbolArrayStore(
+        frozenset({"AAPL"}),
+        {
+            "AAPL": {
+                "close": np.arange(3, dtype=np.float64),
+                "date": np.array(
+                    ["2021-01-01", "2021-01-02", "2021-01-03"],
+                    dtype="datetime64[ns]",
+                ),
+            }
+        },
+    )
+    assert unbacked.backing is None
+    assert_frozen(pickle.loads(pickle.dumps(unbacked, protocol=protocol)))
+
+
 def test_get_signals(
     symbols,
     scope,
