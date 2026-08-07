@@ -20,7 +20,13 @@ from pybroker.common import (
     StopType,
     to_decimal,
 )
-from pybroker.portfolio import Portfolio, Stop
+from pybroker.portfolio import (
+    Entry,
+    Portfolio,
+    Position,
+    Stop,
+    _calculate_pnl_mae_mfe,
+)
 from pybroker.scope import ColumnScope, PriceScope
 from pybroker.slippage import FixedSlippageModel, SlippageModel
 
@@ -4688,3 +4694,240 @@ def test_clamp_unmarked_uses_fifo_cost_of_surviving_entries():
     )
     assert pos.unmarked_shares == pos.shares
     assert pos.unmarked_notional == expected
+
+
+def _reference_calc_pnl_mae_mfe(pos, close, low, high):
+    """Frozen oracle: the pre-hoisting ``_calculate_pnl_mae_mfe``.
+
+    Copied verbatim from ``portfolio.py`` before per-entry ``to_decimal``
+    conversions were hoisted out of the entry loop. The differential tests
+    below assert the production implementation is bit-identical to this
+    one. Do not modify or "modernize" this copy.
+    """
+    if pos.type != "long" and pos.type != "short":
+        raise ValueError(f"Unknown position type: {pos.type}")
+    pnl = Decimal()
+    for entry in pos.entries:
+        close_d = to_decimal(close)
+        loss = 0.0
+        profit = 0.0
+        loss_d = Decimal()
+        profit_d = Decimal()
+        if pos.type == "long":
+            pnl += (close_d - entry.price) * entry.shares
+            if low is not None:
+                loss_d = to_decimal(low) - entry.price
+                loss = float(loss_d)
+            if high is not None:
+                profit_d = to_decimal(high) - entry.price
+                profit = float(profit_d)
+        elif pos.type == "short":
+            pnl += (entry.price - close_d) * entry.shares
+            if high is not None:
+                loss_d = entry.price - to_decimal(high)
+                loss = float(loss_d)
+            if low is not None:
+                profit_d = entry.price - to_decimal(low)
+                profit = float(profit_d)
+        if loss < 0 and loss < float(entry.mae):
+            entry.mae = loss_d
+        if profit > 0 and profit > float(entry.mfe):
+            entry.mfe = profit_d
+    pos.pnl = pnl
+
+
+def _make_mae_mfe_pos(pos_type, prices, shares=None):
+    pos = Position(symbol=SYMBOL_1, shares=Decimal(), type=pos_type)
+    for i, price in enumerate(prices):
+        qty = to_decimal(shares[i]) if shares is not None else Decimal(100)
+        pos.entries.append(
+            Entry(
+                id=i,
+                date=DATE_1,
+                symbol=SYMBOL_1,
+                shares=qty,
+                price=to_decimal(price),
+                type=pos_type,
+            )
+        )
+        pos.shares += qty
+    return pos
+
+
+def _assert_pos_state_identical(pos_a, pos_b):
+    # str() equality, not just ==: Decimal("5.0") == Decimal("5.00") but the
+    # two are user-visibly different. Bit-identical means same scale too.
+    assert str(pos_a.pnl) == str(pos_b.pnl)
+    for entry_a, entry_b in zip(pos_a.entries, pos_b.entries):
+        assert str(entry_a.mae) == str(entry_b.mae)
+        assert str(entry_a.mfe) == str(entry_b.mfe)
+
+
+@pytest.mark.parametrize("pos_type", ["long", "short"])
+@pytest.mark.parametrize("n_entries", [1, 2, 8])
+def test_calc_pnl_mae_mfe_matches_frozen_oracle_fuzz(pos_type, n_entries):
+    rng = np.random.default_rng(42)
+    special = [
+        0.30000000000000004,
+        0.1 + 0.2,
+        1e15,
+        1e-9,
+        float(np.nextafter(10.0, 11.0)),
+        float(np.nextafter(10.0, 9.0)),
+        10.05,
+        10.1,
+        99.999999999999,
+        16.72,
+    ]
+
+    def draw_price():
+        if rng.random() < 0.3:
+            return special[rng.integers(len(special))]
+        return float(np.round(rng.uniform(0.01, 200.0), 4))
+
+    entry_prices = [draw_price() for _ in range(n_entries)]
+    entry_shares = [
+        float(np.round(rng.uniform(0.25, 500.0), 2)) for _ in range(n_entries)
+    ]
+    pos_new = _make_mae_mfe_pos(pos_type, entry_prices, entry_shares)
+    pos_ref = _make_mae_mfe_pos(pos_type, entry_prices, entry_shares)
+    for _ in range(400):
+        close = draw_price()
+        low = None if rng.random() < 0.15 else draw_price()
+        high = None if rng.random() < 0.15 else draw_price()
+        _calculate_pnl_mae_mfe(pos_new, to_decimal(close), low=low, high=high)
+        _reference_calc_pnl_mae_mfe(pos_ref, close, low=low, high=high)
+        _assert_pos_state_identical(pos_new, pos_ref)
+
+
+def test_calc_pnl_mae_mfe_stores_exact_decimal_not_float_arithmetic():
+    # 10.1 - 10.05: the exact Decimal difference is -0.05, while raw float
+    # subtraction yields -0.04999999999999982. If the implementation is ever
+    # "simplified" to float arithmetic, the stored MAE changes and this fails.
+    price, low = 10.1, 10.05
+    exact = to_decimal(low) - to_decimal(price)
+    assert float(exact) != low - price
+    pos = _make_mae_mfe_pos("long", [price])
+    _calculate_pnl_mae_mfe(pos, to_decimal(price), low=low, high=None)
+    assert pos.entries[0].mae == exact
+    assert str(pos.entries[0].mae) == "-0.05"
+    assert pos.entries[0].mae != to_decimal(low - price)
+
+
+def test_calc_pnl_mae_mfe_tie_does_not_update():
+    # The update comparisons are strict; a bar reproducing the current MAE/MFE
+    # exactly must leave the stored Decimal objects untouched.
+    pos = _make_mae_mfe_pos("long", [10.1])
+    _calculate_pnl_mae_mfe(pos, to_decimal(10.1), low=10.05, high=10.2)
+    mae_obj = pos.entries[0].mae
+    mfe_obj = pos.entries[0].mfe
+    _calculate_pnl_mae_mfe(pos, to_decimal(10.1), low=10.05, high=10.2)
+    assert pos.entries[0].mae is mae_obj
+    assert pos.entries[0].mfe is mfe_obj
+
+
+@pytest.mark.parametrize("pos_type", ["long", "short"])
+@pytest.mark.parametrize(
+    "low, high",
+    [(None, None), (10.0, None), (None, 12.0), (10.0, 12.0)],
+)
+def test_calc_pnl_mae_mfe_optional_low_high_combinations(pos_type, low, high):
+    pos_new = _make_mae_mfe_pos(pos_type, [11.0, 10.5])
+    pos_ref = _make_mae_mfe_pos(pos_type, [11.0, 10.5])
+    _calculate_pnl_mae_mfe(pos_new, to_decimal(11.5), low=low, high=high)
+    _reference_calc_pnl_mae_mfe(pos_ref, 11.5, low=low, high=high)
+    _assert_pos_state_identical(pos_new, pos_ref)
+
+
+def test_calc_pnl_mae_mfe_cross_entry_updates_are_independent():
+    pos = _make_mae_mfe_pos("long", [10.0, 20.0])
+    _calculate_pnl_mae_mfe(pos, to_decimal(15.0), low=15.0, high=15.0)
+    entry_1, entry_2 = pos.entries
+    assert entry_1.mae == Decimal()
+    assert entry_1.mfe == to_decimal(15.0) - to_decimal(10.0)
+    assert entry_2.mae == to_decimal(15.0) - to_decimal(20.0)
+    assert entry_2.mfe == Decimal()
+    _calculate_pnl_mae_mfe(pos, to_decimal(15.0), low=14.0, high=16.0)
+    assert entry_1.mae == Decimal()
+    assert entry_1.mfe == to_decimal(16.0) - to_decimal(10.0)
+    assert entry_2.mae == to_decimal(14.0) - to_decimal(20.0)
+    assert entry_2.mfe == Decimal()
+
+
+@pytest.mark.parametrize(
+    "bad_close", [float("nan"), float("inf"), float("-inf")]
+)
+def test_capture_bar_when_nonfinite_close_holds_at_mark(bad_close):
+    portfolio = Portfolio(
+        CASH, record_portfolio_bars=True, record_position_bars=True
+    )
+    portfolio.buy(DATE_1, SYMBOL_1, 100, Decimal("16.72"))
+    df = pd.DataFrame(
+        [
+            [SYMBOL_1, DATE_1, 16.7, 15.0, 18.0],
+            [SYMBOL_1, DATE_2, bad_close, bad_close, bad_close],
+        ],
+        columns=["symbol", "date", "close", "low", "high"],
+    ).set_index(["symbol", "date"])
+    col_scope = ColumnScope(df)
+    portfolio.capture_bar(DATE_1, col_scope, {SYMBOL_1: 1})
+    pos = portfolio.long_positions[SYMBOL_1]
+    marked_close = pos.close
+    marked_equity = portfolio.equity
+    mae = str(pos.entries[0].mae)
+    mfe = str(pos.entries[0].mfe)
+    portfolio.capture_bar(DATE_2, col_scope, {SYMBOL_1: 2})
+    assert pos.close == marked_close
+    assert str(pos.entries[0].mae) == mae
+    assert str(pos.entries[0].mfe) == mfe
+    assert portfolio.equity == marked_equity
+    assert len(portfolio.bars) == 2
+    assert len(portfolio.position_bars) == 1
+
+
+def test_capture_bar_when_hedged_long_and_short_same_symbol():
+    close_price = Decimal("16.7")
+    portfolio = Portfolio(
+        CASH, record_portfolio_bars=True, record_position_bars=True
+    )
+    portfolio.buy(DATE_1, SYMBOL_1, 100, Decimal("16.72"))
+    # The public API nets long against short, so a hedged symbol is built
+    # directly to cover capture_bar marking both position dicts on one bar.
+    short = Position(symbol=SYMBOL_1, shares=Decimal(50), type="short")
+    short.entries.append(
+        Entry(
+            id=999,
+            date=DATE_1,
+            symbol=SYMBOL_1,
+            shares=Decimal(50),
+            price=Decimal("17.00"),
+            type="short",
+        )
+    )
+    short.entry_notional = Decimal(50) * Decimal("17.00")
+    portfolio.short_positions[SYMBOL_1] = short
+    df = pd.DataFrame(
+        [
+            [
+                SYMBOL_1,
+                DATE_1,
+                close_price,
+                Decimal("15.00"),
+                Decimal("18.00"),
+            ],
+        ],
+        columns=["symbol", "date", "close", "low", "high"],
+    ).set_index(["symbol", "date"])
+    portfolio.capture_bar(DATE_1, ColumnScope(df), {SYMBOL_1: 1})
+    long_pos = portfolio.long_positions[SYMBOL_1]
+    assert long_pos.close == close_price
+    assert long_pos.equity == close_price * 100
+    assert short.close == close_price
+    assert short.margin == close_price * 50
+    assert short.pnl == (Decimal("17.00") - close_price) * 50
+    assert str(long_pos.close) == str(short.close)
+    assert len(portfolio.position_bars) == 1
+    bar = portfolio.position_bars[0]
+    assert bar.long_shares == 100
+    assert bar.short_shares == 50
+    assert str(bar.close) == str(close_price)

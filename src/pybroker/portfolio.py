@@ -448,39 +448,35 @@ class _OrderResult(NamedTuple):
 
 def _calculate_pnl_mae_mfe(
     pos: Position,
-    close: float,
+    close_d: Decimal,
     low: Optional[float],
     high: Optional[float],
 ):
     if pos.type != "long" and pos.type != "short":
         raise ValueError(f"Unknown position type: {pos.type}")
+    low_d = to_decimal(low) if low is not None else None
+    high_d = to_decimal(high) if high is not None else None
     pnl = Decimal()
     for entry in pos.entries:
-        close_d = to_decimal(close)
-        loss = 0.0
-        profit = 0.0
-        loss_d = Decimal()
-        profit_d = Decimal()
         if pos.type == "long":
             pnl += (close_d - entry.price) * entry.shares
-            if low is not None:
-                loss_d = to_decimal(low) - entry.price
-                loss = float(loss_d)
-            if high is not None:
-                profit_d = to_decimal(high) - entry.price
-                profit = float(profit_d)
-        elif pos.type == "short":
+            loss_d = low_d - entry.price if low_d is not None else None
+            profit_d = high_d - entry.price if high_d is not None else None
+        else:
             pnl += (entry.price - close_d) * entry.shares
-            if high is not None:
-                loss_d = entry.price - to_decimal(high)
-                loss = float(loss_d)
-            if low is not None:
-                profit_d = entry.price - to_decimal(low)
-                profit = float(profit_d)
-        if loss < 0 and loss < float(entry.mae):
-            entry.mae = loss_d
-        if profit > 0 and profit > float(entry.mfe):
-            entry.mfe = profit_d
+            loss_d = entry.price - high_d if high_d is not None else None
+            profit_d = entry.price - low_d if low_d is not None else None
+        # The update decisions compare float(exact Decimal difference),
+        # never raw float subtraction: the two can differ in the last ulp,
+        # which would flip a knife-edge update and change recorded MAE/MFE.
+        if loss_d is not None:
+            loss = float(loss_d)
+            if loss < 0 and loss < float(entry.mae):
+                entry.mae = loss_d
+        if profit_d is not None:
+            profit = float(profit_d)
+            if profit > 0 and profit > float(entry.mfe):
+                entry.mfe = profit_d
     pos.pnl = pnl
 
 
@@ -1526,6 +1522,7 @@ class Portfolio:
                 # market_value, and every metric derived from them, while
                 # reporting a total_return of 0.
                 close_f = low_f = high_f = None
+            close_d = to_decimal(close_f) if close_f is not None else None
             pos_long_shares = Decimal()
             pos_short_shares = Decimal()
             pos_equity = Decimal()
@@ -1534,14 +1531,13 @@ class Portfolio:
             pos_pnl = Decimal()
             if sym in self.long_positions:
                 pos = self.long_positions[sym]
-                if close_f is not None:
+                if close_d is not None:
                     _calculate_pnl_mae_mfe(
-                        pos, close=close_f, low=low_f, high=high_f
+                        pos, close_d, low=low_f, high=high_f
                     )
-                    close = to_decimal(close_f)
-                    pos.equity = pos.shares * close
+                    pos.equity = pos.shares * close_d
                     pos.market_value = pos.equity
-                    pos.close = close
+                    pos.close = close_d
                     # Every share is now marked at this close.
                     pos._clear_unmarked()
                     pos_long_shares += pos.shares
@@ -1568,13 +1564,12 @@ class Portfolio:
                 # added back here. Equity holds it at cost and market value
                 # marks it to market with the position's unrealized PnL.
                 equity_parts.append(float(entry_notional))
-                if close_f is not None:
+                if close_d is not None:
                     _calculate_pnl_mae_mfe(
-                        pos, close=close_f, low=low_f, high=high_f
+                        pos, close_d, low=low_f, high=high_f
                     )
-                    close = to_decimal(close_f)
-                    pos.close = close
-                    pos.margin = close * pos.shares
+                    pos.close = close_d
+                    pos.margin = close_d * pos.shares
                     pos.market_value = pos.margin + pos.pnl
                     # Every share is now marked at this close.
                     pos._clear_unmarked()
@@ -1593,14 +1588,14 @@ class Portfolio:
                         float(2 * entry_notional - marked)
                     )
                 margin_parts.append(float(pos.margin))
-            if close_f is not None and self._record_position_bars:
+            if close_d is not None and self._record_position_bars:
                 self.position_bars.append(
                     PositionBar(
                         symbol=sym,
                         date=date,
                         long_shares=pos_long_shares,
                         short_shares=pos_short_shares,
-                        close=to_decimal(close_f),
+                        close=close_d,
                         equity=pos_equity,
                         market_value=pos_market_value,
                         margin=pos_margin,
