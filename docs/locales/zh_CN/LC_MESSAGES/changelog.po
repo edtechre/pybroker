@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-07 13:27-0700\n"
+"POT-Creation-Date: 2026-08-07 13:42-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -19,19 +19,19 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../source/changelog.rst:3 9c9ab0378e4a443ca02312c9bfdbee66
+#: ../../source/changelog.rst:3 6bb87887b6674850ac143e937364180a
 msgid "Changelog"
 msgstr "更新日志"
 
-#: ../../source/changelog.rst:6 0abf1e62c85b44be9b051ec7a0943436
+#: ../../source/changelog.rst:6 ee912711ee04466294814decc2515184
 msgid "2.0.0"
 msgstr "2.0.0"
 
-#: ../../source/changelog.rst:8 595d40dc47ad458d8e750d790fcd793d
+#: ../../source/changelog.rst:8 816174f6d1ce46f58cb44beacf753327
 msgid "Requires Python 3.11+."
 msgstr "要求 Python 3.11 及以上版本。"
 
-#: ../../source/changelog.rst:10 87257883852744038b5c48a2742133b9
+#: ../../source/changelog.rst:10 01aea647bd0f4f2cb93c483742bddefe
 msgid ""
 "`Multiple time intervals "
 "<https://www.pybroker.com/en/latest/notebooks/15.%20Multiple%20Time%20Intervals.html>`_,"
@@ -41,7 +41,7 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/notebooks/15.%20Multiple%20Time%20Intervals.html>`_，包括"
 " ``.intervals()`` 绑定。"
 
-#: ../../source/changelog.rst:12 8da93289b1344b9fb6f95793fa10f360
+#: ../../source/changelog.rst:12 f8c5cfcf455045fda1815ec02859bd23
 msgid ""
 "`Margin trading "
 "<https://www.pybroker.com/en/latest/notebooks/13.%20Margin%20Trading.html>`_."
@@ -49,7 +49,7 @@ msgstr ""
 "`保证金交易 "
 "<https://www.pybroker.com/en/latest/notebooks/13.%20Margin%20Trading.html>`_。"
 
-#: ../../source/changelog.rst:14 08a44eb1506e482489d974ac9aa8ec0e
+#: ../../source/changelog.rst:14 360c55c48050437ca82e579af7462fb6
 msgid ""
 "`Rotational trading "
 "<https://www.pybroker.com/en/latest/notebooks/10.%20Rotational%20Trading.html>`_."
@@ -57,7 +57,7 @@ msgstr ""
 "`轮动交易 "
 "<https://www.pybroker.com/en/latest/notebooks/10.%20Rotational%20Trading.html>`_。"
 
-#: ../../source/changelog.rst:16 1a0a9784754240f8a5aa04039bc5b178
+#: ../../source/changelog.rst:16 7358d45949d04eaf975394af7a5d02a1
 msgid ""
 "`Parameter optimization with Optuna "
 "<https://www.pybroker.com/en/latest/notebooks/12.%20Parameter%20Optimization.html>`_."
@@ -65,7 +65,7 @@ msgstr ""
 "`基于 Optuna 的参数优化 "
 "<https://www.pybroker.com/en/latest/notebooks/12.%20Parameter%20Optimization.html>`_。"
 
-#: ../../source/changelog.rst:18 c4014c6551934284b5039ce5c408e5df
+#: ../../source/changelog.rst:18 8c02bc8d1bc84025a8bf45a99c1ded60
 msgid ""
 "`Time series models and lag features "
 "<https://www.pybroker.com/en/latest/notebooks/16.%20Time%20Series%20Models.html>`_."
@@ -73,7 +73,7 @@ msgstr ""
 "`时间序列模型与滞后特征 "
 "<https://www.pybroker.com/en/latest/notebooks/16.%20Time%20Series%20Models.html>`_。"
 
-#: ../../source/changelog.rst:20 cd8a1985ca744bd780745e983313ca6a
+#: ../../source/changelog.rst:20 b4ba0208c2e949deab4fb63afd38b29b
 msgid ""
 "`Multi-symbol models <https://www.pybroker.com/en/latest/notebooks/17"
 ".%20Multi-Symbol%20Models.html>`_."
@@ -81,7 +81,7 @@ msgstr ""
 "`多品种模型 <https://www.pybroker.com/en/latest/notebooks/17.%20Multi-"
 "Symbol%20Models.html>`_。"
 
-#: ../../source/changelog.rst:22 a499fd9d7ff24cb99d3394dc39734b80
+#: ../../source/changelog.rst:22 02d3ccbf8989483e9de465c0d9fa63ba
 msgid ""
 "`Dynamic symbol selection "
 "<https://www.pybroker.com/en/latest/notebooks/18.%20Dynamic%20Symbol%20Selection.html>`_."
@@ -89,7 +89,7 @@ msgstr ""
 "`动态品种选择 "
 "<https://www.pybroker.com/en/latest/notebooks/18.%20Dynamic%20Symbol%20Selection.html>`_。"
 
-#: ../../source/changelog.rst:24 b2e4fab9f3114b76ab2c83ad7c0f2c9b
+#: ../../source/changelog.rst:24 eed4aef80d6c4bfb9389815f21ebca51
 msgid ""
 "`Fill-time slippage models "
 "<https://www.pybroker.com/en/latest/notebooks/14.%20Modeling%20Slippage.html>`_"
@@ -99,7 +99,7 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/notebooks/14.%20Modeling%20Slippage.html>`_，通过"
 " ``apply_slippage`` / ``SlippageContext`` 实现。"
 
-#: ../../source/changelog.rst:26 26112879bdf24223adb21811123afc97
+#: ../../source/changelog.rst:26 747c59d23f4d494eb4fef6fedf08f950
 msgid ""
 "`Parallelization configuration "
 "<https://www.pybroker.com/en/latest/notebooks/11.%20Configuring%20Parallelization.html>`_"
@@ -109,7 +109,7 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/notebooks/11.%20Configuring%20Parallelization.html>`_"
 " （Ray 后端）。"
 
-#: ../../source/changelog.rst:28 0023fa1d30aa4d6282e98ac2c1e6f89e
+#: ../../source/changelog.rst:28 85b91f696c5d4aefa8dd6d8a785bb67b
 msgid ""
 "Ranking with `long_score "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.long_score>`_"
@@ -122,7 +122,7 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.short_score>`_"
 " 进行排名。"
 
-#: ../../source/changelog.rst:30 04e72bc3da2f434e9ac0d21c3d329304
+#: ../../source/changelog.rst:30 242fd26feb2548f4a12dd1b50910e90d
 msgid ""
 "Position limits via `Strategy.set_max_long_positions "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_max_long_positions>`_"
@@ -135,7 +135,7 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_max_short_positions>`_"
 " 设置仓位数量上限。"
 
-#: ../../source/changelog.rst:32 e85969e484b54ea4a05d4aba958f7bf5
+#: ../../source/changelog.rst:32 6df6d45cf19942f694e68e21ece03993
 msgid ""
 "`to_json "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.TestResult.to_json>`_"
@@ -146,14 +146,13 @@ msgstr ""
 "回测和优化结果支持 `to_json "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.TestResult.to_json>`_"
 " / `to_json_str "
-"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.TestResult.to_json_str>`_"
-"。"
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.TestResult.to_json_str>`_。"
 
-#: ../../source/changelog.rst:34 7cbd457120bf4906824c55d566126e53
+#: ../../source/changelog.rst:34 5d0409d9c92b4a64beb4cee1fe52d440
 msgid ":doc:`Agent Skills <agent-skills>`."
 msgstr ":doc:`智能体技能 <agent-skills>`。"
 
-#: ../../source/changelog.rst:36 15107be869cd4a7ab6069d73fd164067
+#: ../../source/changelog.rst:36 441e009d51e84049ba7b70d55677ff3d
 msgid ""
 "`ATR "
 "<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.atr>`_"
@@ -167,15 +166,15 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.bars_to_df>`_"
 " 辅助函数。"
 
-#: ../../source/changelog.rst:38 b34f346f73ee457c8c09e75e0f5b54eb
+#: ../../source/changelog.rst:38 e4e4c3609dd643e58b9cc4f451884729
 msgid "Broad NumPy/Numba performance improvements."
 msgstr "全面的 NumPy/Numba 性能改进。"
 
-#: ../../source/changelog.rst:41 3847d12746a24e4aaea24e61f0eff3f7
+#: ../../source/changelog.rst:41 7957030247b64107bcd641ba54d1f622
 msgid "Breaking changes"
 msgstr "重大变更"
 
-#: ../../source/changelog.rst:43 65b812c6973147a7ba5496f17352d5cd
+#: ../../source/changelog.rst:43 207f997ec8b24fc6a06ceb4a24ae14ad
 msgid ""
 "Removes ``PosSizeContext``, ``set_pos_size_handler``, and ``ExecSignal``;"
 " use `Strategy.enable_rotation "
@@ -189,7 +188,7 @@ msgstr ""
 " / `RotationContext "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.RotationContext>`_。"
 
-#: ../../source/changelog.rst:45 5d18c2ef201f45bebe3d8a19bfea1268
+#: ../../source/changelog.rst:45 1c07f0e70b0a45d99161f09e940030a4
 msgid ""
 "Deprecates ``ExecContext.score`` and ``StrategyConfig.max_*_positions``; "
 "use `long_score "
@@ -211,17 +210,16 @@ msgstr ""
 " / `set_max_short_positions "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_max_short_positions>`_。"
 
-#: ../../source/changelog.rst:47 3a20c9e9fec7428aa7960488b4819bbc
+#: ../../source/changelog.rst:47 5bfdf20e4ec94cea9165755940916e85
 msgid ""
 "Renames timeframe module to `interval "
 "<https://www.pybroker.com/en/latest/reference/pybroker.interval.html>`_; "
 "drops week-duration intervals."
 msgstr ""
 "将 timeframe 模块重命名为 `interval "
-"<https://www.pybroker.com/en/latest/reference/pybroker.interval.html>`_；"
-"移除按周计的时间区间。"
+"<https://www.pybroker.com/en/latest/reference/pybroker.interval.html>`_；移除按周计的时间区间。"
 
-#: ../../source/changelog.rst:49 a72784fd8e99463c8785d96a807f9b30
+#: ../../source/changelog.rst:49 e86bd61f8e9442a0889c2aa30eb949b9
 msgid ""
 "Unifies `slippage "
 "<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html>`_ "
@@ -231,18 +229,19 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html>`_ "
 "API；移除 ``RandomSlippageModel`` 和自定义止损函数。"
 
-#: ../../source/changelog.rst:51 28edaede976448a19b2589c35a501bb8
+#: ../../source/changelog.rst:51 a0552dfd02404d4db0c37e63ab78dfd7
 msgid ""
-"Removes ``multiprocessing`` from `set_parallel "
+"Removes ``bootstrap_sample_size`` / ``indicator_memo_max``; "
+"parallelization configuration moves to `set_parallel "
 "<https://www.pybroker.com/en/latest/reference/pybroker.parallel.html#pybroker.parallel.set_parallel>`_,"
-" plus ``bootstrap_sample_size`` / ``indicator_memo_max``."
+" which supports only the Ray backend (no ``multiprocessing``)."
 msgstr ""
-"从 `set_parallel "
+"移除 ``bootstrap_sample_size`` / ``indicator_memo_max``；并行化配置改为通过 "
+"`set_parallel "
 "<https://www.pybroker.com/en/latest/reference/pybroker.parallel.html#pybroker.parallel.set_parallel>`_"
-" 中移除 ``multiprocessing``，并移除 ``bootstrap_sample_size`` / "
-"``indicator_memo_max``。"
+" 进行，且仅支持 Ray 后端（不支持 ``multiprocessing``）。"
 
-#: ../../source/changelog.rst:53 2b3263321ad44f2191db5bd46e618f95
+#: ../../source/changelog.rst:53 f6566fcb343e4f0ca58d8c7ec8c803c5
 msgid ""
 "Removes ``disable_parallel`` from `backtest "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`_"
@@ -255,10 +254,10 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`_"
 " / `walkforward "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`_"
-" 中移除 ``disable_parallel``；并行化的指标和模型计算改为通过 "
-"``parallel_indicators`` / ``parallel_models`` 按需启用。"
+" 中移除 ``disable_parallel``；并行化的指标和模型计算改为通过 ``parallel_indicators`` / "
+"``parallel_models`` 按需启用。"
 
-#: ../../source/changelog.rst:55 cfa945af380f4d358e0dbedf261e3350
+#: ../../source/changelog.rst:55 ff16c69e0fc94409be54de9989e2af43
 msgid ""
 "``result.positions`` is opt-in via `StrategyConfig.record_position_bars "
 "<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.record_position_bars>`_;"
@@ -271,35 +270,33 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.record_portfolio_bars>`_"
 " 按需启用。"
 
-#: ../../source/changelog.rst:57 de5657b6c4e841808b7fa732d8852407
+#: ../../source/changelog.rst:57 cb06bfe9037c47bba2263d2ec01ad288
 msgid ""
 "Model lag matrices passed to ``train_fn`` / ``predict_fn`` instead of "
 "DataFrame attrs; see the `model module "
 "<https://www.pybroker.com/en/latest/reference/pybroker.model.html>`_."
 msgstr ""
-"模型滞后矩阵通过 ``train_fn`` / ``predict_fn`` 传递，而不再使用 DataFrame "
-"attrs；详见 `model 模块 "
-"<https://www.pybroker.com/en/latest/reference/pybroker.model.html>`_。"
+"模型滞后矩阵通过 ``train_fn`` / ``predict_fn`` 传递，而不再使用 DataFrame attrs；详见 `model"
+" 模块 <https://www.pybroker.com/en/latest/reference/pybroker.model.html>`_。"
 
-#: ../../source/changelog.rst:59 7930fc326aed4a18b929f0551381ca8d
+#: ../../source/changelog.rst:59 0d3963511a5e408a8d5dc34136b85aaf
 msgid ""
 "Removes ``akshare`` from install dependencies; install it separately to "
 "use `AKShare "
 "<https://www.pybroker.com/en/latest/reference/pybroker.ext.data.html#pybroker.ext.data.AKShare>`_."
 msgstr ""
 "从安装依赖中移除 ``akshare``；如需使用 `AKShare "
-"<https://www.pybroker.com/en/latest/reference/pybroker.ext.data.html#pybroker.ext.data.AKShare>`_"
-"，请单独安装。"
+"<https://www.pybroker.com/en/latest/reference/pybroker.ext.data.html#pybroker.ext.data.AKShare>`_，请单独安装。"
 
-#: ../../source/changelog.rst:62 9f260b7749d44521a9d56bbda55e98dc
+#: ../../source/changelog.rst:62 ff342aadb7c74eadbfbb70b839cf955a
 msgid "1.2.14"
 msgstr "1.2.14"
 
-#: ../../source/changelog.rst:64 1f7a281da555468f9c646d3a1617ac39
+#: ../../source/changelog.rst:64 92824777878a4447997b79e28677216b
 msgid "Requires Python 3.10+."
 msgstr "要求 Python 3.10 及以上版本。"
 
-#: ../../source/changelog.rst:66 600d1a99e9e64de48f0a83843d24f128
+#: ../../source/changelog.rst:66 059e77a83ddf4256a9d1d1e29d9b39ac
 msgid ""
 "Fixes indicator computation bugs in `vect "
 "<https://www.pybroker.com/en/latest/reference/pybroker.vect.html>`_ "
@@ -310,15 +307,15 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.vect.html>`_ "
 "中的指标计算错误（Aroon、Laguerre RSI、ADX、价格变化振荡器、反应性、趋势及相关内核）。"
 
-#: ../../source/changelog.rst:68 7f2f518b3b894fee936fbc1b6bcba19c
+#: ../../source/changelog.rst:68 c74364b8b62c413ab7894d7c89cf1bed
 msgid "Fixes duplicate ``volume`` column in the AKShare TX fallback path."
 msgstr "修复 AKShare TX 回退路径中重复的 ``volume`` 列。"
 
-#: ../../source/changelog.rst:71 e1f988205dfb487ebb2007b0b5d3689e
+#: ../../source/changelog.rst:71 d031bbc3e82b4e958893abb9088aa105
 msgid "1.2.13"
 msgstr "1.2.13"
 
-#: ../../source/changelog.rst:73 a4533dfda8bd429db30bf530ea727fe0
+#: ../../source/changelog.rst:73 0c0eef0daf194965af9158c9ea4e8975
 msgid ""
 "Adds signal provenance fields to `Order "
 "<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.Order>`_:"
@@ -327,11 +324,11 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.portfolio.html#pybroker.portfolio.Order>`_"
 " 添加信号来源字段："
 
-#: ../../source/changelog.rst:75 5770053b80d74844be1024ba33c4c3f9
+#: ../../source/changelog.rst:75 dab196e139e04a0b862af171eee93e09
 msgid "``created`` - date the order signal was created."
 msgstr "``created`` - 订单信号的创建日期。"
 
-#: ../../source/changelog.rst:76 8a031143d8f544d7994f6de48fda03e5
+#: ../../source/changelog.rst:76 10f0e85518424ddb9af8cdcf02374b15
 msgid ""
 "``order_type`` - how the order originated (``market``, ``limit``, "
 "``stop_bar``, ``stop_loss``, ``stop_profit``, ``stop_trailing``)."
@@ -339,7 +336,7 @@ msgstr ""
 "``order_type`` - "
 "订单的来源方式（``market``、``limit``、``stop_bar``、``stop_loss``、``stop_profit``、``stop_trailing``）。"
 
-#: ../../source/changelog.rst:77 e9eea0b4e95a4cbba4292f84cd2da4b2
+#: ../../source/changelog.rst:77 f009901cd0e348a4a3fbd1cdc9c832cd
 msgid ""
 "``intent`` - position intent (``buy_to_open``, ``buy_to_close``, "
 "``sell_to_open``, ``sell_to_close``)."
@@ -347,7 +344,7 @@ msgstr ""
 "``intent`` - "
 "仓位意图（``buy_to_open``、``buy_to_close``、``sell_to_open``、``sell_to_close``）。"
 
-#: ../../source/changelog.rst:79 e03d90f52cae408c95efb06b01084042
+#: ../../source/changelog.rst:79 d812d36115a4443097508026acfc2fe9
 msgid ""
 "Adds `OrderType "
 "<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.OrderType>`_"
@@ -361,7 +358,7 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.PositionIntent>`_"
 " 枚举。"
 
-#: ../../source/changelog.rst:81 74a020c8406144eeb0c29bed35dc519c
+#: ../../source/changelog.rst:81 968b42eeee4048bfb4c7aecfe2cb39dc
 msgid ""
 "Adds ``order_id`` parameter to `PendingOrderScope.orders() "
 "<https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.PendingOrderScope.orders>`_."
@@ -370,11 +367,11 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.PendingOrderScope.orders>`_"
 " 添加 ``order_id`` 参数。"
 
-#: ../../source/changelog.rst:84 cce7c7c5cf7d4bd29c4f6078d17b23af
+#: ../../source/changelog.rst:84 ec88aa2bdfdd485d8f925ffcb81214be
 msgid "1.2.3"
 msgstr "1.2.3"
 
-#: ../../source/changelog.rst:86 2991e567d040490d9498894c930d5c9b
+#: ../../source/changelog.rst:86 a43ffb4cee0a456fb59fd6d7db136485
 msgid ""
 "Adds built-in indicators to the `indicator module "
 "<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html>`_."
@@ -383,11 +380,11 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html>`_ "
 "添加内置指标。"
 
-#: ../../source/changelog.rst:90 c25fbae9b35f4baa8884cd48453bdd44
+#: ../../source/changelog.rst:90 bc7080cfa3f14d84978dee67dbba4687
 msgid "1.1.0"
 msgstr "1.1.0"
 
-#: ../../source/changelog.rst:92 734db2dbe53147ea9f1175f3aa0437a0
+#: ../../source/changelog.rst:92 5571059da7b2446e84924732ad2dd6fc
 msgid ""
 "`Adds support for the following stop types: "
 "<https://www.pybroker.com/en/latest/notebooks/8.%20Applying%20Stops.html>`_"
@@ -395,19 +392,19 @@ msgstr ""
 "`添加对以下止损类型的支持： "
 "<https://www.pybroker.com/en/latest/notebooks/8.%20Applying%20Stops.html>`_"
 
-#: ../../source/changelog.rst:94 3b8a232158b74305ae5dec668f46173f
+#: ../../source/changelog.rst:94 e52675edc3c24be3b0c0466c96e131b1
 msgid "Stop loss"
 msgstr "止损"
 
-#: ../../source/changelog.rst:95 ce460ea957db4d9eaa54fcc20a507fbe
+#: ../../source/changelog.rst:95 fb94e08ad3c240319dfdd97ac86e383d
 msgid "Trailing stop loss"
 msgstr "移动止损"
 
-#: ../../source/changelog.rst:96 9a2a00ccd615493fa44565bb149014d9
+#: ../../source/changelog.rst:96 786508963de14fa59af2c9c152bbacde
 msgid "Take profit"
 msgstr "止盈"
 
-#: ../../source/changelog.rst:98 e1f01c4f29c44d44b234f872e93a4647
+#: ../../source/changelog.rst:98 b25631f538ba462c8722085525821129
 msgid ""
 "`Allows canceling pending orders. "
 "<https://www.pybroker.com/en/latest/notebooks/FAQs.html#...-cancel-"
@@ -416,15 +413,15 @@ msgstr ""
 "`支持取消挂单。 <https://www.pybroker.com/en/latest/notebooks/FAQs.html"
 "#...-cancel-pending-orders?>`_"
 
-#: ../../source/changelog.rst:100 ab5748d1271144c7bc1e692c86b1bdc0
+#: ../../source/changelog.rst:100 63c5cbc39d6a447ab6549fb0f07a7601
 msgid "Upgrades ``alpaca-trade-api-python`` to ``alpaca-py`` package."
 msgstr "将 ``alpaca-trade-api-python`` 升级为 ``alpaca-py`` 包。"
 
-#: ../../source/changelog.rst:103 b01af2572516463383179f8ed19fdefb
+#: ../../source/changelog.rst:103 7e63e3da2a1d4d49bca7bb29e9792c7d
 msgid "1.0.0"
 msgstr "1.0.0"
 
-#: ../../source/changelog.rst:105 807f0ac30e7d48d6ada3d51d1eeb7328
+#: ../../source/changelog.rst:105 6994ca3d855b4107832cab29e4d42d59
 msgid "Initial release!"
 msgstr "首次发布！"
 

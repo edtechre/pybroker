@@ -48,7 +48,7 @@ Breaking changes
 
 * Unifies `slippage <https://www.pybroker.com/en/latest/reference/pybroker.slippage.html>`_ API; removes ``RandomSlippageModel`` and custom stop functions.
 
-* Removes ``multiprocessing`` from `set_parallel <https://www.pybroker.com/en/latest/reference/pybroker.parallel.html#pybroker.parallel.set_parallel>`_, plus ``bootstrap_sample_size`` / ``indicator_memo_max``.
+* Removes ``bootstrap_sample_size`` / ``indicator_memo_max``; parallelization configuration moves to `set_parallel <https://www.pybroker.com/en/latest/reference/pybroker.parallel.html#pybroker.parallel.set_parallel>`_, which supports only the Ray backend (no ``multiprocessing``).
 
 * Removes ``disable_parallel`` from `backtest <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`_ / `walkforward <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`_; parallel indicator and model work is opt-in via ``parallel_indicators`` / ``parallel_models``.
 
