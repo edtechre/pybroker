@@ -41,9 +41,33 @@ jobs:
         env:
           PY_VERSION: ${{ matrix.python.version }}
         run: |
+          set -o pipefail
           asv run HEAD^! \
+            --python="${PY_VERSION}" \
             --machine "ci-ubuntu-latest-py${PY_VERSION}" \
-            --show-stderr
+            --show-stderr 2>&1 | tee asv-run.log
+
+      # `asv run` exits 0 when it matches no interpreter, so a leg that
+      # benchmarks nothing reports success. That is how the 3.12 and 3.13 legs
+      # stayed green for weeks while only 3.11 did any work.
+      - name: Assert benchmarks actually ran
+        env:
+          PY_VERSION: ${{ matrix.python.version }}
+        run: |
+          # Match only "No environments selected". "No executable found for
+          # python X" is a warning the legs whose version differs from
+          # asv.conf.json's pin emit while still building an env from
+          # --python, so it is not on its own a failure.
+          if grep -q "No environments selected" asv-run.log; then
+            echo "::error::asv selected no environment for Python" \
+                 "${PY_VERSION}. Nothing was benchmarked."
+            exit 1
+          fi
+          if ! grep -qE "^\[[ 0-9]+\.[0-9]+%\]" asv-run.log; then
+            echo "::error::asv produced no benchmark results for Python" \
+                 "${PY_VERSION}."
+            exit 1
+          fi
 
       - name: Upload asv results
         uses: actions/upload-artifact@v7

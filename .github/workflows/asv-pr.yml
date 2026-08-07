@@ -12,6 +12,31 @@ permissions:
   contents: read
   pull-requests: write
 
+# Two thresholds, declared once so the flags and the prose describing them
+# cannot drift apart.
+#
+# REPORT_FACTOR is what gets shown: every benchmark that moved by 10% or
+# more lands in the PR comment for a human to read.
+#
+# GATE_FACTOR is what blocks the PR, and it is deliberately looser, because
+# 1.1 is below this runner's noise floor. Measured on six `asv continuous`
+# runs whose `src/` and `benchmarks/` were byte-identical between base and
+# head -- so every flagged result was noise:
+#
+#   1.18  CacheDiskHit.time_cache_disk_get            (429us)
+#   1.17  StoreBuildKernels...from_frame(10, 504)     (1.39ms)
+#   1.11  ModelPrepKernels.time_indicator_values...   (60us)
+#   1.11  ModelTrainPrep.time_train_models_per_symbol (1.92ms)
+#
+# One in six runs flagged something at 1.1, and every false positive was a
+# sub-2ms microbenchmark; the walkforward macrobenchmarks (100ms and up)
+# never moved. 1.25 clears the observed noise with margin. Raise the
+# sampling (`--attribute rounds=N`) rather than this number if that stops
+# being true -- loosening it further trades away real coverage.
+env:
+  REPORT_FACTOR: "1.1"
+  GATE_FACTOR: "1.25"
+
 jobs:
   benchmark:
     name: asv continuous
@@ -21,7 +46,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Must match asv.conf.json's `pythons`. The setup action defaults to
+      # 3.12; when that drifts from the pin, asv finds no matching
+      # interpreter, selects no environments, and exits non-zero -- which the
+      # gate below reports as a regression while having benchmarked nothing.
       - uses: ./.github/actions/setup-pybroker
+        with:
+          python-version: "3.11"
 
       - name: Configure asv machine identity
         run: asv machine --yes --machine ci-ubuntu-latest
@@ -32,14 +63,71 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: |
           set +e
+          # No --no-stats: it means "do not use result statistics in
+          # comparisons, only factor and the median result", which disables
+          # significance testing and lets an I/O-bound microbenchmark whose
+          # error bars overlap trip --factor on noise alone.
+          # --interleave-rounds alternates rounds between the two commits
+          # instead of running each commit's rounds in a block, so drift over
+          # the job (thermal, noisy neighbours, page cache) hits both sides
+          # equally rather than landing entirely on "after". It reuses the
+          # existing rounds, so it costs no extra runtime. Neither flag is
+          # sufficient on its own -- see GATE_FACTOR above.
           asv continuous "origin/${BASE_REF}" HEAD \
             --machine ci-ubuntu-latest \
-            --factor 1.1 \
-            --no-stats \
+            --factor "${GATE_FACTOR}" \
+            --interleave-rounds \
             >asv-continuous.log 2>&1
           EXIT=$?
           echo "exit_code=$EXIT" >> "$GITHUB_OUTPUT"
           cat asv-continuous.log
+          exit 0
+
+      # asv exits non-zero both for a flagged regression and for having found
+      # no interpreter to benchmark with, and the gate below cannot tell those
+      # apart -- a config drift therefore reads as a regression while nothing
+      # was measured. Fail here with the real reason instead.
+      - name: Assert benchmarks actually ran
+        run: |
+          # Match only "No environments selected". "No executable found for
+          # python X" is a warning asv also emits when it skips one unusable
+          # entry while still building an env from another, so it is not on
+          # its own a failure.
+          if grep -q "No environments selected" asv-continuous.log; then
+            echo "::error::asv selected no environment -- the interpreter does" \
+                 "not match asv.conf.json's 'pythons'. Nothing was benchmarked."
+            exit 1
+          fi
+          if ! grep -qE "^\[[ 0-9]+\.[0-9]+%\]" asv-continuous.log; then
+            echo "::error::asv produced no benchmark results."
+            exit 1
+          fi
+
+      # Reads the results the step above already stored -- no benchmark is
+      # re-run, so the reporting threshold costs nothing. Non-fatal: a
+      # missing table must not fail a PR that the gate passed.
+      - name: Compare at the reporting threshold
+        id: compare
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set +e
+          asv compare "origin/${BASE_REF}" HEAD \
+            --machine ci-ubuntu-latest \
+            --factor "${REPORT_FACTOR}" \
+            --only-changed \
+            >asv-compare.log 2>&1
+          RC=$?
+          if [ "$RC" -ne 0 ]; then
+            echo "" >>asv-compare.log
+            echo "(asv compare exited ${RC}; the table above may be" \
+                 "incomplete. The gate verdict is unaffected.)" \
+              >>asv-compare.log
+          elif [ ! -s asv-compare.log ]; then
+            echo "No benchmark moved by ${REPORT_FACTOR}x or more." \
+              >asv-compare.log
+          fi
+          cat asv-compare.log
           exit 0
 
       - name: Write diff to job summary
@@ -50,7 +138,15 @@ jobs:
           {
             echo "## ASV continuous — ${BASE_REF} → PR HEAD"
             echo ""
-            echo "Exit code: $ASV_EXIT (non-zero indicates flagged regression at --factor 1.1)"
+            echo "Exit code: $ASV_EXIT (1 = flagged regression at --factor ${GATE_FACTOR}; 2 = a benchmark raised, nothing compared)"
+            echo ""
+            echo "### Moved by ${REPORT_FACTOR}x or more"
+            echo ""
+            echo '```'
+            cat asv-compare.log
+            echo '```'
+            echo ""
+            echo "### Full run"
             echo ""
             echo '```'
             cat asv-continuous.log
@@ -65,10 +161,16 @@ jobs:
           {
             echo "## ASV continuous — benchmark diff"
             echo ""
-            echo "Exit code: \`$ASV_EXIT\` (non-zero = flagged regression at \`--factor 1.1\`)"
+            echo "Exit code: \`$ASV_EXIT\` (\`1\` = flagged regression at \`--factor ${GATE_FACTOR}\`; \`2\` = a benchmark raised, so nothing was compared)"
+            echo ""
+            echo "**Moved by ${REPORT_FACTOR}x or more** — reported, not blocking:"
+            echo ""
+            echo '```'
+            cat asv-compare.log
+            echo '```'
             echo ""
             echo "<details>"
-            echo "<summary>Benchmark output</summary>"
+            echo "<summary>Full benchmark output</summary>"
             echo ""
             echo '```'
             cat asv-continuous.log
@@ -76,10 +178,12 @@ jobs:
             echo ""
             echo "</details>"
             echo ""
-            if [ "$ASV_EXIT" != "0" ] && [ "$OVERRIDE" = "true" ]; then
+            if [ "$ASV_EXIT" = "2" ]; then
+              echo "_A benchmark raised an exception, so nothing was compared. \`bench-override\` does not apply — it accepts a measured slowdown, not a benchmark that cannot run._"
+            elif [ "$ASV_EXIT" != "0" ] && [ "$OVERRIDE" = "true" ]; then
               echo "_Gate forced green by \`bench-override\` label._"
             else
-              echo "_Blocking at \`--factor 1.1\`; override via the \`bench-override\` PR label. Shared GitHub runners are noisy — for the trend view, run \`asv publish && asv preview\` locally against committed \`.asv/results/\`._"
+              echo "_Blocking at \`--factor ${GATE_FACTOR}\`, reporting from \`--factor ${REPORT_FACTOR}\`: 1.1 sits below this runner's noise floor, where identical code has flagged sub-2ms microbenchmarks at up to 1.18. Override via the \`bench-override\` PR label. For the trend view, run \`asv publish && asv preview\` locally against committed \`.asv/results/\`._"
             fi
           } > sticky-comment.md
 
@@ -99,8 +203,25 @@ jobs:
           OVERRIDE: ${{ contains(github.event.pull_request.labels.*.name, 'bench-override') }}
         run: |
           if [ "$ASV_EXIT" = "0" ]; then
-            echo "No regression flagged."
+            echo "No regression flagged at ${GATE_FACTOR}x."
             exit 0
+          fi
+          # asv distinguishes the two non-zero exits and the gate must too.
+          # `asv run` returns 2 when any benchmark raised, and `asv
+          # continuous` propagates that immediately -- before it compares
+          # anything -- so exit 2 means "a benchmark is broken", not "this PR
+          # is slower". Reporting it as a regression is the same conflation
+          # that made a config drift look like one.
+          #
+          # bench-override deliberately does not apply here: it exists to
+          # accept a measured slowdown, not to merge a benchmark that cannot
+          # run.
+          if [ "$ASV_EXIT" = "2" ]; then
+            echo "::error::asv exited 2 -- at least one benchmark raised an" \
+                 "exception, so nothing was compared. This is not a" \
+                 "regression; the benchmark itself is broken."
+            grep -nE "failed" asv-continuous.log | head -20
+            exit 1
           fi
           if [ "$OVERRIDE" = "true" ]; then
             echo "Regression flagged (exit $ASV_EXIT) but 'bench-override' label is set — forcing green."
