@@ -99,8 +99,19 @@ class _L1Cache(Cache):
         return value
 
     def set(self, key: Any, value: Any, *args: Any, **kwargs: Any) -> Any:
-        self._l1_put(key, value)
-        return super().set(key, value, *args, **kwargs)
+        # Disk write first: populating the L1 before a failed write would
+        # leave a phantom in-process entry that later reads "find" while
+        # nothing was ever persisted.
+        try:
+            result = super().set(key, value, *args, **kwargs)
+        except BaseException:
+            self._l1_evict(key)
+            raise
+        if result:
+            self._l1_put(key, value)
+        else:
+            self._l1_evict(key)
+        return result
 
     def delete(self, key: Any, *args: Any, **kwargs: Any) -> Any:
         self._l1_evict(key)
@@ -172,6 +183,9 @@ class DataSourceCacheKey:
     start_date: datetime
     end_date: datetime
     adjust: Optional[str]
+    # Identifies which DataSource produced the data: without it, two
+    # sources sharing a cache namespace cross-serve each other's bars.
+    source: str
 
     @classmethod
     def from_date_fields(
@@ -179,6 +193,7 @@ class DataSourceCacheKey:
         *,
         symbol: str,
         adjust: Optional[str],
+        source: str,
         fields: CacheDateFields,
     ) -> DataSourceCacheKey:
         return cls(
@@ -187,6 +202,7 @@ class DataSourceCacheKey:
             start_date=fields.start_date,
             end_date=fields.end_date,
             adjust=adjust,
+            source=source,
         )
 
 

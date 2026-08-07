@@ -213,6 +213,27 @@ def test_l1_cache_lru_evicts_oldest(scope, cache_dir):
 
 
 @pytest.mark.usefixtures("setup_teardown")
+def test_l1_cache_set_when_disk_write_fails_then_no_phantom(scope, cache_dir):
+    """A failed disk write must not leave an in-process L1 entry: retries
+    would "succeed" from memory while nothing was ever persisted."""
+    from pybroker.cache import _L1Cache
+
+    cache = _L1Cache(
+        directory=str(cache_dir / "phantom") if cache_dir else None
+    )
+    with mock.patch("diskcache.Cache.set", side_effect=OSError("disk full")):
+        with pytest.raises(OSError, match="disk full"):
+            cache.set("k1", "v1")
+    assert "k1" not in cache._l1
+    assert cache.get("k1") is None
+    # A falsy (timed-out) disk write must not populate the L1 either.
+    with mock.patch("diskcache.Cache.set", return_value=False):
+        assert not cache.set("k2", "v2")
+    assert "k2" not in cache._l1
+    cache.close()
+
+
+@pytest.mark.usefixtures("setup_teardown")
 def test_l1_cache_reads_legacy_repr_key(scope, cache_dir):
     from datetime import datetime
 

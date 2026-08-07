@@ -89,6 +89,7 @@ class DataSourceCacheMixin:
                 start_date=start_date,
                 end_date=end_date,
                 adjust=adjust,
+                source=f"{type(self).__module__}.{type(self).__qualname__}",
             )
             cached = cache.get(cache_key)
             scope.logger.debug_get_data_source_cache(cache_key)
@@ -152,6 +153,7 @@ class DataSourceCacheMixin:
                 start_date=start_date,
                 end_date=end_date,
                 adjust=adjust,
+                source=f"{type(self).__module__}.{type(self).__qualname__}",
             )
             cache.set(cache_key, sym_df)
             scope.logger.debug_set_data_source_cache(cache_key)
@@ -220,7 +222,15 @@ class DataSource(ABC, DataSourceCacheMixin):
             adjust=adjust,
         )
         if not uncached_syms:
-            return cached_df
+            # Mirror the fetch path's normalization below: the cached
+            # frames were concatenated iterating an unordered set, so
+            # without the sort the row order (and index) would vary with
+            # PYTHONHASHSEED.
+            if not cached_df.empty:
+                cached_df = cached_df.sort_values(
+                    by=[DataCol.DATE.value, DataCol.SYMBOL.value]
+                )
+            return cached_df.reset_index(drop=True)
         self._logger.download_bar_data_start()
         self._logger.info_download_bar_data_start(
             symbols=uncached_syms,
@@ -233,6 +243,10 @@ class DataSource(ABC, DataSourceCacheMixin):
         )
         if (
             self._scope.data_source_cache is not None
+            # An empty fetch carries no schema evidence: without this
+            # guard, a symbol with no data (a column-less empty frame)
+            # wiped the entire cache on every query.
+            and not df.empty
             and not cached_df.columns.empty
             and set(cached_df.columns) != set(df.columns)
         ):
@@ -243,9 +257,28 @@ class DataSource(ABC, DataSourceCacheMixin):
             # it under the adjust=None key -- silently, since the frame is
             # otherwise well-formed.
             return self.query(symbols, start_date, end_date, timeframe, adjust)
+        if df.empty and df.columns.empty:
+            # Normalize a no-data fetch to the canonical columns so
+            # validation passes and the symbol simply contributes no rows.
+            df = pd.DataFrame(
+                columns=[
+                    DataCol.SYMBOL.value,
+                    DataCol.DATE.value,
+                    DataCol.OPEN.value,
+                    DataCol.HIGH.value,
+                    DataCol.LOW.value,
+                    DataCol.CLOSE.value,
+                ]
+            )
         verify_data_source_columns(df)
         self.set_cached(timeframe, start_date, end_date, adjust, df)
-        df = pd.concat((cached_df, df), ignore_index=True)
+        # Concatenating an all-empty fetch would degrade the cached
+        # frame's dtypes (datetime columns fall back to object).
+        df = (
+            cached_df
+            if df.empty and not cached_df.empty
+            else pd.concat((cached_df, df), ignore_index=True)
+        )
         if not df.empty:
             df = df.sort_values(by=[DataCol.DATE.value, DataCol.SYMBOL.value])
         self._logger.download_bar_data_completed()

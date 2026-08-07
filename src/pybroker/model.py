@@ -10,6 +10,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 
 import functools
 import inspect
+import pickle
 import warnings
 import numpy as np
 import pandas as pd
@@ -2851,4 +2852,10 @@ class ModelsMixin:
         )
         cached_model = CachedModel(model, input_cols, lag_columns)
         scope.logger.debug_set_model_cache(cache_key)
-        scope.model_cache.set(cache_key, cached_model)
+        try:
+            scope.model_cache.set(cache_key, cached_model)
+        except (pickle.PicklingError, AttributeError, TypeError) as e:
+            # An unpicklable model must not kill the walkforward after
+            # training already succeeded; skip caching and continue exactly
+            # as if the model cache were disabled.
+            scope.logger.warn_set_model_cache_failed(cache_key, e)

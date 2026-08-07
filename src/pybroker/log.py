@@ -265,6 +265,12 @@ class Logger:
     def debug_set_model_cache(self, cache_key):
         self._debug(f"Set model cache:\n{cache_key}")
 
+    def warn_set_model_cache_failed(self, cache_key, error):
+        self._warn(
+            f"Model could not be pickled for the model cache and will not "
+            f"be cached:\n{cache_key}\nError: {error}"
+        )
+
     def train_split_completed(self):
         if self._train_split_start_time is None:
             return

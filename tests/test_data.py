@@ -122,6 +122,125 @@ def mock_alpaca_crypto():
 
 
 class TestDataSourceCacheMixin:
+    def test_get_cached_when_different_source_then_miss(
+        self, scope, alpaca_df, symbols
+    ):
+        """Two DataSources sharing one cache namespace must not cross-serve
+        each other's bars: the cache key carries the source identity."""
+
+        class SourceA(DataSourceCacheMixin):
+            pass
+
+        class SourceB(DataSourceCacheMixin):
+            pass
+
+        class DictCache:
+            def __init__(self):
+                self.store = {}
+
+            def get(self, key, default=None):
+                return self.store.get(key, default)
+
+            def set(self, key, value):
+                self.store[key] = value
+                return True
+
+        with mock.patch.object(scope, "data_source_cache", DictCache()):
+            SourceA().set_cached(
+                TIMEFRAME, START_DATE, END_DATE, ADJUST, alpaca_df
+            )
+            df_a, uncached_a = SourceA().get_cached(
+                symbols, TIMEFRAME, START_DATE, END_DATE, ADJUST
+            )
+            assert not df_a.empty
+            assert not uncached_a
+            df_b, uncached_b = SourceB().get_cached(
+                symbols, TIMEFRAME, START_DATE, END_DATE, ADJUST
+            )
+            assert df_b.empty
+            assert list(uncached_b) == list(symbols)
+
+    def test_query_when_full_cache_hit_then_deterministic_order(
+        self, scope, alpaca_df, symbols
+    ):
+        """A full cache hit must return the same date-major row order and
+        RangeIndex as the cold fetch path, independent of hash seed."""
+
+        class FakeSource(DataSource):
+            def _fetch_data(
+                self, symbols, start_date, end_date, timeframe, adjust
+            ):
+                return alpaca_df[alpaca_df["symbol"].isin(symbols)]
+
+        class DictCache:
+            def __init__(self):
+                self.store = {}
+
+            def get(self, key, default=None):
+                return self.store.get(key, default)
+
+            def set(self, key, value):
+                self.store[key] = value
+                return True
+
+        with mock.patch.object(scope, "data_source_cache", DictCache()):
+            source = FakeSource()
+            cold = source.query(
+                symbols, START_DATE, END_DATE, TIMEFRAME, ADJUST
+            )
+            warm = source.query(
+                symbols, START_DATE, END_DATE, TIMEFRAME, ADJUST
+            )
+        pd.testing.assert_frame_equal(warm, cold)
+
+    def test_query_when_symbol_has_no_data_then_cache_preserved(
+        self, scope, alpaca_df, symbols
+    ):
+        """A symbol whose fetch returns a column-less empty frame must not
+        wipe the cache and re-fetch every symbol on each query."""
+        fetch_calls = []
+
+        class FakeSource(DataSource):
+            def _fetch_data(
+                self, symbols, start_date, end_date, timeframe, adjust
+            ):
+                fetch_calls.append(set(symbols))
+                rows = alpaca_df[alpaca_df["symbol"].isin(symbols)]
+                if rows.empty:
+                    return pd.DataFrame([])
+                return rows
+
+        class DictCache:
+            def __init__(self):
+                self.store = {}
+
+            def get(self, key, default=None):
+                return self.store.get(key, default)
+
+            def set(self, key, value):
+                self.store[key] = value
+                return True
+
+            def clear(self):
+                self.store.clear()
+
+        cache = DictCache()
+        query_symbols = list(symbols) + ["ZZZNODATA"]
+        with mock.patch.object(scope, "data_source_cache", cache):
+            source = FakeSource()
+            first = source.query(
+                query_symbols, START_DATE, END_DATE, TIMEFRAME, ADJUST
+            )
+            cached_keys = set(cache.store)
+            assert cached_keys
+            second = source.query(
+                query_symbols, START_DATE, END_DATE, TIMEFRAME, ADJUST
+            )
+        assert set(cache.store) == cached_keys
+        # Only the no-data symbol is re-fetched on the second query.
+        assert fetch_calls[-1] == {"ZZZNODATA"}
+        pd.testing.assert_frame_equal(second, first)
+
     @pytest.mark.usefixtures("scope")
     def test_set_cached(self, alpaca_df, symbols, mock_cache):
         cache_mixin = DataSourceCacheMixin()
@@ -136,6 +255,7 @@ class TestDataSourceCacheMixin:
                 start_date=START_DATE,
                 end_date=END_DATE,
                 adjust=ADJUST,
+                source="pybroker.data.DataSourceCacheMixin",
             )
             cache_key, sym_df = mock_cache.set.call_args_list[i].args
             assert cache_key == expected_cache_key
@@ -159,6 +279,7 @@ class TestDataSourceCacheMixin:
                 start_date=START_DATE,
                 end_date=END_DATE,
                 adjust=ADJUST,
+                source="pybroker.data.DataSourceCacheMixin",
             )
             cache_key = mock_cache.get.call_args_list[i].args[0]
             assert cache_key == expected_cache_key
