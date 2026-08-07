@@ -36,12 +36,38 @@ Compare two commits:
    asv continuous master HEAD   # local equivalent of the CI gate
    asv compare master HEAD      # diff table
 
-The PR gate adds ``--factor 1.1 --no-stats --machine ci-ubuntu-latest`` and
-resolves the base as ``origin/<base branch>``:
+The PR gate uses two thresholds. It blocks at ``--factor 1.25`` and
+reports everything that moved by ``1.1`` or more, resolving the base as
+``origin/<base branch>``:
 
 .. code-block:: bash
 
-   asv continuous origin/master HEAD --factor 1.1 --no-stats
+   asv continuous origin/master HEAD --factor 1.25 --interleave-rounds
+   asv compare origin/master HEAD --factor 1.1 --only-changed
+
+The second command re-reads the results the first one stored, so it costs
+no extra benchmarking.
+
+Why the gate is looser than the report: ``1.1`` is below a shared
+runner's noise floor. Across six ``asv continuous`` runs whose ``src/``
+and ``benchmarks/`` were byte-identical between base and head, one run
+still flagged a regression — always a sub-2ms microbenchmark, at ratios
+up to ``1.18``. The walkforward macrobenchmarks (100ms and up) never
+moved. Gating at ``1.25`` clears the measured noise; the ``1.1`` table
+keeps the smaller movements visible for a human to judge.
+
+Two flags do part of the work but are not sufficient alone.
+``--interleave-rounds`` alternates rounds between the two commits instead
+of running each commit's rounds in a block, so drift over the job
+(thermal throttling, noisy neighbours, page cache) hits both sides
+equally instead of landing entirely on whichever commit ran second; it
+reuses the existing rounds, so it is free. ``--no-stats`` is deliberately
+*not* used: it disables significance testing, comparing raw medians
+against ``--factor`` alone.
+
+If the noise floor rises, raise the sampling
+(``--attribute rounds=N``) rather than the gate factor — loosening the
+factor trades away real coverage.
 
 Generate and preview the HTML dashboard:
 
@@ -54,8 +80,9 @@ Benchmark Suite
 ---------------
 
 The asv suite lives in ``benchmarks/`` across four modules. CI fails PRs on
-regressions greater than 1.1x unless the PR carries the ``bench-override``
-label. New hot paths should add a benchmark.
+regressions greater than 1.25x unless the PR carries the ``bench-override``
+label, and reports anything above 1.1x without blocking. New hot paths
+should add a benchmark.
 
 - ``bench_backtest.py`` - end-to-end walkforward (warm, cold, scaled,
   models, intervals, slippage-free) plus microbenchmarks for the indicator

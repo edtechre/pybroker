@@ -44,7 +44,7 @@ tox -e py311,py312,py313  # full test matrix
 
 # Benchmarks (asv; see Performance & Benchmarks)
 asv run --quick             # fast feedback, one sample per benchmark
-asv continuous master HEAD  # what the CI PR gate runs (--factor 1.1)
+asv continuous master HEAD  # what the CI PR gate runs (blocks at --factor 1.25)
 
 # Docs — CI runs `tox -e docs` on Python 3.12; it is STRICT
 # (`sphinx-build -n -W --keep-going`), so any warning fails the build.
@@ -280,8 +280,10 @@ between runs on NumPy arrays and Numba kernels.
   against `master`). Process doc: `docs/source/benchmarking.rst`.
 - **Perf-sensitive change → run the relevant benches before and after:**
   `asv continuous master HEAD` (a targeted `--bench <pattern>` pass first
-  is fine). CI fails PRs on regressions > 1.1× unless the PR carries the
-  `bench-override` label. **New hot path → add a benchmark.**
+  is fine). CI blocks PRs on regressions > 1.25× unless the PR carries the
+  `bench-override` label, and reports everything > 1.1× without blocking —
+  1.1 sits below the shared runner's noise floor. **New hot path → add a
+  benchmark.**
 - `WalkforwardCold` intentionally includes Numba JIT compile time — it
   validates the `cache=True` contract. Never add warmup to it.
 - Ad-hoc JSON-baseline runners exist for targeted comparisons
@@ -433,7 +435,7 @@ done.
 7. If indicators, scopes, or context slicing were touched:
    `python -m pytest tests/test_vect.py -k look_ahead`
 8. If perf-sensitive: `asv continuous master HEAD` — no regression
-   > 1.1×.
+   > 1.25× (the blocking threshold); investigate anything > 1.1×.
 9. If the public API changed: export added in `__init__.py`, docstrings
    complete, `:exclude-members:` in `pybroker.strategy.rst` updated.
 10. If `skills/`, public signatures/docstrings in `src/`, or the doc
