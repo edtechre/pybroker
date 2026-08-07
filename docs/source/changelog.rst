@@ -44,9 +44,7 @@ Breaking changes
 
 * Deprecates ``ExecContext.score`` and ``StrategyConfig.max_*_positions``; use `long_score <https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.long_score>`_ / `short_score <https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.short_score>`_ and `set_max_long_positions <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_max_long_positions>`_ / `set_max_short_positions <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_max_short_positions>`_.
 
-* Renames timeframe module to `interval <https://www.pybroker.com/en/latest/reference/pybroker.interval.html>`_; drops week-duration intervals.
-
-* Unifies `slippage <https://www.pybroker.com/en/latest/reference/pybroker.slippage.html>`_ API; removes ``RandomSlippageModel`` and custom stop functions.
+* Unifies `slippage <https://www.pybroker.com/en/latest/reference/pybroker.slippage.html>`_ API; removes ``RandomSlippageModel``.
 
 * Removes ``bootstrap_sample_size`` / ``indicator_memo_max``; parallelization configuration moves to `set_parallel <https://www.pybroker.com/en/latest/reference/pybroker.parallel.html#pybroker.parallel.set_parallel>`_, which supports only the Ray backend (no ``multiprocessing``).
 
