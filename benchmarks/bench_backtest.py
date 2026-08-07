@@ -12,6 +12,7 @@ invocation pays Numba JIT compile cost — useful for tracking the benefit of
 
 from __future__ import annotations
 
+import sys
 import zlib
 from pathlib import Path
 
@@ -26,6 +27,17 @@ from collections import defaultdict
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_PATH = REPO_ROOT / "tests" / "testdata" / "daily_1.pkl"
+
+# asv imports this module through a sys.meta_path hook
+# (asv_runner._aux.SpecificImporter) instead of putting the suite root on
+# sys.path. loky workers inherit sys.path but not sys.meta_path -- that is
+# code, not data -- so a module-level callable shipped to a worker unpickles
+# by reference and dies with "ModuleNotFoundError: No module named
+# 'benchmarks'". Only benches that dispatch module-level functions hit this;
+# IndicatorParallel escapes it because its lambdas pickle by value.
+# Idempotent, and a no-op outside asv where the root is already importable.
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 SEED = 42
 WINDOWS = 3
 LOOKAHEAD = 1
@@ -1450,7 +1462,10 @@ def _train_bench_ridge(symbol, train_df, _test_df, **_kwargs):
 
     Features are engineered here rather than through registered indicators so
     the bench measures training dispatch alone, with no indicator data to
-    compute or ship to workers. Lives at module level so loky can pickle it.
+    compute or ship to workers. Lives at module level so loky pickles it by
+    reference rather than shipping the closure -- which is why the module
+    puts the suite root on sys.path, so the worker can resolve that
+    reference.
     """
     close = train_df["close"].to_numpy(dtype=np.float64)
     features, target = _bench_ridge_design(close)
