@@ -54,8 +54,6 @@ Breaking changes
 
 * ``result.positions`` is opt-in via `StrategyConfig.record_position_bars <https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.record_position_bars>`_; full ``Portfolio.bars`` snapshots are opt-in via `record_portfolio_bars <https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.record_portfolio_bars>`_.
 
-* Model lag matrices passed to ``train_fn`` / ``predict_fn`` instead of DataFrame attrs; see the `model module <https://www.pybroker.com/en/latest/reference/pybroker.model.html>`_.
-
 * Removes ``akshare`` from install dependencies; install it separately to use `AKShare <https://www.pybroker.com/en/latest/reference/pybroker.ext.data.html#pybroker.ext.data.AKShare>`_.
 
 1.2.14
