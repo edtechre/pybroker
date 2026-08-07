@@ -74,7 +74,6 @@ Order validation pitfalls:
 - `hold_bars` must be greater than zero.
 - `stop_loss` and `stop_loss_pct` are mutually exclusive. The same applies to profit and trailing stops.
 - Buy and sell signals fill on future bars controlled by `StrategyConfig.buy_delay` and `sell_delay`; defaults are one bar.
-- `ctx.score` is deprecated; set `ctx.long_score` / `ctx.short_score` instead.
 - When rotation is enabled, order fields set in execution functions are ignored; only scores drive trading (fill prices and stops set there are kept).
 
 ## Indicator Patterns
@@ -286,7 +285,6 @@ result = strategy.walkforward(windows=3, train_size=0.5)
 ## v1 -> v2 Gotchas
 
 - `StrategyConfig.max_long_positions` / `max_short_positions` are deprecated; call `strategy.set_max_long_positions()` / `set_max_short_positions()`.
-- `ctx.score` is deprecated; set `ctx.long_score` / `ctx.short_score`.
 - `set_pos_size_handler`, `PosSizeContext`, and `ExecSignal` were removed; use `strategy.enable_rotation(worst_rank_held=..., sizer=...)` with `RotationContext`.
 - `RandomSlippageModel` was removed; use `FixedSlippageModel`, `VolatilitySlippageModel`, or `VolumeSlippageModel`, or subclass `SlippageModel`.
 - `StrategyConfig.bootstrap_sample_size` was removed (`bootstrap_samples` remains).
@@ -300,7 +298,7 @@ result = strategy.walkforward(windows=3, train_size=0.5)
 - No pandas operations inside indicator functions or per-bar execution functions — NumPy/Numba only.
 - `timeframe=` is passed to `backtest`/`walkforward` whenever an execution declares `intervals=` or binds an indicator/model to an interval.
 - `StrategyConfig(record_position_bars=True)` is set when the user needs `result.positions`.
-- Grep deliverables for removed/deprecated names: `ctx.score`, `bootstrap_sample_size`, `disable_parallel`, `set_pos_size_handler`, `StrategyConfig(max_long_positions=...)`.
+- Grep deliverables for removed/deprecated names: `bootstrap_sample_size`, `disable_parallel`, `set_pos_size_handler`, `StrategyConfig(max_long_positions=...)`.
 - Short signals set `ctx.short_score` with higher-wins ordering: negate a lowest-wins signal (`-roc`), never invert it (`1.0 / roc`).
 - If using DataFrame data, include a tiny local fixture and run the backtest without network access.
 - If using `YFinance`, expect network/package availability to be an execution dependency and mention when not run.

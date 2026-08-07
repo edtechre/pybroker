@@ -371,9 +371,9 @@ users symlink them into their agent's skills directory
   6. Exact API shapes come from the bundled references: agents read the
      matching `references/pybroker_*.pyi` stub and
      `references/api-public-surface.md` instead of guessing signatures,
-     and use current API only (`ctx.long_score`/`ctx.short_score`, never
-     the deprecated `ctx.score`; `strategy.set_max_*_positions`, not the
-     deprecated `StrategyConfig` fields).
+     and use current API only (`ctx.long_score`/`ctx.short_score`;
+     `strategy.set_max_*_positions`, not the deprecated
+     `StrategyConfig` fields).
   7. Never widen or mutate the user's input DataFrame; feature data stays
      out-of-band (work on a `.copy()` inside `train_fn` when adding a
      target column).

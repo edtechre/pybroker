@@ -70,10 +70,6 @@ class ExecResult:
         buy_fill_price: Fill price to use for a buy (long) order of ``symbol``.
         sell_fill_price: Fill price to use for a sell (short) order of
             ``symbol``.
-        score: Deprecated. Use ``long_score`` or ``short_score`` instead.
-            When set, ranks buy and sell signals separately (higher wins each
-            queue). Mutually exclusive with ``long_score`` and
-            ``short_score``.
         long_score: Score used to rank ``symbol`` when ranking buy and cover
             signals. Orders are placed for symbols with the highest
             ``long_score`` values, where the number of long positions held at
@@ -83,7 +79,6 @@ class ExecResult:
             :meth:`pybroker.strategy.Strategy.enable_rotation`, ``long_score``
             drives long rotation and orders set during an
             :class:`pybroker.strategy.Execution` are ignored.
-            Mutually exclusive with ``score``.
         short_score: Score used to rank ``symbol`` when ranking sell signals.
             Orders are placed for symbols with the highest ``short_score``
             values, where the number of short positions held at any time in
@@ -93,7 +88,6 @@ class ExecResult:
             :meth:`pybroker.strategy.Strategy.enable_rotation`, ``short_score``
             drives short rotation and orders set during an
             :class:`pybroker.strategy.Execution` are ignored.
-            Mutually exclusive with ``score``.
         hold_bars: Number of bars to hold a long or short position for, after
             which the position is automatically liquidated.
         buy_shares: Number of shares to buy of ``symbol``.
@@ -347,10 +341,6 @@ class ExecContext:
             of retry bars.
         hold_bars: Number of bars to hold a long or short position for, after
             which the position is automatically liquidated.
-        score: Deprecated. Use ``long_score`` or ``short_score`` instead.
-            When set, ranks buy and sell signals separately (higher wins each
-            queue). Mutually exclusive with ``long_score`` and
-            ``short_score``.
         long_score: Score used to rank ``symbol`` when ranking buy and cover
             signals. Orders are placed for symbols with the highest
             ``long_score`` values, where the number of long positions held at
@@ -360,7 +350,6 @@ class ExecContext:
             :meth:`pybroker.strategy.Strategy.enable_rotation`, ``long_score``
             drives long rotation and orders set during an
             :class:`pybroker.strategy.Execution` are ignored.
-            Mutually exclusive with ``score``.
         short_score: Score used to rank ``symbol`` when ranking sell signals.
             Orders are placed for symbols with the highest ``short_score``
             values, where the number of short positions held at any time in
@@ -370,7 +359,6 @@ class ExecContext:
             :meth:`pybroker.strategy.Strategy.enable_rotation`, ``short_score``
             drives short rotation and orders set during an
             :class:`pybroker.strategy.Execution` are ignored.
-            Mutually exclusive with ``score``.
         session: ``dict`` used to store custom data that persists for each
             bar during the :class:`pybroker.strategy.Strategy`\ 's execution.
         stop_loss: Sets stop loss on a new :class:`pybroker.portfolio.Entry`,
@@ -506,7 +494,6 @@ class ExecContext:
 
     @property
     def score(self) -> Optional[float]:
-        """Deprecated ranking field; prefer :attr:`long_score` / :attr:`short_score`."""
         return self._score
 
     @score.setter

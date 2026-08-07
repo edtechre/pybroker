@@ -9,7 +9,6 @@ rotation:
 def rank(ctx: ExecContext):
     ctx.long_score = ...       # ranks buy/cover signals; higher wins
     ctx.short_score = ...      # ranks sell signals; higher wins
-                               # ctx.score is deprecated — never use it
 
 strategy.set_max_long_positions(n)   # int > 0 | Hyperparam | None
 strategy.set_max_short_positions(n)  # caps rank the WHOLE portfolio
@@ -66,12 +65,6 @@ roc_20 = pybroker.indicator(
 def rank_by_momentum(ctx: ExecContext):
     ctx.long_score = ctx.indicator("roc_20")[-1]
 ```
-
-`ctx.score` is deprecated. Setting it emits a `DeprecationWarning`,
-setting it together with `long_score` or `short_score` raises
-`ValueError`, and setting it with rotation enabled raises
-`ValueError`. Migrate old code by replacing `ctx.score` with
-`ctx.long_score` (or `ctx.short_score` for sell-signal ranking).
 
 ## Position Caps
 
@@ -338,10 +331,7 @@ Match the exact message before changing code:
 | `worst_rank_held requires max_long_positions or max_short_positions to be set.` | `enable_rotation` with no position cap | Call `set_max_long_positions` and/or `set_max_short_positions` first |
 | `worst_rank_held must be greater than or equal to max_long_positions.` (also the `max_short_positions` variant) | Hold band tighter than a cap | Widen `worst_rank_held` or lower the cap |
 | `Rotation sizer is set but rotation is not enabled; call enable_rotation(worst_rank_held=...) first.` | `sizer=` given with rotation off (or disabled with `None`) | Enable rotation, or drop the sizer |
-| `score cannot be used with rotation enabled; use long_score or short_score instead.` | Deprecated `ctx.score` under rotation | Set `ctx.long_score`/`ctx.short_score` |
-| `score cannot be set when long_score or short_score is set.` | Mixing deprecated and current scoring in one execution | Remove `ctx.score` |
 | `max_long_positions must be greater than 0.` (also the short variant) | Zero or negative cap | Use a positive int, or `None` for unlimited |
-| `DeprecationWarning: ExecContext.score is deprecated; use long_score or short_score instead.` | Legacy `ctx.score` code | Migrate to `long_score`/`short_score` |
 | Warning that `Strategy.set_max_long_positions` takes precedence over `StrategyConfig.max_long_positions` | Both the deprecated config field and the setter in use | Delete the `StrategyConfig` field |
 
 ## Reporting Results
@@ -394,7 +384,7 @@ NUMBA_DISABLE_JIT=1 python my_rotation.py
 - Generated scripts start with `pybroker.disable_progress_bar()` and
   `pybroker.enable_data_source_cache(...)` (or `enable_caches`), plus
   `pybroker.disable_logging()` for many-backtest runs.
-- Scores use `ctx.long_score`/`ctx.short_score`; no `ctx.score` and no
+- Scores use `ctx.long_score`/`ctx.short_score`; no
   `StrategyConfig(max_long_positions=...)`/`max_short_positions`
   anywhere in the deliverable.
 - `worst_rank_held` is greater than or equal to every position cap

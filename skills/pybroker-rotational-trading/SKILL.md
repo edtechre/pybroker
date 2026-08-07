@@ -1,6 +1,6 @@
 ---
 name: pybroker-rotational-trading
-description: Build ranked-signal and rotational PyBroker strategies using the bundled PyBroker wiki references generated from the local docs. Use when an agent needs to rank symbols with ctx.long_score or ctx.short_score, cap positions with Strategy.set_max_long_positions or set_max_short_positions, rotate a portfolio into its top-ranked symbols with Strategy.enable_rotation and a worst_rank_held hold band, write a custom rotation sizer over RotationContext long_ranks and short_ranks, choose between ranked-cap prioritization and full rotation, carry stops and fill prices into rotation orders, handle unrankable NaN scores or long/short overlap, screen a dynamic universe with a SymbolSelector before ranking, search position caps or worst_rank_held as hyperparams, migrate deprecated ctx.score or StrategyConfig.max_long_positions code, or debug rotation errors such as worst_rank_held below a position cap or a sizer without rotation enabled.
+description: Build ranked-signal and rotational PyBroker strategies using the bundled PyBroker wiki references generated from the local docs. Use when an agent needs to rank symbols with ctx.long_score or ctx.short_score, cap positions with Strategy.set_max_long_positions or set_max_short_positions, rotate a portfolio into its top-ranked symbols with Strategy.enable_rotation and a worst_rank_held hold band, write a custom rotation sizer over RotationContext long_ranks and short_ranks, choose between ranked-cap prioritization and full rotation, carry stops and fill prices into rotation orders, handle unrankable NaN scores or long/short overlap, screen a dynamic universe with a SymbolSelector before ranking, search position caps or worst_rank_held as hyperparams, migrate deprecated StrategyConfig.max_long_positions code, or debug rotation errors such as worst_rank_held below a position cap or a sizer without rotation enabled.
 ---
 
 # PyBroker Rotational Trading
@@ -16,7 +16,7 @@ Build rotational PyBroker strategies that hold the top-ranked symbols in a unive
 3. Read `references/wiki-index.md` to choose the smallest relevant wiki page. For nontrivial rotation work, also read `references/rotational-patterns.md`.
 4. Build a complete runnable rotation surface:
    - start scripts with `pybroker.disable_progress_bar()` and `pybroker.enable_data_source_cache("<name>")`
-   - compute the ranking indicator as NumPy over `BarData` arrays and set `ctx.long_score`/`ctx.short_score` in the execution function (never the deprecated `ctx.score`)
+   - compute the ranking indicator as NumPy over `BarData` arrays and set `ctx.long_score`/`ctx.short_score` in the execution function
    - cap slots with `strategy.set_max_long_positions(n)`/`set_max_short_positions(n)` (never the deprecated `StrategyConfig` fields), then either stop there for ranked-cap mode or call `strategy.enable_rotation(worst_rank_held=..., sizer=...)` for hold-band rotation
    - under rotation, let the execution function set only scores, stops, and fill prices — orders it places are ignored; in ranked-cap mode, keep placing orders normally with at most one order side per symbol per bar
    - run `backtest`/`walkforward` with `warmup=` covering the ranking indicator's lookback and inspect `result.orders` to confirm rotation entries and hold-band exits
@@ -27,7 +27,7 @@ Build rotational PyBroker strategies that hold the top-ranked symbols in a unive
 - Treat PyBroker as a backtesting framework, not a source of financial advice. State assumptions explicitly (universe, ranking signal, hold band, costs) and make no performance claims unsupported by the produced backtest.
 - Use completed historical bar data only. Indicator logic must be lookahead-free: never index a full-length array with a negative index (it silently wraps to the end of the series, the future) and never shift future values backward; a value at bar `i` may depend only on inputs at index `i` and earlier. Self-test novel indicator logic with the bump-last-bar check: change only the final input bar and assert every earlier output is unchanged.
 - Two ranking modes exist. Ranked-cap mode (`set_max_*_positions` plus scores, no `enable_rotation`) keeps execution functions in charge of orders and uses scores only to prioritize signals when a cap binds; symbols that set no score sort as `0.0` and unrankable scores sort last. Rotation mode (`enable_rotation`) drives all trading from scores. Choose ranked-cap for prioritizing entry signals, rotation for hold-the-top-N portfolios.
-- Rank with `ctx.long_score` (buy and cover signals) and `ctx.short_score` (sell signals), never the deprecated `ctx.score`: setting it warns, mixing it with `long_score`/`short_score` raises, and under rotation it raises `ValueError`. Scores rank the whole portfolio across all executions, descending, with the symbol name as a deterministic tiebreak.
+- Rank with `ctx.long_score` (buy and cover signals) and `ctx.short_score` (sell signals). Scores rank the whole portfolio across all executions, descending, with the symbol name as a deterministic tiebreak.
 - `strategy.set_max_long_positions(n)`/`set_max_short_positions(n)` accept an int greater than 0, a searchable `Hyperparam`, or `None` for unlimited. The `StrategyConfig` fields of the same names are deprecated and the setters take precedence.
 - Rotation mechanics: each bar, held positions ranked worse than `worst_rank_held` — or holding an unrankable score, even when another execution opened them — are liquidated, and the top-ranked candidates fill the remaining free slots at equal weight `1 / (long slots + short slots)`. Candidates ranked outside the hold band are never entered. `enable_rotation(None)` disables rotation and clears the sizer.
 - Rotation is exclusive: orders placed by execution functions are discarded, but fill prices and stops (including `hold_bars`) set during execution are kept and applied to the orders rotation places. Under rotation, the execution function's job is scores, stops, and fill prices only.
@@ -54,7 +54,7 @@ Build rotational PyBroker strategies that hold the top-ranked symbols in a unive
 - Ranked-cap prioritization (`long_score`/`short_score` plus position caps) added to an existing multi-symbol strategy.
 - Custom rotation `sizer` implementing rank-weighted or otherwise non-equal entry allocation.
 - Long/short rotation with both legs, overlap handling, and stops carried into rotation orders.
-- Migration of deprecated `ctx.score` or `StrategyConfig.max_long_positions`/`max_short_positions` code to the current API.
+- Migration of deprecated `StrategyConfig.max_long_positions`/`max_short_positions` code to the current API.
 - Debugging notes for rotation `ValueError`s, unrankable-score liquidations, and ignored execution-function orders.
 
 ## Resources
