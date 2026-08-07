@@ -42,9 +42,17 @@ jobs:
           # comparisons, only factor and the median result", which disables
           # significance testing and lets an I/O-bound microbenchmark whose
           # error bars overlap trip --factor on noise alone.
+          # --interleave-rounds alternates rounds between the two commits
+          # instead of running each commit's rounds in a block, so drift over
+          # the job (thermal, noisy neighbours, page cache) hits both sides
+          # equally rather than landing entirely on "after". Without it a
+          # shared runner's second half reads as a regression: observed twice
+          # here on branches with byte-identical src/ and benchmarks/, each
+          # time flagging a different sub-100us benchmark.
           asv continuous "origin/${BASE_REF}" HEAD \
             --machine ci-ubuntu-latest \
             --factor 1.1 \
+            --interleave-rounds \
             >asv-continuous.log 2>&1
           EXIT=$?
           echo "exit_code=$EXIT" >> "$GITHUB_OUTPUT"
