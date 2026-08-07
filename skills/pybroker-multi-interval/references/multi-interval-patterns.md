@@ -392,6 +392,43 @@ Match the message before changing code — each one names the fix.
   the first compressed bar completes. Fix:
   `if len(weekly.close) < N: return` before indexing.
 
+## Fill Prices and End-of-Data Exits
+
+**Fills always price off base-timeframe bars.** Declaring
+`intervals="weekly"` or binding an indicator to an interval changes
+what the execution function reads, never how an order fills: the fill
+price is resolved against the symbol's base bar. A strategy that acts
+on weekly signals still fills at daily prices.
+
+Orders fill at `PriceType.MIDDLE` — the midpoint of the low and high
+of the **execution** base bar, one bar after the signal under the
+default `buy_delay`/`sell_delay` of `1`, so `PriceType.CLOSE` means
+the next base bar's close, not the close of the compressed bar.
+`PriceType` offers `OPEN`, `HIGH`, `LOW`, `CLOSE`, `MIDDLE`
+(`low + (high - low) / 2`, the default), and `AVERAGE`
+(`(open + low + high + close) / 4`). `ctx.buy_fill_price` /
+`ctx.sell_fill_price` also accept a number or a `(symbol, bar_data)`
+callable — whose `bar_data` is likewise base-timeframe — and read back
+as `None` until set. A limit price only gates the fill: the order
+still fills at the fill price, never at the limit.
+
+`StrategyConfig.exit_on_last_bar` defaults to `False`, which leaves
+the final position open and out of `trade_count`, `win_rate`,
+`total_pnl` and every other trade-level metric, with its P&L in
+`unrealized_pnl`. Set `exit_on_last_bar=True` whenever trade
+statistics are reported; the liquidation lands on the symbol's final
+**base** bar, which is usually mid-way through the last compressed
+bar. In `walkforward` it fires only on each symbol's true final bar,
+never at window boundaries.
+
+`calc_bootstrap` is a parameter of `backtest`/`walkforward`, **not** a
+`StrategyConfig` field, and defaults to `False`. Pass
+`calc_bootstrap=True` to populate `result.bootstrap` with
+`conf_intervals` (BCa intervals for profit factor and Sharpe) and
+`drawdown_conf` (percentile bounds on max drawdown). Set
+`StrategyConfig.bars_per_year` to the **base** timeframe's bar count
+or the Sharpe intervals are per-bar rather than annualized.
+
 ## Reporting Results
 
 Print `result.metrics_df` as the human-readable summary. For

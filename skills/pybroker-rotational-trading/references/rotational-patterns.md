@@ -134,7 +134,8 @@ survives and shapes rotation's orders:
   `_pct`/`_limit`/`_exit_price` variants) and `hold_bars` set during
   execution are applied to the entries rotation places.
 - **Fill prices** — `buy_fill_price`/`sell_fill_price` set during
-  execution are used for rotation's orders.
+  execution are used for rotation's orders (see Fill Prices and
+  End-of-Data Exits for what they default to).
 
 ```python
 def rank_with_stop(ctx: ExecContext):
@@ -148,6 +149,54 @@ dropped automatically (an order-less stop is rejected otherwise), so
 setting them unconditionally alongside the score is safe. A stop
 triggered later exits the position as usual; rotation then sees a free
 slot and refills it with the best-ranked candidate.
+
+## Fill Prices and End-of-Data Exits
+
+Rotation's orders fill at `PriceType.MIDDLE` unless the execution
+function set a fill price. `MIDDLE` is the midpoint of the low and
+high of the **execution** bar, one bar after the score under the
+default `buy_delay`/`sell_delay` of `1`, so `PriceType.CLOSE` means
+the next bar's close. `PriceType` offers `OPEN`, `HIGH`, `LOW`,
+`CLOSE`, `MIDDLE` (`low + (high - low) / 2`, the default), and
+`AVERAGE` (`(open + low + high + close) / 4`); the attributes also
+accept a number or a `(symbol, bar_data)` callable, and read back as
+`None` rather than `MIDDLE` until set.
+
+```python
+def rank_and_fill_at_open(ctx: ExecContext):
+    ctx.long_score = ctx.indicator("roc_20")[-1]
+    # Kept and applied to whatever order rotation places:
+    ctx.buy_fill_price = PriceType.OPEN
+    ctx.sell_fill_price = PriceType.OPEN
+```
+
+Because a whole universe rotates on one bar, the fill price choice
+moves every leg at once. Setting it unconditionally alongside the
+score is safe: fill prices on symbols rotation leaves untraded are
+dropped automatically.
+
+`StrategyConfig.exit_on_last_bar` defaults to `False`. A rotational
+strategy is usually fully invested at the end of the run, so leaving
+it off strands one open position per held slot: none of them become
+`Trade`s, so `trade_count`, `win_rate`, `total_pnl` and the rest of
+the trade table silently exclude them and their P&L sits in
+`unrealized_pnl`. Set `exit_on_last_bar=True` whenever trade
+statistics are reported:
+
+```python
+config = StrategyConfig(
+    exit_on_last_bar=True,
+    exit_sell_fill_price=PriceType.MIDDLE,  # default; longs exit here
+    exit_cover_fill_price=PriceType.MIDDLE,  # default; shorts cover here
+)
+```
+
+Both exit fill prices accept a `PriceType` or a `(symbol, bar_data)`
+callable, but not a bare number. The liquidation bypasses position
+caps and order delays but still records real `Order` and `Trade` rows.
+Bar-level metrics (`sharpe`, `max_drawdown`) are computed from per-bar
+market value and barely move either way. In `walkforward` it fires
+only on each symbol's true final bar, never at window boundaries.
 
 ## Unrankable Scores, Warmup, and Forced Exits
 
@@ -391,6 +440,9 @@ NUMBA_DISABLE_JIT=1 python my_rotation.py
   that is set, and at least one cap is set before `enable_rotation`.
 - Under rotation, execution functions set only scores, stops, and fill
   prices; any order they place is dead code.
+- `StrategyConfig(exit_on_last_bar=True)` is set whenever trade-level
+  metrics are reported; a fully invested rotation otherwise leaves one
+  unclosed position per slot out of `trade_count` and `total_pnl`.
 - A sizer guards entries with `if ctx.buy_shares is not None:` (or
   `sell_shares` for shorts) and never overrides rotation's exits.
 - `warmup=` (or a `ctx.bars` guard) covers the ranking indicator's

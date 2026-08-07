@@ -73,6 +73,8 @@ def exec_fn(ctx: ExecContext):
     # Orders are always set on the base (daily) context; IntervalContext
     # is read-only.
     if not pos and regime_up and trend_up and preds[-1] > 0:
+        # Fills on the next BASE (daily) bar at PriceType.MIDDLE, that bar's
+        # low/high midpoint. Interval bindings never change fill pricing.
         ctx.buy_shares = ctx.calc_target_shares(0.25)
     elif pos and (not trend_up or preds[-1] < 0):
         ctx.sell_all_shares()
@@ -81,6 +83,10 @@ def exec_fn(ctx: ExecContext):
 def build_strategy() -> Strategy:
     config = StrategyConfig(
         initial_cash=100_000,
+        # Defaults to False, which leaves the final position open: it never
+        # becomes a Trade, so trade_count, win_rate and total_pnl exclude it
+        # and its P&L sits in unrealized_pnl. The liquidation lands on the
+        # final BASE bar, usually mid-way through the last compressed bar.
         exit_on_last_bar=True,
     )
     strategy = Strategy(YFinance(), START_DATE, END_DATE, config)
@@ -107,6 +113,12 @@ if __name__ == "__main__":
         # timeframe= declares the base bar spacing and is required once
         # any interval is declared or bound.
         timeframe=BASE_TIMEFRAME,
+        # calc_bootstrap is a walkforward/backtest parameter, not a
+        # StrategyConfig field. True adds result.bootstrap: BCa confidence
+        # intervals for profit factor and Sharpe, plus percentile bounds on
+        # max drawdown. Set StrategyConfig.bars_per_year to the BASE
+        # timeframe's bar count or the Sharpe intervals stay per-bar.
+        # calc_bootstrap=True,
     )
     print(result.metrics_df)
     # Structured output for agents/reports: result.to_json_str() serializes

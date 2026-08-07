@@ -24,6 +24,8 @@ from pybroker.indicator import atr  # built-in indicator factories
 Create a strategy:
 
 ```python
+# exit_on_last_bar defaults to False, which leaves the final position open and
+# out of every trade-level metric. Turn it on whenever trade stats matter.
 config = StrategyConfig(initial_cash=100_000, exit_on_last_bar=True)
 strategy = Strategy(YFinance(), start_date="1/1/2024", end_date="1/1/2026", config=config)
 strategy.set_max_long_positions(5)
@@ -41,6 +43,7 @@ Backtest choices:
 - `strategy.walkforward(windows=..., train_size=..., lookahead=...)` runs walkforward analysis.
 - `strategy.optimize(score_fn, ...)` searches registered hyperparams (see Strategy Patterns).
 - Use `warmup` at least as large as the largest indicator/model lookback before running entries.
+- `calc_bootstrap=True` is a parameter of all three, not a `StrategyConfig` field; it populates `result.bootstrap` and leaves `metrics_df` unchanged (see Bootstrap Metrics).
 - Indicator computation and model training parallelize only when `parallel_indicators=True` / `parallel_models=True` are passed; tune workers with `pyb.set_parallel(n_jobs=...)`.
 - `TestResult` exposes `portfolio`, `positions`, `orders`, `trades`, `metrics`, `metrics_df`, optionally `signals`/`stops`, and `to_json()`/`to_json_str()` for compact agent-readable output: the default payload carries metrics, trades, orders, and bootstrap capped at `max_rows=100` rows per table, `symbols=` filters to specific tickers, and `include=` opts into `portfolio`/`positions`/`metrics_df`/`signals`/`stops`. Dates serialize as naive-UTC ISO strings, NaN as `null`, and legitimately infinite metrics as `"Infinity"`/`"-Infinity"`. `positions` is empty unless `StrategyConfig(record_position_bars=True)`; the per-bar `portfolio` equity curve is always populated.
 
@@ -75,6 +78,61 @@ Order validation pitfalls:
 - `stop_loss` and `stop_loss_pct` are mutually exclusive. The same applies to profit and trailing stops.
 - Buy and sell signals fill on future bars controlled by `StrategyConfig.buy_delay` and `sell_delay`; defaults are one bar.
 - When rotation is enabled, order fields set in execution functions are ignored; only scores drive trading (fill prices and stops set there are kept).
+
+## Fill Prices and End-of-Data Exits
+
+Orders fill at `PriceType.MIDDLE` unless a fill price is set. `MIDDLE` is the midpoint of the low and high of the **execution** bar, not the signal bar: with the default `buy_delay`/`sell_delay` of `1` a signal on bar `i` fills on bar `i + 1`, so `PriceType.CLOSE` means the *next* bar's close.
+
+`PriceType` members and what each resolves to on the execution bar:
+
+| Member | Value |
+| --- | --- |
+| `PriceType.OPEN` | `open` |
+| `PriceType.HIGH` | `high` |
+| `PriceType.LOW` | `low` |
+| `PriceType.CLOSE` | `close` |
+| `PriceType.MIDDLE` | `low + (high - low) / 2` (the default) |
+| `PriceType.AVERAGE` | `(open + low + high + close) / 4` |
+
+`ctx.buy_fill_price` and `ctx.sell_fill_price` accept three shapes, resolved in this order:
+
+```python
+ctx.buy_fill_price = PriceType.OPEN            # a PriceType
+ctx.buy_fill_price = 101.25                    # any number or Decimal
+ctx.buy_fill_price = lambda symbol, bar_data: bar_data.low[-1] * 1.01  # a callable
+```
+
+The callable receives `(symbol, bar_data)` where `bar_data` is truncated to the execution bar inclusive, so `bar_data.close[-1]` is the fill bar's close.
+
+- The attributes read back as `None`, not `PriceType.MIDDLE`. The default is applied when the order is created, so inspecting `ctx.buy_fill_price` inside an execution function shows `None` unless the strategy set it. They also reset every bar, so a fill price must be set on the same bar as the order.
+- Fill prices are rounded half-up to the cent. `StrategyConfig(round_fill_price=False)` turns that off for the fill math, but the reported `result.orders` values are rounded again by `round_test_result`, which also defaults to `True` — turn off both to see a raw fill price.
+- Setting a fill price without `buy_shares`/`sell_shares` raises. The one legal exception is `buy_shares` plus `hold_bars` plus `sell_fill_price`, which prices the timed exit.
+- Share sizing and fill price come from different bars: `ctx.calc_target_shares` sizes off the signal bar's close, while the order fills on a later bar.
+
+A limit price only **gates** the fill. The order still fills at the fill price, never at the limit:
+
+```python
+ctx.buy_shares = 100
+ctx.buy_limit_price = 200  # fills only if the fill price is <= 200
+```
+
+A buy fills when `limit_price >= fill_price` and a sell when `limit_price <= fill_price`, compared after slippage. So a buy limit of `200` against a `MIDDLE` fill of `108` books **108**, not `200`; a buy limit of `50` books nothing at all.
+
+`StrategyConfig.exit_on_last_bar` defaults to `False`, which leaves open positions open when the data runs out. That position never becomes a `Trade`, so it is invisible to `trade_count`, `win_rate`, `total_pnl`, `avg_pnl`, `largest_win`/`largest_loss` and the rest of the trade table, and its whole P&L sits in `unrealized_pnl` instead. Set `exit_on_last_bar=True` whenever trade statistics matter:
+
+```python
+config = StrategyConfig(
+    exit_on_last_bar=True,
+    exit_sell_fill_price=PriceType.MIDDLE,  # default; longs exit here
+    exit_cover_fill_price=PriceType.MIDDLE,  # default; shorts cover here
+)
+```
+
+- Both exit fill prices accept a `PriceType` or a `(symbol, bar_data)` callable, but not a bare number.
+- The liquidation runs at the very end of that bar, after the execution function. It goes straight to the portfolio, so it ignores `buy_delay`/`sell_delay`, limit prices, and position caps, but slippage still applies and real `Order` and `Trade` records are produced.
+- Bar-level metrics (`sharpe`, `max_drawdown`, `profit_factor`, and every bootstrap metric) are computed from per-bar market value and barely move either way. Enabling this mainly repairs the trade table.
+- `unrealized_pnl` does not necessarily reach `0`. The final bar's portfolio snapshot is taken before the liquidation and marks the position at that bar's close, while the exit realizes at `MIDDLE`, so a residual of `shares * (final close - exit fill price)` remains. Using `exit_sell_fill_price=PriceType.CLOSE` closes it exactly.
+- In `walkforward`, exit dates are computed once over the whole dataset, so liquidation fires only on each symbol's true final bar, never at each window boundary. A symbol still inside `warmup` on its final bar is not liquidated.
 
 ## Indicator Patterns
 
@@ -296,12 +354,52 @@ strategy.add_execution(exec_fn, top_liquidity, indicators=[high_20])
 result = strategy.walkforward(windows=3, train_size=0.5)
 ```
 
+## Bootstrap Metrics
+
+`calc_bootstrap` is a parameter of `backtest`, `walkforward`, and `optimize`, **not** a `StrategyConfig` field, and it defaults to `False`. The `StrategyConfig` knob is the sample count:
+
+```python
+config = StrategyConfig(bootstrap_samples=10_000, bars_per_year=252)
+result = strategy.backtest(calc_bootstrap=True)
+```
+
+It gates exactly one thing: whether `result.bootstrap` is a `BootstrapResult` or `None`. No `metrics_df` value changes. Always guard with `if result.bootstrap is not None:` — it stays `None` for an empty portfolio, for `train_only=True`, and for the train-window replay inside `optimize`.
+
+`result.bootstrap.conf_intervals` is always 6 rows by 2 columns, MultiIndexed on `name` then `conf`:
+
+```python
+ci = result.bootstrap.conf_intervals
+# index: ("Profit Factor" | "Sharpe Ratio") x ("97.5%" | "95%" | "90%")
+# columns: ["lower", "upper"]
+ci.loc[("Sharpe Ratio", "95%"), "lower"]
+ci.xs("Profit Factor")
+```
+
+`result.bootstrap.drawdown_conf` is always 4 rows by 2 columns, indexed on `conf`:
+
+```python
+dd = result.bootstrap.drawdown_conf
+# index: "99.9%" | "99%" | "95%" | "90%"   (99.9% is the most pessimistic)
+# columns: ["amount"] in cash, ["percent"] in percent of equity; both negative
+dd.loc["99.9%", "percent"]
+```
+
+- Profit factor and Sharpe intervals use the **BCa** (bias corrected and accelerated) bootstrap, which adjusts the percentile endpoints for median bias and for skew estimated by a leave-one-out jackknife. The drawdown bounds are a plain percentile bootstrap, not BCa.
+- Profit factor is resampled in log space and exponentiated back, so read `conf_intervals` on the natural scale where `> 1` is profitable.
+- The drawdown rows are **upper bounds** of the interval: the worst drawdown you would expect not to exceed at that confidence.
+- Returns are resampled **per bar, not per trade**, so the intervals describe the equity curve rather than the trade sequence.
+- Sharpe intervals are annualized only when `StrategyConfig.bars_per_year` is set. Without it they are per-bar, matching `metrics.sharpe`.
+- Cost scales with `bars * bootstrap_samples`: roughly 0.3s for 1,300 daily bars at the default `10_000`, and around 20s for a year of minute bars. Lower `bootstrap_samples` on intraday data. The cost is paid once per `TestResult`, not once per walkforward window.
+- Results are reproducible through the `seed` parameter, which defaults to `42` on `backtest`/`walkforward` but to `None` on `optimize`.
+- The raw values are also available without pandas as `result.bootstrap.profit_factor` / `.sharpe` (`low_2p5`, `high_2p5`, `low_5`, `high_5`, `low_10`, `high_10`) and `result.bootstrap.drawdown` (`.confs` and `.pct_confs`, each with `q_001`, `q_01`, `q_05`, `q_10`).
+- `bootstrap` is part of the default `result.to_json()` payload whenever it is populated.
+
 ## v1 -> v2 Gotchas
 
 - `StrategyConfig.max_long_positions` / `max_short_positions` are deprecated; call `strategy.set_max_long_positions()` / `set_max_short_positions()`.
 - `set_pos_size_handler`, `PosSizeContext`, and `ExecSignal` were removed; use `strategy.enable_rotation(worst_rank_held=..., sizer=...)` with `RotationContext`.
 - `RandomSlippageModel` was removed; use `FixedSlippageModel`, `VolatilitySlippageModel`, or `VolumeSlippageModel`, or subclass `SlippageModel`.
-- `StrategyConfig.bootstrap_sample_size` was removed (`bootstrap_samples` remains).
+- `StrategyConfig.bootstrap_sample_size` was removed (`bootstrap_samples` remains). `calc_bootstrap` is a `backtest`/`walkforward`/`optimize` parameter and was never a `StrategyConfig` field.
 - `disable_parallel=` was removed from `backtest`/`walkforward`; parallel indicator/model work is now opt-in via `parallel_indicators=` / `parallel_models=`.
 - `result.positions` is opt-in via `record_position_bars=True`. `result.portfolio` is always populated, but full `PortfolioBar` snapshots on `Portfolio.bars` are opt-in via `record_portfolio_bars=True`.
 
@@ -313,6 +411,8 @@ result = strategy.walkforward(windows=3, train_size=0.5)
 - The bump-last-bar lookahead test passes for novel indicator logic, and no indicator function negative-indexes into a full-length array.
 - `timeframe=` is passed to `backtest`/`walkforward` whenever an execution declares `intervals=` or binds an indicator/model to an interval.
 - `StrategyConfig(record_position_bars=True)` is set when the user needs `result.positions`.
+- `StrategyConfig(exit_on_last_bar=True)` is set whenever trade-level metrics are reported, otherwise the final position is missing from `trade_count`, `win_rate`, and `total_pnl`.
+- Any claim about fill prices matches the default: `PriceType.MIDDLE` on the execution bar, with limit prices gating the fill rather than setting it.
 - Grep deliverables for removed/deprecated names: `bootstrap_sample_size`, `disable_parallel`, `set_pos_size_handler`, `StrategyConfig(max_long_positions=...)`.
 - Short signals set `ctx.short_score` with higher-wins ordering: negate a lowest-wins signal (`-roc`), never invert it (`1.0 / roc`).
 - If using DataFrame data, include a tiny local fixture and run the backtest without network access.

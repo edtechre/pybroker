@@ -32,7 +32,7 @@ opt = strategy.optimize(
     warmup=None,               # bars before executions run
     parallel_indicators=False, # compute indicators in parallel
     adjust=None,               # data source adjustment
-    calc_bootstrap=False,      # bootstrap metrics on the test result
+    calc_bootstrap=False,      # bootstrap metrics on opt.result only
     verbose=False,             # log every trial's backtest
 )
 ```
@@ -330,6 +330,69 @@ result accepts the same `include=`/`max_rows=`/`symbols=` controls as
 params, train score, date bounds, study summary, and any
 selector-resolved `execution_symbols`.
 
+## Bootstrap Metrics on Optimize Results
+
+`calc_bootstrap` is a parameter of `optimize` (and of
+`backtest`/`walkforward`), **not** a `StrategyConfig` field, and it
+defaults to `False`. The `StrategyConfig` knob is `bootstrap_samples`
+(default `10_000`); `bootstrap_sample_size` was removed in v2.
+
+Only `opt.result` can carry bootstrap metrics. The per-trial train
+replays hardcode `calc_bootstrap=False`, so a `score_fn` never sees
+them and cannot rank trials on a confidence interval. Rank on an
+`EvalMetrics` field instead, then inspect the interval afterwards:
+
+```python
+opt = strategy.optimize(score_fn, sampler="grid", calc_bootstrap=True)
+if opt.result.bootstrap is not None:
+    print(opt.result.bootstrap.conf_intervals)
+    print(opt.result.bootstrap.drawdown_conf)
+```
+
+- `conf_intervals` is 6 rows by 2 columns, MultiIndexed on `name`
+  (`"Profit Factor"`, `"Sharpe Ratio"`) then `conf` (`"97.5%"`,
+  `"95%"`, `"90%"`), with columns `["lower", "upper"]`. Read it as
+  `ci.loc[("Sharpe Ratio", "95%"), "lower"]`.
+- `drawdown_conf` is 4 rows by 2 columns, indexed on `conf`
+  (`"99.9%"`, `"99%"`, `"95%"`, `"90%"`) with columns
+  `["amount", "percent"]`. Values are negative upper bounds: the worst
+  drawdown you would expect not to exceed at that confidence.
+- Profit factor and Sharpe use the **BCa** (bias corrected and
+  accelerated) bootstrap; the drawdown bounds are a plain percentile
+  bootstrap. Returns are resampled per bar, not per trade.
+- Sharpe intervals are annualized only when
+  `StrategyConfig.bars_per_year` is set.
+- It changes no `metrics_df` value, so it never alters a score.
+- Cost is `bars * bootstrap_samples` per `TestResult`. It is paid once
+  on the final result, not once per trial, so it is cheap next to the
+  search itself.
+- `optimize` defaults to `seed=None`, unlike `backtest`/`walkforward`
+  which default to `seed=42`. Pass `seed=` for reproducible intervals.
+
+## Fill Prices and End-of-Data Exits
+
+Both matter here because they change what a `score_fn` reads.
+
+Orders fill at `PriceType.MIDDLE` — the midpoint of the low and high
+of the **execution** bar, one bar after the signal under the default
+`buy_delay`/`sell_delay` of `1` — unless `ctx.buy_fill_price` /
+`ctx.sell_fill_price` is set to a `PriceType`, a number, or a
+`(symbol, bar_data)` callable. A limit price only gates the fill: the
+order still fills at the fill price, never at the limit.
+
+`StrategyConfig.exit_on_last_bar` defaults to `False`, which leaves
+the final position open and out of `trade_count`, `win_rate`,
+`total_pnl` and every other trade-level metric. A `score_fn` that
+reads realized P&L will rank trials on an unclosed book unless it is
+turned on, so set `exit_on_last_bar=True` for any realized-P&L score.
+Bar-level scores (`sharpe`, `max_drawdown`, `profit_factor`) are
+computed from per-bar market value and are barely affected.
+
+`optimize` scopes end-of-data exits deliberately: each tuning trial
+liquidates at the end of its own window so trials score against a
+closed book, while the stitched `opt.result` uses the whole dataset so
+it matches an equivalent `walkforward()` run exactly.
+
 ## Models and Optimization
 
 `strategy.optimize` raises for trainable model sources: retraining a
@@ -390,6 +453,11 @@ tracebacks and obscures the original error.
   registrations warn and inflate the grid.
 - `score_fn` guards `Optional` metrics and penalizes degenerate
   results (for example, too few trades) instead of returning `None`.
+- `StrategyConfig(exit_on_last_bar=True)` is set when `score_fn` reads
+  realized P&L or trade counts; the library default of `False` leaves
+  each trial's final position out of every trade-level metric.
+- `calc_bootstrap` is passed to `optimize`, never to `StrategyConfig`,
+  and is not read by `score_fn`.
 - `seed=` is set when reproducibility matters; `optimize` does not
   default to a seed.
 - Grid size is sane: check `len(hp)` per hyperparam and multiply;

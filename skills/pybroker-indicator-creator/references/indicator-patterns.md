@@ -413,6 +413,42 @@ Registered columns also appear as `ctx.sentiment` in execution
 functions and on `ctx.interval(...)` (compressed as the last value in
 each period).
 
+## Fill Prices and End-of-Data Exits
+
+Backtest defaults that decide what an indicator's signals are worth.
+
+Orders fill at `PriceType.MIDDLE` — the midpoint of the low and high
+of the **execution** bar, one bar after the signal under the default
+`buy_delay`/`sell_delay` of `1`, so `PriceType.CLOSE` means the next
+bar's close, not the bar the indicator fired on. `PriceType` offers
+`OPEN`, `HIGH`, `LOW`, `CLOSE`, `MIDDLE` (`low + (high - low) / 2`,
+the default), and `AVERAGE` (`(open + low + high + close) / 4`):
+
+```python
+ctx.buy_shares = 100
+ctx.buy_fill_price = PriceType.OPEN  # or a number, or a callable
+```
+
+`ctx.buy_fill_price` / `ctx.sell_fill_price` also accept a number or a
+`(symbol, bar_data)` callable, read back as `None` rather than
+`MIDDLE` until set, and reset every bar. A limit price only gates the
+fill: the order still fills at the fill price, never at the limit.
+
+`StrategyConfig.exit_on_last_bar` defaults to `False`, which leaves
+the final position open. It never becomes a `Trade`, so `trade_count`,
+`win_rate`, `total_pnl` and every other trade-level metric exclude it
+and its P&L sits in `unrealized_pnl` — an easy way to under-report an
+indicator's hit rate. Set `exit_on_last_bar=True` whenever trade
+statistics are reported. Bar-level metrics (`sharpe`, `max_drawdown`)
+are computed from per-bar market value and barely move either way.
+
+`calc_bootstrap` is a parameter of `backtest`/`walkforward`, **not** a
+`StrategyConfig` field, and defaults to `False`. Pass
+`calc_bootstrap=True` to populate `result.bootstrap` with
+`conf_intervals` (BCa intervals for profit factor and Sharpe) and
+`drawdown_conf` (percentile bounds on max drawdown) when an indicator
+comparison needs error bars rather than point estimates.
+
 ## Reporting Results
 
 Print `result.metrics_df` as the human-readable summary. For

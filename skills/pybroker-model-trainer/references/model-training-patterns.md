@@ -392,6 +392,59 @@ pybroker.register_columns("sentiment")
 # 'sentiment' now flows into train/test frames and inferred input columns.
 ```
 
+## Fill Prices, End-of-Data Exits, and Bootstrap Metrics
+
+Defaults that decide what a model's backtest actually reports.
+
+Orders fill at `PriceType.MIDDLE` — the midpoint of the low and high
+of the **execution** bar, one bar after the prediction under the
+default `buy_delay`/`sell_delay` of `1`, so `PriceType.CLOSE` means
+the next bar's close. `PriceType` offers `OPEN`, `HIGH`, `LOW`,
+`CLOSE`, `MIDDLE` (`low + (high - low) / 2`, the default), and
+`AVERAGE` (`(open + low + high + close) / 4`). `ctx.buy_fill_price` /
+`ctx.sell_fill_price` also accept a number or a `(symbol, bar_data)`
+callable and read back as `None` until set. A limit price only gates
+the fill: the order still fills at the fill price, never at the limit.
+
+`StrategyConfig.exit_on_last_bar` defaults to `False`, leaving the
+final position open and out of `trade_count`, `win_rate`, `total_pnl`
+and every other trade-level metric, with its P&L in `unrealized_pnl`.
+Set `exit_on_last_bar=True` whenever trade statistics are reported.
+In `walkforward` it fires only on each symbol's true final bar, never
+at window boundaries, so positions carry across windows as usual.
+
+`calc_bootstrap` is a parameter of `walkforward`/`backtest`, **not** a
+`StrategyConfig` field, and defaults to `False`. It is the natural
+companion to walkforward analysis: it puts confidence intervals around
+a model's out-of-sample edge instead of a single point estimate.
+
+```python
+config = StrategyConfig(bootstrap_samples=10_000, bars_per_year=252)
+result = strategy.walkforward(
+    windows=3, train_size=0.5, calc_bootstrap=True
+)
+if result.bootstrap is not None:
+    print(result.bootstrap.conf_intervals)  # 6x2, (name, conf) index
+    print(result.bootstrap.drawdown_conf)   # 4x2, conf index
+```
+
+- `conf_intervals` is MultiIndexed on `name` (`"Profit Factor"`,
+  `"Sharpe Ratio"`) then `conf` (`"97.5%"`, `"95%"`, `"90%"`), with
+  columns `["lower", "upper"]`. A profit factor interval whose
+  `lower` sits below `1` means the model's edge is not distinguishable
+  from noise at that confidence.
+- `drawdown_conf` is indexed on `conf` (`"99.9%"`, `"99%"`, `"95%"`,
+  `"90%"`) with columns `["amount", "percent"]`, both negative upper
+  bounds.
+- Profit factor and Sharpe use the **BCa** (bias corrected and
+  accelerated) bootstrap; drawdown bounds are a plain percentile
+  bootstrap. Returns are resampled per bar, not per trade.
+- Sharpe intervals are annualized only when `bars_per_year` is set.
+- It changes no `metrics_df` value, and `result.bootstrap` stays
+  `None` under `train_only=True`.
+- Cost is `bars * bootstrap_samples`, paid once on the stitched
+  `TestResult` rather than once per walkforward window.
+
 ## Reporting Results
 
 Print `result.metrics_df` as the human-readable summary. For

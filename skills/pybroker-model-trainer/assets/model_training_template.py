@@ -48,6 +48,8 @@ def exec_fn(ctx: ExecContext):
     pred = ctx.preds(MODEL_NAME)[-1]
     if not ctx.long_pos():
         if pred > 0:
+            # Fills on the NEXT bar (buy_delay=1) at PriceType.MIDDLE, that
+            # bar's low/high midpoint, unless ctx.buy_fill_price is set.
             ctx.buy_shares = ctx.calc_target_shares(0.5)
     elif pred < 0:
         ctx.sell_all_shares()
@@ -56,6 +58,10 @@ def exec_fn(ctx: ExecContext):
 def build_strategy() -> Strategy:
     config = StrategyConfig(
         initial_cash=100_000,
+        # Defaults to False, which leaves the final position open: it never
+        # becomes a Trade, so trade_count, win_rate and total_pnl exclude it
+        # and its P&L sits in unrealized_pnl. Exits fill at
+        # exit_sell_fill_price / exit_cover_fill_price, both PriceType.MIDDLE.
         exit_on_last_bar=True,
     )
     strategy = Strategy(YFinance(), START_DATE, END_DATE, config)
@@ -69,6 +75,13 @@ if __name__ == "__main__":
         train_size=0.5,
         lookahead=1,  # bars ahead of the prediction target
         warmup=LOOKBACK,
+        # calc_bootstrap is a walkforward/backtest parameter, not a
+        # StrategyConfig field. True adds result.bootstrap: BCa confidence
+        # intervals for profit factor and Sharpe, plus percentile bounds on
+        # max drawdown — error bars around the model's out-of-sample edge.
+        # A profit factor interval whose lower bound sits below 1 means the
+        # edge is not distinguishable from noise at that confidence.
+        # calc_bootstrap=True,
     )
     print(result.metrics_df)
     # Structured output for agents/reports: result.to_json_str() serializes

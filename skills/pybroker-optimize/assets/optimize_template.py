@@ -50,6 +50,8 @@ def exec_fn(ctx: ExecContext):
     if np.isnan(sma_vals[-1]):
         return
     if not ctx.long_pos() and ctx.close[-1] > sma_vals[-1]:
+        # Fills on the NEXT bar (buy_delay=1) at PriceType.MIDDLE, that
+        # bar's low/high midpoint, unless ctx.buy_fill_price is set.
         ctx.buy_shares = ctx.calc_target_shares(0.25)
         # ctx.hyperparam works because stop_pct is attached below.
         ctx.stop_loss_pct = ctx.hyperparam("stop_pct")
@@ -67,6 +69,10 @@ def score_fn(result: TestResult) -> float:
 def build_strategy() -> Strategy:
     config = StrategyConfig(
         initial_cash=100_000,
+        # Defaults to False, which leaves each trial's final position open:
+        # it never becomes a Trade, so a score_fn reading realized P&L or
+        # trade counts would rank trials on an unclosed book. Trials
+        # liquidate per window; opt.result uses the whole dataset.
         exit_on_last_bar=True,
     )
     strategy = Strategy(YFinance(), START_DATE, END_DATE, config)
@@ -82,11 +88,25 @@ if __name__ == "__main__":
     # Alternatives: sampler="tpe" with n_trials=25 for large grids, or
     # windows=3 for walkforward tuning (best_params then reflects the
     # LAST window; read per-window values from opt.windows).
-    opt = strategy.optimize(score_fn, seed=42, train_size=0.5)
+    opt = strategy.optimize(
+        score_fn,
+        seed=42,
+        train_size=0.5,
+        # calc_bootstrap is an optimize/backtest/walkforward parameter, not a
+        # StrategyConfig field. It populates opt.result.bootstrap only: the
+        # per-trial replays never compute it, so score_fn cannot rank on a
+        # confidence interval. It changes no metrics_df value.
+        # calc_bootstrap=True,
+    )
     print(opt.best_params)
     print(opt.best_score)
     # Held-out test metrics — never report the in-sample best_score.
     print(opt.result.metrics_df)
+    # BCa confidence intervals for profit factor and Sharpe, plus percentile
+    # bounds on max drawdown, when calc_bootstrap=True above:
+    # if opt.result.bootstrap is not None:
+    #     print(opt.result.bootstrap.conf_intervals)
+    #     print(opt.result.bootstrap.drawdown_conf)
     # Structured output for agents/reports: opt.to_json_str() serializes
     # best_params, a study summary, the test result, and any windows.
     # Pin the winners into a regular backtest:

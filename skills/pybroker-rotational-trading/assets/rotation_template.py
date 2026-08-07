@@ -61,7 +61,9 @@ def rank_by_momentum(ctx: ExecContext):
     # NaN warmup scores are simply unrankable; no position exists yet.
     ctx.long_score = ctx.indicator("roc_20")[-1]
     # Stops set during execution are kept and applied to the entry
-    # orders that rotation places.
+    # orders that rotation places. Fill prices survive the same way:
+    # rotation's orders fill on the NEXT bar at PriceType.MIDDLE, that
+    # bar's low/high midpoint, unless ctx.buy_fill_price is set here.
     ctx.stop_loss_pct = STOP_LOSS_PCT
 
 
@@ -80,6 +82,10 @@ def size_by_rank(rotation: RotationContext):
 def build_strategy() -> Strategy:
     config = StrategyConfig(
         initial_cash=100_000,
+        # Defaults to False. A rotation is usually fully invested when the
+        # data ends, so leaving it off strands one open position per held
+        # slot: none become Trades, so trade_count, win_rate and total_pnl
+        # exclude them all. Exits fill at PriceType.MIDDLE.
         exit_on_last_bar=True,
     )
     strategy = Strategy(YFinance(), START_DATE, END_DATE, config)
@@ -96,7 +102,15 @@ def build_strategy() -> Strategy:
 
 if __name__ == "__main__":
     strategy = build_strategy()
-    result = strategy.backtest(warmup=ROC_PERIOD)
+    result = strategy.backtest(
+        warmup=ROC_PERIOD,
+        # calc_bootstrap is a backtest/walkforward parameter, not a
+        # StrategyConfig field. True adds result.bootstrap: BCa confidence
+        # intervals for profit factor and Sharpe, plus percentile bounds on
+        # max drawdown. Cost scales with bars x bootstrap_samples (a
+        # StrategyConfig field, default 10_000); metrics_df is unchanged.
+        # calc_bootstrap=True,
+    )
     print(result.metrics_df)
     # Inspect hold-band exits and rotation entries:
     # print(result.orders)

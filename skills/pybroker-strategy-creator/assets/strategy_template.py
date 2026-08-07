@@ -35,6 +35,8 @@ def exec_fn(ctx: ExecContext):
         return
 
     if ctx.close[-1] > high_20[-2]:
+        # Fills on the NEXT bar (buy_delay=1) at PriceType.MIDDLE, that
+        # bar's low/high midpoint, unless ctx.buy_fill_price is set.
         ctx.buy_shares = ctx.calc_target_shares(0.25)
         ctx.stop_loss_pct = 5
         ctx.hold_bars = 10
@@ -45,6 +47,10 @@ def exec_fn(ctx: ExecContext):
 def build_strategy() -> Strategy:
     config = StrategyConfig(
         initial_cash=100_000,
+        # Defaults to False, which leaves the final position open: it never
+        # becomes a Trade, so trade_count, win_rate and total_pnl exclude it
+        # and its P&L sits in unrealized_pnl. Exits fill at
+        # exit_sell_fill_price / exit_cover_fill_price, both PriceType.MIDDLE.
         exit_on_last_bar=True,
     )
     high_20 = highest("high_20", "high", period=LOOKBACK)
@@ -55,7 +61,15 @@ def build_strategy() -> Strategy:
 
 
 if __name__ == "__main__":
-    result = build_strategy().backtest(warmup=LOOKBACK)
+    result = build_strategy().backtest(
+        warmup=LOOKBACK,
+        # calc_bootstrap is a backtest/walkforward/optimize parameter, not a
+        # StrategyConfig field. True adds result.bootstrap: BCa confidence
+        # intervals for profit factor and Sharpe, plus percentile bounds on
+        # max drawdown. Cost scales with bars x bootstrap_samples (a
+        # StrategyConfig field, default 10_000); metrics_df is unchanged.
+        # calc_bootstrap=True,
+    )
     print(result.metrics_df)
     # Structured output for agents/reports: result.to_json_str() serializes
     # metrics, trades, orders, and bootstrap; cap tables with max_rows=.
