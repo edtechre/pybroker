@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-05 15:57-0700\n"
+"POT-Creation-Date: 2026-08-06 20:16-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -18,134 +18,143 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../source/notebooks/10. 6866e168dc184b7390ca8e9ffea432ad Rotational
-#: Trading.ipynb:9
+#: ../../source/notebooks/10. Rotational Trading.ipynb:9
+#: a3586718f3e1483e87bc1b8f77a60e6a
 msgid "Rotational Trading"
 msgstr "轮动交易"
 
-#: ../../source/notebooks/10. 0c957913bdc24e438836d92866a9aabe Rotational
+#: ../../source/notebooks/10. 4750b93d53534a5e87d43e721960fcbc Rotational
 #: Trading.ipynb:11
 msgid ""
 "Rotational trading involves buying top-performing assets and selling "
 "underperforming ones. **PyBroker** can be used for backtesting these "
 "strategies."
-msgstr "轮动交易涉及购买表现最好的资产，同时出售表现不佳的资产。**PyBroker** 可用于回测此类策略。"
+msgstr ""
+"轮动交易涉及购买表现最好的资产，同时出售表现不佳的资产。**PyBroker** 可用"
+"于回测此类策略。"
 
-#: ../../source/notebooks/10. 9e9ac5487e0e4e3cb82ac17bcaff993c Rotational
-#: Trading.ipynb:32
+#: ../../source/notebooks/10. 4771c8c98daa454cb84acb77079f7439 Rotational
+#: Trading.ipynb:33
 msgid ""
 "Our strategy will involve ranking and buying stocks with the highest "
-"`price rate-of-change (ROC) "
-"<https://www.investopedia.com/terms/p/pricerateofchange.asp>`__. To "
-"start, we'll define a 20-day ROC indicator using `TA-Lib "
-"<https://github.com/TA-Lib/ta-lib-python>`__:"
+"`price rate-of-change (ROC) <https://www.investopedia.com/terms/p/"
+"pricerateofchange.asp>`__. To start, we'll define a 20-day ROC indicator "
+"using `TA-Lib <https://github.com/TA-Lib/ta-lib-python>`__:"
 msgstr ""
-"我们的策略将涉及对 `价格涨幅（ROC） "
-"<https://www.investopedia.com/terms/p/pricerateofchange.asp>`__ "
-"最高的股票进行排名和购买。首先，我们将使用 `TA-Lib <https://github.com/TA-Lib/ta-lib-"
-"python>`__ 定义一个 20 天的 ROC 指标："
+"我们的策略将涉及对 `价格涨幅（ROC） <https://www.investopedia.com/terms/p/"
+"pricerateofchange.asp>`__ 最高的股票进行排名和购买。首先，我们将使用 `TA-"
+"Lib <https://github.com/TA-Lib/ta-lib-python>`__ 定义一个 20 天的 ROC 指"
+"标："
 
-#: ../../source/notebooks/10. Rotational Trading.ipynb:57
-#: df6b59e8da854f5797dfa9163da67f2f
+#: ../../source/notebooks/10. 8190564bcfa84edbad039658d93963c4 Rotational
+#: Trading.ipynb:58
 msgid "Next, let's define the rules of our strategy:"
 msgstr "接下来，让我们定义策略的规则："
 
-#: ../../source/notebooks/10. 662ef97ebb124a18a5a8ef0d7db178e8 Rotational
-#: Trading.ipynb:59
+#: ../../source/notebooks/10. 5faabf4728094725b1e50f5c5c7c6643 Rotational
+#: Trading.ipynb:60
 msgid "Buy the two stocks with the highest 20-day ROC."
 msgstr "购买 20 天涨幅（ROC）最高的两只股票。"
 
-#: ../../source/notebooks/10. 1b851a20aaa944dfbf6388de7434f096 Rotational
-#: Trading.ipynb:60
-#, no-python-format
+#: ../../source/notebooks/10. 31268fb95da643d088fc11be227754d6 Rotational
+#: Trading.ipynb:61
+#, python-format
 msgid "Allocate 50% of our capital to each stock."
 msgstr "将我们的资本的 50% 分配给每只股票。"
 
-#: ../../source/notebooks/10. Rotational Trading.ipynb:61
-#: ea6bb08a2a764f8b807be18d35b707de
+#: ../../source/notebooks/10. 3c861a7bd81f43979efe8db2a6c02f48 Rotational
+#: Trading.ipynb:62
 msgid ""
 "If either of the stocks is no longer ranked among the top five 20-day "
 "ROCs, then we will liquidate that stock."
-msgstr "如果其中一只股票不再位于前五名的 20 天涨幅（ROC）中，则我们将清盘该股票。"
+msgstr ""
+"如果其中一只股票不再位于前五名的 20 天涨幅（ROC）中，则我们将清盘该股票。"
 
-#: ../../source/notebooks/10. Rotational Trading.ipynb:62
-#: f73cd1f519ce476e86733eee2e4ecc7e
+#: ../../source/notebooks/10. Rotational Trading.ipynb:63
+#: a2a4449260b24466aca9af89c0c7679e
 msgid "Trade these rules daily."
 msgstr "每天交易这些规则。"
 
-#: ../../source/notebooks/10. Rotational Trading.ipynb:64
-#: c98964c13a3b4f93933b7d06db50d79b
-msgid "Let’s set up our config for the above rules:"
-msgstr "让我们为上述规则设置配置："
-
-#: ../../source/notebooks/10. Rotational Trading.ipynb:85
-#: c499e910ca5d439a890261913ec1d277
+#: ../../source/notebooks/10. Rotational Trading.ipynb:74
+#: b572baea79004a3aad4ba73c2bf82f8d
 msgid ""
 "To implement the strategy, we write a ``rotate`` function that sets each "
-"stock's `long_score "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.long_score>`__"
-" to its 20-day ROC. **PyBroker** then ranks the stocks by their "
-"``long_score`` in descending order."
+"stock's `long_score <https://www.pybroker.com/en/latest/reference/"
+"pybroker.context.html#pybroker.context.ExecContext.long_score>`__ to its "
+"20-day ROC. **PyBroker** then ranks the stocks by their ``long_score`` in "
+"descending order."
 msgstr ""
 "为了实现该策略，我们编写一个 ``rotate`` 函数，将每只股票的 `long_score "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.long_score>`__"
-" 设置为其 20 天涨幅（ROC）。然后 **PyBroker** 会根据 ``long_score`` 对这些股票进行降序排名。"
+"<https://www.pybroker.com/en/latest/reference/pybroker.context."
+"html#pybroker.context.ExecContext.long_score>`__ 设置为其 20 天涨幅"
+"（ROC）。然后 **PyBroker** 会根据 ``long_score`` 对这些股票进行降序排名。"
 
-#: ../../source/notebooks/10. Rotational Trading.ipynb:107
-#: caddae40dc804a59a3eb35401c5c4c2b
+#: ../../source/notebooks/10. 887c01706fc145d7bcde342219d4f681 Rotational
+#: Trading.ipynb:96
 msgid ""
-"Now that we have a method for scoring stocks by their ROC, we can use the"
-" `enable_rotation "
-"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.enable_rotation>`__"
-" method to turn on rotational trading."
+"Now that we have a method for scoring stocks by their ROC, we can use the "
+"`enable_rotation <https://www.pybroker.com/en/latest/reference/pybroker."
+"strategy.html#pybroker.strategy.Strategy.enable_rotation>`__ method to "
+"turn on rotational trading."
 msgstr ""
-"既然我们已经有了一种根据 ROC 对股票评分的方法，就可以使用 `enable_rotation "
-"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.enable_rotation>`__"
-" 方法来启用轮动交易。"
+"既然我们已经有了一种根据 ROC 对股票评分的方法，就可以使用 "
+"`enable_rotation <https://www.pybroker.com/en/latest/reference/pybroker."
+"strategy.html#pybroker.strategy.Strategy.enable_rotation>`__ 方法来启用轮"
+"动交易。"
 
-#: ../../source/notebooks/10. Rotational Trading.ipynb:109
-#: a11a3b7ddabb4b9fb4d6fbc87d9d890f
-#, no-python-format
+#: ../../source/notebooks/10. Rotational Trading.ipynb:98
+#: acebe59edf5347f4b5404f88daec5bfd
+#, python-format
 msgid ""
-"Setting ``worst_rank_held`` to ``5`` liquidates any currently held stock "
-"that falls outside the top five 20-day ROC rankings. Otherwise, "
-"**PyBroker** buys up to the top two ranked stocks, allocating 50% of the "
-"capital to each. This backtest uses a universe of 10 stocks:"
+"We cap long positions at ``2`` with `set_max_long_positions <https://www."
+"pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy."
+"Strategy.set_max_long_positions>`__. Setting ``worst_rank_held`` to ``5`` "
+"liquidates any currently held stock that falls outside the top five 20-"
+"day ROC rankings. Otherwise, **PyBroker** buys up to the top two ranked "
+"stocks, allocating 50% of the capital to each. This backtest uses a "
+"universe of 10 stocks:"
 msgstr ""
-"将 ``worst_rank_held`` 设置为 ``5`` 会清盘任何跌出前五名 20 "
-"天涨幅（ROC）排名之外的当前持仓股票。否则，**PyBroker** 会买入排名前两位的股票，将 50% 的资金分配给每只股票。这次回测将使用由"
-" 10 只股票组成的股票池："
+"我们通过 `set_max_long_positions <https://www.pybroker.com/en/latest/"
+"reference/pybroker.strategy.html#pybroker.strategy.Strategy."
+"set_max_long_positions>`__ 将多头仓位数量上限设置为 ``2``。将 "
+"``worst_rank_held`` 设置为 ``5`` 会清盘任何跌出前五名 20 天涨幅（ROC）排名"
+"之外的当前持仓股票。否则，**PyBroker** 会买入排名前两位的股票，将 50% 的资"
+"金分配给每只股票。这次回测将使用由 10 只股票组成的股票池："
 
-#: ../../source/notebooks/10. 5683a5473ed643fb866fe2dca3c38154 Rotational
-#: Trading.ipynb:681
+#: ../../source/notebooks/10. Rotational Trading.ipynb:669
+#: db02564d31a44f3284e5aa93606db0ce
 msgid "Custom Position Sizing"
 msgstr "自定义仓位配置"
 
-#: ../../source/notebooks/10. 1cd8a0ca349a4bab87f430173406eb77 Rotational
-#: Trading.ipynb:683
+#: ../../source/notebooks/10. 85b1b962f7314adfb13941a0b87c54e4 Rotational
+#: Trading.ipynb:671
 msgid ""
 "**PyBroker** will allocate our capital equally between positions by "
 "default. To customize this, we can pass a ``sizer`` function to "
-"`enable_rotation "
-"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.enable_rotation>`__."
-" The ``sizer`` is called with a `RotationContext "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.RotationContext>`__"
-" after rotation has decided which stocks to buy, allowing us to override "
-"the size of each entry. The ``long_ranks`` attribute contains the rank of"
-" each stock, where ``1`` is the highest ranked."
+"`enable_rotation <https://www.pybroker.com/en/latest/reference/pybroker."
+"strategy.html#pybroker.strategy.Strategy.enable_rotation>`__. The "
+"``sizer`` is called with a `RotationContext <https://www.pybroker.com/en/"
+"latest/reference/pybroker.context.html#pybroker.context."
+"RotationContext>`__ after rotation has decided which stocks to buy, "
+"allowing us to override the size of each entry. The ``long_ranks`` "
+"attribute contains the rank of each stock, where ``1`` is the highest "
+"ranked."
 msgstr ""
-"默认情况下，**PyBroker** 会将我们的资金平均分配到各个仓位。若要自定义此行为，我们可以向 `enable_rotation "
-"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.enable_rotation>`__"
-" 传入一个 ``sizer`` 函数。在轮动决定要买入哪些股票之后，会使用 `RotationContext "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.RotationContext>`__"
-" 调用 ``sizer``，使我们能够覆盖每笔入场的仓位规模。``long_ranks`` 属性包含每只股票的排名，其中 ``1`` "
-"表示排名最高。"
+"默认情况下，**PyBroker** 会将我们的资金平均分配到各个仓位。若要自定义此行"
+"为，我们可以向 `enable_rotation <https://www.pybroker.com/en/latest/"
+"reference/pybroker.strategy.html#pybroker.strategy.Strategy."
+"enable_rotation>`__ 传入一个 ``sizer`` 函数。在轮动决定要买入哪些股票之"
+"后，会使用 `RotationContext <https://www.pybroker.com/en/latest/reference/"
+"pybroker.context.html#pybroker.context.RotationContext>`__ 调用 "
+"``sizer``，使我们能够覆盖每笔入场的仓位规模。``long_ranks`` 属性包含每只股"
+"票的排名，其中 ``1`` 表示排名最高。"
 
-#: ../../source/notebooks/10. 837aeb4094cc4621ab5535c1f667e966 Rotational
-#: Trading.ipynb:686
+#: ../../source/notebooks/10. Rotational Trading.ipynb:674
+#: bb0b3251d1ff448f97efc624960944b7
 #, python-format
 msgid ""
 "Let's reuse our strategy, but this time allocate 70% of our capital to "
 "the top-ranked stock and 30% to the second:"
-msgstr "让我们重用相同的策略，但这次将 70% 的资金分配给排名第一的股票，30% 分配给排名第二的股票："
-
+msgstr ""
+"让我们重用相同的策略，但这次将 70% 的资金分配给排名第一的股票，30% 分配给"
+"排名第二的股票："

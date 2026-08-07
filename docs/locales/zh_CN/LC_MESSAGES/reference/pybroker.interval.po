@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-05 15:57-0700\n"
+"POT-Creation-Date: 2026-08-06 20:16-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -20,66 +20,73 @@ msgstr ""
 "Generated-By: Babel 2.18.0\n"
 
 #: ../../source/reference/pybroker.interval.rst:2
-#: c9d3bb4be5c24ab8b79b214e5c1020c8
+#: 626a9706dd9a4a8daa1d6f5a8ba6edbf
 msgid "pybroker.interval module"
 msgstr ""
 
-#: 604e320a4afd4748b0fb7fb87596996d of pybroker.interval:1
+#: a374497a7d7641ce923afc75a2f652d5 of pybroker.interval:1
 msgid "Multi-interval bar compression utilities."
 msgstr ""
 
-#: 58fb54dd829446e990d08ccea6b5b40c of pybroker.interval:3
+#: 7dfbef209af24d9893262069cab82ddd of pybroker.interval:3
 msgid "Copyright (C) 2023 Edward West. All rights reserved."
 msgstr ""
 
-#: cacc7d324d904a98b6b1a7394209f8d0 of pybroker.interval:5
+#: 9cb4210f9a784bf68aaf7f35017db374 of pybroker.interval:5
 msgid ""
 "This code is licensed under Apache 2.0 with Commons Clause license (see "
 "LICENSE for details)."
 msgstr ""
 
-#: 52f4b5f41faa47bbb190e4ed2e80b05d of pybroker.interval.CompressedBars:1
+#: f56fabdb8e4a4c74af04db41e1587e86 of pybroker.interval.BASE_INTERVAL:1
+msgid ""
+"Sentinel accepted by :meth:`pybroker.indicator.Indicator.intervals` and "
+":meth:`pybroker.model.ModelSource.intervals` to request the base-"
+"timeframe variant in addition to the listed compression intervals."
+msgstr ""
+
+#: 5aeae8ba80ed43ebb812d337fbdd1ab4 of pybroker.interval.CompressedBars:1
 msgid "OHLCV and custom columns aggregated into compressed bars."
 msgstr ""
 
-#: a5a192251b254d438d09985983bfaa80 of
+#: 32837b7d303a41d99d3507afd876f9b9 of
 #: pybroker.interval.CompressedBars.slice_by_dates:1
 msgid "Returns compressed bars restricted to ``dates``."
 msgstr ""
 
-#: 80dbef56877043c1896b687f354323cf of pybroker.interval.CompressedSymbolData:1
+#: 2748fdcf27b345f2a6d017f3596f70d5 of pybroker.interval.CompressedSymbolData:1
 msgid "Compressed bar data and alignment map for one symbol."
 msgstr ""
 
-#: af46dade18a442b99f3090bc5d3e52be of
+#: dc01eeccdb5147a3823980f318819f6d of
 #: pybroker.interval.INTERVAL_NAME_SEPARATOR:1
 msgid "Separator reserved for interval bindings in indicator and model names."
 msgstr ""
 
-#: f3e55a99a9624114848b3be5d8bb52e9 of pybroker.interval.IntervalData:1
+#: 6d4b726ca77c46399eb2aecd389c646b of pybroker.interval.IntervalData:1
 msgid "Compressed data keyed by ``(symbol, interval)``."
 msgstr ""
 
-#: 8e06f25bbb59499b9677e39c9fc2f159 of
+#: 0d7022c5876a43d99b74ab5ddac90fc4 of
 #: pybroker.interval.IntervalData.slice_for_test:1
 msgid "Returns a copy with ``completed`` arrays aligned to test dates."
 msgstr ""
 
-#: dd3a8cbd3ed6457c9625d94f633c6ec4 of typing.Union:1
+#: 07c9731f98e745f0a67d599482fa282b of typing.Union:1
 msgid "Compression interval for multi-interval data."
 msgstr ""
 
-#: 89c244381e364aa2afee9c7c523d8cc9 of typing.Union:3
+#: b878a97748bb4f5c931331de191827ef of typing.Union:3
 msgid "``int`` (``n > 1``): every ``n`` base bars (e.g. ``5``)."
 msgstr ""
 
-#: 8f28524b508044c3bf4ebfa174d87663 of typing.Union:4
+#: a6d36cdce817424ca40dd16ca1ff06c1 of typing.Union:4
 msgid ""
 "``str`` duration: digits plus one unit letter — ``\"5m\"``, ``\"1h\"``, "
 "``\"30s\"``, or ``\"1d\"`` (letters: ``s``, ``m``, ``h``, ``d``)."
 msgstr ""
 
-#: a22b36d2773e4e0b985cab3fb073a4ad of typing.Union:6
+#: 3df8cb31b6fd4b129805d4229c8f284b of typing.Union:6
 msgid ""
 "``str`` calendar: ``\"daily\"``, ``\"weekly\"``, ``\"monthly\"``, "
 "``\"quarterly\"``, or ``\"yearly\"``, aligned to calendar boundaries: "
@@ -87,83 +94,84 @@ msgid ""
 "January, April, July, and October, and years on January 1."
 msgstr ""
 
-#: 3e84c215d442443ab210e32b9688463b of
+#: 2ca333af42e74933ac023808c961696c of
 #: pybroker.interval.base_timeframe_to_seconds:1
 msgid "Converts a base timeframe string to seconds."
 msgstr ""
 
-#: 3536ed6fc1194e739ba940ec1f2f31d2 of
+#: c1dc16ab083c4cd5b386dfa76cb668fe of
 #: pybroker.interval.build_compressed_symbol_arrays:1
 msgid "Builds compressed-bar column arrays with base indicator names."
 msgstr ""
 
-#: 86d8c630d1364ed3b037f80f10b08e85 of
+#: c1f768fff4704239a9d06d66b9c5fae7 of
 #: pybroker.interval.build_compressed_symbol_df:1
 msgid "Builds a compressed-bar DataFrame with base indicator column names."
 msgstr ""
 
-#: a6ab1fd00e6a4550bac7a1b3fd794577 of
+#: 274934a531124345856ccf8ba0881b7b of
 #: pybroker.interval.build_compressed_symbol_df:3
 msgid ""
 "Not used on the backtest hot path; prefer "
 ":func:`build_compressed_symbol_arrays`."
 msgstr ""
 
-#: fc4d8705ab9f41638e0c4570419b8ded of pybroker.interval.compress:1
+#: 86811dc966dd423c9ecd8b364c067c29 of pybroker.interval.compress:1
 msgid "Compresses base bars into coarser interval bars."
 msgstr ""
 
-#: ee65da9edb2c48f6bfd40450b30276c0 of pybroker.interval.compress:3
+#: 1d351b07bf5644e4801cf438db229635 of pybroker.interval.compress:3
 msgid ""
 "Returns compressed bars and a ``completed`` alignment map where "
 "``completed[t]`` is the index of the last *completed* compressed bar at "
 "base bar ``t``, or ``-1`` during warmup."
 msgstr ""
 
-#: ddbe3afe00a8433b8a8d4d73895d0562 of pybroker.interval.compress_bars:1
+#: 55ffaa27e54d4bc884a860b8aa649c26 of pybroker.interval.compress_bars:1
 msgid "Compresses base OHLCV bars to a coarser ``interval``."
 msgstr ""
 
 #: ../../source/reference/pybroker.interval.rst
-#: 1a6c011ab9b341389812dbae607e331b 41ff81fbccdc49309922e0ad1c06a858
-#: c7df26c311d64eefadce2017e1ad9000
+#: 634362158dfd436f92f2a36910f02f34 c3568bcb80694a8fabd11dbab0573dd8
+#: dd663de7f1eb4d15b45dbb3a1c65b245 df4c68cbcaaf4039ac798a0624cf66ef
+#: fe854dea8dbd4039b58f9c349ad9edd9
 msgid "Parameters"
 msgstr ""
 
-#: 7b3054eefc5c4da89450d9e2c61a57cd of pybroker.interval.compress_bars:3
+#: b2e3316166734bdc8933386d6220eec5 of pybroker.interval.compress_bars:3
 msgid ""
 "Single-symbol :class:`~pybroker.common.BarData` or OHLCV "
 ":class:`pandas.DataFrame`."
 msgstr ""
 
-#: 791e032d16ca47109925c72919052921 of pybroker.interval.compress_bars:5
+#: 75f551229ebf4ed88483a116ba86c091 of pybroker.interval.compress_bars:5
 msgid "Target compression interval."
 msgstr ""
 
-#: 3b1e8e7cb69b4fe1bd42bf79c89b597d of pybroker.interval.compress_bars:6
+#: 14d2e268e81f4e05b7b70db710abc75b of pybroker.interval.compress_bars:6
 msgid "Declared base bar spacing (e.g. ``\"1m\"``, ``\"1d\"``)."
 msgstr ""
 
 #: ../../source/reference/pybroker.interval.rst
-#: 8cfd20c94a584e81a6941df7c2a33990
+#: a8a93fc33df347e6bd4d7a219d06d067 f8e5b343e9d04fdebb666c875525dfb2
 msgid "Returns"
 msgstr ""
 
-#: 956104165ac24009a9507b6a2334f58b of pybroker.interval.compress_bars:8
+#: 3075f43abc6d40a682aa7344c0239e9a of pybroker.interval.compress_bars:8
 msgid "Compressed :class:`~pybroker.common.BarData`."
 msgstr ""
 
-#: 4481bb8d3c774360897c220c3249c9a0 of
+#: 02dac0b6d4234238abcf6e0f3076d672 of
 #: pybroker.interval.compress_intervals_from_frame:1
 msgid "Compresses each symbol to the intervals declared for it."
 msgstr ""
 
-#: 2e60d76f4cb7467bb67566f82e5a956f of
+#: d4bad05552c142b5898b885b2be37af4 of
 #: pybroker.interval.compress_intervals_from_frame:3
 msgid "Multi-symbol OHLCV frame."
 msgstr ""
 
-#: 3aac54ea4b2f44e2b5dc3d147fb89c74 of
+#: b71bd006fc6e4518b35b3dd2415c5d17 of
 #: pybroker.interval.compress_intervals_from_frame:4
 msgid ""
 "Maps each symbol to the intervals it is compressed to. Symbols absent "
@@ -172,31 +180,31 @@ msgid ""
 "interval cross product."
 msgstr ""
 
-#: 3469e554f13048a0b0718fd38c588195 of
+#: f5728ab892444624b8069e46a7756949 of
 #: pybroker.interval.compress_intervals_from_frame:8
 msgid "Custom data columns carried onto compressed bars."
 msgstr ""
 
-#: 0ff8dc0f96534c4faadeadf389597602 of
+#: 92478e26fc5a4095a126e685c0908d5d of
 #: pybroker.interval.compress_intervals_from_frame:9
 msgid "Bar spacing of the base feed, in seconds."
 msgstr ""
 
-#: 95b4821c8861408489d0aaa3506880e4 of pybroker.interval.compress_symbol_df:1
+#: 45b38e523c494e3d89fe63f81461c176 of pybroker.interval.compress_symbol_df:1
 msgid "Compresses a single-symbol DataFrame."
 msgstr ""
 
-#: 8ba6a8fa489646e29d7c0e510272fb72 of
+#: ee8fb334603d45bdab3b25f1c672e41c of
 #: pybroker.interval.compress_symbol_from_frame:1
 msgid "Compresses one symbol from a multi-symbol frame without copying rows."
 msgstr ""
 
-#: ef2b6ded36664e769bfe4a252657679d of
+#: a6bfc8b511f240d4b153cd65b66e88c0 of
 #: pybroker.interval.compress_symbol_intervals_from_frame:1
 msgid "Compresses one symbol to multiple intervals with a single OHLCV extract."
 msgstr ""
 
-#: dfb9065a7bc84a7e933df7131eb36b26 of
+#: 5eabde8b5b5d41f488445e7dd9005608 of
 #: pybroker.interval.compress_symbol_intervals_from_frame:3
 msgid ""
 "``rows`` optionally supplies this symbol's precomputed row indices, so a "
@@ -204,80 +212,148 @@ msgid ""
 " the symbol column per symbol."
 msgstr ""
 
-#: b2ea57ca33604355909c73b20b149439 of
+#: 7c410976ba13414b8dfffaee01d59d47 of
 #: pybroker.interval.compressed_bars_to_bar_data:1
 msgid "Converts compressed OHLCV arrays to :class:`~pybroker.common.BarData`."
 msgstr ""
 
-#: eadcb8d8afef47558b3208f95073a0d0 of pybroker.interval.format_interval:1
+#: 1774f8dfdd76428b9d85384252d32cea of pybroker.interval.format_interval:1
 msgid "Returns a stable string representation of ``interval``."
 msgstr ""
 
-#: 795c43a0c4f147a18abecfb33437bcaf of
+#: 8a2df7bcde98480cb2381f5605794a29 of
 #: pybroker.interval.indicator_interval_name:1
 msgid "Returns the suffixed indicator name for an interval binding."
 msgstr ""
 
-#: 307db40e852849069d48367366cf049a of pybroker.interval.is_valid_interval:1
+#: d1ad404f5fc64c498324c10557e9be91 of pybroker.interval.is_valid_interval:1
 msgid "Returns whether ``interval`` is valid for the base feed bar spacing."
 msgstr ""
 
-#: c9d0e0753ccd417ba42211492bfd1e40 of pybroker.interval.model_interval_name:1
+#: cbbdd24868b44fe39444041232051bad of
+#: pybroker.interval.lookahead_train_dates:1
+msgid ""
+"Trims compressed train bar dates so the train/test hold-out is "
+"``lookahead`` compressed bars wide."
+msgstr ""
+
+#: 55c4cf77b6b94c80b5504172a890d9b3 of
+#: pybroker.interval.lookahead_train_dates:4
+msgid ""
+"The walkforward split holds out ``lookahead`` bars of the *base* "
+"timeframe, but a model bound to an interval is fitted on compressed bars,"
+" so the hold-out must be re-measured in compressed-bar units: every kept "
+"train bar satisfies ``compressed_index <= first_test_compressed_index - "
+"lookahead``."
+msgstr ""
+
+#: 3b85757f8a404a368c54a9413e0b978d of
+#: pybroker.interval.lookahead_train_dates:10
+msgid "Dates of the full compressed bar history for one symbol."
+msgstr ""
+
+#: 43d171a88d144eab829a153b85f68d69 of
+#: pybroker.interval.lookahead_train_dates:11
+msgid ""
+"Base-timeframe train window dates; compressed bars are selected by "
+"membership of their closing date."
+msgstr ""
+
+#: d39fd3f11cb34ae69c6bfce5910b0bbf of
+#: pybroker.interval.lookahead_train_dates:13
+msgid "Base-timeframe test window dates."
+msgstr ""
+
+#: 541fb75e201640e48ca34e5fc5498f61 of
+#: pybroker.interval.lookahead_train_dates:14
+msgid "Number of compressed bars to hold out."
+msgstr ""
+
+#: f4f52a6f02ce41ada8286f047a2817a0 of
+#: pybroker.interval.lookahead_train_dates:16
+msgid ""
+"``(dates_to_select, n_dropped)`` — the train bar dates to keep and how "
+"many train compressed bars were dropped. With ``lookahead <= 1`` the "
+"requested train dates are returned unchanged, which matches the one-bar "
+"gap that date membership already produces."
+msgstr ""
+
+#: 62c1fdd18f5c438e91d3af421798ff37 of pybroker.interval.model_interval_name:1
 msgid "Returns the suffixed model name for an interval binding."
 msgstr ""
 
-#: ea24db2cc917484196a1f3554499ff31 of pybroker.interval.normalize_interval:1
+#: 7e4f89f47dd34aed8683da15c3e0a4d6 of pybroker.interval.normalize_interval:1
 msgid "Normalizes and validates a compression interval."
 msgstr ""
 
-#: 507ed65c594b402cae76e09d5b00c6a2 of
+#: c242c0a893b04e37b76fbb88907a7a59 of pybroker.interval.normalize_intervals:1
+msgid ""
+"Normalizes one or more compression intervals into a :class:`frozenset`, "
+"rejecting empty input and duplicates."
+msgstr ""
+
+#: 857c55633be84e9ab0f282068a9d9e1d of pybroker.interval.normalize_intervals:4
+msgid "A single :class:`TimeframeInterval` or an :class:`Iterable` of them."
+msgstr ""
+
+#: c3fd670dc66746f7b21be2de0da2ce0d of pybroker.interval.normalize_intervals:6
+msgid "Parameter name used in error messages."
+msgstr ""
+
+#: 9d6d2432d49347688d39938f47b13ac3 of pybroker.interval.normalize_intervals:7
+msgid ""
+"If ``True``, the literal ``'base'`` passes through verbatim. Otherwise it"
+" is rejected like any other invalid interval."
+msgstr ""
+
+#: 82d37180e62644e6be66d81fc3387ef6 of
 #: pybroker.interval.parse_indicator_interval_name:1
 msgid "Parses a suffixed indicator name into base name and interval."
 msgstr ""
 
-#: 846aba437e1e4614a7ccd1ab059c3391 of
+#: bfe7621fcbdb41c58104cfaa47b181e3 of
 #: pybroker.interval.parse_model_interval_name:1
 msgid "Parses a suffixed model name into base name and interval."
 msgstr ""
 
-#: 08c3c44844604344850ea87981c02211 of
+#: 6e85319ec33648de8a83077c5a457309 of
 #: pybroker.interval.slice_arrays_by_dates:1
 msgid "Filters column arrays to rows whose dates are in ``selected``."
 msgstr ""
 
-#: a57ee2d9a96d4845b2865eba8d8b49d5 of
+#: fdac8c031387409ea880e5419e326ad6 of
 #: pybroker.interval.slice_compressed_df_by_dates:1
 msgid "Filters a compressed DataFrame to rows whose dates are in ``dates``."
 msgstr ""
 
-#: e22036f8f4ee46b6845aa2c15f34ee33 of
+#: 5213889560ac432e96eb0e85b5fe6a6f of
 #: pybroker.interval.slice_compressed_df_by_dates:3
 msgid "Not used on the backtest hot path; prefer :func:`slice_arrays_by_dates`."
 msgstr ""
 
-#: 07007437f0f14940952492e3d31706c9 of
+#: 7a8f9f25f6ae497291a7d91ceca8426a of
 #: pybroker.interval.symbol_dates_from_frame:1
 msgid "Extracts per-symbol test dates from a multi-symbol frame."
 msgstr ""
 
-#: 4f343d0f6d61469fbb69060bbff5a998 of
+#: 9ccf6217a6254c6d9c948c29525a6730 of
 #: pybroker.interval.validate_base_timeframe_data:1
 msgid "Raises if bar timestamps are inconsistent with ``base_bar_seconds``."
 msgstr ""
 
-#: d13b836d1e0d46c8afbd79067b865c66 of pybroker.interval.validate_interval:1
+#: c220e5dd1bfc414eb50ab270f1c024c5 of pybroker.interval.validate_interval:1
 msgid "Validates an interval against the base feed bar spacing."
 msgstr ""
 
-#: 27e7aa85e81f4048a54d1f4baee90505 of pybroker.interval.validate_source_name:1
+#: 447847331375451dabac19bfa2ba4b1e of pybroker.interval.validate_source_name:1
 msgid "Raises if ``name`` cannot be used as an indicator or model name."
 msgstr ""
 
-#: c5dc15564b25415ab74e2a3e56419c8d of pybroker.interval.validate_source_name:3
+#: af4102f6c18247f98bdb25a077397bcf of pybroker.interval.validate_source_name:3
 msgid "Name being registered."
 msgstr ""
 
-#: 4516d79219bd48218173d135a0d66edc of pybroker.interval.validate_source_name:4
+#: 93995acd89954e5d92f62d3af24da2a4 of pybroker.interval.validate_source_name:4
 msgid "``'indicator'`` or ``'model'``, used in the error message."
 msgstr ""
 

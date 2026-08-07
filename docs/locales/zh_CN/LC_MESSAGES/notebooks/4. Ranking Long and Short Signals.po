@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-04 18:14-0700\n"
+"POT-Creation-Date: 2026-08-06 20:16-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -18,63 +18,59 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../source/notebooks/4. 4178d07b327f4bb2b57dfb746b7cc87b Long Ranking
-#: Short Signals.ipynb:9 and
+#: ../../source/notebooks/4. Long Ranking Short Signals.ipynb:9 and
+#: e52af394ab824fbbb40ba5820f11c5d3
 msgid "Ranking Long and Short Signals"
 msgstr "排名做多和做空信号"
 
-#: ../../source/notebooks/4. Long Ranking Short Signals.ipynb:11 and
-#: db0579de095d4602b27c9a43911f75c4
+#: ../../source/notebooks/4. Long Ranking Short Signals.ipynb:11
+#: a4cb8b3f5a814115bdc54d4a616e3a0f and
 msgid ""
 "In this notebook, you will learn how to rank long and short signals "
 "across ticker symbols."
 msgstr "在本文档中，你将学习如何对各股票代码的多头和空头信号进行排名。"
 
-#: ../../source/notebooks/4. 1273955eb54943a29cbea4741413c111 Long Ranking
+#: ../../source/notebooks/4. 3eb6f52b981f44de978f0bf323a2487e Long Ranking
 #: Short Signals.ipynb:61 and
 msgid "Long Signals"
 msgstr "多头信号"
 
-#: ../../source/notebooks/4. Long Ranking Short Signals.ipynb:63 and
-#: f10e0cf03b874e8a839c041cb9f9f0d1
+#: ../../source/notebooks/4. 74acf2c817f3447cacc0092fdea41cf5 Long Ranking
+#: Short Signals.ipynb:63 and
 msgid ""
 "Let's begin with an example of how to rank ticker symbols based on volume"
 " when placing buy orders:"
 msgstr "让我们从一个示例开始，说明如何在下买单时根据成交量对股票代码进行排名："
 
 #: ../../source/notebooks/4. Long Ranking Short Signals.ipynb:89 and
-#: c33d7d50c0da4c6b854e26a266969914
-#, no-python-format
+#: c58cc01be5a246ce9eee0161196559bd
+#, no-python-format, python-format
 msgid ""
 "The ``buy_highest_volume`` function allocates 100% of the portfolio and "
 "holds for 2 bars. It sets ``ctx.long_score`` to ``ctx.volume[-1]`` so "
 "**PyBroker** ranks the buy signals by volume."
 msgstr ""
-"``buy_highest_volume`` 函数分配 100% 的投资组合并持有 2 个 Bar。它将 "
-"``ctx.long_score`` 设置为 ``ctx.volume[-1]``，因此 **PyBroker** 会根据成交量对买入信号进行排名。"
+"``buy_highest_volume`` 函数分配 100% 的投资组合并持有 2 个 Bar。它将 ``ctx.long_score`` "
+"设置为 ``ctx.volume[-1]``，因此 **PyBroker** 会根据成交量对买入信号进行排名。"
 
-#: ../../source/notebooks/4. 6b775c7a01ac4e67a3d94e26bb53312c Long Ranking
+#: ../../source/notebooks/4. 5828ab0fa80540b4af56b168d4294068 Long Ranking
 #: Short Signals.ipynb:112 and
 msgid ""
 "To limit the number of long positions that can be held at any time to "
-"``1``, we set `max_long_positions "
-"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.max_long_positions>`__"
-" to ``1`` in the `StrategyConfig "
-"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig>`__."
+"``1``, we call `set_max_long_positions "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_max_long_positions>`__."
 " This effectively buys the symbol with the highest volume."
 msgstr ""
-"要将同一时间可持有的多头仓位数量限制为 ``1``，我们在 `StrategyConfig "
-"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig>`__"
-" 中将 `max_long_positions "
-"<https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.max_long_positions>`__"
-" 设置为 ``1``。这实际上会买入成交量最高的股票代码。"
+"要将同一时间可持有的多头仓位数量限制为 ``1``，我们调用 `set_max_long_positions "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_max_long_positions>`__。"
+"这实际上会买入成交量最高的股票代码。"
 
-#: ../../source/notebooks/4. 0035b012cc624fafae53725bc62fc4d1 Long Ranking
+#: ../../source/notebooks/4. 1f042d9fa28547d2995bfee9f8369fc7 Long Ranking
 #: Short Signals.ipynb:654 and
 msgid "Short Signals"
 msgstr "空头信号"
 
-#: ../../source/notebooks/4. 2bffbc6a1e7945c09703390e350faf64 Long Ranking
+#: ../../source/notebooks/4. 77eb63337d5a49b59a926d161dc748d4 Long Ranking
 #: Short Signals.ipynb:656 and
 msgid ""
 "**PyBroker** can also rank short signals using `short_score "
@@ -82,14 +78,14 @@ msgid ""
 " where short orders are placed for the ticker symbols with the highest "
 "``short_score`` values. The following example buys the ticker symbol with"
 " the highest 5-day rate of change (ROC) while shorting the ticker symbol "
-"with the lowest 5-day ROC:"
+"with the most negative 5-day ROC:"
 msgstr ""
 "**PyBroker** 还可以使用 `short_score "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.short_score>`__"
 " 对空头信号进行排名，空头订单会下给 ``short_score`` 值最高的股票代码。以下示例买入 5 "
-"日变化率（ROC）最高的股票代码，同时卖空 5 日 ROC 最低的股票代码："
+"日变化率（ROC）最高的股票代码，同时卖空 5 日 ROC 最负的股票代码："
 
-#: ../../source/notebooks/4. 784c1287bef6488bb76da3e2426c07c4 Long Ranking
+#: ../../source/notebooks/4. 8b959982864745ba867d55a8696203ad Long Ranking
 #: Short Signals.ipynb:1219 and
 msgid ""
 "`In the next notebook, we will discuss how to implement custom indicators"
@@ -98,3 +94,4 @@ msgid ""
 msgstr ""
 "`在下一篇文档中，我们将讨论如何在 PyBroker 中实现自定义指标 "
 "<https://www.pybroker.com/en/latest/notebooks/5.%20Writing%20Indicators.html>`__。"
+
