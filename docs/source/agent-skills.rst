@@ -54,6 +54,7 @@ skills in ``.agents/skills/``. Symlink the PyBroker skills there:
 
    # Inside your own working project directory:
    mkdir -p .agents/skills
+
    for skill in /path/to/pybroker/skills/*; do \
        ln -s "$skill" .agents/skills/; \
    done
@@ -68,6 +69,7 @@ Cursor
 
    # Inside your own working project directory:
    mkdir -p .cursor/skills
+   
    for skill in /path/to/pybroker/skills/*; do \
        ln -s "$skill" .cursor/skills/; \
    done
