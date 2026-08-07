@@ -56,6 +56,8 @@ Breaking changes
 
 * Model lag matrices passed to ``train_fn`` / ``predict_fn`` instead of DataFrame attrs; see the `model module <https://www.pybroker.com/en/latest/reference/pybroker.model.html>`_.
 
+* Removes ``akshare`` from install dependencies; install it separately to use `AKShare <https://www.pybroker.com/en/latest/reference/pybroker.ext.data.html#pybroker.ext.data.AKShare>`_.
+
 1.2.14
 ======
 
