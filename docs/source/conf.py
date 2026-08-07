@@ -36,6 +36,10 @@ nitpick_ignore = [
     ("py:class", "pybroker.scope._StoreBacking"),
     ("py:class", "_ExecutionsHost"),
     ("py:class", "_OptimizeTrialHost"),
+    # Excluded from pybroker.indicator.rst via :exclude-members: so it is
+    # omitted from the generated API index.
+    ("py:class", "pybroker.indicator.IntervalBoundIndicator"),
+    ("py:class", "IntervalBoundIndicator"),
 ]
 
 project = "PyBroker"

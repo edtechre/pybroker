@@ -5,3 +5,4 @@ pybroker.indicator module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: IntervalBoundIndicator
