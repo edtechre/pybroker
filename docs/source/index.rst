@@ -83,7 +83,7 @@ Key Features
 * :doc:`Agent Skills <agent-skills>` that help AI agents write trading strategies and backtests using PyBroker.
 
 
-With PyBroker, you will have the tools to build, test, and evaluate algorithmic trading strategies backed by machine learning.
+PyBroker provides you with the tools to build, test, and evaluate algorithmic trading strategies backed by machine learning.
 
 
 .. include:: install.rst

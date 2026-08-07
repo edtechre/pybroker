@@ -30,7 +30,7 @@ your strategy’s performance.
 * [Parallelized](https://www.pybroker.com/en/latest/notebooks/11.%20Configuring%20Parallelization.html) computation and training for faster performance.
 * [Agent Skills](https://www.pybroker.com/en/latest/agent-skills.html) that help AI agents write trading strategies and backtests using PyBroker.
 
-With PyBroker, you will have the tools to build, test, and evaluate algorithmic trading strategies backed by machine learning.
+PyBroker provides you with the tools to build, test, and evaluate algorithmic trading strategies backed by machine learning.
 
 ## Installation
 
