@@ -215,7 +215,6 @@ Holds data that was set during the execution of a :class:`pybroker.strategy.Stra
 - `date: np.datetime64`
 - `buy_fill_price: Union[int, float, np.floating, Decimal, PriceType, Callable[[str, BarData], Union[int, float, Decimal]]]`
 - `sell_fill_price: Union[int, float, np.floating, Decimal, PriceType, Callable[[str, BarData], Union[int, float, Decimal]]]`
-- `score: Optional[float]`
 - `long_score: Optional[float]`
 - `short_score: Optional[float]`
 - `hold_bars: Optional[int]`
@@ -278,8 +277,6 @@ Contains context data during the execution of a :class:`pybroker.strategy.Strate
 - `stop_trailing_pct: Optional[Union[int, float, Decimal]]`
 - `stop_trailing_limit: Optional[Union[int, float, Decimal]]`
 - `stop_trailing_exit_price: Optional[PriceType]`
-- `score() -> Optional[float]`: Deprecated ranking field; prefer :attr:`long_score` / :attr:`short_score`.
-- `score(value: Optional[float])`
 - `total_equity() -> Decimal`: Total equity currently held in the :class:`pybroker.portfolio.Portfolio`.
 - `cash() -> Decimal`: Total cash currently held in the :class:`pybroker.portfolio.Portfolio`.
 - `total_margin() -> Decimal`: Total amount of margin currently held in the :class:`pybroker.portfolio.Portfolio`.

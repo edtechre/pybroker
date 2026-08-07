@@ -25,7 +25,6 @@ class ExecResult:
     date: np.datetime64
     buy_fill_price: Union[int, float, np.floating, Decimal, PriceType, Callable[[str, BarData], Union[int, float, Decimal]]]
     sell_fill_price: Union[int, float, np.floating, Decimal, PriceType, Callable[[str, BarData], Union[int, float, Decimal]]]
-    score: Optional[float]
     long_score: Optional[float]
     short_score: Optional[float]
     hold_bars: Optional[int]
@@ -95,10 +94,6 @@ class ExecContext:
     stop_trailing_pct: Optional[Union[int, float, Decimal]]
     stop_trailing_limit: Optional[Union[int, float, Decimal]]
     stop_trailing_exit_price: Optional[PriceType]
-    @property
-    def score(self) -> Optional[float]: ...
-    @score.setter
-    def score(self, value: Optional[float]) -> None: ...
     @property
     def total_equity(self) -> Decimal: ...
     @property

@@ -297,6 +297,11 @@ STUB_EXTRA_METHODS: dict[str, list[tuple[str, str, list[str]]]] = {
     "Strategy": [("src/pybroker/optimize.py", "OptimizeMixin", ["optimize"])],
 }
 
+# (class name, member name) pairs withheld from every generated
+# reference: deprecated members stay out of the API surface and stubs so
+# the skills teach only the current API (ctx.long_score / ctx.short_score).
+OMIT_MEMBERS = frozenset({("ExecResult", "score"), ("ExecContext", "score")})
+
 
 def _notebook_paths(notebooks_dir: Path) -> list[Path]:
     """Numeric sort on the leading integer; unnumbered (FAQs) last."""
@@ -495,7 +500,7 @@ def _field_bullets(cls: ast.ClassDef) -> list[str]:
         if not isinstance(node.target, ast.Name):
             continue
         name = node.target.id
-        if name.startswith("_"):
+        if name.startswith("_") or (cls.name, name) in OMIT_MEMBERS:
             continue
         annotation = ast.unparse(node.annotation)
         if annotation.startswith("ClassVar"):
@@ -712,6 +717,8 @@ def _stub_class(
             annotation = ast.unparse(node.annotation)
             if name.startswith("_") or annotation.startswith("ClassVar"):
                 continue
+            if (cls.name, name) in OMIT_MEMBERS:
+                continue
             # Class constants (ADJ_CLOSE, COLUMNS, ...) may be referenced
             # by sibling class-attribute defaults in the same file.
             if name.isupper():
@@ -744,6 +751,8 @@ def _stub_class(
             body.append(f"{name}: {ast.unparse(annotation)}")
     for node in cls.body:
         if not _is_public_def(node) or node.name == "__init__":
+            continue
+        if (cls.name, node.name) in OMIT_MEMBERS:
             continue
         body += _stub_def(node, used)
     getattr_def = next(
@@ -1048,6 +1057,8 @@ def _class_block(cls: ast.ClassDef, summarize: bool) -> list[str]:
         ]
     for node in cls.body:
         if not _is_public_def(node) or node.name == "__init__":
+            continue
+        if (cls.name, node.name) in OMIT_MEMBERS:
             continue
         decorators = _decorator_names(node)
         if "property" in decorators or "cached_property" in decorators:
