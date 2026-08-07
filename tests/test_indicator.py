@@ -253,6 +253,44 @@ class TestIndicatorSet:
         assert len(result) == len(df)
         assert set(result.columns) == set(["date", "symbol", "hhv", "llv"])
 
+    def test_call_per_symbol_layout_and_values(
+        self, data_source_df, hhv_ind, llv_ind, disable_parallel
+    ):
+        ind_set = IndicatorSet()
+        ind_set.add([hhv_ind, llv_ind])
+        result = ind_set(data_source_df, disable_parallel)
+
+        sym_col = DataCol.SYMBOL.value
+        date_col = DataCol.DATE.value
+
+        assert list(result.columns) == [sym_col, date_col, "hhv", "llv"]
+        assert len(result) == len(data_source_df)
+
+        syms_in_output = result[sym_col].unique().tolist()
+        assert set(syms_in_output) == set(
+            data_source_df[sym_col].unique().tolist()
+        )
+        sym_blocks = result[sym_col].ne(result[sym_col].shift()).cumsum()
+        assert sym_blocks.nunique() == len(syms_in_output)
+
+        for sym in syms_in_output:
+            sym_rows = result[result[sym_col] == sym].reset_index(drop=True)
+            sym_input = data_source_df[
+                data_source_df[sym_col] == sym
+            ].reset_index(drop=True)
+
+            assert len(sym_rows) == len(sym_input)
+            pd.testing.assert_series_equal(
+                sym_rows[date_col],
+                sym_input[date_col],
+                check_names=False,
+            )
+
+            for ind in (hhv_ind, llv_ind):
+                expected = ind(sym_input).to_numpy()
+                actual = sym_rows[ind.name].to_numpy()
+                np.testing.assert_array_equal(actual, expected)
+
 
 @pytest.mark.parametrize(
     "fn, values, period, expected",

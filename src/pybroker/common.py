@@ -269,11 +269,11 @@ class BarData:
 def to_datetime(
     date: Union[str, datetime, np.datetime64, pd.Timestamp],
 ) -> datetime:
-    """Converts ``date`` to :class:`datetime`."""
+    """Converts ``date`` to :class:`datetime.datetime`."""
     if isinstance(date, pd.Timestamp):
-        return date.to_pydatetime()  # type: ignore[union-attr]
+        return date.to_pydatetime()
     elif isinstance(date, datetime):
-        return date  # type: ignore[return-value]
+        return date
     elif isinstance(date, str):
         return pd.to_datetime(date).to_pydatetime()
     elif isinstance(date, np.datetime64):
@@ -283,7 +283,7 @@ def to_datetime(
 
 
 def to_decimal(value: Union[int, float, Decimal]) -> Decimal:
-    """Converts ``value`` to :class:`Decimal`."""
+    """Converts ``value`` to :class:`decimal.Decimal`."""
     value_type = type(value)
     if value_type == Decimal:
         return value  # type: ignore[return-value]
@@ -409,11 +409,9 @@ def default_parallel() -> Parallel:
 
 
 def get_unique_sorted_dates(col: pd.Series) -> Sequence[np.datetime64]:
-    """Returns sorted unique values from a DataFrame column of dates.
-    Guarantees compatability between Pandas 1 and 2.
-    """
+    """Returns sorted unique values from a DataFrame column of dates."""
     result = col.unique()
-    # TODO: Remove after Pandas 1.0 is no longer supported.
+    # Index-like unique() results expose to_numpy(); ndarrays do not.
     if hasattr(result, "to_numpy"):
         result = result.to_numpy(copy=True)
     return cast(Sequence[np.datetime64], np.sort(result))

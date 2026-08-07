@@ -613,7 +613,10 @@ class PriceScope:
             or isinstance(price, np.floating)
             or isinstance(price, Decimal)
         ):
-            fill_price = price
+            # price_type is checked above via identity comparison (not
+            # isinstance) to exclude bool, so mypy can't narrow price's
+            # type from this branch on its own; narrow explicitly.
+            fill_price = cast(Union[int, float, np.floating, Decimal], price)
         elif callable(price):
             bar_data = self._col_scope.bar_data_from_data_columns(
                 symbol, self._sym_end_index[symbol]
@@ -628,7 +631,7 @@ class PriceScope:
             # wrapped via Decimal(str(x)). Must divide by 100.0 (integer
             # ratio), NOT multiply by 0.01 (binary float 0.01 re-introduces
             # the rounding artifact we just removed).
-            fp = float(fill_price)  # type: ignore[arg-type]
+            fp = float(fill_price)
             if fp >= 0.0:
                 fill_price = int(fp * 100.0 + 0.5) / 100.0
             else:

@@ -257,6 +257,7 @@ class DataSource(ABC, DataSourceCacheMixin):
         adjust: Optional[Any],
     ) -> pd.DataFrame:
         """:meta public:
+
         Override this method to return data from a custom
         source. The returned :class:`pandas.DataFrame` must contain the
         following columns: ``symbol``, ``date``, ``open``, ``high``, ``low``,
@@ -311,6 +312,29 @@ def _parse_alpaca_timeframe(
     else:
         raise ValueError(f"Invalid Alpaca timeframe: {timeframe}")
     return tf[0], unit
+
+
+def _get_alpaca_crypto_bars(
+    api: alpaca_crypto.CryptoHistoricalDataClient,
+    request: CryptoBarsRequest,
+):
+    get_crypto_bars = api.get_crypto_bars
+    try:
+        from alpaca.data.enums import CryptoFeed
+    except ImportError:
+        try:
+            return get_crypto_bars(request)
+        except TypeError as exc:
+            raise ImportError(
+                "AlpacaCrypto requires alpaca-py>=0.10.0 in the same Python "
+                "environment as your notebook kernel. Upgrade with: "
+                "python -m pip install 'alpaca-py>=0.10.0'"
+            ) from exc
+
+    try:
+        return get_crypto_bars(request, feed=CryptoFeed.US)
+    except TypeError:
+        return get_crypto_bars(request)
 
 
 class Alpaca(DataSource):
@@ -444,7 +468,7 @@ class AlpacaCrypto(DataSource):
             timeframe=TimeFrame(amount, unit),
             limit=None,
         )
-        df = self._api.get_crypto_bars(request).df  # type: ignore[union-attr]
+        df = _get_alpaca_crypto_bars(self._api, request).df
         if df.columns.empty:
             return pd.DataFrame(columns=self.COLUMNS)
         if df.empty:

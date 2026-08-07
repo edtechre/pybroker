@@ -269,7 +269,7 @@ class BaseContext:
 
         Args:
             name: Name used to identify the model that was registered with
-                :meth:`pybroker.model.model`.
+                :func:`pybroker.model.model`.
             symbol: Ticker symbol of the data that was used to train the model.
 
         Returns:
@@ -414,7 +414,8 @@ class ExecSignal(NamedTuple):
 
 class PosSizeContext(BaseContext):
     r"""Holds data for a position size handler set with
-    :meth:`pybroker.Strategy.set_pos_size_handler`. Used to set position sizes
+    :meth:`pybroker.strategy.Strategy.set_pos_size_handler`. Used to set
+    position sizes
     when placing orders from buy and sell signals.
 
     Attributes:
@@ -699,7 +700,7 @@ class ExecContext(BaseContext):
         """Current bar's date expressed as a ``numpy.datetime64``."""
         self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol,  # type: ignore[arg-type]
+            self.symbol,
             DataCol.DATE.value,
             self._sym_end_index[self.symbol],
         )
@@ -709,7 +710,7 @@ class ExecContext(BaseContext):
         """Current bar's open price."""
         self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol,  # type: ignore[arg-type]
+            self.symbol,
             DataCol.OPEN.value,
             self._sym_end_index[self.symbol],
         )
@@ -719,7 +720,7 @@ class ExecContext(BaseContext):
         """Current bar's high price."""
         self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol,  # type: ignore[arg-type]
+            self.symbol,
             DataCol.HIGH.value,
             self._sym_end_index[self.symbol],
         )
@@ -729,7 +730,7 @@ class ExecContext(BaseContext):
         """Current bar's low price."""
         self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol,  # type: ignore[arg-type]
+            self.symbol,
             DataCol.LOW.value,
             self._sym_end_index[self.symbol],
         )
@@ -739,7 +740,7 @@ class ExecContext(BaseContext):
         """Current bar's close price."""
         self._verify_symbol()
         return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol,  # type: ignore[arg-type]
+            self.symbol,
             DataCol.CLOSE.value,
             self._sym_end_index[self.symbol],
         )
@@ -748,8 +749,8 @@ class ExecContext(BaseContext):
     def volume(self) -> Optional[NDArray[np.float64]]:
         """Current bar's volume."""
         self._verify_symbol()
-        return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol,  # type: ignore[arg-type]
+        return self._col_scope.fetch(
+            self.symbol,
             DataCol.VOLUME.value,
             self._sym_end_index[self.symbol],
         )
@@ -758,8 +759,8 @@ class ExecContext(BaseContext):
     def vwap(self) -> Optional[NDArray[np.float64]]:
         """Current bar's volume-weighted average price (VWAP)."""
         self._verify_symbol()
-        return self._col_scope.fetch(  # type: ignore[return-value]
-            self.symbol,  # type: ignore[arg-type]
+        return self._col_scope.fetch(
+            self.symbol,
             DataCol.VWAP.value,
             self._sym_end_index[self.symbol],
         )
@@ -882,7 +883,7 @@ class ExecContext(BaseContext):
 
         Args:
             name: Name used to identify the model that was registered with
-                :meth:`pybroker.model.model`.
+                :func:`pybroker.model.model`.
             symbol: Ticker symbol of the data that was used to train the model.
                 If ``None``, the ``ExecContext``\ 's :attr:`.symbol` is used.
 

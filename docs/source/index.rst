@@ -35,7 +35,7 @@ PyBroker
             alt="python">
       </a>
       <a href="https://pypi.org/project/lib-pybroker/">
-         <img src="https://img.shields.io/badge/pypi-v1.2.12-brightgreen.svg"
+         <img src="https://img.shields.io/badge/pypi-v1.2.14-brightgreen.svg"
             alt="PyPI">
       </a>
       <a href="https://www.pybroker.com/en/latest/license.html">
@@ -208,13 +208,14 @@ on quantitative finance and algorithmic trading:
       :maxdepth: 1
       :caption: Other Information
 
+      Benchmarking <benchmarking>
       Changelog <changelog>
       License <license>
 
 Contact
 =======
 
-.. image:: _static/email-image.png
+.. image:: ../_static/email-image.png
 
 .. toctree::
    :caption: Stock News & Alerts

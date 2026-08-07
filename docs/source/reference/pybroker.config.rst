@@ -10,4 +10,4 @@ pybroker.config module
       fee_mode, fee_amount, enable_fractional_shares, exit_on_last_bar,
       exit_cover_fill_price, exit_sell_fill_price, bars_per_year,
       return_signals, round_test_result, round_fill_price, subtract_fees,
-      return_stops
+      return_stops, position_mode
