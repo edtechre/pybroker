@@ -12,6 +12,31 @@ permissions:
   contents: read
   pull-requests: write
 
+# Two thresholds, declared once so the flags and the prose describing them
+# cannot drift apart.
+#
+# REPORT_FACTOR is what gets shown: every benchmark that moved by 10% or
+# more lands in the PR comment for a human to read.
+#
+# GATE_FACTOR is what blocks the PR, and it is deliberately looser, because
+# 1.1 is below this runner's noise floor. Measured on six `asv continuous`
+# runs whose `src/` and `benchmarks/` were byte-identical between base and
+# head -- so every flagged result was noise:
+#
+#   1.18  CacheDiskHit.time_cache_disk_get            (429us)
+#   1.17  StoreBuildKernels...from_frame(10, 504)     (1.39ms)
+#   1.11  ModelPrepKernels.time_indicator_values...   (60us)
+#   1.11  ModelTrainPrep.time_train_models_per_symbol (1.92ms)
+#
+# One in six runs flagged something at 1.1, and every false positive was a
+# sub-2ms microbenchmark; the walkforward macrobenchmarks (100ms and up)
+# never moved. 1.25 clears the observed noise with margin. Raise the
+# sampling (`--attribute rounds=N`) rather than this number if that stops
+# being true -- loosening it further trades away real coverage.
+env:
+  REPORT_FACTOR: "1.1"
+  GATE_FACTOR: "1.25"
+
 jobs:
   benchmark:
     name: asv continuous
@@ -45,13 +70,12 @@ jobs:
           # --interleave-rounds alternates rounds between the two commits
           # instead of running each commit's rounds in a block, so drift over
           # the job (thermal, noisy neighbours, page cache) hits both sides
-          # equally rather than landing entirely on "after". Without it a
-          # shared runner's second half reads as a regression: observed twice
-          # here on branches with byte-identical src/ and benchmarks/, each
-          # time flagging a different sub-100us benchmark.
+          # equally rather than landing entirely on "after". It reuses the
+          # existing rounds, so it costs no extra runtime. Neither flag is
+          # sufficient on its own -- see GATE_FACTOR above.
           asv continuous "origin/${BASE_REF}" HEAD \
             --machine ci-ubuntu-latest \
-            --factor 1.1 \
+            --factor "${GATE_FACTOR}" \
             --interleave-rounds \
             >asv-continuous.log 2>&1
           EXIT=$?
@@ -79,6 +103,33 @@ jobs:
             exit 1
           fi
 
+      # Reads the results the step above already stored -- no benchmark is
+      # re-run, so the reporting threshold costs nothing. Non-fatal: a
+      # missing table must not fail a PR that the gate passed.
+      - name: Compare at the reporting threshold
+        id: compare
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set +e
+          asv compare "origin/${BASE_REF}" HEAD \
+            --machine ci-ubuntu-latest \
+            --factor "${REPORT_FACTOR}" \
+            --only-changed \
+            >asv-compare.log 2>&1
+          RC=$?
+          if [ "$RC" -ne 0 ]; then
+            echo "" >>asv-compare.log
+            echo "(asv compare exited ${RC}; the table above may be" \
+                 "incomplete. The gate verdict is unaffected.)" \
+              >>asv-compare.log
+          elif [ ! -s asv-compare.log ]; then
+            echo "No benchmark moved by ${REPORT_FACTOR}x or more." \
+              >asv-compare.log
+          fi
+          cat asv-compare.log
+          exit 0
+
       - name: Write diff to job summary
         env:
           ASV_EXIT: ${{ steps.continuous.outputs.exit_code }}
@@ -87,7 +138,15 @@ jobs:
           {
             echo "## ASV continuous — ${BASE_REF} → PR HEAD"
             echo ""
-            echo "Exit code: $ASV_EXIT (non-zero indicates flagged regression at --factor 1.1)"
+            echo "Exit code: $ASV_EXIT (non-zero indicates flagged regression at --factor ${GATE_FACTOR})"
+            echo ""
+            echo "### Moved by ${REPORT_FACTOR}x or more"
+            echo ""
+            echo '```'
+            cat asv-compare.log
+            echo '```'
+            echo ""
+            echo "### Full run"
             echo ""
             echo '```'
             cat asv-continuous.log
@@ -102,10 +161,16 @@ jobs:
           {
             echo "## ASV continuous — benchmark diff"
             echo ""
-            echo "Exit code: \`$ASV_EXIT\` (non-zero = flagged regression at \`--factor 1.1\`)"
+            echo "Exit code: \`$ASV_EXIT\` (non-zero = flagged regression at \`--factor ${GATE_FACTOR}\`)"
+            echo ""
+            echo "**Moved by ${REPORT_FACTOR}x or more** — reported, not blocking:"
+            echo ""
+            echo '```'
+            cat asv-compare.log
+            echo '```'
             echo ""
             echo "<details>"
-            echo "<summary>Benchmark output</summary>"
+            echo "<summary>Full benchmark output</summary>"
             echo ""
             echo '```'
             cat asv-continuous.log
@@ -116,7 +181,7 @@ jobs:
             if [ "$ASV_EXIT" != "0" ] && [ "$OVERRIDE" = "true" ]; then
               echo "_Gate forced green by \`bench-override\` label._"
             else
-              echo "_Blocking at \`--factor 1.1\`; override via the \`bench-override\` PR label. Shared GitHub runners are noisy — for the trend view, run \`asv publish && asv preview\` locally against committed \`.asv/results/\`._"
+              echo "_Blocking at \`--factor ${GATE_FACTOR}\`, reporting from \`--factor ${REPORT_FACTOR}\`: 1.1 sits below this runner's noise floor, where identical code has flagged sub-2ms microbenchmarks at up to 1.18. Override via the \`bench-override\` PR label. For the trend view, run \`asv publish && asv preview\` locally against committed \`.asv/results/\`._"
             fi
           } > sticky-comment.md
 
@@ -136,7 +201,7 @@ jobs:
           OVERRIDE: ${{ contains(github.event.pull_request.labels.*.name, 'bench-override') }}
         run: |
           if [ "$ASV_EXIT" = "0" ]; then
-            echo "No regression flagged."
+            echo "No regression flagged at ${GATE_FACTOR}x."
             exit 0
           fi
           if [ "$OVERRIDE" = "true" ]; then
