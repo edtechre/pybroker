@@ -78,9 +78,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Must match asv.conf.json's `pythons`. The setup action defaults to
+      # 3.12; when that drifts from the pin, asv finds no matching
+      # interpreter, selects no environments, and exits non-zero -- which the
+      # gate below reports as a regression while having benchmarked nothing.
       - uses: ./.github/actions/setup-pybroker
         with:
-          python-version: ${{ matrix.python }}
+          python-version: "3.11"
 
       - name: Configure asv machine identity
         env:
@@ -105,8 +109,7 @@ jobs:
           # existing rounds, so it costs no extra runtime. Neither flag is
           # sufficient on its own -- see GATE_FACTOR above.
           asv continuous "origin/${BASE_REF}" HEAD \
-            --python="${PY_VERSION}" \
-            --machine "ci-ubuntu-latest-py${PY_VERSION}" \
+            --machine ci-ubuntu-latest \
             --factor "${GATE_FACTOR}" \
             --interleave-rounds \
             >asv-continuous.log 2>&1
@@ -120,21 +123,18 @@ jobs:
       # apart -- a config drift therefore reads as a regression while nothing
       # was measured. Fail here with the real reason instead.
       - name: Assert benchmarks actually ran
-        env:
-          PY_VERSION: ${{ matrix.python }}
         run: |
           # Match only "No environments selected". "No executable found for
           # python X" is a warning asv also emits when it skips one unusable
-          # entry in asv.conf.json's `pythons` while still building an env
-          # from --python, so it is not on its own a failure.
+          # entry while still building an env from another, so it is not on
+          # its own a failure.
           if grep -q "No environments selected" asv-continuous.log; then
-            echo "::error::asv selected no environment for Python" \
-                 "${PY_VERSION}. Nothing was benchmarked."
+            echo "::error::asv selected no environment -- the interpreter does" \
+                 "not match asv.conf.json's 'pythons'. Nothing was benchmarked."
             exit 1
           fi
           if ! grep -qE "^\[[ 0-9]+\.[0-9]+%\]" asv-continuous.log; then
-            echo "::error::asv produced no benchmark results for Python" \
-                 "${PY_VERSION}."
+            echo "::error::asv produced no benchmark results."
             exit 1
           fi
 
@@ -145,12 +145,10 @@ jobs:
         id: compare
         env:
           BASE_REF: ${{ github.base_ref }}
-          PY_VERSION: ${{ matrix.python }}
         run: |
           set +e
           asv compare "origin/${BASE_REF}" HEAD \
-            --python="${PY_VERSION}" \
-            --machine "ci-ubuntu-latest-py${PY_VERSION}" \
+            --machine ci-ubuntu-latest \
             --factor "${REPORT_FACTOR}" \
             --only-changed \
             >asv-compare.log 2>&1
@@ -175,6 +173,8 @@ jobs:
         run: |
           {
             echo "## ASV continuous (Python ${PY_VERSION}) — ${BASE_REF} → PR HEAD"
+            echo ""
+            echo "Exit code: $ASV_EXIT (1 = flagged regression at --factor ${GATE_FACTOR}; 2 = a benchmark raised, nothing compared)"
             echo ""
             echo "Exit code: $ASV_EXIT (1 = flagged regression at --factor ${GATE_FACTOR}; 2 = a benchmark raised, nothing compared)"
             echo ""
@@ -245,7 +245,7 @@ jobs:
           PY_VERSION: ${{ matrix.python }}
         run: |
           if [ "$ASV_EXIT" = "0" ]; then
-            echo "No regression flagged at ${GATE_FACTOR}x on Python ${PY_VERSION}."
+            echo "No regression flagged at ${GATE_FACTOR}x."
             exit 0
           fi
           # asv distinguishes the two non-zero exits and the gate must too.

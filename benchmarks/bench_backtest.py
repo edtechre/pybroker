@@ -12,6 +12,8 @@ invocation pays Numba JIT compile cost — useful for tracking the benefit of
 
 from __future__ import annotations
 
+import sys
+import zlib
 from pathlib import Path
 
 import numpy as np
@@ -20,11 +22,22 @@ import pandas as pd
 import pybroker
 from pybroker import ExecContext, Strategy, StrategyConfig
 from pybroker.strategy import BacktestMixin, BacktestSettings, Execution
-from pybroker.vect import highv, lowv
+from pybroker.vect import highv, lowv, sumv
 from collections import defaultdict
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_PATH = REPO_ROOT / "tests" / "testdata" / "daily_1.pkl"
+
+# asv imports this module through a sys.meta_path hook
+# (asv_runner._aux.SpecificImporter) instead of putting the suite root on
+# sys.path. loky workers inherit sys.path but not sys.meta_path -- that is
+# code, not data -- so a module-level callable shipped to a worker unpickles
+# by reference and dies with "ModuleNotFoundError: No module named
+# 'benchmarks'". Only benches that dispatch module-level functions hit this;
+# IndicatorParallel escapes it because its lambdas pickle by value.
+# Idempotent, and a no-op outside asv where the root is already importable.
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 SEED = 42
 WINDOWS = 3
 LOOKAHEAD = 1
@@ -1397,6 +1410,173 @@ class ModelTrainPrep:
 
     def time_train_models_pooled(self) -> None:
         self._run_pooled()
+
+
+# ---------------------------------------------------------------------------
+# Parallel model training — guards the ``parallel_models`` fan-out
+# ---------------------------------------------------------------------------
+
+# Pure NumPy on purpose: asv installs the project with a plain
+# ``pip install -e .``, so only ``install_requires`` is importable in the
+# benchmark environment and scikit-learn is not available there.
+_RIDGE_WINDOWS = (5, 10, 20, 40, 60, 80)
+_RIDGE_ALPHAS = (0.01, 0.1, 1.0, 10.0, 100.0)
+_RIDGE_BAGS = 500
+_RIDGE_VAL_FRAC = 0.2
+_RIDGE_SYMBOLS = 24
+_RIDGE_DAYS = 1500
+
+
+class _BenchRidgeModel:
+    """Picklable bagged-ridge model returned by :func:`_train_bench_ridge`."""
+
+    def __init__(self, coef: np.ndarray) -> None:
+        self.coef = coef
+
+    def predict(self, x) -> np.ndarray:
+        return np.asarray(x, dtype=np.float64) @ self.coef
+
+
+def _bench_ridge_design(close: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Builds the feature matrix and next-bar-return target from close.
+
+    The rolling kernels leave NaN across their warmup and the final bar has
+    no forward return, so non-finite rows are dropped before fitting.
+    """
+    features = np.empty((len(close), len(_RIDGE_WINDOWS) * 3))
+    col = 0
+    for window in _RIDGE_WINDOWS:
+        features[:, col] = highv(close, window)
+        features[:, col + 1] = lowv(close, window)
+        features[:, col + 2] = sumv(close, window)
+        col += 3
+    target = np.empty(len(close))
+    target[:-1] = close[1:] / close[:-1] - 1.0
+    target[-1] = np.nan
+    finite = np.isfinite(features).all(axis=1) & np.isfinite(target)
+    return features[finite], target[finite]
+
+
+def _train_bench_ridge(symbol, train_df, _test_df, **_kwargs):
+    """Fits a bagged ridge: alpha picked on a holdout tail, then bagged.
+
+    Features are engineered here rather than through registered indicators so
+    the bench measures training dispatch alone, with no indicator data to
+    compute or ship to workers. Lives at module level so loky pickles it by
+    reference rather than shipping the closure -- which is why the module
+    puts the suite root on sys.path, so the worker can resolve that
+    reference.
+    """
+    close = train_df["close"].to_numpy(dtype=np.float64)
+    features, target = _bench_ridge_design(close)
+    n_features = features.shape[1]
+    if len(features) < 2 * n_features + 2:
+        return _BenchRidgeModel(np.zeros(n_features))
+    n = len(features)
+    fit_size = n - max(1, int(n * _RIDGE_VAL_FRAC))
+    x_fit, x_val = features[:fit_size], features[fit_size:]
+    y_fit, y_val = target[:fit_size], target[fit_size:]
+    eye = np.eye(n_features)
+    gram = x_fit.T @ x_fit
+    xty = x_fit.T @ y_fit
+    best_alpha = _RIDGE_ALPHAS[0]
+    best_mse = np.inf
+    for alpha in _RIDGE_ALPHAS:
+        coef = np.linalg.solve(gram + alpha * eye, xty)
+        resid = x_val @ coef - y_val
+        mse = float(resid @ resid / len(resid))
+        if mse < best_mse:
+            best_mse = mse
+            best_alpha = alpha
+    # Seeded off the symbol, not a shared counter, so results do not depend
+    # on which worker process happens to pick up which task.
+    rng = np.random.default_rng(SEED + zlib.crc32(symbol.encode()) % 10_000)
+    coefs = np.empty((_RIDGE_BAGS, n_features))
+    for bag in range(_RIDGE_BAGS):
+        idx = rng.integers(0, n, size=n)
+        x_bag = features[idx]
+        y_bag = target[idx]
+        coefs[bag] = np.linalg.solve(
+            x_bag.T @ x_bag + best_alpha * eye, x_bag.T @ y_bag
+        )
+    return _BenchRidgeModel(coefs.mean(axis=0))
+
+
+class ModelTrainParallel:
+    """Bench the ``parallel_models`` fan-out in ``train_models``.
+
+    Calls ``train_models`` directly instead of running a walkforward.
+    Training is only about a third of a walkforward's runtime, so measuring
+    end to end dilutes a real dispatch speedup (1.66x here) down to ~1.12x —
+    under the 1.1x CI regression threshold, and inside run-to-run noise on a
+    loaded machine. ``IndicatorParallel`` isolates the indicator dispatch for
+    the same reason.
+
+    The trainer does real arithmetic, unlike the constant stand-in models the
+    other model benches use: a trainer that returns immediately leaves the
+    workers nothing to parallelize and measures only dispatch overhead.
+    """
+
+    timeout = 600
+    params = ([False, True],)
+    param_names = ("parallel_models",)
+
+    def setup(self, parallel_models: bool) -> None:
+        from pybroker.cache import CacheDateFields
+        from pybroker.common import ModelSymbol, to_datetime
+        from pybroker.model import ModelsMixin, model
+
+        np.random.seed(SEED)
+        pybroker.clear_params()
+        pybroker.disable_logging()
+        pybroker.disable_progress_bar()
+        self._mixin = ModelsMixin()
+        df = _synthetic_ohlcv(
+            n_symbols=_RIDGE_SYMBOLS, n_days=_RIDGE_DAYS, seed=SEED
+        )
+        # Split on date, not row position: _synthetic_ohlcv emits rows grouped
+        # by symbol, so an iloc split would hand whole symbols to one side and
+        # leave the rest with no training data.
+        dates = np.sort(df["date"].unique())
+        cutoff = dates[len(dates) // 2]
+        self._train_data = df[df["date"] < cutoff]
+        self._test_data = df[df["date"] >= cutoff]
+        train_dates = np.sort(self._train_data["date"].unique())
+        self._cache_date_fields = CacheDateFields(
+            start_date=to_datetime(train_dates[0]),
+            end_date=to_datetime(train_dates[-1]),
+            tf_seconds=86400,
+            between_time=None,
+            days=None,
+        )
+        self._model_syms = [
+            ModelSymbol("bench_ridge", sym)
+            for sym in sorted(df["symbol"].unique().tolist())
+        ]
+        model("bench_ridge", _train_bench_ridge)
+        self._saved_parallel = pybroker.get_parallel_config()
+        pybroker.set_parallel(n_jobs=4)
+        # Warms the Numba kernels and the loky pool so the timed call measures
+        # steady-state dispatch rather than one-off startup.
+        self._train(parallel_models)
+
+    def teardown(self, parallel_models: bool) -> None:
+        import pybroker.parallel as parallel_mod
+
+        parallel_mod._config = self._saved_parallel
+
+    def _train(self, parallel_models: bool) -> None:
+        self._mixin.train_models(
+            self._model_syms,
+            self._train_data,
+            self._test_data,
+            {},
+            self._cache_date_fields,
+            parallel_models=parallel_models,
+        )
+
+    def time_train_models_parallel(self, parallel_models: bool) -> None:
+        self._train(parallel_models)
 
 
 class ModelTrainPrepLags:
