@@ -7,7 +7,7 @@ description: Register, train, wire, and debug machine learning models for PyBrok
 
 ## Overview
 
-Wire machine learning models into PyBroker backtests: register training and prediction functions with `pybroker.model`, feed them indicator features, and evaluate them with walkforward analysis while keeping the train/test flow free of lookahead leakage. Covers per-symbol, pooled multi-symbol, per-bar time-series, lagged-feature, and pretrained models across common libraries such as scikit-learn, XGBoost, and arch.
+Wire machine learning models into PyBroker backtests by registering training and prediction functions with `pybroker.model`, feeding them indicator features, and evaluating them with walkforward analysis while keeping the train/test flow free of lookahead leakage. Covers per-symbol, pooled multi-symbol, per-bar time-series, lagged-feature, and pretrained models across common libraries such as scikit-learn, XGBoost, and arch.
 
 ## Workflow
 

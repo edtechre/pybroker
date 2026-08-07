@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-06 20:16-0700\n"
+"POT-Creation-Date: 2026-08-06 21:12-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -19,11 +19,11 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../source/agent-skills.rst:2 444b58179bf947179dc9ac722f79d156
+#: ../../source/agent-skills.rst:2 c08a14dbde924e7186ba5993394688ff
 msgid "Agent Skills"
 msgstr "智能体技能"
 
-#: ../../source/agent-skills.rst:4 c58ff963bf834d2789afa57aeafc544e
+#: ../../source/agent-skills.rst:4 7f046fb880c54de1aa8448101ca33501
 msgid ""
 "PyBroker ships `Agent Skills <https://agentskills.io/specification>`_ "
 "that give coding agents workflows for writing strategies, indicators, "
@@ -32,11 +32,11 @@ msgstr ""
 "PyBroker 内置了 `智能体技能 "
 "<https://agentskills.io/specification>`_，为编程智能体提供编写策略、指标、模型和回测的工作流程。"
 
-#: ../../source/agent-skills.rst:9 2839eb86a0f44c74ae2e9c042f9979c6
+#: ../../source/agent-skills.rst:9 555c19a13a8d4bbcb8ac3ef2df581685
 msgid "Get the Skills Library"
 msgstr "获取技能库"
 
-#: ../../source/agent-skills.rst:11 14d9e77a241a420594fb4e439e13ed11
+#: ../../source/agent-skills.rst:11 23accdebfdb14b35ad5ed2c0dc36a1c2
 msgid ""
 "Public skills live under the ``skills/`` directory in the PyBroker `Git "
 "repository <https://github.com/edtechre/pybroker>`_. Each skill is "
@@ -45,21 +45,21 @@ msgstr ""
 "公开技能位于 PyBroker `Git 仓库 <https://github.com/edtechre/pybroker>`_ 中的 "
 "``skills/`` 目录下。每个技能都存放在各自的文件夹中，并由标准的 ``SKILL.md`` 文件定义。"
 
-#: ../../source/agent-skills.rst:15 afb07318f82f4d5bbef3e0d155a0a4a8
+#: ../../source/agent-skills.rst:15 698f48bd78014c398650b0a93da5d54c
 msgid ""
 "To access them, simply clone the PyBroker repository to your local "
 "machine:"
 msgstr "要获取这些技能，只需将 PyBroker 仓库克隆到本地机器："
 
-#: ../../source/agent-skills.rst:24 91391b557199488a85c531c709ab18f3
+#: ../../source/agent-skills.rst:24 cba586667b3e448382602d63e0f26053
 msgid "Installation"
 msgstr "安装"
 
-#: ../../source/agent-skills.rst:27 69b83982ce454ea7bc989f3eb9c8d493
+#: ../../source/agent-skills.rst:27 124d222e30554309b7698c0f7b659c35
 msgid "Claude Code"
 msgstr "Claude Code"
 
-#: ../../source/agent-skills.rst:29 d0ec8cdf107b421a9e7af3e6fd69da03
+#: ../../source/agent-skills.rst:29 29c530ad166f4a06b78ccfb9f43ccae5
 msgid ""
 "`Claude Code <https://code.claude.com/docs/en/skills>`_ automatically "
 "discovers skills placed inside a ``.claude/skills/`` folder in your "
@@ -70,17 +70,17 @@ msgstr ""
 "``.claude/skills/`` 文件夹中的技能。要一次性安装所有 PyBroker 技能，你可以将仓库 ``skills/`` "
 "目录下的全部内容软链接过去："
 
-#: ../../source/agent-skills.rst:44 3a741a1dab6e4ee4a71bc73980b17e3c
+#: ../../source/agent-skills.rst:44 2ddac6945ab4471aaf4dc1354d2e79ca
 msgid ""
 "Claude Code will now automatically discover every skill and make their "
 "respective commands available in the terminal."
 msgstr "现在，Claude Code 将自动发现每个技能，并使其对应的命令在终端中可用。"
 
-#: ../../source/agent-skills.rst:48 f39b6720e1f84b4c8436103b7f07861d
+#: ../../source/agent-skills.rst:48 93b1ac5a0e1241b8aa7f16929f1f6abe
 msgid "OpenAI Codex"
 msgstr "OpenAI Codex"
 
-#: ../../source/agent-skills.rst:50 45d531d578444ab5acdc96d0e0c9001e
+#: ../../source/agent-skills.rst:50 cf0aa6bb079646b0b1d2be3619f8ad32
 msgid ""
 "`OpenAI Codex <https://learn.chatgpt.com/docs/build-skills>`_ discovers "
 "skills in ``.agents/skills/``. Symlink the PyBroker skills there:"
@@ -88,11 +88,11 @@ msgstr ""
 "`OpenAI Codex <https://learn.chatgpt.com/docs/build-skills>`_ 会在 "
 "``.agents/skills/`` 中发现技能。将 PyBroker 技能软链接到该目录："
 
-#: ../../source/agent-skills.rst:62 3bbe20c98e4b495aa1d6f33542d9c5c5
+#: ../../source/agent-skills.rst:62 048491e309854195a69899f52aa018f7
 msgid "Cursor"
 msgstr "Cursor"
 
-#: ../../source/agent-skills.rst:64 3a9b8b7a33a64275945778828bf2ef59
+#: ../../source/agent-skills.rst:64 060beec9e2be4fa19e6b2009f9448901
 msgid ""
 "`Cursor <https://cursor.com/docs/skills>`_ discovers skills in "
 "``.cursor/skills/``. Install them the same way:"
@@ -100,11 +100,11 @@ msgstr ""
 "`Cursor <https://cursor.com/docs/skills>`_ 会在 ``.cursor/skills/`` "
 "中发现技能。使用相同的方式安装它们："
 
-#: ../../source/agent-skills.rst:77 cb68ac376dc14150ac2be0d99479eba0
+#: ../../source/agent-skills.rst:77 ed1543a5865349bc8c477280fa1b38b0
 msgid "Claude Agent SDK"
 msgstr "Claude Agent SDK"
 
-#: ../../source/agent-skills.rst:79 3c8341fa1d964f89aacbdaa765ed17fc
+#: ../../source/agent-skills.rst:79 ba0b337258e04d929034d968937f791a
 msgid ""
 "The `Claude Agent SDK <https://code.claude.com/docs/en/agent-"
 "sdk/skills>`_ discovers skills from the same ``.claude/skills/`` symlinks"
@@ -114,11 +114,11 @@ msgstr ""
 "`Claude Agent SDK <https://code.claude.com/docs/en/agent-sdk/skills>`_ "
 "会从上面创建的相同 ``.claude/skills/`` 软链接中发现技能，因此它可以按需加载这些技能，并自动调用它们，无需任何提示词拼装："
 
-#: ../../source/agent-skills.rst:115 2ede59f4e58844f6b3e7fa45fb771651
+#: ../../source/agent-skills.rst:115 0e67e8e5e2924947b85889cfb6b4c9db
 msgid "Pydantic-AI"
 msgstr "Pydantic-AI"
 
-#: ../../source/agent-skills.rst:117 0dde71c2a60345b99fb2e17d748e6915
+#: ../../source/agent-skills.rst:117 c2c2eafb68b441dd834c4dd0f262238b
 msgid ""
 "`Pydantic-AI <https://pydantic.dev/docs/ai/>`_ builds agents in pure "
 "Python. It does not search for skill directories automatically, so you "
@@ -130,25 +130,25 @@ msgstr ""
 "<https://pydantic.dev/docs/ai/harness/skills/>`_ 能力指向上面创建的 "
 "``.agents/skills`` 库："
 
-#: ../../source/agent-skills.rst:140 dd03709a1d73456cb480fbb45a5eb62e
+#: ../../source/agent-skills.rst:140 dcf2212dd45a4a75bb2ac8a70b1a672e
 msgid "Available Skills"
 msgstr "可用技能"
 
-#: ../../source/agent-skills.rst:145 223385ef470b42ddad9377eb013f0f3a
+#: ../../source/agent-skills.rst:145 38eac68059b34adfbbe24feefb7f0a18
 msgid "pybroker-strategy-creator"
 msgstr "pybroker-strategy-creator"
 
 #: ../../../skills/pybroker-strategy-creator/SKILL.md:3
-#: 7bceb71a2c4641bda24f0dd136f26c0d
+#: 2cf67835e9e9490e943498dacb7b8f5b
 msgid ""
 "Create practical PyBroker strategy code from user intent while preserving"
-" backtest hygiene: no lookahead leakage, explicit sizing, clear risk "
-"controls, and locally valid PyBroker API usage."
+" backtest hygiene, including no lookahead leakage, explicit sizing, clear"
+" risk controls, and locally valid PyBroker API usage."
 msgstr ""
-"根据用户意图生成实用的 PyBroker 策略代码，同时保持良好的回测规范：无前视泄漏、明确的仓位规模、清晰的风险控制，以及符合规范的 "
+"根据用户意图生成实用的 PyBroker 策略代码，同时保持良好的回测规范，包括无前视泄漏、明确的仓位规模、清晰的风险控制，以及符合规范的 "
 "PyBroker API 用法。"
 
-#: ../../source/agent-skills.rst:152 09e5262f3f434b7b9f0a31eb1b3648bc
+#: ../../source/agent-skills.rst:152 af8d3bab071642d680bfbe0eb89dc90f
 msgid ""
 "`See full SKILL.md on GitHub "
 "<https://github.com/edtechre/pybroker/blob/master/skills/pybroker-"
@@ -158,26 +158,28 @@ msgstr ""
 "<https://github.com/edtechre/pybroker/blob/master/skills/pybroker-"
 "strategy-creator/SKILL.md>`_"
 
-#: ../../source/agent-skills.rst:158 ca9704c6c7b74360b9e3157fd1259bf2
+#: ../../source/agent-skills.rst:158 1f1c1788ebc54e1ab736e583d5da3368
 msgid "pybroker-indicator-creator"
 msgstr "pybroker-indicator-creator"
 
 #: ../../../skills/pybroker-indicator-creator/SKILL.md:3
-#: cd20fd47d3ab420d81885652f85f5202
+#: 84156314fd7f4526b73a24698226f089
 msgid ""
-"Write fast, correct PyBroker indicators: register vectorized NumPy/Numba "
-"functions with `pybroker.indicator`, wire them into strategy executions "
-"and models, and keep every value free of lookahead bias. Covers the "
-"built-in indicator factories and vector helpers, custom Numba `@njit` "
-"kernels, wrapping third-party technical analysis libraries such as TA-Lib"
-" and pandas-ta, standalone computation with `IndicatorSet`, hyperparam-"
-"driven indicators, and multi-timeframe interval indicators."
+"Write fast, correct PyBroker indicators by registering vectorized "
+"NumPy/Numba functions with `pybroker.indicator`, wiring them into "
+"strategy executions and models, and keeping every value free of lookahead"
+" bias. Covers the built-in indicator factories and vector helpers, custom"
+" Numba `@njit` kernels, wrapping third-party technical analysis libraries"
+" such as TA-Lib and pandas-ta, standalone computation with "
+"`IndicatorSet`, hyperparam-driven indicators, and multi-timeframe "
+"interval indicators."
 msgstr ""
-"编写快速、正确的 PyBroker 指标：使用 `pybroker.indicator` 注册向量化的 NumPy/Numba "
-"函数，将其接入策略执行函数和模型，并确保每个值都不含前视偏差。涵盖内置指标工厂和向量辅助函数、自定义 Numba `@njit` "
-"内核、封装 TA-Lib 和 pandas-ta 等第三方技术分析库、使用 `IndicatorSet` 进行独立计算、由超参数驱动的指标，以及多时间框架区间指标。"
+"编写快速、正确的 PyBroker 指标，方法是使用 `pybroker.indicator` 注册向量化的 NumPy/Numba "
+"函数，将其接入策略执行函数和模型，并确保每个值都不含前视偏差。涵盖内置指标工厂和向量辅助函数、自定义 Numba `@njit` 内核、封装 "
+"TA-Lib 和 pandas-ta 等第三方技术分析库、使用 `IndicatorSet` "
+"进行独立计算、由超参数驱动的指标，以及多时间框架区间指标。"
 
-#: ../../source/agent-skills.rst:165 ac486291b85e4e6c83266bb20829e47e
+#: ../../source/agent-skills.rst:165 13c340b4bdb44092acab3e9408daccfe
 msgid ""
 "`See full SKILL.md on GitHub "
 "<https://github.com/edtechre/pybroker/blob/master/skills/pybroker-"
@@ -187,25 +189,25 @@ msgstr ""
 "<https://github.com/edtechre/pybroker/blob/master/skills/pybroker-"
 "indicator-creator/SKILL.md>`_"
 
-#: ../../source/agent-skills.rst:171 088a6613ab2d4e64966fd4a95ae3562f
+#: ../../source/agent-skills.rst:171 ff9e2be11853423d99cf66c7edde6ec9
 msgid "pybroker-model-trainer"
 msgstr "pybroker-model-trainer"
 
 #: ../../../skills/pybroker-model-trainer/SKILL.md:3
-#: 895937630c7445f2b07aced78ccad5e2
+#: 92d95a4af0e64601a0af0cdd39d3d022
 msgid ""
-"Wire machine learning models into PyBroker backtests: register training "
-"and prediction functions with `pybroker.model`, feed them indicator "
-"features, and evaluate them with walkforward analysis while keeping the "
-"train/test flow free of lookahead leakage. Covers per-symbol, pooled "
-"multi-symbol, per-bar time-series, lagged-feature, and pretrained models "
-"across common libraries such as scikit-learn, XGBoost, and arch."
+"Wire machine learning models into PyBroker backtests by registering "
+"training and prediction functions with `pybroker.model`, feeding them "
+"indicator features, and evaluating them with walkforward analysis while "
+"keeping the train/test flow free of lookahead leakage. Covers per-symbol,"
+" pooled multi-symbol, per-bar time-series, lagged-feature, and pretrained"
+" models across common libraries such as scikit-learn, XGBoost, and arch."
 msgstr ""
-"将机器学习模型接入 PyBroker 回测：使用 `pybroker.model` 注册训练和预测函数，为其提供指标特征，并通过向前分析对其进行评估，同时确保训练"
-"/测试流程不含前视泄漏。涵盖按品种独立训练、多品种联合训练、逐 K 线时间序列模型、滞后特征模型，以及基于 "
-"scikit-learn、XGBoost 和 arch 等常用库的预训练模型。"
+"将机器学习模型接入 PyBroker 回测，方法是使用 `pybroker.model` "
+"注册训练和预测函数，为其提供指标特征，并通过向前分析对其进行评估，同时确保训练/测试流程不含前视泄漏。涵盖按品种独立训练、多品种联合训练、逐 K "
+"线时间序列模型、滞后特征模型，以及基于 scikit-learn、XGBoost 和 arch 等常用库的预训练模型。"
 
-#: ../../source/agent-skills.rst:178 5bfd149274704aeab87f31ce36ad4fc2
+#: ../../source/agent-skills.rst:178 3d69e80e3e8c46e18c27791c722cac7e
 msgid ""
 "`See full SKILL.md on GitHub "
 "<https://github.com/edtechre/pybroker/blob/master/skills/pybroker-model-"
@@ -215,28 +217,28 @@ msgstr ""
 "<https://github.com/edtechre/pybroker/blob/master/skills/pybroker-model-"
 "trainer/SKILL.md>`_"
 
-#: ../../source/agent-skills.rst:184 8f769da6eb2443ac9acd712465521b7f
+#: ../../source/agent-skills.rst:184 64d8fb14ff994ea7898ac985d2f41556
 msgid "pybroker-optimize"
 msgstr "pybroker-optimize"
 
 #: ../../../skills/pybroker-optimize/SKILL.md:3
-#: 9fd5fae066814938805751bbbb065941
+#: 63ec0a6c3e454c099463c832be24c787
 msgid ""
-"Tune PyBroker strategy hyperparameters with `Strategy.optimize`: declare "
-"tunable values with `pybroker.hyperparam`, wire them into indicators and "
-"execution functions, and score each candidate combination on a training "
-"window before the winning values are replayed on held-out test data. "
-"Covers grid, TPE, and random sampling through the integrated Optuna "
-"backend, custom Optuna samplers and studies, walkforward optimization "
-"across multiple windows, and reading results from `OptimizeResult` and "
-"the underlying `optuna.Study`."
+"Tune PyBroker strategy hyperparameters with `Strategy.optimize` by "
+"declaring tunable values with `pybroker.hyperparam`, wiring them into "
+"indicators and execution functions, and scoring each candidate "
+"combination on a training window before the winning values are replayed "
+"on held-out test data. Covers grid, TPE, and random sampling through the "
+"integrated Optuna backend, custom Optuna samplers and studies, "
+"walkforward optimization across multiple windows, and reading results "
+"from `OptimizeResult` and the underlying `optuna.Study`."
 msgstr ""
-"使用 `Strategy.optimize` 调优 PyBroker 策略超参数：使用 `pybroker.hyperparam` "
+"使用 `Strategy.optimize` 调优 PyBroker 策略超参数，方法是使用 `pybroker.hyperparam` "
 "声明可调值，将其接入指标和执行函数，并在训练窗口上为每个候选组合评分，然后将胜出的取值在留出的测试数据上重放。涵盖通过集成的 Optuna "
 "后端进行网格、TPE 和随机采样，自定义 Optuna 采样器和 study，跨多个窗口的向前优化，以及从 `OptimizeResult` "
 "和底层 `optuna.Study` 中读取结果。"
 
-#: ../../source/agent-skills.rst:191 994ab4fc432041cf885b65dd38744e25
+#: ../../source/agent-skills.rst:191 8b30a69ceef9445e83ede1e19619d1f3
 msgid ""
 "`See full SKILL.md on GitHub "
 "<https://github.com/edtechre/pybroker/blob/master/skills/pybroker-"
@@ -246,12 +248,12 @@ msgstr ""
 "<https://github.com/edtechre/pybroker/blob/master/skills/pybroker-"
 "optimize/SKILL.md>`_"
 
-#: ../../source/agent-skills.rst:197 9bcef887cbe94510aee7ee20f1e3b4bb
+#: ../../source/agent-skills.rst:197 f438814e8dcb4555ad7da7846885b063
 msgid "pybroker-multi-interval"
 msgstr "pybroker-multi-interval"
 
 #: ../../../skills/pybroker-multi-interval/SKILL.md:3
-#: 6ed77d472bce44fdae5acf3c89d3bc98
+#: ac94dbe394a04da580903dc3cad2b215
 msgid ""
 "Build multi-timeframe PyBroker strategies that trade a base timeframe "
 "while confirming regime and trend on strictly coarser compressed "
@@ -263,12 +265,13 @@ msgid ""
 "Strategy code only ever sees completed compressed bars, which keeps "
 "higher-timeframe logic free of partial-bar lookahead."
 msgstr ""
-"构建多时间框架的 PyBroker 策略：在基础时间框架上交易，同时在严格更粗的压缩区间（例如周线和月线）上确认市场状态和趋势。涵盖三种区间格式，通过 "
+"构建多时间框架的 PyBroker "
+"策略：在基础时间框架上交易，同时在严格更粗的压缩区间（例如周线和月线）上确认市场状态和趋势。涵盖三种区间格式，通过 "
 "`add_execution(intervals=...)` 提供压缩 K 线，通过 `.intervals(...)` "
 "绑定来按区间计算指标和训练模型，通过 `ctx.interval(...)` 读取已完成的 K 线，以及使用 `compress_bars` "
 "进行独立压缩。策略代码只会看到已完成的压缩 K 线，从而使更高时间框架的逻辑不受未完成 K 线的前视偏差影响。"
 
-#: ../../source/agent-skills.rst:204 8068095da54e435a950c0335db4df552
+#: ../../source/agent-skills.rst:204 142d26a6d9c8469f9fd8c15c13727255
 msgid ""
 "`See full SKILL.md on GitHub "
 "<https://github.com/edtechre/pybroker/blob/master/skills/pybroker-multi-"
@@ -278,36 +281,29 @@ msgstr ""
 "<https://github.com/edtechre/pybroker/blob/master/skills/pybroker-multi-"
 "interval/SKILL.md>`_"
 
-#: ../../source/agent-skills.rst:210 4fb39ee9926745ec9e807fd38e67b6bf
+#: ../../source/agent-skills.rst:210 22fe82cf0b364f9e9ef3e838daec5224
 msgid "pybroker-rotational-trading"
 msgstr "pybroker-rotational-trading"
 
 #: ../../../skills/pybroker-rotational-trading/SKILL.md:3
-#: 280704c469304ef19d433dc1b598f188
+#: b7b86602042342faa824456c34b14554
 msgid ""
 "Build rotational PyBroker strategies that hold the top-ranked symbols in "
-"a universe and rotate out of names that fall from favor. Execution "
-"functions score each symbol with `ctx.long_score` and `ctx.short_score`, "
-"position slots are capped with `Strategy.set_max_long_positions` and "
-"`Strategy.set_max_short_positions`, and "
-"`Strategy.enable_rotation(worst_rank_held=...)` turns the scores into "
-"trades: each bar, held positions ranked worse than the hold band are "
-"liquidated and the best-ranked candidates fill the freed slots at equal "
-"weight, unless a custom `sizer` over `RotationContext` overrides the "
-"entry sizes. Also covers the simpler ranked-cap mode, where execution "
-"functions keep placing their own orders and scores only prioritize "
-"signals when a position cap binds, plus dynamic candidate universes "
-"selected with a `SymbolSelector`."
+"a universe and rotate out names that fall from favor. Execution functions"
+" score symbols with `ctx.long_score` and `ctx.short_score`, cap positions"
+" with `Strategy.set_max_long_positions` and `set_max_short_positions`, "
+"and `Strategy.enable_rotation(worst_rank_held=...)` liquidates and "
+"refills slots each bar from the top-ranked candidates, optionally sized "
+"with a custom `sizer` over `RotationContext`. Also covers the simpler "
+"ranked-cap mode and dynamic universes via `SymbolSelector`."
 msgstr ""
-"构建轮动型 PyBroker 策略：持有品种池中排名最高的品种，并轮出失宠的品种。执行函数使用 `ctx.long_score` 和 "
-"`ctx.short_score` 为每个品种评分，使用 `Strategy.set_max_long_positions` 和 "
-"`Strategy.set_max_short_positions` 限制仓位数量上限，`Strategy.enable_rotation"
-"(worst_rank_held=...)` 则将评分转化为交易：每根 K "
-"线，排名劣于持仓区间的现有仓位会被清仓，排名最高的候选品种以等权重填补空出的仓位，除非通过 `RotationContext` 上自定义的 "
-"`sizer` 覆盖入场规模。此外还涵盖更简单的排名限仓模式：执行函数继续自行下单，评分仅在仓位上限生效时用于确定信号优先级，以及使用 "
-"`SymbolSelector` 选择的动态候选品种池。"
+"构建轮动型 PyBroker 策略，持有品种池中排名最高的品种，并轮出失宠的品种。执行函数使用 `ctx.long_score` 和 "
+"`ctx.short_score` 为品种评分，使用 `Strategy.set_max_long_positions` 和 "
+"`set_max_short_positions` 限制仓位，`Strategy.enable_rotation"
+"(worst_rank_held=...)` 会在每根 K 线清仓并从排名最高的候选品种中补充仓位，还可通过 `RotationContext` "
+"上自定义的 `sizer` 指定规模。此外还涵盖更简单的排名限仓模式，以及通过 `SymbolSelector` 选择的动态品种池。"
 
-#: ../../source/agent-skills.rst:217 94870ed18f28421090a606c57510aec3
+#: ../../source/agent-skills.rst:217 1c55d33d82e44f49b5e7f57d7903b872
 msgid ""
 "`See full SKILL.md on GitHub "
 "<https://github.com/edtechre/pybroker/blob/master/skills/pybroker-"

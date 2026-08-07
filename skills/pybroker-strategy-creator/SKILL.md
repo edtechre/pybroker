@@ -7,7 +7,7 @@ description: Create, adapt, review, and debug PyBroker algorithmic trading strat
 
 ## Overview
 
-Create practical PyBroker strategy code from user intent while preserving backtest hygiene: no lookahead leakage, explicit sizing, clear risk controls, and locally valid PyBroker API usage.
+Create practical PyBroker strategy code from user intent while preserving backtest hygiene, including no lookahead leakage, explicit sizing, clear risk controls, and locally valid PyBroker API usage.
 
 ## Workflow
 

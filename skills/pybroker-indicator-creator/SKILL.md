@@ -7,7 +7,7 @@ description: Write, register, and debug PyBroker indicators using the bundled Py
 
 ## Overview
 
-Write fast, correct PyBroker indicators: register vectorized NumPy/Numba functions with `pybroker.indicator`, wire them into strategy executions and models, and keep every value free of lookahead bias. Covers the built-in indicator factories and vector helpers, custom Numba `@njit` kernels, wrapping third-party technical analysis libraries such as TA-Lib and pandas-ta, standalone computation with `IndicatorSet`, hyperparam-driven indicators, and multi-timeframe interval indicators.
+Write fast, correct PyBroker indicators by registering vectorized NumPy/Numba functions with `pybroker.indicator`, wiring them into strategy executions and models, and keeping every value free of lookahead bias. Covers the built-in indicator factories and vector helpers, custom Numba `@njit` kernels, wrapping third-party technical analysis libraries such as TA-Lib and pandas-ta, standalone computation with `IndicatorSet`, hyperparam-driven indicators, and multi-timeframe interval indicators.
 
 ## Workflow
 

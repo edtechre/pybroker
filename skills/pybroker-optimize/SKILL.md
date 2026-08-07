@@ -7,7 +7,7 @@ description: Tune PyBroker strategy hyperparameters with Optuna-backed search us
 
 ## Overview
 
-Tune PyBroker strategy hyperparameters with `Strategy.optimize`: declare tunable values with `pybroker.hyperparam`, wire them into indicators and execution functions, and score each candidate combination on a training window before the winning values are replayed on held-out test data. Covers grid, TPE, and random sampling through the integrated Optuna backend, custom Optuna samplers and studies, walkforward optimization across multiple windows, and reading results from `OptimizeResult` and the underlying `optuna.Study`.
+Tune PyBroker strategy hyperparameters with `Strategy.optimize` by declaring tunable values with `pybroker.hyperparam`, wiring them into indicators and execution functions, and scoring each candidate combination on a training window before the winning values are replayed on held-out test data. Covers grid, TPE, and random sampling through the integrated Optuna backend, custom Optuna samplers and studies, walkforward optimization across multiple windows, and reading results from `OptimizeResult` and the underlying `optuna.Study`.
 
 ## Workflow
 

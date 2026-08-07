@@ -7,7 +7,7 @@ description: Build ranked-signal and rotational PyBroker strategies using the bu
 
 ## Overview
 
-Build rotational PyBroker strategies that hold the top-ranked symbols in a universe and rotate out of names that fall from favor. Execution functions score each symbol with `ctx.long_score` and `ctx.short_score`, position slots are capped with `Strategy.set_max_long_positions` and `Strategy.set_max_short_positions`, and `Strategy.enable_rotation(worst_rank_held=...)` turns the scores into trades: each bar, held positions ranked worse than the hold band are liquidated and the best-ranked candidates fill the freed slots at equal weight, unless a custom `sizer` over `RotationContext` overrides the entry sizes. Also covers the simpler ranked-cap mode, where execution functions keep placing their own orders and scores only prioritize signals when a position cap binds, plus dynamic candidate universes selected with a `SymbolSelector`.
+Build rotational PyBroker strategies that hold the top-ranked symbols in a universe and rotate out names that fall from favor. Execution functions score symbols with `ctx.long_score` and `ctx.short_score`, cap positions with `Strategy.set_max_long_positions` and `set_max_short_positions`, and `Strategy.enable_rotation(worst_rank_held=...)` liquidates and refills slots each bar from the top-ranked candidates, optionally sized with a custom `sizer` over `RotationContext`. Also covers the simpler ranked-cap mode and dynamic universes via `SymbolSelector`.
 
 ## Workflow
 
