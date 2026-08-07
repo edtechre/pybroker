@@ -38,15 +38,38 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: |
           set +e
+          # No --no-stats: it means "do not use result statistics in
+          # comparisons, only factor and the median result", which disables
+          # significance testing and lets an I/O-bound microbenchmark whose
+          # error bars overlap trip --factor on noise alone.
           asv continuous "origin/${BASE_REF}" HEAD \
             --machine ci-ubuntu-latest \
             --factor 1.1 \
-            --no-stats \
             >asv-continuous.log 2>&1
           EXIT=$?
           echo "exit_code=$EXIT" >> "$GITHUB_OUTPUT"
           cat asv-continuous.log
           exit 0
+
+      # asv exits non-zero both for a flagged regression and for having found
+      # no interpreter to benchmark with, and the gate below cannot tell those
+      # apart -- a config drift therefore reads as a regression while nothing
+      # was measured. Fail here with the real reason instead.
+      - name: Assert benchmarks actually ran
+        run: |
+          # Match only "No environments selected". "No executable found for
+          # python X" is a warning asv also emits when it skips one unusable
+          # entry while still building an env from another, so it is not on
+          # its own a failure.
+          if grep -q "No environments selected" asv-continuous.log; then
+            echo "::error::asv selected no environment -- the interpreter does" \
+                 "not match asv.conf.json's 'pythons'. Nothing was benchmarked."
+            exit 1
+          fi
+          if ! grep -qE "^\[[ 0-9]+\.[0-9]+%\]" asv-continuous.log; then
+            echo "::error::asv produced no benchmark results."
+            exit 1
+          fi
 
       - name: Write diff to job summary
         env:
