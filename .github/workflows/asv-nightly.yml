@@ -71,12 +71,12 @@ jobs:
       # stayed green for weeks while only 3.11 did any work.
       - name: Assert benchmarks actually ran
         env:
-          PY_VERSION: ${{ matrix.python.version }}
+          PY_VERSION: ${{ matrix.python }}
         run: |
           # Match only "No environments selected". "No executable found for
-          # python X" is a warning the legs whose version differs from
-          # asv.conf.json's pin emit while still building an env from
-          # --python, so it is not on its own a failure.
+          # python X" is a warning asv also emits when it skips one unusable
+          # entry in asv.conf.json's `pythons` while still building an env
+          # from --python, so it is not on its own a failure.
           if grep -q "No environments selected" asv-run.log; then
             echo "::error::asv selected no environment for Python" \
                  "${PY_VERSION}. Nothing was benchmarked."
