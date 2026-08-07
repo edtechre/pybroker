@@ -6,11 +6,12 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
+import json
 import numpy as np
 import pandas as pd
 import re
 import warnings
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from enum import Enum
 from numpy.typing import NDArray
@@ -496,25 +497,42 @@ def get_unique_sorted_dates(col: pd.Series) -> Sequence[np.datetime64]:
 
 
 def _json_safe(value: Any) -> Any:
-    """Recursively converts a value to JSON-serializable Python types."""
+    """Recursively converts a value to JSON-serializable Python types.
+
+    Total by construction: every input maps to ``None``, ``bool``, ``int``,
+    ``float``, ``str``, ``list``, or ``dict``, so
+    ``json.dumps(..., allow_nan=False)`` never raises on the output. NaN and
+    NaT map to ``None``; infinities map to the string sentinels
+    ``"Infinity"``/``"-Infinity"`` so that legitimately infinite metrics
+    stay distinguishable from missing values; unrecognized types degrade to
+    ``str(value)``.
+    """
     if value is None:
         return None
     if isinstance(value, bool):
         return value
     if isinstance(value, str):
         return value
+    if isinstance(value, Enum):
+        return _json_safe(value.value)
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
     if isinstance(value, int) and not isinstance(value, bool):
         return value
     if isinstance(value, float):
-        if np.isnan(value) or np.isinf(value):
+        if np.isnan(value):
             return None
+        if np.isinf(value):
+            return "Infinity" if value > 0 else "-Infinity"
         return value
     if isinstance(value, Decimal):
         # Decimal('NaN') and Decimal('Infinity') float() into raw nan/inf,
         # which json.dumps(allow_nan=False) rejects -- so one non-finite
         # Decimal made to_json_str() raise on an otherwise valid result.
-        if not value.is_finite():
+        if value.is_nan():
             return None
+        if value.is_infinite():
+            return "Infinity" if value > 0 else "-Infinity"
         return float(value)
     if value is pd.NaT:
         # NaTType subclasses datetime, so it would otherwise reach the branch
@@ -522,30 +540,89 @@ def _json_safe(value: Any) -> Any:
         return None
     if isinstance(value, datetime):
         return value.isoformat()
+    if isinstance(value, date):
+        # datetime subclasses date, so this branch must come after the
+        # datetime branch to serialize plain dates (e.g. from a custom
+        # data column) without a fabricated midnight time.
+        return value.isoformat()
     if isinstance(value, pd.Timestamp):
         return value.isoformat()
     if isinstance(value, np.datetime64):
         if pd.isna(value):
             return None
         return pd.Timestamp(value).isoformat()
+    if isinstance(value, np.bool_):
+        # np.bool_ subclasses neither bool nor np.integer, so it would
+        # otherwise fall through to the str() fallback.
+        return bool(value)
+    if isinstance(value, (timedelta, np.timedelta64)):
+        # np.timedelta64 passes isinstance(..., np.integer), so this branch
+        # must come before the np.integer branch or durations would
+        # silently serialize as raw unit counts.
+        if pd.isna(value):
+            return None
+        try:
+            return pd.Timedelta(value).isoformat()
+        except (ValueError, OverflowError):
+            # Month/year-unit timedelta64s and out-of-ns-range timedeltas
+            # have no pd.Timedelta form; degrade like the terminal
+            # fallback instead of raising.
+            return str(value)
     if isinstance(value, np.integer):
         return int(value)
     if isinstance(value, np.floating):
-        if np.isnan(value) or np.isinf(value):
+        if np.isnan(value):
             return None
+        if np.isinf(value):
+            return "Infinity" if value > 0 else "-Infinity"
         return float(value)
+    if isinstance(value, np.ndarray):
+        # Element-wise through the scalar branches rather than tolist():
+        # tolist() on datetime64[ns]/timedelta64[ns] arrays yields raw
+        # epoch-nanosecond ints, which would skip the ISO formatting.
+        if value.ndim == 0:
+            return _json_safe(value[()])
+        return [_json_safe(v) for v in value]
+    if hasattr(value, "_asdict"):
+        return _json_safe(value._asdict())
+    if isinstance(value, dict):
+        return {_json_safe_key(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    if isinstance(value, (set, frozenset)):
+        # Sets have no JSON form and hash-seed-dependent iteration order;
+        # emit a sorted list so identical inputs serialize identically.
+        converted = [_json_safe(v) for v in value]
+        try:
+            return sorted(converted)
+        except TypeError:
+            return sorted(converted, key=repr)
     try:
+        # Scalar NA-likes only (e.g. pd.NA): every container type is
+        # dispatched above, so a 1-element list can no longer be collapsed
+        # to a truthy elementwise pd.isna result and silently nulled.
         if pd.isna(value):
             return None
     except (TypeError, ValueError):
         pass
-    if hasattr(value, "_asdict"):
-        return _json_safe(value._asdict())
-    if isinstance(value, dict):
-        return {k: _json_safe(v) for k, v in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_json_safe(v) for v in value]
-    return value
+    # Default reprs embed a memory address, which would make identical
+    # backtests serialize differently across runs.
+    return re.sub(r" at 0x[0-9a-fA-F]+", "", str(value))
+
+
+def _json_safe_key(key: Any) -> Union[None, bool, int, float, str]:
+    """Converts a dict key to a form ``json.dumps`` accepts.
+
+    Container keys (e.g. tuples, frozensets) would convert to unhashable
+    lists and crash the rebuilt dict, so anything beyond the scalar key
+    types ``json.dumps`` coerces itself becomes a compact JSON string.
+    """
+    if isinstance(key, str):
+        return key
+    converted = _json_safe(key)
+    if isinstance(converted, (bool, int, float, str)) or converted is None:
+        return converted
+    return json.dumps(converted, allow_nan=False)
 
 
 def _dataframe_records(
@@ -555,9 +632,18 @@ def _dataframe_records(
     reset_index: bool = True,
 ) -> list[dict[str, Any]]:
     """Converts a :class:`pandas.DataFrame` to JSON-safe record dicts."""
+    if max_rows is not None and max_rows < 0:
+        # head(-n) would silently drop the last (newest) n rows.
+        raise ValueError(f"max_rows must be >= 0: {max_rows}")
     if df.empty:
         return []
-    out = df.reset_index() if reset_index else df
+    if reset_index:
+        # An unnamed index is pure row position; materializing it would
+        # inject a junk 'index' field into every record.
+        drop = all(name is None for name in df.index.names)
+        out = df.reset_index(drop=drop)
+    else:
+        out = df
     if max_rows is not None:
         out = out.head(max_rows)
     return [_json_safe(record) for record in out.to_dict(orient="records")]

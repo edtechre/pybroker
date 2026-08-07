@@ -10,10 +10,12 @@ import numpy as np
 import pandas as pd
 import pytest
 import re
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pybroker.common import (
     BarData,
+    PriceType,
+    StopType,
     bars_to_df,
     parse_timeframe,
     quantize,
@@ -303,18 +305,112 @@ def test_json_safe_when_nat_then_null():
     "value, expected",
     [
         (Decimal("NaN"), None),
-        (Decimal("Infinity"), None),
-        (Decimal("-Infinity"), None),
+        (Decimal("Infinity"), "Infinity"),
+        (Decimal("-Infinity"), "-Infinity"),
         (Decimal("1.5"), 1.5),
     ],
 )
 def test_json_safe_non_finite_decimal(value, expected):
     """Decimal('NaN') floats into a raw nan, which
     json.dumps(allow_nan=False) rejects -- so one non-finite Decimal made
-    to_json_str() raise on an otherwise valid result."""
+    to_json_str() raise on an otherwise valid result. Infinities keep a
+    string sentinel so they stay distinguishable from missing values."""
     import json
 
     from pybroker.common import _json_safe
 
     assert _json_safe(value) == expected
     json.dumps({"v": _json_safe(value)}, allow_nan=False)
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (PriceType.CLOSE, "close"),
+        (StopType.LOSS, "loss"),
+        (date(2021, 2, 15), "2021-02-15"),
+        (np.array([1.0, 2.5]), [1.0, 2.5]),
+        (np.array([np.nan]), [None]),
+        (np.array([[1.0, 2.0], [3.0, np.nan]]), [[1.0, 2.0], [3.0, None]]),
+        (np.array(7.0), 7.0),
+        (frozenset({"b", "a"}), ["a", "b"]),
+        ({10, 2, 1}, [1, 2, 10]),
+        (b"bytes", "bytes"),
+        (np.bool_(True), True),
+        (np.bool_(False), False),
+        (timedelta(days=1), "P1DT0H0M0S"),
+        (np.timedelta64(1, "D"), "P1DT0H0M0S"),
+        (np.timedelta64("NaT"), None),
+        (pd.Period("2021Q1", freq="Q"), "2021Q1"),
+        (float("inf"), "Infinity"),
+        (float("-inf"), "-Infinity"),
+        (np.float64("inf"), "Infinity"),
+        (np.float64("-inf"), "-Infinity"),
+        ({np.int64(3): np.float64(1.5)}, {3: 1.5}),
+        ({("AAA", "BBB"): 1.5}, {'["AAA", "BBB"]': 1.5}),
+        ({frozenset({"b", "a"}): 1}, {'["a", "b"]': 1}),
+        (np.timedelta64(3, "M"), "3 months"),
+        (timedelta.max, "999999999 days, 23:59:59.999999"),
+        (
+            np.array(["2021-01-04"], dtype="datetime64[ns]"),
+            ["2021-01-04T00:00:00"],
+        ),
+        (
+            np.array([1], dtype="timedelta64[ns]"),
+            ["P0DT0H0M0.000000001S"],
+        ),
+    ],
+)
+def test_json_safe_total(value, expected):
+    """_json_safe is total: every input maps to JSON-serializable Python
+    types, so json.dumps(allow_nan=False) never raises on its output."""
+    import json
+
+    from pybroker.common import _json_safe
+
+    assert _json_safe(value) == expected
+    json.dumps({"v": _json_safe(value)}, allow_nan=False)
+
+
+def test_json_safe_fallback_deterministic():
+    """The str() fallback must not embed memory addresses: identical
+    backtests must serialize to identical JSON bytes across runs."""
+    from pybroker.common import _json_safe
+
+    class Marker:
+        pass
+
+    first = _json_safe(Marker())
+    second = _json_safe(Marker())
+    assert first == second
+    assert "0x" not in first
+
+
+def test_dataframe_records_drops_unnamed_index():
+    from pybroker.common import _dataframe_records
+
+    df = pd.DataFrame({"name": ["a", "b"], "value": [1, 2]})
+    records = _dataframe_records(df)
+    assert records == [
+        {"name": "a", "value": 1},
+        {"name": "b", "value": 2},
+    ]
+
+
+def test_dataframe_records_keeps_named_index():
+    from pybroker.common import _dataframe_records
+
+    df = pd.DataFrame({"value": [1, 2]}, index=pd.Index([10, 20], name="id"))
+    records = _dataframe_records(df)
+    assert records == [
+        {"id": 10, "value": 1},
+        {"id": 20, "value": 2},
+    ]
+
+
+def test_dataframe_records_when_negative_max_rows_then_error():
+    from pybroker.common import _dataframe_records
+
+    df = pd.DataFrame({"value": [1, 2]})
+    with pytest.raises(ValueError, match=re.escape("max_rows must be >= 0")):
+        _dataframe_records(df, max_rows=-1)

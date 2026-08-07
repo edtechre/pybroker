@@ -890,6 +890,23 @@ def test_eval_metrics_to_json():
     assert payload["calmar"] is None
 
 
+def test_eval_metrics_to_json_when_inf_then_sentinel():
+    """A legitimately infinite metric (e.g. Sortino with no losing bars)
+    must stay distinguishable from a missing metric, which serializes as
+    null."""
+    import json
+
+    inf_metrics = EvalMetrics(sortino=float("inf"), calmar=float("-inf"))
+    nan_metrics = EvalMetrics(sortino=float("nan"), calmar=None)
+    inf_payload = inf_metrics.to_json()
+    nan_payload = nan_metrics.to_json()
+    assert inf_payload["sortino"] == "Infinity"
+    assert inf_payload["calmar"] == "-Infinity"
+    assert nan_payload["sortino"] is None
+    assert inf_payload != nan_payload
+    json.dumps(inf_payload, allow_nan=False)
+
+
 def test_bootstrap_result_to_json():
     conf_intervals = pd.DataFrame(
         [{"name": "sharpe", "conf": "95%", "lower": 0.1, "upper": 2.0}]
