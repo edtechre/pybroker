@@ -43,7 +43,7 @@ def trend_follow(ctx):
 
 yfinance = YFinance()
 strategy = Strategy(
-    YFinance(), start_date="1/1/2021", end_date="1/1/2026", config=config
+    YFinance(), start_date="1/1/2025", end_date="8/1/2026", config=config
 )
 strategy.add_execution(
     trend_follow, ["GS", "MS", "C", "USB"], indicators=sma_50
@@ -83,7 +83,7 @@ def run_backtest(
     config, exec_fn=trend_follow, symbols=("GS", "MS", "C", "USB")
 ):
     strategy = Strategy(
-        yfinance, start_date="1/1/2021", end_date="1/1/2026", config=config
+        yfinance, start_date="1/1/2025", end_date="8/1/2026", config=config
     )
     strategy.add_execution(exec_fn, symbols, indicators=sma_50)
     return strategy.backtest()
