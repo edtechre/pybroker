@@ -1,0 +1,14 @@
+{
+  "//": [
+    "Single source of truth for the Python versions CI uses.",
+    "'versions' drives the test matrix, the asv PR gate and the asv nightly",
+    "matrix; 'tooling' is the one interpreter for format, lint, typecheck,",
+    "docs and the sdist build. Workflows read this file with fromJSON();",
+    "declaration sites that cannot (setup.cfg, asv.conf.json, pyproject.toml,",
+    ".readthedocs.yml) are held to it by",
+    ".github/scripts/check_python_versions.py, which CI runs on every push.",
+    "Adding a version is one entry here plus whatever that check reports."
+  ],
+  "versions": ["3.11", "3.12", "3.13"],
+  "tooling": "3.12"
+}

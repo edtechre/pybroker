@@ -290,6 +290,14 @@ between runs on NumPy arrays and Numba kernels.
   (`scripts/bench_interval.py` + `.bench/timeframe-baseline.json`, and
   `benchmarks/run_*.py`); keep their baselines valid when touching those
   paths.
+- **The CI Python matrix is single-sourced** in
+  `.github/python-versions.json` (`versions` = the test matrix, the asv PR
+  gate and the asv nightly; `tooling` = format/lint/typecheck/docs/sdist).
+  Workflows read it with `fromJSON()`; `setup.cfg`, `asv.conf.json`,
+  `pyproject.toml` and `.readthedocs.yml` cannot, so
+  `.github/scripts/check_python_versions.py` fails CI when they drift.
+  Adding or dropping a version means editing the JSON and whatever that
+  check reports — never a workflow literal.
 
 ## Docs
 

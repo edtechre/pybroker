@@ -7,9 +7,11 @@ per-commit results under ``.asv/results/``, and produces an HTML
 dashboard for visual regression tracking.
 
 The benchmark suite lives in ``benchmarks/`` and is exercised in CI on
-every pull request via ``.github/workflows/asv-pr.yml`` (uses
-``asv continuous origin/master HEAD`` and posts a sticky PR comment with
-the diff).
+every pull request via ``.github/workflows/asv-pr.yml``, which runs
+``asv continuous origin/master HEAD`` once per supported Python version
+and posts a sticky PR comment per version with the diff. The versions
+come from ``.github/python-versions.json``, the single source of truth
+the test matrix and the nightly benchmark run read as well.
 
 Installation
 ------------
@@ -106,6 +108,19 @@ Environment
 ``asv.conf.json`` uses ``environment_type: virtualenv`` so each commit is
 benchmarked in a fresh virtualenv built from ``setup.cfg``. The install
 command is ``python -mpip install -e .``: no Poetry, no tox; just pip.
+
+Its ``pythons`` lists every supported version, kept in step with
+``.github/python-versions.json`` by
+``.github/scripts/check_python_versions.py``. asv builds one environment
+per entry it can find an interpreter for, so a local run covers whichever
+of those versions is installed; pass ``--python`` to pick a single one:
+
+.. code-block:: bash
+
+   asv run --python=3.12
+   asv continuous master HEAD --python=3.12
+
+CI always passes ``--python`` explicitly, one version per matrix leg.
 
 For local ad-hoc benchmarking you can switch the config to
 ``environment_type: existing`` (uses the currently activated venv) to

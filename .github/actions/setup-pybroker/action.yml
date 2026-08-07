@@ -3,12 +3,30 @@ description: Install Python, asv, and cached pip deps for pybroker benchmarks
 
 inputs:
   python-version:
-    description: Python version
-    default: "3.12"
+    description: >
+      Python version to benchmark on. Required and deliberately without a
+      default: a default is what silently diverged from asv.conf.json's
+      pin, leaving the gate benchmarking on an interpreter the config did
+      not list. Callers pass a version from .github/python-versions.json.
+    required: true
 
 runs:
   using: "composite"
   steps:
+    # GitHub does not enforce `required` for composite action inputs -- an
+    # omitted one arrives as the empty string, and setup-python would then
+    # fall back to whatever Python the runner image ships. Fail instead.
+    - name: Require an explicit Python version
+      shell: bash
+      env:
+        PY_VERSION: ${{ inputs.python-version }}
+      run: |
+        if [ -z "$PY_VERSION" ]; then
+          echo "::error::setup-pybroker requires an explicit" \
+               "python-version input; got an empty value."
+          exit 1
+        fi
+
     - name: Set up Python
       uses: actions/setup-python@v6
       id: setup-python
