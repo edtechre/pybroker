@@ -138,7 +138,7 @@ jobs:
           {
             echo "## ASV continuous — ${BASE_REF} → PR HEAD"
             echo ""
-            echo "Exit code: $ASV_EXIT (non-zero indicates flagged regression at --factor ${GATE_FACTOR})"
+            echo "Exit code: $ASV_EXIT (1 = flagged regression at --factor ${GATE_FACTOR}; 2 = a benchmark raised, nothing compared)"
             echo ""
             echo "### Moved by ${REPORT_FACTOR}x or more"
             echo ""
@@ -161,7 +161,7 @@ jobs:
           {
             echo "## ASV continuous — benchmark diff"
             echo ""
-            echo "Exit code: \`$ASV_EXIT\` (non-zero = flagged regression at \`--factor ${GATE_FACTOR}\`)"
+            echo "Exit code: \`$ASV_EXIT\` (\`1\` = flagged regression at \`--factor ${GATE_FACTOR}\`; \`2\` = a benchmark raised, so nothing was compared)"
             echo ""
             echo "**Moved by ${REPORT_FACTOR}x or more** — reported, not blocking:"
             echo ""
@@ -178,7 +178,9 @@ jobs:
             echo ""
             echo "</details>"
             echo ""
-            if [ "$ASV_EXIT" != "0" ] && [ "$OVERRIDE" = "true" ]; then
+            if [ "$ASV_EXIT" = "2" ]; then
+              echo "_A benchmark raised an exception, so nothing was compared. \`bench-override\` does not apply — it accepts a measured slowdown, not a benchmark that cannot run._"
+            elif [ "$ASV_EXIT" != "0" ] && [ "$OVERRIDE" = "true" ]; then
               echo "_Gate forced green by \`bench-override\` label._"
             else
               echo "_Blocking at \`--factor ${GATE_FACTOR}\`, reporting from \`--factor ${REPORT_FACTOR}\`: 1.1 sits below this runner's noise floor, where identical code has flagged sub-2ms microbenchmarks at up to 1.18. Override via the \`bench-override\` PR label. For the trend view, run \`asv publish && asv preview\` locally against committed \`.asv/results/\`._"
@@ -203,6 +205,23 @@ jobs:
           if [ "$ASV_EXIT" = "0" ]; then
             echo "No regression flagged at ${GATE_FACTOR}x."
             exit 0
+          fi
+          # asv distinguishes the two non-zero exits and the gate must too.
+          # `asv run` returns 2 when any benchmark raised, and `asv
+          # continuous` propagates that immediately -- before it compares
+          # anything -- so exit 2 means "a benchmark is broken", not "this PR
+          # is slower". Reporting it as a regression is the same conflation
+          # that made a config drift look like one.
+          #
+          # bench-override deliberately does not apply here: it exists to
+          # accept a measured slowdown, not to merge a benchmark that cannot
+          # run.
+          if [ "$ASV_EXIT" = "2" ]; then
+            echo "::error::asv exited 2 -- at least one benchmark raised an" \
+                 "exception, so nothing was compared. This is not a" \
+                 "regression; the benchmark itself is broken."
+            grep -nE "failed" asv-continuous.log | head -20
+            exit 1
           fi
           if [ "$OVERRIDE" = "true" ]; then
             echo "Regression flagged (exit $ASV_EXIT) but 'bench-override' label is set — forcing green."
