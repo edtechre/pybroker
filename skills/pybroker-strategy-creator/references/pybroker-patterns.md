@@ -108,6 +108,18 @@ def sma_slow(data, period: int):
 
 For logic that needs an explicit loop, JIT-compile a nested kernel with Numba `@njit` (see the `cmma` example in `wiki-05-writing-indicators.md`). If an `@njit` function fails to compile or raises a cryptic `TypingError`, re-run once with the `NUMBA_DISABLE_JIT=1` environment variable to get a readable Python traceback, fix the code, then remove the variable.
 
+Indicator values must never look ahead: a value at bar `i` may depend only on inputs at index `i` and earlier. Never negative-index into a full-length array inside an indicator function (a negative index silently wraps to the end of the series — the future), never shift future values backward (`shift(-1)`-style), and never normalize by full-series statistics. Self-test novel indicator logic with the bump-last-bar check — change only the final input bar and assert every earlier output is unchanged:
+
+```python
+before = sma_50(df).to_numpy().copy()
+bumped = df.copy()
+bumped.loc[bumped.index[-1], "close"] *= 1.5
+after = sma_50(bumped).to_numpy()
+assert np.array_equal(before[:-1], after[:-1], equal_nan=True)
+```
+
+Bump every input the indicator reads (`high`, `low`, `volume`, custom columns), not just `close`.
+
 Attach indicators to an execution:
 
 ```python
@@ -225,6 +237,8 @@ sma_ind = pyb.indicator("sma", sma, period=period)
 
 def sma_cross(ctx: ExecContext):
     sma_vals = ctx.indicator("sma")
+    if np.isnan(sma_vals[-1]):  # warmup guard: period is a hyperparam
+        return
     if not ctx.long_pos() and ctx.close[-1] > sma_vals[-1]:
         ctx.buy_shares = ctx.calc_target_shares(0.25)
         ctx.stop_loss_pct = ctx.hyperparam("stop_pct")
@@ -296,11 +310,12 @@ result = strategy.walkforward(windows=3, train_size=0.5)
 - Syntax-check created Python files with `python -m py_compile <file>`.
 - Generated scripts start with `pybroker.disable_progress_bar()` and `pybroker.enable_data_source_cache(...)`.
 - No pandas operations inside indicator functions or per-bar execution functions — NumPy/Numba only.
+- The bump-last-bar lookahead test passes for novel indicator logic, and no indicator function negative-indexes into a full-length array.
 - `timeframe=` is passed to `backtest`/`walkforward` whenever an execution declares `intervals=` or binds an indicator/model to an interval.
 - `StrategyConfig(record_position_bars=True)` is set when the user needs `result.positions`.
 - Grep deliverables for removed/deprecated names: `bootstrap_sample_size`, `disable_parallel`, `set_pos_size_handler`, `StrategyConfig(max_long_positions=...)`.
 - Short signals set `ctx.short_score` with higher-wins ordering: negate a lowest-wins signal (`-roc`), never invert it (`1.0 / roc`).
 - If using DataFrame data, include a tiny local fixture and run the backtest without network access.
-- If using `YFinance`, expect network/package availability to be an execution dependency and mention when not run.
+- If using `YFinance`, name the required `pip install yfinance`, expect network availability to be an execution dependency, and mention when not run.
 - Inspect `result.metrics_df`, `result.orders`, and `result.trades` for empty or impossible behavior.
 - Keep generated examples reproducible by setting explicit dates, symbols, config, and random seeds where applicable.

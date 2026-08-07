@@ -5,6 +5,8 @@ training function, and execution rules to the user's model.
 """
 
 import pybroker
+
+# Not PyBroker dependencies: pip install yfinance scikit-learn
 from pybroker import ExecContext, Strategy, StrategyConfig, YFinance
 from pybroker.indicator import close_minus_ma
 from sklearn.linear_model import LinearRegression
@@ -40,7 +42,8 @@ def train_fn(symbol: str, train_data, test_data):
 model_source = pybroker.model(MODEL_NAME, train_fn, indicators=[cmma_20])
 
 
-# Execution logic reads ctx.* NumPy arrays — never pandas.
+# Execution logic reads ctx.* NumPy arrays — never pandas. The arrays hold
+# completed bars only, so ctx.close[-1] is the current bar, never the future.
 def exec_fn(ctx: ExecContext):
     pred = ctx.preds(MODEL_NAME)[-1]
     if not ctx.long_pos():

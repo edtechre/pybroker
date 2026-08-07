@@ -5,6 +5,8 @@ execution rules to the user's strategy.
 """
 
 import pybroker
+
+# YFinance is not a PyBroker dependency: pip install yfinance
 from pybroker import ExecContext, Strategy, StrategyConfig, YFinance, highest
 
 # Cache data source queries so reruns skip refetching, and disable the
@@ -18,7 +20,8 @@ END_DATE = "1/1/2024"
 LOOKBACK = 20
 
 
-# Execution logic reads ctx.* NumPy arrays — never pandas.
+# Execution logic reads ctx.* NumPy arrays — never pandas. The arrays hold
+# completed bars only, so ctx.close[-1] is the current bar, never the future.
 def exec_fn(ctx: ExecContext):
     if ctx.bars < LOOKBACK + 1:
         return

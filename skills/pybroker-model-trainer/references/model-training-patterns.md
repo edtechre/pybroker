@@ -455,6 +455,10 @@ construction, or Python objects (lists of strings, dicts, pandas) inside the
   (next-bar target => `lookahead=1`).
 - The training target is shifted forward (`shift(-1)` / `y[1:]`); no
   forward-shifted values survive into features.
+- Feature indicators never negative-index into full-length arrays (a
+  negative index silently wraps to the end of the series — the future),
+  and novel indicator logic passes the bump-last-bar check: change only
+  the final input bar and assert every earlier output is unchanged.
 - With `lags`, fit `lag_train[:-1]` against `target[1:]`.
 - Pooled targets are built with `groupby("symbol")` so labels never cross a
   symbol boundary.
@@ -466,3 +470,17 @@ construction, or Python objects (lists of strings, dicts, pandas) inside the
 - `test_data` is used only for held-out evaluation inside `train_fn`, never
   for fitting, tuning, or early stopping.
 - `shuffle` stays `False` unless deliberately shuffling training rows.
+
+## Validation Checklist
+
+- Syntax-check created Python files with `python -m py_compile <file>`.
+- Generated scripts call `pybroker.disable_progress_bar()` and
+  `pybroker.enable_caches(...)` (or `enable_data_source_cache(...)`).
+- Every imported model or data-source library names its `pip install`
+  (for example `pip install yfinance scikit-learn`); none is a PyBroker
+  dependency, so never assume one is importable.
+- When the network or a data-source package is unavailable, run with a
+  tiny local DataFrame passed to `Strategy` instead.
+- Report `result.metrics_df` as the human-readable summary, with
+  `result.to_json()` / `to_json_str()` for structured output.
+- The Leakage Checklist above passes.

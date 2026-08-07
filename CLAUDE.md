@@ -318,8 +318,9 @@ users symlink them into their agent's skills directory
   generated from the local notebooks and source — never hand-edit them;
   regenerate with `.venv12/bin/python scripts/gen_skill_refs.py` and
   verify with `--check`. Hand-authored: `SKILL.md`, `assets/*_template.py`,
-  the `*-patterns.md` references, and `wiki-index.md` outside the strategy
-  creator's generated `## User Guide Wiki` block.
+  the `*-patterns.md` references, the `agents/openai.yaml` interface
+  sidecars, and `wiki-index.md` outside the strategy creator's generated
+  `## User Guide Wiki` block.
 - **`SKILL.md` Overviews ship to the docs verbatim.**
   `docs/source/agent-skills.rst` includes the slice between the literal
   headings `## Overview` and `## Workflow` — keep both headings intact and
