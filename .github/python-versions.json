@@ -9,6 +9,6 @@
     ".github/scripts/check_python_versions.py, which CI runs on every push.",
     "Adding a version is one entry here plus whatever that check reports."
   ],
-  "versions": ["3.11", "3.12", "3.13"],
+  "versions": ["3.11", "3.12", "3.13", "3.14"],
   "tooling": "3.12"
 }

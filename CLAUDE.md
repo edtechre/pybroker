@@ -40,7 +40,7 @@ python -m pytest -p no:randomly ...        # deterministic order when bisecting 
 tox -e format             # ruff format --diff — CHECK ONLY; `tox -e format -- src tests` to write
 tox -e lint               # ruff check src tests
 tox -e typecheck          # mypy on src (mypy version pinned in the tox env)
-tox -e py311,py312,py313  # full test matrix
+tox -e py311,py312,py313,py314  # full test matrix
 
 # Benchmarks (asv; see Performance & Benchmarks)
 asv run --quick             # fast feedback, one sample per benchmark
