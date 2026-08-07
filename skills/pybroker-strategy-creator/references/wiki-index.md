@@ -75,7 +75,7 @@ Use this index to choose the smallest relevant reference file before writing or 
 - Data downloads, caches, Alpaca/YFinance, or DataFrame inputs: read `wiki-01-getting-started-with-data-sources.md`.
 - Core Strategy/ExecContext order logic: read `wiki-02-backtesting-a-strategy.md` and `pybroker-patterns.md`.
 - Metrics, randomized bootstrap, or result inspection: read `wiki-03-evaluating-with-bootstrap-metrics.md`.
-- Ranking long/short signals, scores, or max positions: read `wiki-04-ranking-long-and-short-signals.md`.
+- Ranking long/short signals, `long_score` / `short_score`, score sort direction, negating short signals, or max long/short positions: read `wiki-04-ranking-long-and-short-signals.md`.
 - Built-in or custom indicators: read `wiki-05-writing-indicators.md`.
 - ML models, prediction inputs, caching, or walkforward training: read `wiki-06-training-a-model.md`.
 - Custom DataSource, CSV, DataFrame, or custom columns: read `wiki-07-creating-a-custom-data-source.md`.

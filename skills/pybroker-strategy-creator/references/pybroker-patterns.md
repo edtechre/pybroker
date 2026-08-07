@@ -135,24 +135,49 @@ def breakout(ctx: ExecContext):
         ctx.stop_profit_pct = 12
 ```
 
-Ranked entries (execution functions still place orders; scores break ties for
-the position caps):
+Ranked entries (execution functions still place orders; scores decide
+which signals win when a position cap binds). Higher score wins on both
+sides: short orders go to the symbols with the highest `short_score`, so
+negate a lowest-wins short signal to rank the most negative value first:
 
 ```python
-strategy.set_max_long_positions(3)
+strategy.set_max_long_positions(1)
+strategy.set_max_short_positions(1)
 
-def rank_by_momentum(ctx: ExecContext):
-    if ctx.bars < 63:
+def long_high_short_low(ctx: ExecContext):
+    if ctx.bars < 6 or ctx.long_pos() or ctx.short_pos():
         return
-    momentum = ctx.close[-1] / ctx.close[-63] - 1
-    ctx.long_score = momentum
-    if not ctx.long_pos() and momentum > 0:
-        ctx.buy_shares = ctx.calc_target_shares(1 / 3)
-        ctx.hold_bars = 21
+    roc = (ctx.close[-1] - ctx.close[-6]) / ctx.close[-6]
+    if roc > 0 and not ctx.has_long_positions():
+        ctx.buy_shares = ctx.calc_target_shares(0.5)
+        ctx.hold_bars = 2
+        ctx.long_score = roc
+    elif roc < 0 and not ctx.has_short_positions():
+        ctx.sell_shares = ctx.calc_target_shares(0.5)
+        ctx.hold_bars = 2
+        ctx.short_score = -roc  # highest short_score is shorted first
 ```
 
+The `if`/`elif` keeps one order side per symbol per bar, and the
+`has_long_positions()` / `has_short_positions()` gates are
+portfolio-wide, not per-symbol.
+
+Ranking semantics:
+
+- Scores rank descending across all executions, with the symbol name as
+  a deterministic tiebreak. `long_score` ranks buy/cover signals;
+  `short_score` ranks sell signals. Both default to `None` and reset
+  every bar.
+- A symbol that sets no score sorts as `0.0`; an unrankable (NaN) score
+  sorts last. Orders past a cap are silently dropped (debug log only),
+  so set scores whenever a cap is set.
+- In ranked-cap mode nothing is ever liquidated by ranking alone; only
+  `enable_rotation` liquidates by rank.
+
 Rotation (trading is driven entirely by scores; entries are equal-weighted
-across the position slots unless a custom `sizer` is passed):
+across the position slots unless a custom `sizer` is passed). With both
+caps set, each leg ranks independently; a symbol picked by both legs on
+the same bar goes to the side where it ranks better, and ties go long:
 
 ```python
 strategy.set_max_long_positions(3)
@@ -276,6 +301,7 @@ result = strategy.walkforward(windows=3, train_size=0.5)
 - `timeframe=` is passed to `backtest`/`walkforward` whenever an execution declares `intervals=` or binds an indicator/model to an interval.
 - `StrategyConfig(record_position_bars=True)` is set when the user needs `result.positions`.
 - Grep deliverables for removed/deprecated names: `ctx.score`, `bootstrap_sample_size`, `disable_parallel`, `set_pos_size_handler`, `StrategyConfig(max_long_positions=...)`.
+- Short signals set `ctx.short_score` with higher-wins ordering: negate a lowest-wins signal (`-roc`), never invert it (`1.0 / roc`).
 - If using DataFrame data, include a tiny local fixture and run the backtest without network access.
 - If using `YFinance`, expect network/package availability to be an execution dependency and mention when not run.
 - Inspect `result.metrics_df`, `result.orders`, and `result.trades` for empty or impossible behavior.

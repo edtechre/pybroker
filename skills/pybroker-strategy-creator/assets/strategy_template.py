@@ -35,6 +35,8 @@ def exec_fn(ctx: ExecContext):
         ctx.buy_shares = ctx.calc_target_shares(0.25)
         ctx.stop_loss_pct = 5
         ctx.hold_bars = 10
+        # Rank breakout strength; set_max_long_positions keeps the strongest.
+        ctx.long_score = ctx.close[-1] / high_20[-2] - 1
 
 
 def build_strategy() -> Strategy:
