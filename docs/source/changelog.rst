@@ -46,7 +46,7 @@ Breaking changes
 
 * Unifies `slippage <https://www.pybroker.com/en/latest/reference/pybroker.slippage.html>`_ API; removes ``RandomSlippageModel``.
 
-* Removes ``bootstrap_sample_size`` / ``indicator_memo_max``; parallelization configuration moves to `set_parallel <https://www.pybroker.com/en/latest/reference/pybroker.parallel.html#pybroker.parallel.set_parallel>`_, which supports only the Ray backend (no ``multiprocessing``).
+* Removes ``bootstrap_sample_size``; BCa and drawdown bootstrap now resample the full backtest series instead of a fixed-size sample, fixing cases that could produce incorrect confidence intervals or degenerate to a single replicate.
 
 * Removes ``disable_parallel`` from `backtest <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`_ / `walkforward <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`_; parallel indicator and model work is opt-in via ``parallel_indicators`` / ``parallel_models``.
 
