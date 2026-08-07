@@ -4,9 +4,8 @@ Use this index to choose the smallest relevant reference file before writing or 
 
 ## User Guide Wiki
 
-- `wiki-10-rotational-trading.md` - Rotational Trading; 7 code cells.
+- `wiki-10-rotational-trading.md` - Rotational Trading; 6 code cells.
   Topics: Rotational Trading; enable_rotation; worst_rank_held; Custom Position Sizing; RotationContext.
-  Note: this page predates `set_max_long_positions` — modernize its deprecated `StrategyConfig(max_long_positions=2)` per `rotational-patterns.md`.
 - `wiki-04-ranking-long-and-short-signals.md` - Ranking Long And Short Signals; 5 code cells.
   Topics: Ranking Long and Short Signals; Long Signals; Short Signals; long_score; short_score; position caps.
 - `wiki-18-dynamic-symbol-selection.md` - Dynamic Symbol Selection; 4 code cells.

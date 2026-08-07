@@ -31,7 +31,7 @@ Use this index to choose the smallest relevant reference file before writing or 
 - `wiki-09-rebalancing-positions.md` - Rebalancing Positions; 8 code cells.
   Topics: Rebalancing Positions; Equal Position Sizing; Portfolio Optimization.
 
-- `wiki-10-rotational-trading.md` - Rotational Trading; 7 code cells.
+- `wiki-10-rotational-trading.md` - Rotational Trading; 6 code cells.
   Topics: Rotational Trading; Custom Position Sizing.
 
 - `wiki-11-configuring-parallelization.md` - Configuring Parallelization; 7 code cells.

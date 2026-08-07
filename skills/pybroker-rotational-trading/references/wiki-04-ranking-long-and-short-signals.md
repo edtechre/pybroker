@@ -10,7 +10,7 @@ In this notebook, you will learn how to rank long and short signals across ticke
 
 ```python
 import pybroker
-from pybroker import Strategy, StrategyConfig, YFinance
+from pybroker import Strategy, YFinance
 
 pybroker.enable_data_source_cache("ranking")
 ```
@@ -31,12 +31,12 @@ def buy_highest_volume(ctx):
 The ```buy_highest_volume``` function allocates 100% of the portfolio and holds for 2 bars. It sets ```ctx.long_score``` to ```ctx.volume[-1]``` so **PyBroker** ranks the buy signals by volume.
 
 ```python
-config = StrategyConfig(max_long_positions=1)
-strategy = Strategy(YFinance(), "6/1/2021", "6/1/2022", config)
+strategy = Strategy(YFinance(), "6/1/2021", "6/1/2022")
 strategy.add_execution(buy_highest_volume, ["T", "F", "GM", "PFE"])
+strategy.set_max_long_positions(1)
 ```
 
-To limit the number of long positions that can be held at any time to ```1```, we set [max_long_positions](https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.max_long_positions) to ```1``` in the [StrategyConfig](https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig). This effectively buys the symbol with the highest volume.
+To limit the number of long positions that can be held at any time to ```1```, we call [set_max_long_positions](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_max_long_positions). This effectively buys the symbol with the highest volume.
 
 ```python
 result = strategy.backtest()

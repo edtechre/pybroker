@@ -39,16 +39,6 @@ class StrategyConfig:
             - ``DEFAULT``: Long and short positions.
             - ``LONG_ONLY``: Long-only positions.
             - ``SHORT_ONLY``: Short-only positions.
-        max_long_positions: Deprecated. Use
-            :meth:`pybroker.strategy.Strategy.set_max_long_positions`.
-            Maximum number of long positions that can be held at any time in
-            :class:`pybroker.portfolio.Portfolio`. Unlimited when ``None``.
-            Defaults to ``None``.
-        max_short_positions: Deprecated. Use
-            :meth:`pybroker.strategy.Strategy.set_max_short_positions`.
-            Maximum number of short positions that can be held at any time in
-            :class:`pybroker.portfolio.Portfolio`. Unlimited when ``None``.
-            Defaults to ``None``.
         buy_delay: Number of bars before placing an order for a buy signal. The
             default value of ``1`` places a buy order on the next bar. Must be
             > ``0``.

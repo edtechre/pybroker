@@ -10,7 +10,7 @@ Rotational trading involves buying top-performing assets and selling underperfor
 
 ```python
 import pybroker
-from pybroker import ExecContext, Strategy, StrategyConfig, YFinance
+from pybroker import ExecContext, Strategy, YFinance
 ```
 
 Our strategy will involve ranking and buying stocks with the highest [price rate-of-change (ROC)](https://www.investopedia.com/terms/p/pricerateofchange.asp). To start, we'll define a 20-day ROC indicator using [TA-Lib](https://github.com/TA-Lib/ta-lib-python):
@@ -30,12 +30,6 @@ Next, let's define the rules of our strategy:
 - If either of the stocks is no longer ranked among the top five 20-day ROCs, then we will liquidate that stock.
 - Trade these rules daily.
 
-Let’s set up our config for the above rules:
-
-```python
-config = StrategyConfig(max_long_positions=2)
-```
-
 To implement the strategy, we write a `rotate` function that sets each stock's [long_score](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.long_score) to its 20-day ROC. **PyBroker** then ranks the stocks by their `long_score` in descending order.
 
 ```python
@@ -45,12 +39,11 @@ def rotate(ctx: ExecContext):
 
 Now that we have a method for scoring stocks by their ROC, we can use the [enable_rotation](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.enable_rotation) method to turn on rotational trading.
 
-Setting `worst_rank_held` to `5` liquidates any currently held stock that falls outside the top five 20-day ROC rankings. Otherwise, **PyBroker** buys up to the top two ranked stocks, allocating 50% of the capital to each. This backtest uses a universe of 10 stocks:
+We cap long positions at `2` with [set_max_long_positions](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_max_long_positions). Setting `worst_rank_held` to `5` liquidates any currently held stock that falls outside the top five 20-day ROC rankings. Otherwise, **PyBroker** buys up to the top two ranked stocks, allocating 50% of the capital to each. This backtest uses a universe of 10 stocks:
 
 ```python
-strategy = Strategy(
-    YFinance(), start_date="1/1/2018", end_date="1/1/2023", config=config
-)
+strategy = Strategy(YFinance(), start_date="1/1/2018", end_date="1/1/2023")
+strategy.set_max_long_positions(2)
 strategy.enable_rotation(worst_rank_held=5)
 strategy.add_execution(
     rotate,

@@ -84,10 +84,7 @@ strategy.set_max_short_positions(2)  # at most 2 short positions
   `ValueError`), a searchable `Hyperparam`, or `None` for unlimited.
 - The `StrategyConfig.max_long_positions` and
   `StrategyConfig.max_short_positions` fields are deprecated. The
-  setters take precedence, and using both warns. The bundled
-  `wiki-10-rotational-trading.md` page predates the setters — always
-  modernize its `StrategyConfig(max_long_positions=2)` pattern to
-  `strategy.set_max_long_positions(2)`.
+  setters take precedence, and using both warns.
 - In ranked-cap mode the cap is enforced when orders fill: once the
   portfolio holds the maximum, further entries are dropped with only a
   debug log, so unscored strategies fill slots in arbitrary schedule
