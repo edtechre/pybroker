@@ -25,32 +25,36 @@ Changelog
 
 * `Parallelization configuration <https://www.pybroker.com/en/latest/notebooks/11.%20Configuring%20Parallelization.html>`_ (Ray backend).
 
-* Ranking with ``long_score`` / ``short_score``.
+* Ranking with `long_score <https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.long_score>`_ / `short_score <https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.short_score>`_.
 
-* Position limits via ``Strategy.set_max_long_positions`` / ``set_max_short_positions``.
+* Position limits via `Strategy.set_max_long_positions <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_max_long_positions>`_ / `set_max_short_positions <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_max_short_positions>`_.
 
-* ``to_json`` / ``to_json_str`` on backtest and optimize results.
+* `to_json <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.TestResult.to_json>`_ / `to_json_str <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.TestResult.to_json_str>`_ on backtest and optimize results.
 
 * :doc:`Agent Skills <agent-skills>`.
 
-* ATR indicator; ``bars_to_df`` helper.
+* `ATR <https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.atr>`_ indicator; `bars_to_df <https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.bars_to_df>`_ helper.
 
 * Broad NumPy/Numba performance improvements.
 
 Breaking changes
 ----------------
 
-* Removes ``PosSizeContext`` and ``set_pos_size_handler``.
+* Removes ``PosSizeContext``, ``set_pos_size_handler``, and ``ExecSignal``; use `Strategy.enable_rotation <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.enable_rotation>`_ / `RotationContext <https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.RotationContext>`_.
 
-* Deprecates ``ExecContext.score`` and ``StrategyConfig.max_*_positions``.
+* Deprecates ``ExecContext.score`` and ``StrategyConfig.max_*_positions``; use `long_score <https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.long_score>`_ / `short_score <https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.short_score>`_ and `set_max_long_positions <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_max_long_positions>`_ / `set_max_short_positions <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_max_short_positions>`_.
 
-* Renames timeframe module to ``interval``; drops week-duration intervals.
+* Renames timeframe module to `interval <https://www.pybroker.com/en/latest/reference/pybroker.interval.html>`_; drops week-duration intervals.
 
-* Unifies slippage API; removes custom stop functions.
+* Unifies `slippage <https://www.pybroker.com/en/latest/reference/pybroker.slippage.html>`_ API; removes ``RandomSlippageModel`` and custom stop functions.
 
-* Removes ``multiprocessing`` from ``set_parallel``, plus ``bootstrap_sample_size`` / ``indicator_memo_max``.
+* Removes ``multiprocessing`` from `set_parallel <https://www.pybroker.com/en/latest/reference/pybroker.parallel.html#pybroker.parallel.set_parallel>`_, plus ``bootstrap_sample_size`` / ``indicator_memo_max``.
 
-* Model lag matrices passed to ``train_fn`` / ``predict_fn`` instead of DataFrame attrs.
+* Removes ``disable_parallel`` from `backtest <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`_ / `walkforward <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`_; parallel indicator and model work is opt-in via ``parallel_indicators`` / ``parallel_models``.
+
+* ``result.positions`` is opt-in via `StrategyConfig.record_position_bars <https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.record_position_bars>`_; full ``Portfolio.bars`` snapshots are opt-in via `record_portfolio_bars <https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig.record_portfolio_bars>`_.
+
+* Model lag matrices passed to ``train_fn`` / ``predict_fn`` instead of DataFrame attrs; see the `model module <https://www.pybroker.com/en/latest/reference/pybroker.model.html>`_.
 
 1.2.14
 ======
