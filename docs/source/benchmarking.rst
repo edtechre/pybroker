@@ -36,12 +36,22 @@ Compare two commits:
    asv continuous master HEAD   # local equivalent of the CI gate
    asv compare master HEAD      # diff table
 
-The PR gate adds ``--factor 1.1 --no-stats --machine ci-ubuntu-latest`` and
+The PR gate adds
+``--factor 1.1 --interleave-rounds --machine ci-ubuntu-latest`` and
 resolves the base as ``origin/<base branch>``:
 
 .. code-block:: bash
 
-   asv continuous origin/master HEAD --factor 1.1 --no-stats
+   asv continuous origin/master HEAD --factor 1.1 --interleave-rounds
+
+``--interleave-rounds`` alternates rounds between the two commits instead
+of running each commit's rounds in a block, so drift over the job
+(thermal throttling, noisy neighbours, page cache) hits both sides
+equally instead of landing entirely on whichever commit ran second. On a
+shared runner, omitting it makes microsecond-scale benchmarks read as
+regressions on branches with identical code. ``--no-stats`` is
+deliberately *not* used: it disables significance testing, comparing raw
+medians against ``--factor`` alone.
 
 Generate and preview the HTML dashboard:
 
