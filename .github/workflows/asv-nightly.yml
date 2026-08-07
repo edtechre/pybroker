@@ -42,6 +42,7 @@ jobs:
           PY_VERSION: ${{ matrix.python.version }}
         run: |
           asv run HEAD^! \
+            --python="${PY_VERSION}" \
             --machine "ci-ubuntu-latest-py${PY_VERSION}" \
             --show-stderr
 

@@ -21,7 +21,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Must match asv.conf.json's `pythons`. The setup action defaults to
+      # 3.12; when that drifts from the pin, asv finds no matching
+      # interpreter, selects no environments, and exits non-zero -- which the
+      # gate below reports as a regression while having benchmarked nothing.
       - uses: ./.github/actions/setup-pybroker
+        with:
+          python-version: "3.11"
 
       - name: Configure asv machine identity
         run: asv machine --yes --machine ci-ubuntu-latest
