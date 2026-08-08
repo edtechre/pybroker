@@ -5,33 +5,36 @@ PyBroker ships `Agent Skills <https://agentskills.io/specification>`_ that
 give coding agents workflows for writing strategies,
 indicators, models, and backtests.
 
-Get the Skills Library
-----------------------
+Installation
+------------
 
 Public skills live under the ``skills/`` directory in the PyBroker
 `Git repository <https://github.com/edtechre/pybroker>`_. Each skill is
 contained in its own folder and defined by a standard ``SKILL.md`` file.
 
-To access them, simply clone the PyBroker repository to your local
-machine:
+The recommended way to install them is the `Skills CLI
+<https://github.com/vercel-labs/add-skill>`_, which supports Claude
+Code, OpenAI Codex, Cursor, and many other coding agents:
+
+.. code-block:: bash
+
+   # Inside your own working project directory:
+   npx skills add edtechre/pybroker
+
+The command asks which skills to install and which agents to install
+them for, then copies each one into that agent's skills folder. Add
+``--all`` to install every skill for every detected agent without
+prompting.
+
+Manual Install
+^^^^^^^^^^^^^^
+
+You can also clone the PyBroker repository and symlink the skills
+yourself:
 
 .. code-block:: bash
 
    git clone https://github.com/edtechre/pybroker.git
-   cd pybroker
-
-Installation
-------------
-
-Claude Code
-^^^^^^^^^^^
-
-`Claude Code <https://code.claude.com/docs/en/skills>`_ automatically
-discovers skills placed inside a ``.claude/skills/`` folder in your
-project root. To install all PyBroker skills at once, you can symlink
-the entire contents of the repository's ``skills/`` directory:
-
-.. code-block:: bash
 
    # Inside your own working project directory:
    mkdir -p .claude/skills
@@ -41,48 +44,35 @@ the entire contents of the repository's ``skills/`` directory:
        ln -s "$skill" .claude/skills/; \
    done
 
-Claude Code will now automatically discover every skill and make their
-respective commands available in the terminal.
+Replace ``.claude/skills`` with the folder that your own agent reads.
+
+Claude Code
+"""""""""""
+
+`Claude Code <https://code.claude.com/docs/en/skills>`_ discovers skills
+placed inside a ``.claude/skills/`` folder in your project root. Once
+they are installed, every skill and its respective commands become
+available in the terminal.
 
 OpenAI Codex
-^^^^^^^^^^^^
+""""""""""""
 
 `OpenAI Codex <https://learn.chatgpt.com/docs/build-skills>`_ discovers
-skills in ``.agents/skills/``. Symlink the PyBroker skills there:
-
-.. code-block:: bash
-
-   # Inside your own working project directory:
-   mkdir -p .agents/skills
-
-   for skill in /path/to/pybroker/skills/*; do \
-       ln -s "$skill" .agents/skills/; \
-   done
+skills in ``.agents/skills/``.
 
 Cursor
-^^^^^^
+""""""
 
 `Cursor <https://cursor.com/docs/skills>`_ discovers skills in
-``.cursor/skills/``. Install them the same way:
-
-.. code-block:: bash
-
-   # Inside your own working project directory:
-   mkdir -p .cursor/skills
-   
-   for skill in /path/to/pybroker/skills/*; do \
-       ln -s "$skill" .cursor/skills/; \
-   done
-
+``.cursor/skills/``.
 
 Claude Agent SDK
 ^^^^^^^^^^^^^^^^
 
 The `Claude Agent SDK
 <https://code.claude.com/docs/en/agent-sdk/skills>`_ discovers skills
-from the same ``.claude/skills/`` symlinks created above, so it loads
-them on demand and invokes them automatically without any prompt
-assembly:
+from the ``.claude/skills/`` folder installed above, so it loads them on
+demand and invokes them automatically without any prompt assembly:
 
 .. code-block:: bash
 
@@ -119,7 +109,7 @@ Pydantic-AI
 `Pydantic-AI <https://pydantic.dev/docs/ai/>`_ builds agents in pure
 Python. It does not search for skill directories automatically, so you
 point its `Skills <https://pydantic.dev/docs/ai/harness/skills/>`_
-capability at the ``.agents/skills`` library created above:
+capability at the ``.agents/skills`` library installed above:
 
 .. code-block:: bash
 
