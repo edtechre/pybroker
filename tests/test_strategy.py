@@ -5932,6 +5932,41 @@ class TestStrategyIntervals:
         for n_bars, _close, n_ind in seen:
             assert n_ind == n_bars
 
+    def test_interval_context_is_a_live_view_not_a_snapshot(
+        self, data_source_df, scope
+    ):
+        """An :class:`.IntervalContext` must report the *current* bar.
+
+        It holds the shared ``sym_end_index`` and reads it on every property,
+        so one obtained on an early bar still answers for a later bar. That is
+        the invariant which lets ``set_exec_ctx_data`` keep ``ctx._interval``
+        across bars instead of rebuilding an identical object every time.
+
+        The existing interval tests all pass against a version that snapshots
+        the index at construction, so without this the invariant is unguarded.
+        """
+        held = {}
+        observed = []
+
+        def exec_fn(ctx):
+            weekly = ctx.interval("weekly")
+            if "ctx" not in held and len(weekly.close) > 0:
+                # Keep the instance from this bar and never re-fetch it.
+                held["ctx"] = weekly
+            if "ctx" in held:
+                observed.append(len(held["ctx"].close))
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn, "SPY", intervals=["weekly"])
+        strategy.walkforward(windows=1, timeframe="1d")
+
+        assert observed
+        assert observed[-1] > observed[0], (
+            "IntervalContext snapshotted its bar index instead of reading it "
+            "live, so a held instance reported a stale bar."
+        )
+        assert observed == sorted(observed)
+
     def test_undeclared_interval_then_error(self, data_source_df, scope):
         def exec_fn(ctx):
             ctx.interval("weekly")

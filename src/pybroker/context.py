@@ -1757,8 +1757,16 @@ def set_exec_ctx_data(ctx: ExecContext, date: np.datetime64):
     """
     ctx._curr_date = date
     ctx._dt = None
+    # ``_foreign`` holds :class:`pybroker.common.BarData` built from arrays
+    # that were already sliced to the bar it was fetched on, so it cannot
+    # survive into the next one.
+    #
+    # ``_interval`` is deliberately not cleared. An :class:`.IntervalContext`
+    # holds only window-constant references and reads the shared
+    # ``sym_end_index`` on every property, so a cached one reports the current
+    # bar rather than the bar it was built on. Clearing it rebuilt an
+    # identical object on every bar of every symbol that reads an interval.
     ctx._foreign.clear()
-    ctx._interval.clear()
     ctx._cover = False
     ctx._exiting_pos = False
     ctx._exit_stop_pos = None
