@@ -1709,3 +1709,64 @@ class WalkforwardModelsPerSymbol:
             indicators=[hhv20],
         )
         return strategy
+
+
+def _build_pyramid_strategy(df: pd.DataFrame, fast_marking: bool) -> Strategy:
+    """Adds to every position on every up-bar and never trims.
+
+    Pyramiding is the shape ``fast_marking`` exists for: the compiled mark
+    kernel amortizes its dispatch cost over a position's entries, so a
+    portfolio of single-entry positions sees no benefit while one that
+    accumulates entries does.
+    """
+    pybroker.clear_params()
+    pybroker.disable_logging()
+    pybroker.disable_progress_bar()
+
+    def exec_fn(ctx: ExecContext) -> None:
+        if ctx.bars < 20:
+            return
+        if ctx.close[-1] > ctx.close[-2]:
+            ctx.buy_shares = ctx.calc_target_shares(0.004)
+
+    start = df["date"].min().strftime("%Y-%m-%d")
+    end = df["date"].max().strftime("%Y-%m-%d")
+    strategy = Strategy(
+        df,
+        start,
+        end,
+        StrategyConfig(
+            initial_cash=2_000_000,
+            fast_marking=fast_marking,
+            exit_on_last_bar=True,
+        ),
+    )
+    strategy.add_execution(
+        exec_fn,
+        symbols=sorted(df["symbol"].unique().tolist()),
+    )
+    return strategy
+
+
+class PortfolioFastMarking:
+    """Marking cost with pyramided positions, exact vs compiled float64.
+
+    Parametrized on ``fast_marking`` so a regression in either path shows up
+    on its own, rather than the two being averaged into one number.
+    """
+
+    timeout = 600
+    params = [False, True]
+    param_names = ["fast_marking"]
+
+    def setup(self, fast_marking: bool) -> None:
+        np.random.seed(SEED)
+        self.df = _synthetic_ohlcv(n_symbols=20, n_days=252 * 2, seed=SEED)
+        _build_pyramid_strategy(self.df, fast_marking).backtest(
+            calc_bootstrap=False
+        )
+
+    def time_pyramid_marking(self, fast_marking: bool) -> None:
+        _build_pyramid_strategy(self.df, fast_marking).backtest(
+            calc_bootstrap=False
+        )

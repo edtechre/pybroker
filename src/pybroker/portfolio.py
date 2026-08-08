@@ -11,6 +11,8 @@ This code is licensed under Apache 2.0 with Commons Clause license
 import itertools
 import math
 import numpy as np
+from numba import njit
+from numpy.typing import NDArray
 from pybroker.common import (
     BarData,
     DataCol,
@@ -73,6 +75,11 @@ _COL_CLOSE: Final = DataCol.CLOSE.value
 _COL_LOW: Final = DataCol.LOW.value
 _COL_HIGH: Final = DataCol.HIGH.value
 _CAPTURE_BAR_COLS: Final = (_COL_DATE, _COL_CLOSE, _COL_LOW, _COL_HIGH)
+
+# Shared zero-length defaults for Position's float64 entry mirror. See the
+# fields on Position for why sharing a mutable default is safe here.
+_EMPTY_F64: Final[NDArray[np.float64]] = np.empty(0, dtype=np.float64)
+_EMPTY_I64: Final[NDArray[np.int64]] = np.empty(0, dtype=np.int64)
 
 
 class Stop(NamedTuple):
@@ -232,6 +239,36 @@ class Position:
     entry_notional: Decimal = field(default_factory=Decimal)
     unmarked_shares: Decimal = field(default_factory=Decimal)
     unmarked_notional: Decimal = field(default_factory=Decimal)
+    # float64 mirror of ``entries`` used only when fast marking is enabled.
+    # Kept out of repr and equality so Position's public surface is unchanged.
+    # ``entries`` stays authoritative: these are rebuilt from it whenever the
+    # entry list changes, so nothing here needs syncing back.
+    #
+    # The zero-length defaults are shared module constants rather than
+    # per-Position allocations, so a portfolio that never enables fast marking
+    # pays nothing for them. Sharing is safe because _mark_cap starts at 0, so
+    # the first rebuild always replaces them before anything is written.
+    _mark_price: NDArray[np.float64] = field(
+        default_factory=lambda: _EMPTY_F64, repr=False, compare=False
+    )
+    _mark_shares: NDArray[np.float64] = field(
+        default_factory=lambda: _EMPTY_F64, repr=False, compare=False
+    )
+    _mark_mae: NDArray[np.float64] = field(
+        default_factory=lambda: _EMPTY_F64, repr=False, compare=False
+    )
+    _mark_mfe: NDArray[np.float64] = field(
+        default_factory=lambda: _EMPTY_F64, repr=False, compare=False
+    )
+    _mark_mae_idx: NDArray[np.int64] = field(
+        default_factory=lambda: _EMPTY_I64, repr=False, compare=False
+    )
+    _mark_mfe_idx: NDArray[np.int64] = field(
+        default_factory=lambda: _EMPTY_I64, repr=False, compare=False
+    )
+    _mark_n: int = field(default=0, repr=False, compare=False)
+    _mark_cap: int = field(default=0, repr=False, compare=False)
+    _mark_stale: bool = field(default=True, repr=False, compare=False)
 
     def _marked_value(self) -> Decimal:
         """Returns the position's value at the last mark.
@@ -480,6 +517,152 @@ def _calculate_pnl_mae_mfe(
     pos.pnl = pnl
 
 
+class _MarkResult(NamedTuple):
+    """Result of :func:`._mark_entries_njit`.
+
+    Attributes:
+        pnl: Unrealized PnL summed over the marked entries.
+        mae_count: Number of leading entries in ``mae_idx`` that took a new
+            maximum adverse excursion on this bar.
+        mfe_count: Number of leading entries in ``mfe_idx`` that took a new
+            maximum favorable excursion on this bar.
+    """
+
+    pnl: float
+    mae_count: int
+    mfe_count: int
+
+
+@njit(cache=True)
+def _mark_entries_njit(
+    prices: NDArray[np.float64],
+    shares: NDArray[np.float64],
+    mae: NDArray[np.float64],
+    mfe: NDArray[np.float64],
+    mae_idx: NDArray[np.int64],
+    mfe_idx: NDArray[np.int64],
+    count: int,
+    close: float,
+    loss_ref: float,
+    profit_ref: float,
+    has_loss: bool,
+    has_profit: bool,
+    is_long: bool,
+) -> _MarkResult:
+    """Marks ``count`` entries against one bar in float64.
+
+    ``mae``/``mfe`` are updated in place, and the indices of entries that took
+    a new extreme are written to ``mae_idx``/``mfe_idx`` so the caller can
+    materialize only those back onto :class:`.Entry`. New extremes are rare
+    after the opening bars, which is what keeps that write-back cheap.
+
+    ``loss_ref`` and ``profit_ref`` are the bar's low/high for a long position
+    and high/low for a short, resolved by the caller so this stays branch-free
+    on position type beyond the sign of the PnL term.
+
+    Bounds are not checked: the caller owns these arrays and passes their fill
+    count, per the validate-outside-index-inside rule.
+    """
+    pnl = 0.0
+    mae_count = 0
+    mfe_count = 0
+    for i in range(count):
+        price = prices[i]
+        if is_long:
+            pnl += (close - price) * shares[i]
+            loss = loss_ref - price
+            profit = profit_ref - price
+        else:
+            pnl += (price - close) * shares[i]
+            loss = price - loss_ref
+            profit = price - profit_ref
+        # NaN never compares true, so a halted bar's NaN low/high leaves the
+        # stored extreme untouched -- matching the Decimal path, where the
+        # same comparison against a NaN difference is also False.
+        if has_loss and loss < 0 and loss < mae[i]:
+            mae[i] = loss
+            mae_idx[mae_count] = i
+            mae_count += 1
+        if has_profit and profit > 0 and profit > mfe[i]:
+            mfe[i] = profit
+            mfe_idx[mfe_count] = i
+            mfe_count += 1
+    return _MarkResult(pnl, mae_count, mfe_count)
+
+
+def _entry_marks(pos: Position):
+    """Returns ``pos``'s float64 entry mirror, rebuilding it when stale.
+
+    Rebuilt from :attr:`.Position.entries`, which stays the source of truth --
+    so a rebuild can never lose an extreme, and no state has to be written
+    back to the entries when the list changes.
+    """
+    count = len(pos.entries)
+    if pos._mark_stale or count != pos._mark_n:
+        if count > pos._mark_cap:
+            cap = max(8, count * 2)
+            pos._mark_price = np.empty(cap, dtype=np.float64)
+            pos._mark_shares = np.empty(cap, dtype=np.float64)
+            pos._mark_mae = np.empty(cap, dtype=np.float64)
+            pos._mark_mfe = np.empty(cap, dtype=np.float64)
+            pos._mark_mae_idx = np.empty(cap, dtype=np.int64)
+            pos._mark_mfe_idx = np.empty(cap, dtype=np.int64)
+            pos._mark_cap = cap
+        for i, entry in enumerate(pos.entries):
+            pos._mark_price[i] = float(entry.price)
+            pos._mark_shares[i] = float(entry.shares)
+            pos._mark_mae[i] = float(entry.mae)
+            pos._mark_mfe[i] = float(entry.mfe)
+        pos._mark_n = count
+        pos._mark_stale = False
+
+
+def _calculate_pnl_mae_mfe_fast(
+    pos: Position,
+    close: float,
+    low: Optional[float],
+    high: Optional[float],
+):
+    """float64 counterpart of :func:`._calculate_pnl_mae_mfe`.
+
+    Computes the same quantities with float64 arithmetic in a compiled kernel
+    instead of exact :class:`decimal.Decimal` arithmetic. Values can differ
+    from the exact path in the last ulp, which is far below the cent
+    quantization applied when results reach :class:`pybroker.strategy.TestResult`.
+    Selected by ``fast_marking``; the exact path remains the default.
+    """
+    if pos.type != "long" and pos.type != "short":
+        raise ValueError(f"Unknown position type: {pos.type}")
+    _entry_marks(pos)
+    is_long = pos.type == "long"
+    loss_ref = low if is_long else high
+    profit_ref = high if is_long else low
+    result = _mark_entries_njit(
+        pos._mark_price,
+        pos._mark_shares,
+        pos._mark_mae,
+        pos._mark_mfe,
+        pos._mark_mae_idx,
+        pos._mark_mfe_idx,
+        pos._mark_n,
+        close,
+        0.0 if loss_ref is None else loss_ref,
+        0.0 if profit_ref is None else profit_ref,
+        loss_ref is not None,
+        profit_ref is not None,
+        is_long,
+    )
+    if result.mae_count or result.mfe_count:
+        entries = pos.entries
+        for k in range(result.mae_count):
+            i = int(pos._mark_mae_idx[k])
+            entries[i].mae = to_decimal(pos._mark_mae[i])
+        for k in range(result.mfe_count):
+            i = int(pos._mark_mfe_idx[k])
+            entries[i].mfe = to_decimal(pos._mark_mfe[i])
+    pos.pnl = to_decimal(result.pnl)
+
+
 class Portfolio:
     r"""Class representing a portfolio of holdings. The portfolio contains
     information about open positions and balances, and is also used to place
@@ -496,6 +679,11 @@ class Portfolio:
         max_short_positions: Maximum number of short :class:`.Position`\ s that
             can be held at a time. If ``None``, then unlimited.
         record_stops: Whether to record stop data per-bar.
+        fast_marking: Whether to mark open positions with a compiled float64
+            kernel instead of exact :class:`decimal.Decimal` arithmetic.
+            Unrealized PnL and MAE/MFE may then differ in the last ulp, which
+            is far below the cent rounding applied to results. Cash, fees,
+            realized PnL and share counts stay exact either way.
 
     Attributes:
         cash: Current cash balance.
@@ -545,6 +733,7 @@ class Portfolio:
         bars_per_year: Optional[int] = None,
         record_portfolio_bars: bool = False,
         record_position_bars: bool = False,
+        fast_marking: bool = False,
     ):
         self.cash: Decimal = to_decimal(cash)
         self._initial_market_value = self.cash
@@ -562,6 +751,7 @@ class Portfolio:
         self._record_stops = record_stops
         self._record_portfolio_bars = record_portfolio_bars
         self._record_position_bars = record_position_bars
+        self._fast_marking = fast_marking
         self._leverage = leverage
         self._interest_rate = interest_rate
         self._bars_per_year = bars_per_year
@@ -680,6 +870,7 @@ class Portfolio:
             date=date,
             type=type,
         )
+        pos._mark_stale = True
         pos.entries.append(entry)
         return entry
 
@@ -1089,6 +1280,7 @@ class Portfolio:
         self.pnl += entry_pnl
         self._release_collateral(entry_amount, entry_pnl)
         pos.shares -= shares
+        pos._mark_stale = True
         entry.shares -= shares
         pos.entry_notional -= entry_amount
         self._short_entry_notional -= entry_amount
@@ -1297,6 +1489,7 @@ class Portfolio:
         self.pnl += entry_pnl
         self._release_collateral(entry_amount, entry_pnl)
         pos.shares -= shares
+        pos._mark_stale = True
         entry.shares -= shares
         pos.entry_notional -= entry_amount
         self._long_entry_notional -= entry_amount
@@ -1532,9 +1725,20 @@ class Portfolio:
             if sym in self.long_positions:
                 pos = self.long_positions[sym]
                 if close_d is not None:
-                    _calculate_pnl_mae_mfe(
-                        pos, close_d, low=low_f, high=high_f
-                    )
+                    if self._fast_marking:
+                        # close_d is the converted close_f, so the two are
+                        # None together and this branch implies close_f is a
+                        # float; mypy cannot narrow through that.
+                        _calculate_pnl_mae_mfe_fast(
+                            pos,
+                            close_f,  # type: ignore[arg-type]
+                            low_f,
+                            high_f,
+                        )
+                    else:
+                        _calculate_pnl_mae_mfe(
+                            pos, close_d, low=low_f, high=high_f
+                        )
                     pos.equity = pos.shares * close_d
                     pos.market_value = pos.equity
                     pos.close = close_d
@@ -1565,9 +1769,20 @@ class Portfolio:
                 # marks it to market with the position's unrealized PnL.
                 equity_parts.append(float(entry_notional))
                 if close_d is not None:
-                    _calculate_pnl_mae_mfe(
-                        pos, close_d, low=low_f, high=high_f
-                    )
+                    if self._fast_marking:
+                        # close_d is the converted close_f, so the two are
+                        # None together and this branch implies close_f is a
+                        # float; mypy cannot narrow through that.
+                        _calculate_pnl_mae_mfe_fast(
+                            pos,
+                            close_f,  # type: ignore[arg-type]
+                            low_f,
+                            high_f,
+                        )
+                    else:
+                        _calculate_pnl_mae_mfe(
+                            pos, close_d, low=low_f, high=high_f
+                        )
                     pos.close = close_d
                     pos.margin = close_d * pos.shares
                     pos.market_value = pos.margin + pos.pnl

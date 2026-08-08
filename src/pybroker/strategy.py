@@ -2832,6 +2832,7 @@ class Strategy(
                     effective_config.bars_per_year,
                     record_portfolio_bars=effective_config.record_portfolio_bars,
                     record_position_bars=effective_config.record_position_bars,
+                    fast_marking=effective_config.fast_marking,
                 )
             signals = self._run_walkforward(
                 portfolio=portfolio,

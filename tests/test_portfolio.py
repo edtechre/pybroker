@@ -26,7 +26,9 @@ from pybroker.portfolio import (
     Position,
     Stop,
     _calculate_pnl_mae_mfe,
+    _calculate_pnl_mae_mfe_fast,
 )
+from pybroker.config import StrategyConfig
 from pybroker.scope import ColumnScope, PriceScope
 from pybroker.slippage import FixedSlippageModel, SlippageModel
 
@@ -4931,3 +4933,109 @@ def test_capture_bar_when_hedged_long_and_short_same_symbol():
     assert bar.long_shares == 100
     assert bar.short_shares == 50
     assert str(bar.close) == str(close_price)
+
+
+@pytest.mark.parametrize("pos_type", ["long", "short"])
+@pytest.mark.parametrize("n_entries", [1, 2, 7])
+def test_fast_marking_agrees_with_exact_path(pos_type, n_entries):
+    """The float64 kernel must agree with exact Decimal marking.
+
+    Not bit-identical by construction -- that is the trade ``fast_marking``
+    makes -- so this pins the contract that actually matters: the two paths
+    agree far inside the cent rounding applied to results.
+    """
+    rng = np.random.default_rng(7)
+    prices = [
+        float(np.round(rng.uniform(1.0, 300.0), 4)) for _ in range(n_entries)
+    ]
+    shares = [
+        float(np.round(rng.uniform(1.0, 500.0), 2)) for _ in range(n_entries)
+    ]
+    pos_exact = _make_mae_mfe_pos(pos_type, prices, shares)
+    pos_fast = _make_mae_mfe_pos(pos_type, prices, shares)
+    for _ in range(200):
+        close = float(np.round(rng.uniform(1.0, 300.0), 4))
+        low = None if rng.random() < 0.15 else close * 0.97
+        high = None if rng.random() < 0.15 else close * 1.03
+        _calculate_pnl_mae_mfe(
+            pos_exact, to_decimal(close), low=low, high=high
+        )
+        _calculate_pnl_mae_mfe_fast(pos_fast, close, low, high)
+        assert float(pos_fast.pnl) == pytest.approx(
+            float(pos_exact.pnl), rel=1e-12
+        )
+        for entry_exact, entry_fast in zip(
+            pos_exact.entries, pos_fast.entries
+        ):
+            assert float(entry_fast.mae) == pytest.approx(
+                float(entry_exact.mae), rel=1e-12, abs=1e-12
+            )
+            assert float(entry_fast.mfe) == pytest.approx(
+                float(entry_exact.mfe), rel=1e-12, abs=1e-12
+            )
+
+
+@pytest.mark.parametrize("pos_type", ["long", "short"])
+def test_fast_marking_rebuilds_when_entries_change(pos_type):
+    """A structural change to entries must invalidate the float64 mirror.
+
+    Appending, partially exiting and removing all mutate the entry list
+    between marks; a stale mirror would silently mark the wrong shares or
+    drop an entry's accumulated extreme.
+    """
+    pos = Position(symbol=SYMBOL_1, shares=Decimal(), type=pos_type)
+    ref = Position(symbol=SYMBOL_1, shares=Decimal(), type=pos_type)
+
+    def add(entry_id, price, qty):
+        for target in (pos, ref):
+            target.entries.append(
+                Entry(
+                    id=entry_id,
+                    date=DATE_1,
+                    symbol=SYMBOL_1,
+                    shares=to_decimal(qty),
+                    price=to_decimal(price),
+                    type=pos_type,
+                )
+            )
+            target.shares += to_decimal(qty)
+        pos._mark_stale = True
+
+    def mark(close):
+        _calculate_pnl_mae_mfe_fast(pos, close, close * 0.98, close * 1.02)
+        _calculate_pnl_mae_mfe(
+            ref, to_decimal(close), low=close * 0.98, high=close * 1.02
+        )
+        assert float(pos.pnl) == pytest.approx(float(ref.pnl), rel=1e-12)
+        for a, b in zip(pos.entries, ref.entries):
+            assert float(a.mae) == pytest.approx(float(b.mae), abs=1e-12)
+            assert float(a.mfe) == pytest.approx(float(b.mfe), abs=1e-12)
+
+    add(1, 50.0, 100)
+    mark(52.0)
+    add(2, 55.0, 40)
+    mark(48.0)
+    # Partial exit: shares change without the entry list changing length.
+    pos.entries[0].shares -= Decimal(30)
+    ref.entries[0].shares -= Decimal(30)
+    pos._mark_stale = True
+    mark(60.0)
+    # Full removal of the oldest entry.
+    pos.entries.popleft()
+    ref.entries.popleft()
+    mark(45.0)
+
+
+def test_fast_marking_defaults_off():
+    """The exact Decimal path stays the default everywhere."""
+    assert StrategyConfig().fast_marking is False
+    assert Portfolio(100_000)._fast_marking is False
+
+
+def test_fast_marking_handles_missing_low_high():
+    """A bar with no low/high must leave the stored extremes untouched."""
+    pos = _make_mae_mfe_pos("long", [50.0], [100.0])
+    _calculate_pnl_mae_mfe_fast(pos, 60.0, None, None)
+    assert pos.entries[0].mae == Decimal()
+    assert pos.entries[0].mfe == Decimal()
+    assert float(pos.pnl) == pytest.approx(1000.0)

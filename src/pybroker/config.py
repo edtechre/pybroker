@@ -92,6 +92,14 @@ class StrategyConfig:
             :attr:`pybroker.portfolio.Portfolio.position_bars` on every bar.
             When ``False`` (default), :attr:`pybroker.strategy.TestResult.positions`
             is empty.
+        fast_marking: When ``True``, mark open positions with a compiled
+            float64 kernel instead of exact :class:`decimal.Decimal`
+            arithmetic. Unrealized PnL and MAE/MFE can then differ from the
+            exact path in the last ulp -- far below the cent rounding applied
+            to :class:`pybroker.strategy.TestResult` -- in exchange for a
+            faster bar loop on portfolios holding many positions. Cash, fees,
+            realized PnL, share counts and order sizing are unaffected and
+            stay exact. Defaults to ``False``.
     """
 
     initial_cash: float = field(default=100_000)
@@ -122,3 +130,4 @@ class StrategyConfig:
     interest_rate: float = field(default=0.0)
     record_portfolio_bars: bool = field(default=False)
     record_position_bars: bool = field(default=False)
+    fast_marking: bool = field(default=False)
