@@ -172,6 +172,19 @@ To learn how to use PyBroker, see the notebooks under the *User Guide*:
 `The notebooks above are also available on Github
 <https://github.com/edtechre/pybroker/tree/master/docs/source/notebooks>`_.
 
+AI Agent Skills
+===============
+
+PyBroker v2 now includes :doc:`AI agent skills <agent-skills>` that help
+coding agents write trading strategies and backtests:
+
+* :ref:`Strategy Creator <skill-pybroker-strategy-creator>`
+* :ref:`Indicator Creator <skill-pybroker-indicator-creator>`
+* :ref:`Model Trainer <skill-pybroker-model-trainer>`
+* :ref:`Parameter Optimization <skill-pybroker-optimize>`
+* :ref:`Multi-Interval Strategies <skill-pybroker-multi-interval>`
+* :ref:`Rotational Trading <skill-pybroker-rotational-trading>`
+
 .. toctree::
    :maxdepth: 4
    :caption: Reference

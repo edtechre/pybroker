@@ -126,6 +126,17 @@ snippets:
 - [Agent Skills](https://www.pybroker.com/en/latest/agent-skills.html)
 - [FAQs](https://www.pybroker.com/en/latest/notebooks/FAQs.html)
 
+## AI Agent Skills
+
+PyBroker v2 now includes [AI agent skills](https://www.pybroker.com/en/latest/agent-skills.html) that help coding agents write trading strategies and backtests:
+
+- [Strategy Creator](https://www.pybroker.com/en/latest/agent-skills.html#skill-pybroker-strategy-creator)
+- [Indicator Creator](https://www.pybroker.com/en/latest/agent-skills.html#skill-pybroker-indicator-creator)
+- [Model Trainer](https://www.pybroker.com/en/latest/agent-skills.html#skill-pybroker-model-trainer)
+- [Parameter Optimization](https://www.pybroker.com/en/latest/agent-skills.html#skill-pybroker-optimize)
+- [Multi-Interval Strategies](https://www.pybroker.com/en/latest/agent-skills.html#skill-pybroker-multi-interval)
+- [Rotational Trading](https://www.pybroker.com/en/latest/agent-skills.html#skill-pybroker-rotational-trading)
+
 ## Online Documentation
 
 [The full reference documentation is hosted at **www.pybroker.com**.](https://www.pybroker.com)
