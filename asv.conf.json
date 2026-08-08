@@ -8,7 +8,7 @@
   "environment_type": "virtualenv",
   "install_timeout": 600,
   "show_commit_url": "https://github.com/edtechre/pybroker/commit/",
-  "pythons": ["3.11", "3.12", "3.13"],
+  "pythons": ["3.11", "3.12", "3.13", "3.14"],
   "install_command": [
     "in-dir={build_dir} python -mpip install -e ."
   ],
