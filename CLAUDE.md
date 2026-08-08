@@ -19,7 +19,8 @@ Finance, AKShare) or any user-supplied DataFrame/`DataSource`.
 
 Import name `pybroker`, PyPI name `lib-pybroker`. Version is
 single-sourced at `src/pybroker/__init__.py:__version__` (setup.cfg reads
-it via `attr:`). Active branch is `v2_preview`; PRs target `master`. This
+it via `attr:`). Work integrates on `dev`; PRs target `dev`, and `master`
+is the release branch. This
 file governs changes to the core library (`src/pybroker/`) and the
 distributable agent skills (`skills/`).
 
@@ -44,7 +45,7 @@ tox -e py311,py312,py313,py314  # full test matrix
 
 # Benchmarks (asv; see Performance & Benchmarks)
 asv run --quick             # fast feedback, one sample per benchmark
-asv continuous master HEAD  # what the CI PR gate runs (blocks at --factor 1.25)
+asv continuous dev HEAD     # what the CI PR gate runs (blocks at --factor 1.25)
 
 # Docs — CI runs `tox -e docs` on Python 3.12; it is STRICT
 # (`sphinx-build -n -W --keep-going`), so any warning fails the build.
@@ -276,10 +277,30 @@ between runs on NumPy arrays and Numba kernels.
 ## Performance & Benchmarks
 
 - The asv suite lives in `benchmarks/` (`bench_backtest`, `bench_common`,
-  `bench_data`, `bench_slippage`; config in `asv.conf.json`, compared
-  against `master`). Process doc: `docs/source/benchmarking.rst`.
+  `bench_data`, `bench_slippage`; config in `asv.conf.json`). The PR gate
+  compares against the PR's base branch, normally `dev`. Process doc:
+  `docs/source/benchmarking.rst`.
+- **Getting a number you can trust** — the gate's thresholds are worthless if
+  the measurement is noise:
+  - **Measure on an idle machine.** A loaded workstation has produced a 40%
+    spread on byte-identical work, and a 0.69–1.33× range on a comparison
+    that read 1.22–1.29× on a quiet box.
+  - **Interleave the arms and alternate which runs first**, then report the
+    median *paired* ratio and the win count — never the ratio of two medians.
+    Running all of A then all of B has repeatedly produced phantom results in
+    both directions.
+  - **`cProfile` is for ranking, not for shares of runtime.** Its per-call
+    overhead swamps cheap, frequent functions: it attributed 86.9 ms to
+    `dict.get` where the real cost was 11.6 ms (72.8 ns × 159,698 calls), so
+    ~86% of that figure was the profiler. It also cannot see C-level work at
+    all, so `Decimal` arithmetic is invisible inside its callers.
+  - **Prefer scenarios above ~0.3 s.** Fixed costs dominate short ones: result
+    assembly measured 29% of a 0.07 s run and 2.5% of a 0.48 s run.
+  - **Attribute the win to a stage, not just the total.** If overall time
+    improves but the stage you changed did not, the gain came from somewhere
+    else and the conclusion is wrong.
 - **Perf-sensitive change → run the relevant benches before and after:**
-  `asv continuous master HEAD` (a targeted `--bench <pattern>` pass first
+  `asv continuous dev HEAD` (a targeted `--bench <pattern>` pass first
   is fine). CI blocks PRs on regressions > 1.25× unless the PR carries the
   `bench-override` label, and reports everything > 1.1× without blocking —
   1.1 sits below the shared runner's noise floor. **New hot path → add a
@@ -422,7 +443,7 @@ users symlink them into their agent's skills directory
   for short positions; docs and examples show only `margin` and
   `unrealized_pnl` for shorts.
 - Git: never `git stash` (use a detached worktree for comparisons);
-  commit/push only when asked; PRs target `master`.
+  commit/push only when asked; PRs target `dev`.
 
 ## Before You Claim Done
 
@@ -442,7 +463,7 @@ done.
 6. Targeted tests, then the full suite: `python -m pytest`
 7. If indicators, scopes, or context slicing were touched:
    `python -m pytest tests/test_vect.py -k look_ahead`
-8. If perf-sensitive: `asv continuous master HEAD` — no regression
+8. If perf-sensitive: `asv continuous dev HEAD` — no regression
    > 1.25× (the blocking threshold); investigate anything > 1.1×.
 9. If the public API changed: export added in `__init__.py`, docstrings
    complete, `:exclude-members:` in `pybroker.strategy.rst` updated.

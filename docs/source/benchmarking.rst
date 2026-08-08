@@ -8,7 +8,7 @@ dashboard for visual regression tracking.
 
 The benchmark suite lives in ``benchmarks/`` and is exercised in CI on
 every pull request via ``.github/workflows/asv-pr.yml``, which runs
-``asv continuous origin/master HEAD`` once per supported Python version
+``asv continuous origin/<base> HEAD`` once per supported Python version
 and posts a sticky PR comment per version with the diff. The versions
 come from ``.github/python-versions.json``, the single source of truth
 the test matrix and the nightly benchmark run read as well.
@@ -35,8 +35,8 @@ Compare two commits:
 
 .. code-block:: bash
 
-   asv continuous master HEAD   # local equivalent of the CI gate
-   asv compare master HEAD      # diff table
+   asv continuous dev HEAD      # local equivalent of the CI gate
+   asv compare dev HEAD         # diff table
 
 The PR gate uses two thresholds. It blocks at ``--factor 1.25`` and
 reports everything that moved by ``1.1`` or more, resolving the base as
@@ -44,8 +44,8 @@ reports everything that moved by ``1.1`` or more, resolving the base as
 
 .. code-block:: bash
 
-   asv continuous origin/master HEAD --factor 1.25 --interleave-rounds
-   asv compare origin/master HEAD --factor 1.1 --only-changed
+   asv continuous origin/dev HEAD --factor 1.25 --interleave-rounds
+   asv compare origin/dev HEAD --factor 1.1 --only-changed
 
 The second command re-reads the results the first one stored, so it costs
 no extra benchmarking.
@@ -118,7 +118,7 @@ of those versions is installed; pass ``--python`` to pick a single one:
 .. code-block:: bash
 
    asv run --python=3.12
-   asv continuous master HEAD --python=3.12
+   asv continuous dev HEAD --python=3.12
 
 CI always passes ``--python`` explicitly, one version per matrix leg.
 
