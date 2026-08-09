@@ -569,6 +569,30 @@ def _hyperparam_hhv_indicator():
     return hhv
 
 
+def _hhv_offset_fn(data, period, offset):
+    return highv(data.high, period) + offset
+
+
+def test_hyperparam_names_precomputed(scope):
+    lookback = hyperparam("lookback", default=10, low=5, high=20, step=5)
+    hhv = indicator("hhv_names", _hhv_offset_fn, period=lookback, offset=0.0)
+    assert hhv.hyperparam_names == frozenset({"lookback"})
+    # Computed once at construction, not rebuilt per access.
+    assert hhv.hyperparam_names is hhv.hyperparam_names
+    plain = indicator("hhv_plain_names", _hhv_offset_fn, period=5, offset=0.0)
+    assert plain.hyperparam_names == frozenset()
+
+
+def test_hyperparam_names_pickle_round_trip(scope):
+    # Guards the parallel-indicator worker path.
+    import pickle
+
+    lookback = hyperparam("lookback", default=10, low=5, high=20, step=5)
+    hhv = indicator("hhv_pickled", _hhv_offset_fn, period=lookback, offset=0.0)
+    round_trip = pickle.loads(pickle.dumps(hhv))
+    assert round_trip.hyperparam_names == frozenset({"lookback"})
+
+
 def test_indicator_memo_disabled(data_source_df):
     hhv = _hyperparam_hhv_indicator()
     strategy = Strategy(

@@ -687,9 +687,13 @@ def _build_sliced_sym_arrays(
         dates_arr = np.ascontiguousarray(
             sym_data[date_col], dtype="datetime64[ns]"
         )
-        result[date_col] = _gather_dt64_by_indices_njit(
-            dates_arr, indices
-        ).copy()
+        gathered_dates = _gather_dt64_by_indices_njit(dates_arr, indices)
+        # The kernel allocates this array fresh and exactly sized, so no
+        # copy is needed. Numba arrays report owndata=False, though, which
+        # skips the freeze in SymbolArrayStore.__post_init__, so freeze
+        # here to keep the store read-only.
+        gathered_dates.flags.writeable = False
+        result[date_col] = gathered_dates
     return result
 
 
@@ -1115,7 +1119,10 @@ class IndicatorScope:
         filter_dates: Sequence[np.datetime64],
     ):
         self._indicator_data = indicator_data
-        self._filter_dates = filter_dates
+        # Converted once: fetch() needs datetime64[ns] on every
+        # (indicator, symbol) cache miss and the dates never change after
+        # construction.
+        self._filter_dates = np.asarray(filter_dates, dtype="datetime64[ns]")
         self._sym_inds: dict[IndicatorSymbol, NDArray[np.float64]] = {}
 
     def fetch(
@@ -1173,12 +1180,9 @@ class IndicatorScope:
             ind_data = np.asarray(raw.to_numpy(copy=False), dtype=np.float64)
         else:
             if isinstance(raw, pd.Series):
-                filter_arr = np.asarray(
-                    self._filter_dates, dtype="datetime64[ns]"
-                )
                 ind_dates = raw.index.to_numpy(dtype="datetime64[ns]")
                 ind_values = raw.to_numpy(copy=False)
-                mask = np.isin(ind_dates, filter_arr)
+                mask = np.isin(ind_dates, self._filter_dates)
                 ind_data = np.asarray(ind_values[mask], dtype=np.float64)
             else:
                 ind_data = np.asarray(raw, dtype=np.float64)
@@ -1312,6 +1316,34 @@ def _require_lag_cols(
     )
 
 
+class _PerBarPredictions:
+    """Append-only float64 buffer of per-bar model predictions.
+
+    Grows geometrically so serving bar ``n`` is amortized O(1) instead of
+    rebuilding the whole prediction history through a Python list on every
+    bar. Returned arrays are prefix views of the buffer; filled slots are
+    never rewritten, so previously returned views stay stable. ``values``
+    clamps to the filled prefix so unfilled capacity is never exposed.
+    """
+
+    __slots__ = ("_buf", "filled")
+
+    def __init__(self):
+        self._buf: NDArray[np.float64] = np.empty(0, dtype=np.float64)
+        self.filled: int = 0
+
+    def append(self, value: float):
+        if self.filled == len(self._buf):
+            buf = np.empty(max(16, 2 * len(self._buf)), dtype=np.float64)
+            buf[: self.filled] = self._buf[: self.filled]
+            self._buf = buf
+        self._buf[self.filled] = value
+        self.filled += 1
+
+    def values(self, n: int) -> NDArray[np.float64]:
+        return self._buf[: max(0, min(n, self.filled))]
+
+
 class IntervalScope:
     """Serves compressed bar and indicator data through alignment maps."""
 
@@ -1336,6 +1368,7 @@ class IntervalScope:
         ] = {}
         self._sym_inputs: dict[ModelSymbol, ModelInput] = {}
         self._sym_preds: dict[ModelSymbol, NDArray] = {}
+        self._per_bar_preds: dict[ModelSymbol, _PerBarPredictions] = {}
         # Leading compressed bars whose lag features are still undefined.
         # Compressed model input starts at compressed row 0 with no earlier
         # history to draw lags from, so unlike the base timeframe -- where
@@ -1610,33 +1643,30 @@ class IntervalScope:
         trained_model: TrainedModel,
         end_index: int,
     ) -> NDArray:
-        if model_sym not in self._sym_preds:
-            self._sym_preds[model_sym] = np.array([], dtype=np.float64)
-        pred = self._sym_preds[model_sym]
+        if model_sym not in self._per_bar_preds:
+            self._per_bar_preds[model_sym] = _PerBarPredictions()
+        preds = self._per_bar_preds[model_sym]
         target_len = self.completed_index(symbol, interval, end_index) + 1
         if target_len <= 0:
-            return np.array([], dtype=pred.dtype)
-        if len(pred) >= target_len:
-            return pred[:target_len]
+            return np.array([], dtype=np.float64)
+        if preds.filled >= target_len:
+            return preds.values(target_len)
         model_input = self._prepare_full_input(
             symbol, interval, base_model_name
         )
         warmup = self._sym_lag_warmup.get(model_sym, 0)
-        pred_values = pred.tolist()
-        while len(pred_values) < target_len:
-            # ``pred_values`` counts compressed bars, so slice the compressed
-            # input directly. Routing this through ``completed_index`` would mix
-            # it with the base-bar index space.
-            if len(pred_values) < warmup:
+        while preds.filled < target_len:
+            # ``preds`` counts compressed bars, so slice the compressed
+            # input directly. Routing this through ``completed_index`` would
+            # mix it with the base-bar index space.
+            if preds.filled < warmup:
                 # Lag features are not defined yet for this bar.
-                pred_values.append(float("nan"))
+                preds.append(float("nan"))
                 continue
-            sliced = model_input.slice_range(warmup, len(pred_values) + 1)
+            sliced = model_input.slice_range(warmup, preds.filled + 1)
             scalar = self._run_predict_scalar(trained_model, sliced)
-            pred_values.append(scalar)
-        pred = np.asarray(pred_values, dtype=np.float64)
-        self._sym_preds[model_sym] = pred
-        return pred[:target_len]
+            preds.append(scalar)
+        return preds.values(target_len)
 
     @staticmethod
     def _run_predict(
@@ -1769,6 +1799,7 @@ class IntervalScope:
         self._bar_cache.clear()
         self._sym_inputs.clear()
         self._sym_preds.clear()
+        self._per_bar_preds.clear()
         self._sym_lag_warmup.clear()
         self._lag_series_cache.clear()
         self._lag_cache_keys.clear()
@@ -2044,6 +2075,7 @@ class PredictionScope:
         self._models = models
         self._input_scope = input_scope
         self._sym_preds: dict[ModelSymbol, NDArray] = {}
+        self._per_bar_preds: dict[ModelSymbol, _PerBarPredictions] = {}
 
     def fetch(
         self, symbol: str, name: str, end_index: Optional[int] = None
@@ -2099,27 +2131,26 @@ class PredictionScope:
         trained_model: TrainedModel,
         end_index: Optional[int],
     ) -> NDArray:
-        if model_sym not in self._sym_preds:
-            self._sym_preds[model_sym] = np.array([], dtype=np.float64)
-        pred = self._sym_preds[model_sym]
+        if model_sym not in self._per_bar_preds:
+            self._per_bar_preds[model_sym] = _PerBarPredictions()
+        preds = self._per_bar_preds[model_sym]
         if end_index is None:
             input_full = self._input_scope._fetch_model_input(symbol, name)
             target_len = len(input_full.dates)
         else:
             target_len = end_index
-        if len(pred) >= target_len:
-            return pred if end_index is None else pred[:end_index]
-        pred_values = pred.tolist()
-        while len(pred_values) < target_len:
-            bar_end_index = len(pred_values) + 1
+        while preds.filled < target_len:
+            bar_end_index = preds.filled + 1
             model_input = self._input_scope._fetch_model_input(
                 symbol, name, bar_end_index
             )
             scalar = self._run_predict_scalar(trained_model, model_input)
-            pred_values.append(scalar)
-        pred = np.asarray(pred_values, dtype=np.float64)
-        self._sym_preds[model_sym] = pred
-        return pred if end_index is None else pred[:end_index]
+            preds.append(scalar)
+        # Slice the exactly-sized prefix so a negative or zero end_index
+        # keeps plain Python slice semantics instead of exposing raw
+        # buffer capacity.
+        full = preds.values(preds.filled)
+        return full if end_index is None else full[:end_index]
 
     @staticmethod
     def _run_predict(

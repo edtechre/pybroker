@@ -285,6 +285,31 @@ class TestIndicatorScope:
         ):
             ind_scope.fetch(sym, name)
 
+    def test_fetch_masks_to_filter_dates_subset(
+        self, ind_data, dates, symbol, ind_name
+    ):
+        subset = np.asarray(dates, dtype="datetime64[ns]")[::2]
+        scope = IndicatorScope(ind_data, subset)
+        result = scope.fetch(symbol, ind_name)
+        raw = ind_data[IndicatorSymbol(ind_name, symbol)]
+        ind_dates = raw.index.to_numpy(dtype="datetime64[ns]")
+        expected = raw.to_numpy()[np.isin(ind_dates, subset)]
+        assert len(result) < len(raw)
+        assert np.array_equal(result, expected, equal_nan=True)
+
+    def test_filter_dates_accepts_list_and_ndarray(
+        self, ind_data, dates, symbol, ind_name
+    ):
+        as_list = IndicatorScope(ind_data, list(dates))
+        as_array = IndicatorScope(
+            ind_data, np.asarray(dates, dtype="datetime64[ns]")
+        )
+        assert np.array_equal(
+            as_list.fetch(symbol, ind_name),
+            as_array.fetch(symbol, ind_name),
+            equal_nan=True,
+        )
+
     def test_fetch_value(self, ind_scope, symbol, ind_data, ind_name):
         end_index = 10
         result = ind_scope.fetch_value(symbol, ind_name, end_index)
@@ -640,6 +665,96 @@ class TestIntervalScope:
         for end_index in (0, -1, -100):
             assert tf_scope.completed_index(sym, "weekly", end_index) == -1
 
+    def test_fetch_preds_per_bar_incremental_matches_bulk(self, scope):
+        tf_name = "tf_per_bar"
+        tf_sym = "TFSYM"
+        tf_dates = pd.date_range("2020-01-06", periods=25, freq="B")
+        n = len(tf_dates)
+        close = np.linspace(100.0, 110.0, n)
+        sym_df = pd.DataFrame(
+            {
+                "date": tf_dates,
+                "open": close,
+                "high": close + 1.0,
+                "low": close - 1.0,
+                "close": close,
+                "volume": np.ones(n),
+            }
+        )
+        interval_data = IntervalData()
+        interval_data.compressed[(tf_sym, "weekly")] = compress_symbol_df(
+            sym_df, "weekly", frozenset(), 86400.0
+        )
+        lags = 2
+        tf_model_name = model_interval_name(tf_name, "weekly")
+
+        def make_scope():
+            calls = []
+
+            def predict_fn(instance, data):
+                calls.append(len(data))
+                return float(len(data))
+
+            model(
+                tf_name,
+                lambda sym, train, test, lag_train, lag_test: None,
+                lags=lags,
+                per_bar=True,
+                predict_fn=predict_fn,
+            )
+            trained = TrainedModel(
+                name=tf_model_name,
+                instance=None,
+                predict_fn=predict_fn,
+                input_cols=("close",),
+                per_bar=True,
+                lag_columns=("close",),
+            )
+            tf_scope = IntervalScope(
+                interval_data,
+                IndicatorScope({}, []),
+                models={ModelSymbol(tf_model_name, tf_sym): trained},
+            )
+            return tf_scope, calls
+
+        inc_scope, inc_calls = make_scope()
+        prefixes = [
+            np.array(inc_scope.fetch_preds(tf_sym, "weekly", tf_name, i))
+            for i in range(1, n + 1)
+        ]
+        total = inc_scope.completed_index(tf_sym, "weekly", n) + 1
+        assert total > lags
+        final = prefixes[-1]
+        assert final.dtype == np.float64
+        assert len(final) == total
+        # The first `lags` compressed bars have undefined lag features and
+        # are served as NaN without calling predict.
+        assert np.isnan(final[:lags]).all()
+        assert list(final[lags:]) == [
+            float(i + 1) for i in range(total - lags)
+        ]
+        # Exactly one predict call per non-warmup compressed bar, in order.
+        assert inc_calls == list(range(1, total - lags + 1))
+
+        bulk_scope, bulk_calls = make_scope()
+        bulk = bulk_scope.fetch_preds(tf_sym, "weekly", tf_name, n)
+        assert np.array_equal(final, bulk, equal_nan=True)
+        assert bulk_calls == inc_calls
+        for end_index, prefix in zip(range(1, n + 1), prefixes):
+            k = bulk_scope.completed_index(tf_sym, "weekly", end_index) + 1
+            assert np.array_equal(prefix, bulk[:k], equal_nan=True)
+        # A shrinking base end_index serves a prefix without re-predicting.
+        n_calls = len(bulk_calls)
+        mid = bulk_scope.completed_index(tf_sym, "weekly", n // 2) + 1
+        assert 0 < mid < total
+        shrunk = bulk_scope.fetch_preds(tf_sym, "weekly", tf_name, n // 2)
+        assert len(bulk_calls) == n_calls
+        assert np.array_equal(shrunk, bulk[:mid], equal_nan=True)
+        # clear_cache drops the per-bar buffers along with every other
+        # cached array.
+        bulk_scope.clear_cache()
+        assert not bulk_scope._per_bar_preds
+
 
 class TestPriceScope:
     @pytest.mark.parametrize(
@@ -899,6 +1014,24 @@ def test_slice_symbol_array_store_by_dates_non_contiguous(data_source_df):
     sliced = slice_symbol_array_store_by_dates(store, selected)
     np.testing.assert_array_equal(sliced.sym_arrays[sym]["date"], selected)
     assert len(sliced.sym_arrays[sym]["close"]) == len(selected)
+
+
+def test_slice_store_arrays_read_only(data_source_df):
+    store = symbol_array_store_from_frame(data_source_df)
+    sym = "SPY"
+    all_dates = store.sym_arrays[sym]["date"]
+    # Contiguous selections take the slice-copy fast path; scattered
+    # selections take the njit gather path. Both must hand back frozen
+    # arrays, the njit-allocated date column included.
+    for selected in (all_dates[2:7], np.sort(all_dates[[0, 2, 5, 9]])):
+        sliced = slice_symbol_array_store_by_dates(store, selected)
+        for arrays in sliced.sym_arrays.values():
+            for arr in arrays.values():
+                assert arr.flags.writeable is False
+        with pytest.raises(ValueError, match="read-only"):
+            sliced.sym_arrays[sym]["date"][0] = np.datetime64("2000-01-01")
+        with pytest.raises(ValueError, match="read-only"):
+            sliced.sym_arrays[sym]["close"][0] = 0.0
 
 
 def _symbol_array_store_from_flat_frame_reference(

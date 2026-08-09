@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import re
 from dataclasses import dataclass, field
+from functools import lru_cache
 from numba import njit
 from numpy.typing import NDArray
 from pybroker.common import BarData, DataCol, IndicatorSymbol, to_seconds
@@ -181,6 +182,13 @@ class IntervalData:
         return IntervalData(compressed=result)
 
 
+# Runs on hot paths (every ctx.interval() call and scope fetch normalizes
+# its interval argument), so memoize the regex parse. Keys are always str:
+# normalize_interval's isinstance gate runs first, so unhashable inputs
+# still raise ValueError there, and ints never reach this cache. lru_cache
+# does not cache exceptions, so invalid strings re-raise on every call.
+# Bounded because user code can probe arbitrary strings per bar.
+@lru_cache(maxsize=128)
 def _normalize_duration_string(value: str) -> str:
     """Normalizes a duration string in ``<digits><unit>`` form (e.g. ``'5m'``)."""
     stripped = value.strip()

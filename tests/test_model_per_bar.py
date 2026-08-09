@@ -47,42 +47,46 @@ class TestPerBarValidation:
             )
 
 
+def _build_per_bar_scope(data_source_df, symbols):
+    StaticScope.instance()._model_sources.clear()
+    calls = []
+
+    def predict_fn(model, data):
+        calls.append(len(data))
+        return float(len(data))
+
+    model(
+        "pb",
+        lambda s, t, u: (object(), ("close",)),
+        predict_fn=predict_fn,
+        per_bar=True,
+    )
+    sym = symbols[0]
+    sym_df = data_source_df[data_source_df["symbol"] == sym]
+    test_df = sym_df.iloc[len(sym_df) // 2 :].set_index(["symbol", "date"])
+    dates = sorted(test_df.index.get_level_values(1).unique())
+    trained = {
+        ModelSymbol("pb", sym): TrainedModel(
+            name="pb",
+            instance=object(),
+            predict_fn=predict_fn,
+            input_cols=("close",),
+            per_bar=True,
+        )
+    }
+    from pybroker.scope import ColumnScope, IndicatorScope
+
+    col_scope = ColumnScope(test_df)
+    ind_scope = IndicatorScope({}, dates)
+    input_scope = ModelInputScope(col_scope, ind_scope, trained, {}, dates)
+    pred_scope = PredictionScope(trained, input_scope)
+    return pred_scope, sym, calls, len(dates)
+
+
 class TestPredictionScopePerBar:
     @pytest.fixture()
     def per_bar_scope(self, data_source_df, symbols):
-        StaticScope.instance()._model_sources.clear()
-        calls = []
-
-        def predict_fn(model, data):
-            calls.append(len(data))
-            return float(len(data))
-
-        model(
-            "pb",
-            lambda s, t, u: (object(), ("close",)),
-            predict_fn=predict_fn,
-            per_bar=True,
-        )
-        sym = symbols[0]
-        sym_df = data_source_df[data_source_df["symbol"] == sym]
-        test_df = sym_df.iloc[len(sym_df) // 2 :].set_index(["symbol", "date"])
-        dates = sorted(test_df.index.get_level_values(1).unique())
-        trained = {
-            ModelSymbol("pb", sym): TrainedModel(
-                name="pb",
-                instance=object(),
-                predict_fn=predict_fn,
-                input_cols=("close",),
-                per_bar=True,
-            )
-        }
-        from pybroker.scope import ColumnScope, IndicatorScope
-
-        col_scope = ColumnScope(test_df)
-        ind_scope = IndicatorScope({}, dates)
-        input_scope = ModelInputScope(col_scope, ind_scope, trained, {}, dates)
-        pred_scope = PredictionScope(trained, input_scope)
-        return pred_scope, sym, calls, len(dates)
+        return _build_per_bar_scope(data_source_df, symbols)
 
     def test_strict_call_order_and_inclusive_slice(self, per_bar_scope):
         pred_scope, sym, calls, n = per_bar_scope
@@ -97,6 +101,51 @@ class TestPredictionScopePerBar:
         full = pred_scope.fetch(sym, "pb", n)
         again = pred_scope.fetch(sym, "pb", n)
         assert np.array_equal(full, again)
+
+    def test_incremental_equals_bulk_fetch(self, data_source_df, symbols):
+        inc_scope, sym, _, n = _build_per_bar_scope(data_source_df, symbols)
+        prefixes = [
+            np.array(inc_scope.fetch(sym, "pb", i)) for i in range(1, n + 1)
+        ]
+        bulk_scope, _, bulk_calls, _ = _build_per_bar_scope(
+            data_source_df, symbols
+        )
+        bulk = bulk_scope.fetch(sym, "pb", n)
+        assert np.array_equal(prefixes[-1], bulk)
+        for i, prefix in enumerate(prefixes, start=1):
+            assert np.array_equal(prefix, bulk[:i])
+        assert bulk_calls == list(range(1, n + 1))
+
+    def test_smaller_end_index_after_growth_returns_prefix(
+        self, per_bar_scope
+    ):
+        pred_scope, sym, calls, n = per_bar_scope
+        full = np.array(pred_scope.fetch(sym, "pb", n))
+        n_calls = len(calls)
+        k = n // 2
+        partial = pred_scope.fetch(sym, "pb", k)
+        # Serving a shorter prefix after growth must not re-predict.
+        assert len(calls) == n_calls
+        assert len(partial) == k
+        assert np.array_equal(partial, full[:k])
+
+    def test_per_bar_pred_dtype_float64(self, per_bar_scope):
+        pred_scope, sym, _, n = per_bar_scope
+        assert pred_scope.fetch(sym, "pb", n).dtype == np.float64
+
+    def test_non_positive_end_index_keeps_slice_semantics(self, per_bar_scope):
+        # A negative or zero end_index must slice the prediction history
+        # like a plain Python slice, never expose growth-buffer capacity.
+        pred_scope, sym, calls, n = per_bar_scope
+        assert len(pred_scope.fetch(sym, "pb", 0)) == 0
+        assert len(pred_scope.fetch(sym, "pb", -1)) == 0
+        full = np.array(pred_scope.fetch(sym, "pb", n))
+        n_calls = len(calls)
+        tail_less = pred_scope.fetch(sym, "pb", -1)
+        assert len(calls) == n_calls
+        assert len(tail_less) == n - 1
+        assert np.array_equal(tail_less, full[:-1])
+        assert len(pred_scope.fetch(sym, "pb", 0)) == 0
 
     def test_get_signals_materializes_full_array(self, per_bar_scope):
         pred_scope, sym, _, n = per_bar_scope

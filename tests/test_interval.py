@@ -11,6 +11,7 @@ from pybroker.model import model
 from pybroker.scope import StaticScope
 from pybroker.interval import (
     IntervalData,
+    _normalize_duration_string,
     _validate_symbol_dates_for_base,
     build_compressed_symbol_df,
     compress,
@@ -125,6 +126,23 @@ class TestIntervals:
     def test_normalize_rejects_non_int_str(self, value):
         with pytest.raises(ValueError, match="Invalid interval"):
             normalize_interval(value)  # type: ignore[arg-type]
+
+    def test_duration_normalization_memoized(self):
+        _normalize_duration_string.cache_clear()
+        assert normalize_interval("5m") == "5m"  # type: ignore[arg-type]
+        assert normalize_interval("5m") == "5m"  # type: ignore[arg-type]
+        assert _normalize_duration_string.cache_info().hits >= 1
+
+    def test_invalid_duration_raises_repeatedly(self):
+        # lru_cache does not cache exceptions; the error must repeat.
+        for _ in range(2):
+            with pytest.raises(ValueError, match="Invalid interval"):
+                normalize_interval("5x")  # type: ignore[arg-type]
+
+    def test_uppercase_duration_canonicalized_when_cached(self):
+        _normalize_duration_string.cache_clear()
+        for _ in range(2):
+            assert normalize_interval("5M") == "5m"  # type: ignore[arg-type]
 
     def test_reject_one(self):
         with pytest.raises(ValueError, match="n > 1"):

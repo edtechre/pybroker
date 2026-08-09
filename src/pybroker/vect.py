@@ -225,7 +225,7 @@ def returnv(array: NDArray[np.float64], n: int = 1) -> NDArray[np.float64]:
         return np.array(tuple())
     _verify_input(array, n)
     out_len = len(array)
-    out = np.array([np.nan for _ in range(out_len)])
+    out = np.full(out_len, np.nan)
     for i in range(n, out_len):
         base = array[i - n]
         # A zero base has no defined return. Numba raises ZeroDivisionError

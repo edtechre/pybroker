@@ -6207,6 +6207,30 @@ class TestStrategyIntervals:
             assert n_every5 > 0
             assert n_weekly != n_every5
 
+    @pytest.mark.parametrize("windows", [1, 2])
+    def test_interval_context_persists_across_bars(
+        self, data_source_df, scope, windows
+    ):
+        # IntervalContext holds no per-bar state, so ctx.interval() serves
+        # one memoized instance per window instead of rebuilding it every
+        # bar, and that instance must still track the advancing bar.
+        seen = []
+
+        def exec_fn(ctx):
+            weekly = ctx.interval("weekly")
+            seen.append((weekly, weekly.bars))
+
+        strategy = Strategy(data_source_df, START_DATE, END_DATE)
+        strategy.add_execution(exec_fn, "SPY", intervals=["weekly"])
+        strategy.walkforward(windows=windows, timeframe="1d")
+        assert seen
+        # The held references keep every context alive, so id() cannot be
+        # recycled across windows.
+        assert len({id(interval_ctx) for interval_ctx, _ in seen}) == windows
+        bars_seq = [bars for _, bars in seen]
+        assert bars_seq == sorted(bars_seq)
+        assert bars_seq[-1] > bars_seq[0]
+
     def test_per_bar_model_predicts_one_row_per_compressed_bar(
         self, data_source_df, scope
     ):

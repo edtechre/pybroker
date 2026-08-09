@@ -105,10 +105,13 @@ class Indicator:
         self.name = name
         self._fn = fn
         self._kwargs = kwargs
+        # _kwargs is fixed at construction (hyperparams resolve per call
+        # into a new dict), so the derived names are computed once.
+        self._hyperparam_names = _find_hyperparam_names(kwargs)
 
     @property
     def hyperparam_names(self) -> frozenset[str]:
-        return _find_hyperparam_names(self._kwargs)
+        return self._hyperparam_names
 
     def relative_entropy(self, data: Union[BarData, pd.DataFrame]) -> float:
         """Generates indicator data with ``data`` and computes its relative

@@ -338,6 +338,13 @@ def test_interval_context_read_only(
     )
     with pytest.raises(AttributeError, match="read-only"):
         interval_ctx.buy_shares = 100
+    # Instances persist for the whole window, so every write is rejected:
+    # a stray attribute would otherwise live across bars, and one named
+    # like a registered custom column would shadow the column lookup.
+    with pytest.raises(AttributeError, match="read-only"):
+        interval_ctx.my_state = 1
+    with pytest.raises(AttributeError, match="read-only"):
+        interval_ctx._sym_end_index = {}
 
 
 def test_indicator_when_not_found_then_error(ctx, symbol):
@@ -1192,6 +1199,8 @@ def test_cover(ctx, cover_attr, buy_attr):
 def test_set_exec_ctx_data(ctx, sym_end_index):
     date = np.datetime64("2020-01-01")
     ctx._foreign = {"SPY": np.random.rand(100)}
+    interval_sentinel = object()
+    ctx._interval = {"weekly": interval_sentinel}
     ctx._cover = True
     ctx._exiting_pos = True
     ctx.buy_fill_price = PriceType.AVERAGE
@@ -1219,6 +1228,9 @@ def test_set_exec_ctx_data(ctx, sym_end_index):
     assert ctx.dt == to_datetime(date)
     assert ctx.bars == sym_end_index[ctx.symbol]
     assert not ctx._foreign
+    # The interval memo survives bars: IntervalContext holds no per-bar
+    # state, so set_exec_ctx_data must not clear it.
+    assert ctx._interval == {"weekly": interval_sentinel}
     assert ctx._cover is False
     assert ctx._exiting_pos is False
     assert ctx.buy_fill_price is None
@@ -1243,6 +1255,14 @@ def test_set_exec_ctx_data(ctx, sym_end_index):
     assert ctx.stop_trailing_pct is None
     assert ctx.stop_trailing_limit is None
     assert ctx.stop_trailing_exit_price is None
+
+
+def test_interval_context_memoized_across_bars(ctx, sym_end_index):
+    ctx._declared_intervals = frozenset({"weekly"})
+    first = ctx.interval("weekly")
+    sym_end_index[ctx.symbol] += 1
+    set_exec_ctx_data(ctx, np.datetime64("2020-01-02"))
+    assert ctx.interval("weekly") is first
 
 
 def test_to_result_buy_timeout_bars(ctx, symbol, date):

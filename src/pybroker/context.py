@@ -285,12 +285,19 @@ class IntervalContext:
         )
 
     def __setattr__(self, name: str, value: Any) -> None:
+        # Instances are memoized for the whole walkforward window, so a
+        # stray write would persist across bars -- and one that collides
+        # with a registered custom column would permanently shadow the
+        # __getattr__ column lookup. Enforce the documented read-only
+        # contract for every attribute.
         if name in self._READ_ONLY_ATTRS:
             raise AttributeError(
                 f"IntervalContext is read-only; set {name!r} on the base "
                 "ExecContext instead."
             )
-        object.__setattr__(self, name, value)
+        raise AttributeError(
+            f"IntervalContext is read-only; cannot set {name!r}."
+        )
 
     def _fetch(self, col: str) -> NDArray:
         end_index = self._sym_end_index[self._symbol]
@@ -1757,8 +1764,11 @@ def set_exec_ctx_data(ctx: ExecContext, date: np.datetime64):
     """
     ctx._curr_date = date
     ctx._dt = None
+    # _foreign caches BarData frozen at one bar's end_index, so it goes
+    # stale every bar. The _interval memo does not: IntervalContext holds
+    # no per-bar state (every accessor re-reads the live sym_end_index
+    # mapping), so its instances stay valid for the whole window.
     ctx._foreign.clear()
-    ctx._interval.clear()
     ctx._cover = False
     ctx._exiting_pos = False
     ctx._exit_stop_pos = None
