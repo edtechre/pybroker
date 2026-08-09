@@ -175,8 +175,8 @@ To learn how to use PyBroker, see the notebooks under the *User Guide*:
 AI Agent Skills
 ===============
 
-PyBroker v2 now includes :doc:`AI agent skills <agent-skills>` that help
-coding agents write trading strategies and backtests:
+PyBroker v2 now includes :doc:`AI agent skills <agent-skills>` for coding
+agents:
 
 * :ref:`Strategy Creator <skill-pybroker-strategy-creator>`
 * :ref:`Indicator Creator <skill-pybroker-indicator-creator>`

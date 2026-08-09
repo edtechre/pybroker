@@ -128,7 +128,7 @@ snippets:
 
 ## AI Agent Skills
 
-PyBroker v2 now includes [AI agent skills](https://www.pybroker.com/en/latest/agent-skills.html) that help coding agents write trading strategies and backtests:
+PyBroker v2 now includes [AI agent skills](https://www.pybroker.com/en/latest/agent-skills.html) for coding agents:
 
 - [Strategy Creator](https://www.pybroker.com/en/latest/agent-skills.html#skill-pybroker-strategy-creator)
 - [Indicator Creator](https://www.pybroker.com/en/latest/agent-skills.html#skill-pybroker-indicator-creator)
