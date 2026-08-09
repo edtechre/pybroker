@@ -7,7 +7,16 @@
 from abc import ABC
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Callable, Final, Iterable, NamedTuple, Optional, Sequence, Union
+from typing import (
+    Any,
+    Callable,
+    Final,
+    Iterable,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Union,
+)
 
 from diskcache import Cache
 from joblib import Parallel
@@ -23,61 +32,159 @@ _EMPTY_PARAM: Final = object()
 # --- src/pybroker/model.py ---
 class ModelSource:
     """Base class of a model source."""
-    def __init__(self, name: str, indicator_names: Iterable[str], input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]], predict_fn: Optional[Callable[[Any, Union[pd.DataFrame, NDArray]], NDArray]], pooled: bool, kwargs: dict[str, Any], lags: Optional[int]=None, lag_cols: tuple[str, ...]=(), per_bar: bool=False): ...
+    def __init__(
+        self,
+        name: str,
+        indicator_names: Iterable[str],
+        input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]],
+        predict_fn: Optional[
+            Callable[[Any, Union[pd.DataFrame, NDArray]], NDArray]
+        ],
+        pooled: bool,
+        kwargs: dict[str, Any],
+        lags: Optional[int] = None,
+        lag_cols: tuple[str, ...] = (),
+        per_bar: bool = False,
+    ): ...
     # Instance attributes assigned in __init__:
     name: str
     lags: Optional[int]
     per_bar: bool
     pooled: bool
     def prepare_input_data(self, df: pd.DataFrame) -> pd.DataFrame: ...
-    def intervals(self, *intervals: TimeframeInterval) -> 'IntervalBoundModel': ...
+    def intervals(
+        self, *intervals: TimeframeInterval
+    ) -> "IntervalBoundModel": ...
 
 class IntervalBoundModel(NamedTuple):
     """A :class:`.ModelSource` bound to one or more compression intervals, returned by :meth:`ModelSource.intervals` and passed to the ``models`` parameter of :meth:`pybroker.strategy.Strategy.add_execution`."""
+
     source: ModelSource
     intervals: frozenset[TimeframeInterval]
 
 class ModelLoader(ModelSource):
     """Loads a pre-trained model."""
-    def __init__(self, name: str, load_fn: Callable[..., Union[Any, tuple[Any, Iterable[str]]]], indicator_names: Iterable[str], input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]], predict_fn: Optional[Callable[[Any, Union[pd.DataFrame, NDArray]], NDArray]], pooled: bool, kwargs: dict[str, Any], lags: Optional[int]=None, lag_cols: tuple[str, ...]=(), per_bar: bool=False): ...
-    def __call__(self, symbol: str, train_start_date: datetime, train_end_date: datetime) -> Union[Any, tuple[Any, Iterable[str]]]: ...
+    def __init__(
+        self,
+        name: str,
+        load_fn: Callable[..., Union[Any, tuple[Any, Iterable[str]]]],
+        indicator_names: Iterable[str],
+        input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]],
+        predict_fn: Optional[
+            Callable[[Any, Union[pd.DataFrame, NDArray]], NDArray]
+        ],
+        pooled: bool,
+        kwargs: dict[str, Any],
+        lags: Optional[int] = None,
+        lag_cols: tuple[str, ...] = (),
+        per_bar: bool = False,
+    ): ...
+    def __call__(
+        self, symbol: str, train_start_date: datetime, train_end_date: datetime
+    ) -> Union[Any, tuple[Any, Iterable[str]]]: ...
 
 class ModelTrainer(ModelSource):
     """Trains a model."""
-    def __init__(self, name: str, train_fn: Callable[..., Union[Any, tuple[Any, Iterable[str]]]], indicator_names: Iterable[str], input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]], predict_fn: Optional[Callable[[Any, Union[pd.DataFrame, NDArray]], NDArray]], pooled: bool, kwargs: dict[str, Any], lags: Optional[int]=None, lag_cols: tuple[str, ...]=(), per_bar: bool=False): ...
-    def __call__(self, symbol: str, train_data: pd.DataFrame, test_data: pd.DataFrame, *, lag_train: Optional[NDArray]=None, lag_test: Optional[NDArray]=None) -> Union[Any, tuple[Any, Iterable[str]]]: ...
-    def train_pooled(self, symbols: Sequence[str], train_data: pd.DataFrame, test_data: pd.DataFrame, *, lag_train: Optional[NDArray]=None, lag_test: Optional[NDArray]=None) -> Union[Any, tuple[Any, Iterable[str]]]: ...
+    def __init__(
+        self,
+        name: str,
+        train_fn: Callable[..., Union[Any, tuple[Any, Iterable[str]]]],
+        indicator_names: Iterable[str],
+        input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]],
+        predict_fn: Optional[
+            Callable[[Any, Union[pd.DataFrame, NDArray]], NDArray]
+        ],
+        pooled: bool,
+        kwargs: dict[str, Any],
+        lags: Optional[int] = None,
+        lag_cols: tuple[str, ...] = (),
+        per_bar: bool = False,
+    ): ...
+    def __call__(
+        self,
+        symbol: str,
+        train_data: pd.DataFrame,
+        test_data: pd.DataFrame,
+        *,
+        lag_train: Optional[NDArray] = None,
+        lag_test: Optional[NDArray] = None,
+    ) -> Union[Any, tuple[Any, Iterable[str]]]: ...
+    def train_pooled(
+        self,
+        symbols: Sequence[str],
+        train_data: pd.DataFrame,
+        test_data: pd.DataFrame,
+        *,
+        lag_train: Optional[NDArray] = None,
+        lag_test: Optional[NDArray] = None,
+    ) -> Union[Any, tuple[Any, Iterable[str]]]: ...
 
-def model(name: str, fn: Callable[..., Union[Any, tuple[Any, Iterable[str]]]], indicators: Optional[Iterable[Indicator]]=None, lags: Optional[int]=None, lag_cols: Optional[Iterable[Union[str, Indicator]]]=None, per_bar: bool=False, input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]]=None, predict_fn: Optional[Callable[[Any, Union[pd.DataFrame, NDArray]], NDArray]]=None, pretrained: bool=False, pooled: bool=False, **kwargs) -> ModelSource:
+def model(
+    name: str,
+    fn: Callable[..., Union[Any, tuple[Any, Iterable[str]]]],
+    indicators: Optional[Iterable[Indicator]] = None,
+    lags: Optional[int] = None,
+    lag_cols: Optional[Iterable[Union[str, Indicator]]] = None,
+    per_bar: bool = False,
+    input_data_fn: Optional[Callable[[pd.DataFrame], pd.DataFrame]] = None,
+    predict_fn: Optional[
+        Callable[[Any, Union[pd.DataFrame, NDArray]], NDArray]
+    ] = None,
+    pretrained: bool = False,
+    pooled: bool = False,
+    **kwargs,
+) -> ModelSource:
     """Creates a :class:`.ModelSource` instance and registers it globally with ``name``."""
 
 # --- src/pybroker/indicator.py ---
 class Indicator:
     """Class representing an indicator."""
-    def __init__(self, name: str, fn: Callable[..., NDArray[np.float64]], kwargs: dict[str, Any]): ...
+    def __init__(
+        self,
+        name: str,
+        fn: Callable[..., NDArray[np.float64]],
+        kwargs: dict[str, Any],
+    ): ...
     # Instance attributes assigned in __init__:
     name: str
     @property
     def hyperparam_names(self) -> frozenset[str]: ...
-    def relative_entropy(self, data: Union[BarData, pd.DataFrame]) -> float: ...
+    def relative_entropy(
+        self, data: Union[BarData, pd.DataFrame]
+    ) -> float: ...
     def iqr(self, data: Union[BarData, pd.DataFrame]) -> float: ...
-    def intervals(self, *intervals: TimeframeInterval) -> 'IntervalBoundIndicator': ...
-    def __call__(self, data: Union[BarData, pd.DataFrame], hyperparams: Optional[dict[str, Any]]=None) -> pd.Series: ...
+    def intervals(
+        self, *intervals: TimeframeInterval
+    ) -> "IntervalBoundIndicator": ...
+    def __call__(
+        self,
+        data: Union[BarData, pd.DataFrame],
+        hyperparams: Optional[dict[str, Any]] = None,
+    ) -> pd.Series: ...
 
 class IntervalBoundIndicator(NamedTuple):
     """An :class:`.Indicator` bound to one or more compression intervals, returned by :meth:`Indicator.intervals` and passed to the ``indicators`` parameter of :meth:`pybroker.strategy.Strategy.add_execution`."""
+
     indicator: Indicator
     intervals: frozenset[TimeframeInterval]
 
 class IndicatorSet:
     """Computes data for multiple indicators."""
     def __init__(self): ...
-    def add(self, indicators: Union[Indicator, Iterable[Indicator]], *args): ...
-    def remove(self, indicators: Union[Indicator, Iterable[Indicator]], *args): ...
+    def add(
+        self, indicators: Union[Indicator, Iterable[Indicator]], *args
+    ): ...
+    def remove(
+        self, indicators: Union[Indicator, Iterable[Indicator]], *args
+    ): ...
     def clear(self): ...
-    def __call__(self, df: pd.DataFrame, parallel_indicators: bool=False) -> pd.DataFrame: ...
+    def __call__(
+        self, df: pd.DataFrame, parallel_indicators: bool = False
+    ) -> pd.DataFrame: ...
 
-def indicator(name: str, fn: Callable[..., NDArray[np.float64]], **kwargs) -> Indicator:
+def indicator(
+    name: str, fn: Callable[..., NDArray[np.float64]], **kwargs
+) -> Indicator:
     """Creates an :class:`.Indicator` instance and registers it globally with ``name``."""
 
 def highest(name: str, field: str, period: int) -> Indicator:
@@ -86,11 +193,16 @@ def highest(name: str, field: str, period: int) -> Indicator:
 def lowest(name: str, field: str, period: int) -> Indicator:
     """Creates a rolling low :class:`.Indicator`."""
 
-def returns(name: str, field: str, period: int=1) -> Indicator:
+def returns(name: str, field: str, period: int = 1) -> Indicator:
     """Creates a rolling returns :class:`.Indicator`."""
 
 # --- src/pybroker/vect.py ---
-def atr(high: NDArray[np.float64], low: NDArray[np.float64], close: NDArray[np.float64], lookback: int) -> NDArray[np.float64]:
+def atr(
+    high: NDArray[np.float64],
+    low: NDArray[np.float64],
+    close: NDArray[np.float64],
+    lookback: int,
+) -> NDArray[np.float64]:
     """Computes Average True Range (ATR)."""
 
 def cross(a: NDArray[np.float64], b: NDArray[np.float64]) -> NDArray[np.bool_]:
@@ -102,7 +214,7 @@ def highv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
 def lowv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
     """Calculates the lowest values for every ``n`` period in ``array``."""
 
-def returnv(array: NDArray[np.float64], n: int=1) -> NDArray[np.float64]:
+def returnv(array: NDArray[np.float64], n: int = 1) -> NDArray[np.float64]:
     """Calculates returns."""
 
 def sumv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
@@ -112,27 +224,67 @@ def sumv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
 class DataSource(ABC):
     """Base class for querying data from an external source."""
     def __init__(self): ...
-    def query(self, symbols: Union[str, Iterable[str]], start_date: Union[str, datetime], end_date: Union[str, datetime], timeframe: Optional[str]='', adjust: Optional[Any]=None) -> pd.DataFrame: ...
+    def query(
+        self,
+        symbols: Union[str, Iterable[str]],
+        start_date: Union[str, datetime],
+        end_date: Union[str, datetime],
+        timeframe: Optional[str] = "",
+        adjust: Optional[Any] = None,
+    ) -> pd.DataFrame: ...
 
 class Alpaca(DataSource):
     """Retrieves stock data from `Alpaca <https://alpaca.markets/>`_."""
     def __init__(self, api_key: str, api_secret: str): ...
-    def query(self, symbols: Union[str, Iterable[str]], start_date: Union[str, datetime], end_date: Union[str, datetime], timeframe: Optional[str]='1d', adjust: Optional[Any]=None) -> pd.DataFrame: ...
+    def query(
+        self,
+        symbols: Union[str, Iterable[str]],
+        start_date: Union[str, datetime],
+        end_date: Union[str, datetime],
+        timeframe: Optional[str] = "1d",
+        adjust: Optional[Any] = None,
+    ) -> pd.DataFrame: ...
 
 class AlpacaCrypto(DataSource):
     """Retrieves crypto data from `Alpaca <https://alpaca.markets/>`_."""
-    TRADE_COUNT: Final = 'trade_count'
-    COLUMNS: Final = (DataCol.SYMBOL.value, DataCol.DATE.value, DataCol.OPEN.value, DataCol.HIGH.value, DataCol.LOW.value, DataCol.CLOSE.value, DataCol.VOLUME.value, DataCol.VWAP.value, TRADE_COUNT)
+
+    TRADE_COUNT: Final = "trade_count"
+    COLUMNS: Final = (
+        DataCol.SYMBOL.value,
+        DataCol.DATE.value,
+        DataCol.OPEN.value,
+        DataCol.HIGH.value,
+        DataCol.LOW.value,
+        DataCol.CLOSE.value,
+        DataCol.VOLUME.value,
+        DataCol.VWAP.value,
+        TRADE_COUNT,
+    )
     def __init__(self, api_key: str, api_secret: str): ...
-    def query(self, symbols: Union[str, Iterable[str]], start_date: Union[str, datetime], end_date: Union[str, datetime], timeframe: Optional[str]='1d', _adjust: Optional[str]=None) -> pd.DataFrame: ...
+    def query(
+        self,
+        symbols: Union[str, Iterable[str]],
+        start_date: Union[str, datetime],
+        end_date: Union[str, datetime],
+        timeframe: Optional[str] = "1d",
+        _adjust: Optional[str] = None,
+    ) -> pd.DataFrame: ...
 
 class YFinance(DataSource):
     """Retrieves data from `Yahoo Finance <https://finance.yahoo.com/>`_."""
-    ADJ_CLOSE: Final = 'adj_close'
-    def __init__(self, auto_adjust: bool=False): ...
+
+    ADJ_CLOSE: Final = "adj_close"
+    def __init__(self, auto_adjust: bool = False): ...
     # Instance attributes assigned in __init__:
     auto_adjust: bool
-    def query(self, symbols: Union[str, Iterable[str]], start_date: Union[str, datetime], end_date: Union[str, datetime], _timeframe: Optional[str]='', _adjust: Optional[Any]=None) -> pd.DataFrame: ...
+    def query(
+        self,
+        symbols: Union[str, Iterable[str]],
+        start_date: Union[str, datetime],
+        end_date: Union[str, datetime],
+        _timeframe: Optional[str] = "",
+        _adjust: Optional[Any] = None,
+    ) -> pd.DataFrame: ...
 
 # --- src/pybroker/ext/data.py ---
 class AKShare(DataSource):
@@ -140,12 +292,17 @@ class AKShare(DataSource):
 
 class YQuery(DataSource):
     """Retrieves data from Yahoo Finance using `Yahooquery <https://github.com/dpguthrie/yahooquery>`_."""
-    def __init__(self, proxies: Optional[dict]=None): ...
+    def __init__(self, proxies: Optional[dict] = None): ...
     # Instance attributes assigned in __init__:
     proxies: Optional[dict]
 
 # --- src/pybroker/interval.py ---
-def compress_bars(data: Union[BarData, pd.DataFrame], interval: TimeframeInterval, *, base_timeframe: str) -> BarData:
+def compress_bars(
+    data: Union[BarData, pd.DataFrame],
+    interval: TimeframeInterval,
+    *,
+    base_timeframe: str,
+) -> BarData:
     """Compresses base OHLCV bars to a coarser ``interval``."""
 
 # --- src/pybroker/scope.py ---
@@ -155,7 +312,7 @@ def register_columns(names: Union[str, Iterable[str]], *args):
 def unregister_columns(names: Union[str, Iterable[str]], *args):
     """Unregisters ``names`` of user-defined data columns."""
 
-def param(name: str, value: Optional[Any]=_EMPTY_PARAM) -> Optional[Any]:
+def param(name: str, value: Optional[Any] = _EMPTY_PARAM) -> Optional[Any]:
     """Get or set a global parameter."""
 
 def clear_params():
@@ -174,7 +331,11 @@ def disable_progress_bar():
     """Disables logging a progress bar."""
 
 # --- src/pybroker/cache.py ---
-def enable_caches(namespace: str, cache_dir: Optional[str]=None, l1_maxsize: int=_L1_DEFAULT_MAXSIZE):
+def enable_caches(
+    namespace: str,
+    cache_dir: Optional[str] = None,
+    l1_maxsize: int = _L1_DEFAULT_MAXSIZE,
+):
     """Enables all caches."""
 
 def disable_caches():
@@ -183,7 +344,11 @@ def disable_caches():
 def clear_caches():
     """Clears cached data from all caches."""
 
-def enable_data_source_cache(namespace: str, cache_dir: Optional[str]=None, l1_maxsize: int=_L1_DEFAULT_MAXSIZE) -> Cache:
+def enable_data_source_cache(
+    namespace: str,
+    cache_dir: Optional[str] = None,
+    l1_maxsize: int = _L1_DEFAULT_MAXSIZE,
+) -> Cache:
     """Enables caching of data retrieved from :class:`pybroker.data.DataSource`s."""
 
 def disable_data_source_cache():
@@ -192,7 +357,11 @@ def disable_data_source_cache():
 def clear_data_source_cache():
     """Clears data cached from :class:`pybroker.data.DataSource`s."""
 
-def enable_indicator_cache(namespace: str, cache_dir: Optional[str]=None, l1_maxsize: int=_L1_DEFAULT_MAXSIZE) -> Cache:
+def enable_indicator_cache(
+    namespace: str,
+    cache_dir: Optional[str] = None,
+    l1_maxsize: int = _L1_DEFAULT_MAXSIZE,
+) -> Cache:
     """Enables caching indicator data."""
 
 def disable_indicator_cache():
@@ -201,7 +370,11 @@ def disable_indicator_cache():
 def clear_indicator_cache():
     """Clears cached indicator data."""
 
-def enable_model_cache(namespace: str, cache_dir: Optional[str]=None, l1_maxsize: int=_L1_DEFAULT_MAXSIZE) -> Cache:
+def enable_model_cache(
+    namespace: str,
+    cache_dir: Optional[str] = None,
+    l1_maxsize: int = _L1_DEFAULT_MAXSIZE,
+) -> Cache:
     """Enables caching trained models."""
 
 def disable_model_cache():
@@ -214,11 +387,16 @@ def clear_model_cache():
 @dataclass(frozen=True)
 class ParallelConfig:
     """Configuration for parallel execution used by PyBroker."""
+
     n_jobs: Optional[int] = -1
-    backend: Optional[str] = 'loky'
+    backend: Optional[str] = "loky"
     parallel: Optional[Parallel] = None
 
-def set_parallel(n_jobs: Optional[int]=None, backend: Optional[str]=None, parallel: Optional[Parallel]=None) -> None:
+def set_parallel(
+    n_jobs: Optional[int] = None,
+    backend: Optional[str] = None,
+    parallel: Optional[Parallel] = None,
+) -> None:
     """Configures parallel execution used by PyBroker."""
 
 def get_parallel_config() -> ParallelConfig:
