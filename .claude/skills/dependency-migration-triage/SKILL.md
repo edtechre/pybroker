@@ -15,6 +15,8 @@ description: >
   is green"; or just pastes a Dependabot PR number/link and asks to check it out. Trigger
   even for dependencies that look boring (docs tooling, linters, CI actions) — some of the
   highest-value findings here come from bumps everyone assumes are safe.
+metadata:
+  internal: true
 ---
 
 # Dependency Migration Triage
