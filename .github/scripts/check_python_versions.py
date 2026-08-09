@@ -36,9 +36,7 @@ def version_key(version: str) -> tuple[int, ...]:
     return tuple(int(part) for part in version.split("."))
 
 
-def check_asv_conf(
-    versions: list[str], tooling: str, fail: list[str]
-) -> None:
+def check_asv_conf(versions: list[str], tooling: str, fail: list[str]) -> None:
     """asv builds one environment per entry in ``pythons``."""
     path = ROOT / "asv.conf.json"
     pythons = json.loads(path.read_text())["pythons"]
