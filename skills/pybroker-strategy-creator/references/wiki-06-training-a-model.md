@@ -142,7 +142,7 @@ The Walkforward Analysis then proceeds to "walk forward" in time, in the same ma
 
 As the algorithm moves forward to evaluate the next window in time, the test data from the previous window is added to the training data. This process continues until all of the time windows are evaluated.
 
-![Walkforward Diagram](https://github.com/edtechre/pybroker/blob/master/docs/_static/walkforward.png?raw=true)
+![Walkforward Diagram](https://github.com/edtechre/pybroker/blob/master/docs/_static/walkforward.gif?raw=true)
 
 By using this approach, the Walkforward Analysis is able to simulate the real-world performance of a trading strategy, and produce more reliable and accurate backtesting results.
 

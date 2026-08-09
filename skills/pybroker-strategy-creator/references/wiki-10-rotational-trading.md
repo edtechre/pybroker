@@ -79,11 +79,14 @@ from pybroker import RotationContext
 
 
 def size_by_rank(rotation: RotationContext):
-    weights = {1: 0.7, 2: 0.3}
     for symbol, ctx in rotation.ctxs.items():
         if ctx.buy_shares is not None:
             rank = rotation.long_ranks[symbol]
-            ctx.buy_shares = ctx.calc_target_shares(weights[rank])
+            match rank:
+                case 1:
+                    ctx.buy_shares = ctx.calc_target_shares(0.7)
+                case 2:
+                    ctx.buy_shares = ctx.calc_target_shares(0.3)
 
 
 strategy.enable_rotation(worst_rank_held=5, sizer=size_by_rank)

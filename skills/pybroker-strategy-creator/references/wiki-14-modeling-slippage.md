@@ -52,7 +52,7 @@ result.orders.head()
 
 The [FixedSlippageModel](https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.FixedSlippageModel) applies a deterministic, adverse adjustment measured in basis points (where 1 basis point equals 0.01%). Buy fills are increased by `bps`, while sell fills are decreased. Passing `bps=0` disables the adjustment entirely.
 
-Because the remaining examples run several more backtests, we will also disable logging with [disable_logging](https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.disable_logging) to keep the output short. Attach the model to a [Strategy](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy) with [set_slippage_model](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_slippage_model):
+Because the remaining examples run several more backtests, we will also disable logging with [disable_logging](https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.disable_logging) to keep the output short. Next, we attach the model to a [Strategy](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy) with [set_slippage_model](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_slippage_model):
 
 ```python
 from pybroker import FixedSlippageModel
@@ -67,7 +67,7 @@ result.orders[result.orders["symbol"] == "T"].head()
 
 ## Volatility Slippage
 
-Because slippage tends to grow as volatility rises, the [VolatilitySlippageModel](https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.VolatilitySlippageModel) ties its adverse adjustment to the market's movement. It scales the slippage using the [Average True Range (ATR)](https://en.wikipedia.org/wiki/Average_true_range) of the fill bar (see [atr](https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.atr)), pushing the fill price against your order by `scale * ATR`. The ATR is computed over the `atr_period` bars ending at the fill bar; fills during the warmup period, before a full ATR window exists, are left unadjusted:
+Because slippage tends to grow as volatility rises, the [VolatilitySlippageModel](https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.VolatilitySlippageModel) ties its adverse adjustment to the market's movement. It scales the slippage using the [Average True Range (ATR)](https://en.wikipedia.org/wiki/Average_true_range) of the fill bar (see [atr](https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.atr)), pushing the fill price against your order by `scale * ATR`. The ATR is computed over the `atr_period` bars ending at the fill bar. Fills during the warmup period (before a full ATR window exists), are left unadjusted:
 
 ```python
 from pybroker import VolatilitySlippageModel

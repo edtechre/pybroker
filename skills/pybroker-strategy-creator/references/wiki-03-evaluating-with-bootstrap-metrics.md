@@ -47,7 +47,7 @@ Next, we run the backtest with bootstrap metrics enabled:
 
 ```python
 result = strategy.backtest(calc_bootstrap=True)
-result.metrics_df
+result.metrics_df.head(20)
 ```
 
 While the `total_pnl` metric above suggests a profitable strategy, these results could just be due to chance. To increase confidence in our evaluation, we can use the [bootstrap method](https://en.wikipedia.org/wiki/Bootstrapping_(statistics)) to compute metrics.

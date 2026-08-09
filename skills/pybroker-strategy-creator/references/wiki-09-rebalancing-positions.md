@@ -72,8 +72,8 @@ pybroker.param("lookback", 252)  # Use past year of returns.
 
 def calculate_returns(ctxs: dict[str, ExecContext], lookback: int):
     prices = {}
-    for ctx in ctxs.values():
-        prices[ctx.symbol] = ctx.adj_close[-lookback:]
+    for symbol, ctx in ctxs.items():
+        prices[symbol] = ctx.adj_close[-lookback:]
     df = pd.DataFrame(prices)
     return df.pct_change().dropna()
 
