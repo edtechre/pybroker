@@ -22,11 +22,11 @@ msgstr ""
 #: ../../source/reference/pybroker.optimize.rst:2
 #: ed69414fe52248678d3788225ce8effd
 msgid "pybroker.optimize module"
-msgstr ""
+msgstr "pybroker.optimize 模块"
 
 #: ed4620430dac4e629e03a24c27a29352 of pybroker.optimize:1
 msgid "Hyperparameter declaration and optimization with Optuna."
-msgstr ""
+msgstr "使用 Optuna 进行超参数声明和优化。"
 
 #: 76d307e81d7d49fdad7496320f9906f5 of pybroker.optimize:3
 msgid ""
@@ -34,6 +34,8 @@ msgid ""
 "hyperparam is registered globally by name via :func:`hyperparam` and "
 "resolved to a concrete int or float at backtest or optimization time."
 msgstr ""
+"超参数为指标和执行函数声明可调节的值。每个超参数都会通过 :func:`hyperparam` 以名称全局注册，并在回测或优化时被解析为一个具体的"
+" int 或 float。"
 
 #: c478411a45274d8d86f8a013b546f2f2 of pybroker.optimize:7
 msgid ""
@@ -42,20 +44,23 @@ msgid ""
 ":meth:`pybroker.strategy.Strategy.add_execution` to read them inside an "
 "execution with ``ctx.hyperparam(name)``."
 msgstr ""
+"将超参数作为关键字参数传递给 :func:`pybroker.indicator.indicator`，或将其列在 "
+":meth:`pybroker.strategy.Strategy.add_execution` 上，以便在执行函数内通过 "
+"``ctx.hyperparam(name)`` 读取。"
 
 #: 9f723c51b50248cd9ab082f456bdfbd8 of pybroker.optimize.Hyperparam:1
 msgid "Declares a named hyperparameter with bounds and step size."
-msgstr ""
+msgstr "声明一个带有边界和步长的具名超参数。"
 
 #: 1ba795ee78334331ba22151cd5a04061 of pybroker.optimize.Hyperparam:3
 msgid "Created with :func:`hyperparam` and registered globally by ``name``."
-msgstr ""
+msgstr "通过 :func:`hyperparam` 创建，并以 ``name`` 全局注册。"
 
 #: caf26042e2e94ad18a14c7d403ec6132 of pybroker.optimize.Hyperparam:7
 msgid ""
 "Unique identifier used in indicator kwargs, execution hyperparam lists, "
 "and optimization results."
-msgstr ""
+msgstr "用于指标关键字参数、执行函数超参数列表和优化结果中的唯一标识符。"
 
 #: 0c408f2fe5cf47cebc0d659e6f73c9f4 1a88bfc8484c453eafc945b7c2730a21
 #: 2a086f07dcf54afd8a1df4014bf61da2 2afd9472803147f9a17ac215118df17d
@@ -70,66 +75,66 @@ msgstr ""
 #: pybroker.optimize.Hyperparam pybroker.optimize.OptimizeResult
 #: pybroker.optimize.SearchSpace pybroker.optimize.WindowOptimizeResult
 msgid "type"
-msgstr ""
+msgstr "类型"
 
 #: 16f91eb75eef40a2a0d9e037d989db18 of pybroker.optimize.Hyperparam:10
 msgid "str"
-msgstr ""
+msgstr "str"
 
 #: 1df8a33ea6f8434980be7d38437bcbd2 of pybroker.optimize.Hyperparam:14
 msgid ""
 "Value for backtests and the baseline during optimization. Should lie "
 "within ``[low, high]``."
-msgstr ""
+msgstr "用于回测的值，也是优化期间的基线值。应位于 ``[low, high]`` 范围内。"
 
 #: 1b37ffee094741a4823059b135cd8b23 2df5213414b24b2992d9788193ff754d
 #: 9fa938163651431ea3e2de08da9aeb88 de0a5e8362764e4e81ab38ad2ff2a1e0 of
 #: pybroker.optimize.Hyperparam:17 pybroker.optimize.Hyperparam:23
 #: pybroker.optimize.Hyperparam:31 pybroker.optimize.Hyperparam:39
 msgid "int | float"
-msgstr ""
+msgstr "int | float"
 
 #: 367ce02e4ea5428da521d0afbc7ef201 d8ef9e8e99ac4a8a858f5bd82d5e5e62 of
 #: pybroker.optimize.Hyperparam:21 pybroker.optimize.hyperparam:7
 msgid "Minimum candidate value searched during optimize (inclusive)."
-msgstr ""
+msgstr "优化期间搜索的候选值下限（含）。"
 
 #: 5fbf328b9d2c498ea126cbd3ab536069 of pybroker.optimize.Hyperparam:27
 msgid ""
 "Maximum candidate value searched during optimize (inclusive). Candidate "
 "values are ``low``, ``low + step``, ... up to the largest value not "
 "exceeding ``high``."
-msgstr ""
+msgstr "优化期间搜索的候选值上限（含）。候选值依次为 ``low``、``low + step``…，直到不超过 ``high`` 的最大值。"
 
 #: 778ecfb0be95476ca8f53c9f11ecbcb8 of pybroker.optimize.Hyperparam:35
 msgid ""
 "Spacing between candidate values. Must be positive. Integer hyperparams "
 "use integer steps; float hyperparams use float steps with values rounded "
 "to match Optuna stepped suggestions."
-msgstr ""
+msgstr "候选值之间的间隔。必须为正数。整数超参数使用整数步长；浮点数超参数使用浮点数步长，其值会被四舍五入以匹配 Optuna 的分步建议值。"
 
 #: 7fa8c27a16ba4dca8f68693c4169ea35 of pybroker.optimize.Hyperparam:42
 msgid "Examples"
-msgstr ""
+msgstr "示例"
 
 #: b80ce1e82f264a5e9a76e9213573dc9a of pybroker.optimize.Hyperparam:43
 msgid "Indicator period from 5 to 50 in steps of 5::"
-msgstr ""
+msgstr "指标周期从 5 到 50，步长为 5::"
 
 #: 9264c0cd4c674bc1ab79f78b62da4bfe of pybroker.optimize.ObjectiveBundle:1
 msgid "Return value of :func:`make_objective`."
-msgstr ""
+msgstr ":func:`make_objective` 的返回值。"
 
 #: eb5179c6456243ff8c3c11236270d272 of pybroker.optimize.OptimizeMixin:1
 msgid "Mixin implementing hyperparameter optimization."
-msgstr ""
+msgstr "实现超参数优化的 Mixin。"
 
 #: 1082094efacd448cb4594479a3a6041e of
 #: pybroker.optimize.OptimizeMixin.optimize:1
 msgid ""
 "Searches :func:`pybroker.optimize.hyperparam` values on a training "
 "window, then evaluates the best values on the held out test window."
-msgstr ""
+msgstr "在训练窗口上搜索 :func:`pybroker.optimize.hyperparam` 的值，然后在保留的测试窗口上评估最佳值。"
 
 #: 8155f4882af44e0394857c82a5bdf65d of
 #: pybroker.optimize.OptimizeMixin.optimize:4
@@ -140,6 +145,9 @@ msgid ""
 "with ``score_fn``. The winning combination is then replayed on the test "
 "window, which ``score_fn`` never sees."
 msgstr ""
+"由 :class:`pybroker.data.DataSource` 提供的数据会按照 ``train_size`` "
+"指定的比例划分为训练集和测试集。每次试验都会使用一种超参数值组合在训练窗口上进行回测，并用 ``score_fn`` "
+"为其打分。获胜的组合随后会在测试窗口上重放，而 ``score_fn`` 永远不会看到测试窗口。"
 
 #: 8f3a085116dd4f0dba52e4d5f050352c of
 #: pybroker.optimize.OptimizeMixin.optimize:10
@@ -149,12 +157,15 @@ msgid ""
 "supported; tune them inside ``train_fn`` with a validation split, or use "
 ":meth:`pybroker.strategy.Strategy.walkforward`."
 msgstr ""
+"预训练模型（``model(..., pretrained=True)``）会按训练窗口加载，并在该窗口的所有试验中复用。不支持可训练模型；请在 "
+"``train_fn`` 内部使用验证集划分来调优，或改用 "
+":meth:`pybroker.strategy.Strategy.walkforward`。"
 
 #: ../../source/reference/pybroker.optimize.rst
 #: 314e4dd20b0f47fab05200b9ff3f05f9 48f621295a8e4a96b65f69cc4664f1c4
 #: 5123365b4443410ca3b2b960c103ea93
 msgid "Parameters"
-msgstr ""
+msgstr "参数"
 
 #: ced5db519479433ab7d6cee2e71c8f29 of
 #: pybroker.optimize.OptimizeMixin.optimize:15
@@ -162,6 +173,8 @@ msgid ""
 "``Callable[[TestResult], float]`` that scores one trial's train window "
 "backtest. Maximized by default; see ``direction``."
 msgstr ""
+"为单次试验的训练窗口回测打分的 ``Callable[[TestResult], float]``。默认按最大化处理；参见 "
+"``direction``。"
 
 #: caf05a309e214c2a9f19529d916f5aae of
 #: pybroker.optimize.OptimizeMixin.optimize:17
@@ -181,6 +194,16 @@ msgid ""
 " the worker count; its trials therefore run sequentially, and an info-"
 "level log message notes that parallelism was disabled."
 msgstr ""
+"候选值的选取方式。``\"grid\"``（默认）会穷举所有组合，``\"tpe\"`` 使用 "
+":class:`optuna.samplers.TPESampler`，``\"random\"`` 使用 "
+":class:`optuna.samplers.RandomSampler`。也可以传入 "
+":class:`optuna.samplers.BaseSampler` "
+"实例；它会按窗口进行深拷贝并重新播种，而多窗口运行会将副本分发给工作进程，因此该实例必须是可 pickle "
+"的。网格采样器和随机采样器会在已配置的工作进程上并行评估试验。任何其他采样器 —— 即 ``\"tpe\"``，或不是 "
+":class:`~optuna.samplers.GridSampler` 也不是 "
+":class:`~optuna.samplers.RandomSampler` 的实例 —— "
+"都是自适应的，分批评估其试验会改变其提出的值，并使结果与工作进程数量绑定；因此这类采样器的试验会按顺序运行，并会有一条 info "
+"级别的日志消息说明并行已被禁用。"
 
 #: d993536618c84150872380dc592366d8 of
 #: pybroker.optimize.OptimizeMixin.optimize:33
@@ -189,18 +212,20 @@ msgid ""
 "where it defaults to the full grid size and a smaller value samples that "
 "many combinations at random."
 msgstr ""
+"要运行的试验数量。除 ``\"grid\"`` 外，其他所有采样器都必须设置该参数；对于 "
+"``\"grid\"``，默认值为完整网格大小，设置较小的值则会随机抽取相应数量的组合。"
 
 #: 8c5e16dffc224e07b3b3fc20753effe8 of
 #: pybroker.optimize.OptimizeMixin.optimize:36
 msgid "``\"maximize\"`` (default) or ``\"minimize\"`` ``score_fn``."
-msgstr ""
+msgstr "对 ``score_fn`` 进行 ``\"maximize\"``（默认）或 ``\"minimize\"``。"
 
 #: 8447d411ebda4ce5942257d6ca054dc1 of
 #: pybroker.optimize.OptimizeMixin.optimize:37
 msgid ""
 "Random seed for the sampler and for bootstrap metrics. Defaults to "
 "``None``, which does not reproduce."
-msgstr ""
+msgstr "用于采样器和自助法指标的随机种子。默认为 ``None``，表示不可复现。"
 
 #: 06b8f3744f664dc49c2143d48e22bfef of
 #: pybroker.optimize.OptimizeMixin.optimize:39
@@ -210,6 +235,8 @@ msgid ""
 "into one continuous result. Defaults to ``None``, a single train/test "
 "split."
 msgstr ""
+"当大于 ``1`` 时，超参数会在 ``windows`` 个向前分析窗口中分别独立优化，各测试窗口会被拼接为一个连续的结果。默认为 "
+"``None``，即单次训练/测试划分。"
 
 #: 128d640d44fd42ab860e84c6708434b6 of
 #: pybroker.optimize.OptimizeMixin.optimize:43
@@ -219,6 +246,8 @@ msgid ""
 "used, and its direction must match ``direction``. Not supported when "
 "``windows`` is greater than ``1``."
 msgstr ""
+"用于记录试验的现有 :class:`optuna.study.Study`，例如一个由持久化存储支持的 study。会使用该 study "
+"自身的采样器和剪枝器，且其优化方向必须与 ``direction`` 一致。当 ``windows`` 大于 ``1`` 时不支持此参数。"
 
 #: 6766c62c5b2f494aa593114ac868764d of
 #: pybroker.optimize.OptimizeMixin.optimize:48
@@ -227,13 +256,15 @@ msgid ""
 "trial is one complete backtest with no intermediate values to report, so "
 "pruning never actually triggers."
 msgstr ""
+"附加到所创建 study 的 "
+":class:`optuna.pruners.BasePruner`。每次试验都是一次完整的回测，没有可报告的中间值，因此剪枝实际上永远不会触发。"
 
 #: eafeee33ab07464d91b6046ef164cb3e of
 #: pybroker.optimize.OptimizeMixin.optimize:51
 msgid ""
 "Fraction of each window used for training, exclusive of ``0`` and ``1``. "
 "Defaults to ``0.5``."
-msgstr ""
+msgstr "每个窗口中用于训练的比例，不含 ``0`` 和 ``1``。默认为 ``0.5``。"
 
 #: c33f9f2a5ddb4fe79194b30a6e98eb29 of
 #: pybroker.optimize.OptimizeMixin.optimize:53
@@ -245,46 +276,49 @@ msgid ""
 "``lookahead`` bars of that interval, not of the base timeframe. Defaults "
 "to ``1``."
 msgstr ""
+"预测目标未来的 K 线数量。会在训练集和测试集之间保留出来，以防止训练数据跨边界泄漏，其单位是每个模型所拟合的时间框架的 K 线：通过 "
+":meth:`pybroker.model.ModelSource.intervals` 绑定到某个区间的模型，会保留该区间的 "
+"``lookahead`` 根 K 线，而不是基础时间框架的 K 线。默认为 ``1``。"
 
 #: 634593e87b554bdb9f67453b92bf174a of
 #: pybroker.optimize.OptimizeMixin.optimize:60
 msgid ""
 "Starting date of the optimization (inclusive). Must be within the range "
 "passed to the :class:`pybroker.strategy.Strategy` constructor."
-msgstr ""
+msgstr "优化的起始日期（含）。必须在传递给 :class:`pybroker.strategy.Strategy` 构造函数的范围之内。"
 
 #: 1bd1a2ff571b4bef8d5591c399c66a94 of
 #: pybroker.optimize.OptimizeMixin.optimize:63
 msgid ""
 "Ending date of the optimization (inclusive). Must be within the range "
 "passed to the :class:`pybroker.strategy.Strategy` constructor."
-msgstr ""
+msgstr "优化的结束日期（含）。必须在传递给 :class:`pybroker.strategy.Strategy` 构造函数的范围之内。"
 
 #: 18fbc6c8d8534e65a9985d84701e559b of
 #: pybroker.optimize.OptimizeMixin.optimize:66
 msgid ""
 "Formatted string specifying the timeframe resolution of the data, as in "
 ":meth:`pybroker.strategy.Strategy.walkforward`."
-msgstr ""
+msgstr "指定数据时间框架分辨率的格式化字符串，用法与 :meth:`pybroker.strategy.Strategy.walkforward` 中相同。"
 
 #: 3b521805735b482195badf5689309d09 of
 #: pybroker.optimize.OptimizeMixin.optimize:68
 msgid ""
 "``tuple[str, str]`` of times of day e.g. ``('9:30', '16:00')`` used to "
 "filter the data (inclusive)."
-msgstr ""
+msgstr "用于过滤数据的时间段（含边界），为 ``tuple[str, str]``，例如 ``('9:30', '16:00')``。"
 
 #: dc6c9768fc5f416d8b264aa04395e89c of
 #: pybroker.optimize.OptimizeMixin.optimize:70
 msgid "Days (e.g. ``\"mon\"``, ``\"tues\"``) used to filter the data."
-msgstr ""
+msgstr "用于过滤数据的星期（例如 ``\"mon\"``、``\"tues\"``）。"
 
 #: 04579d9a825a44f6b46e38703d20b3d6 of
 #: pybroker.optimize.OptimizeMixin.optimize:71
 msgid ""
 "Number of bars that need to pass before running the executions. Must be "
 "greater than ``0`` when set."
-msgstr ""
+msgstr "运行执行函数之前需要经过的 K 线数量。设置时必须大于 ``0``。"
 
 #: f23f8a48a16949b7bce5cf0523312c16 of
 #: pybroker.optimize.OptimizeMixin.optimize:73
@@ -292,18 +326,20 @@ msgid ""
 "If ``True``, :class:`pybroker.indicator.Indicator` data is computed in "
 "parallel using multiple processes. Defaults to ``False``."
 msgstr ""
+"如果为 ``True``，:class:`pybroker.indicator.Indicator` 数据会使用多个进程并行计算。默认为 "
+"``False``。"
 
 #: bb9633f7e783494dbf78f3299f1cdb45 of
 #: pybroker.optimize.OptimizeMixin.optimize:76
 msgid "The type of adjustment to make to the :class:`pybroker.data.DataSource`."
-msgstr ""
+msgstr "对 :class:`pybroker.data.DataSource` 应用的复权调整类型。"
 
 #: a8edc529cecd4106bb1e50d571c847a3 of
 #: pybroker.optimize.OptimizeMixin.optimize:78
 msgid ""
 "Whether to compute randomized bootstrap evaluation metrics for the test "
 "result. Defaults to ``False``."
-msgstr ""
+msgstr "是否为测试结果计算随机自助法评估指标。默认为 ``False``。"
 
 #: ee1b70f3a5f642ca85d1f856f81042aa of
 #: pybroker.optimize.OptimizeMixin.optimize:80
@@ -313,12 +349,14 @@ msgid ""
 "``False``, which logs the optimization summary and the final test window "
 "evaluation only."
 msgstr ""
+"是否记录每次试验回测的日志 —— 包括指标计算、测试集划分进度条以及 Optuna 自身的试验日志。默认为 "
+"``False``，此时仅记录优化摘要和最终测试窗口的评估结果。"
 
 #: ../../source/reference/pybroker.optimize.rst
 #: 0e1ea84570114d959973c27c8ac7cb38 4a5403bebcab48209c57b9fea644fb77
 #: 8d925760b5114bb9955af7c454c3baf3
 msgid "Returns"
-msgstr ""
+msgstr "返回"
 
 #: 407372de80f74ba6bd39860724fa2a56 of
 #: pybroker.optimize.OptimizeMixin.optimize:85
@@ -330,11 +368,15 @@ msgid ""
 "describe the **last** window while ``result`` is stitched across all of "
 "them; see :attr:`.OptimizeResult.windows` for the per-window results."
 msgstr ""
+"包含获胜超参数值、其在训练窗口获得的得分，以及其产生的测试窗口 :class:`pybroker.strategy.TestResult` 的 "
+":class:`.OptimizeResult`。当 ``windows`` 大于 ``1`` "
+"时，``best_params``、``best_score`` 和 ``study`` 描述的是 **最后一个** 窗口，而 "
+"``result`` 则是所有窗口拼接后的结果；各窗口的结果参见 :attr:`.OptimizeResult.windows`。"
 
 #: ../../source/reference/pybroker.optimize.rst
 #: 20c3f85b419b442e804f7b85192c4f15
 msgid "Raises"
-msgstr ""
+msgstr "引发"
 
 #: 7d98acd649ba415ba01d291080e405fc of
 #: pybroker.optimize.OptimizeMixin.optimize:93
@@ -347,34 +389,38 @@ msgid ""
 "the range passed to the     :class:`pybroker.strategy.Strategy` "
 "constructor."
 msgstr ""
+"如果未添加任何执行函数；如果任何模型源是可训练的；如果 ``train_size`` 不在 ``0`` 和 ``1`` 之间（不含）；如果 "
+"``warmup`` 不大于 ``0``；如果 ``windows`` 不大于 ``0``；如果 ``study`` 与大于 ``1`` 的 "
+"``windows`` 同时使用，或其优化方向存在冲突；或者如果日期超出了传递给 "
+":class:`pybroker.strategy.Strategy` 构造函数的范围。"
 
 #: d91ddacc5e0d414198bcc491043638b4 of pybroker.optimize.OptimizeResult:1
 msgid "Result of ``Strategy.optimize()``."
-msgstr ""
+msgstr "``Strategy.optimize()`` 的结果。"
 
 #: 9c7b8c18290847018a67b7338b28bbd6 of pybroker.optimize.OptimizeResult:5
 msgid ""
 "Winning hyperparameter values, including the ones that were fixed rather "
 "than searched. When ``windows`` is set, these are the **last** window's "
 "values, since each window is tuned separately."
-msgstr ""
+msgstr "获胜的超参数值，包括那些被固定而非搜索的值。当设置了 ``windows`` 时，这些是 **最后一个** 窗口的值，因为每个窗口都是分别调优的。"
 
 #: 7822a24cd0704adf9b49977e34edf09f b1f95bed16164e6b8c3c36e25c8dbde1 of
 #: pybroker.optimize.OptimizeResult:9 pybroker.optimize.WindowOptimizeResult:12
 msgid "dict[str, Any]"
-msgstr ""
+msgstr "dict[str, Any]"
 
 #: 213247394a14489f91a76344ad78621c of pybroker.optimize.OptimizeResult:13
 msgid ""
 "``score_fn`` value that ``best_params`` earned on the train window. When "
 "``windows`` is set, this is the last window's score."
-msgstr ""
+msgstr "``best_params`` 在训练窗口上获得的 ``score_fn`` 值。当设置了 ``windows`` 时，为最后一个窗口的得分。"
 
 #: 1953b3c162c24a518c4c934ae87d2d34 d5ff6476dbad4251b91b563a2817e7dc of
 #: pybroker.optimize.OptimizeResult:16
 #: pybroker.optimize.WindowOptimizeResult:25
 msgid "float"
-msgstr ""
+msgstr "float"
 
 #: cf972a102b8044ff8689b8f2c6ea9081 of pybroker.optimize.OptimizeResult:20
 msgid ""
@@ -383,74 +429,78 @@ msgid ""
 "every window's test data, with positions and cash carried across window "
 "boundaries."
 msgstr ""
+"测试窗口的 :class:`pybroker.strategy.TestResult`。当设置了 ``windows`` "
+"时，这是一个由每个窗口的测试数据拼接而成的单一连续结果，仓位和现金会跨窗口边界延续。"
 
 #: 3abb4870c09640978745df73eae655bb of pybroker.optimize.OptimizeResult:25
 msgid "TestResult"
-msgstr ""
+msgstr "TestResult"
 
 #: 8e3ae3cc2f1746ec856286df1a96c382 of pybroker.optimize.OptimizeResult:29
 msgid ""
 ":class:`optuna.study.Study` holding the trials. When ``windows`` is set, "
 "this is the last window's study; see ``windows`` for the rest."
 msgstr ""
+"保存试验的 :class:`optuna.study.Study`。当设置了 ``windows`` 时，为最后一个窗口的 "
+"study；其余窗口参见 ``windows``。"
 
 #: 9ded781d78534ed19e28cdcef222b0dc of pybroker.optimize.OptimizeResult:32
 msgid "optuna.Study"
-msgstr ""
+msgstr "optuna.Study"
 
 #: e7b6a9ddf70d4411b8d7766833a11559 of pybroker.optimize.OptimizeResult:36
 msgid "Per-window tuning results, or ``None`` for a single train/test split."
-msgstr ""
+msgstr "各窗口的调优结果；对于单次训练/测试划分则为 ``None``。"
 
 #: 36cb0f6d368a4bba9aa017b985f14358 of pybroker.optimize.OptimizeResult:39
 msgid "Optional[tuple[WindowOptimizeResult, ...]]"
-msgstr ""
+msgstr "Optional[tuple[WindowOptimizeResult, ...]]"
 
 #: 784e93b9cb714b93911a3c761342009f of
 #: pybroker.optimize.OptimizeResult.to_json:1
 msgid "Returns JSON-serializable optimization results."
-msgstr ""
+msgstr "返回可 JSON 序列化的优化结果。"
 
 #: 4078bf150d6845229ca0fce0048a3082 f0d5c95a55d04ed8a6f9be51cbc57e45 of
 #: pybroker.optimize.OptimizeResult.to_json_str:1
 #: pybroker.optimize.WindowOptimizeResult.to_json_str:1
 msgid "Returns strict JSON text from :meth:`to_json`."
-msgstr ""
+msgstr "从 :meth:`to_json` 返回严格的 JSON 文本。"
 
 #: 0eedb62655df484e8b45498d5b3ec925 of pybroker.optimize.SearchSpace:1
 msgid "Searchable hyperparameters collected from a strategy."
-msgstr ""
+msgstr "从策略中收集到的可搜索超参数。"
 
 #: dc758acbd2ca44bc9d8017e5e759d8ff of pybroker.optimize.SearchSpace:3
 msgid ""
 "Only includes hyperparams with ``low < high`` that are passed to Optuna "
 "during ``Strategy.optimize()``."
-msgstr ""
+msgstr "仅包含满足 ``low < high`` 且会在 ``Strategy.optimize()`` 期间传递给 Optuna 的超参数。"
 
 #: cd98e9e118a6434f9bd1ffc3dda9e8df of pybroker.optimize.SearchSpace:8
 msgid "Names of hyperparams searched during optimize."
-msgstr ""
+msgstr "优化期间被搜索的超参数名称。"
 
 #: 5de988c2559b41549927a7449e047a63 of pybroker.optimize.SearchSpace:10
 msgid "frozenset[str]"
-msgstr ""
+msgstr "frozenset[str]"
 
 #: 2b2ee5eb68ab4d5f9767dd8b80fef73f of pybroker.optimize.SearchSpace:14
 msgid "Mapping of hyperparam name to :class:`Hyperparam` spec."
-msgstr ""
+msgstr "超参数名称到 :class:`Hyperparam` 规格的映射。"
 
 #: 2e3c37a82da54ffebc0451a9abc81b15 of pybroker.optimize.SearchSpace:16
 msgid "Mapping[str, pybroker.optimize.Hyperparam]"
-msgstr ""
+msgstr "Mapping[str, pybroker.optimize.Hyperparam]"
 
 #: 54682e4059ae458f9336d88794e66bd6 of
 #: pybroker.optimize.SearchSpace.grid_size:1
 msgid "Total number of grid combinations."
-msgstr ""
+msgstr "网格组合的总数。"
 
 #: 934eaab0c4c6442b95d6a6ec73db86f7 of pybroker.optimize.WindowOptimizeResult:1
 msgid "Per-window walk-forward optimization result."
-msgstr ""
+msgstr "各窗口的向前分析优化结果。"
 
 #: 1e01cdd60a3e430e85d2d82b558b06da of pybroker.optimize.WindowOptimizeResult:3
 msgid ""
@@ -458,34 +508,36 @@ msgid ""
 "single out-of-sample :class:`pybroker.strategy.TestResult` lives on "
 ":attr:`OptimizeResult.result`, stitched across every window."
 msgstr ""
+"保存某个窗口被调优到的值，本身并不是一次独立的回测：唯一的样本外 :class:`pybroker.strategy.TestResult` "
+"存放在 :attr:`OptimizeResult.result` 中，由所有窗口拼接而成。"
 
 #: 1fa855f6a0ce40ad8259c322c0a1c57b of pybroker.optimize.WindowOptimizeResult:9
 msgid ""
 "Winning hyperparameter values for this window, including the ones that "
 "were fixed rather than searched."
-msgstr ""
+msgstr "该窗口获胜的超参数值，包括那些被固定而非搜索的值。"
 
 #: b8d94eec6b364910af114b3d7d0eeaec of
 #: pybroker.optimize.WindowOptimizeResult:16
 msgid ":class:`optuna.study.Study` holding this window's trials."
-msgstr ""
+msgstr "保存该窗口试验的 :class:`optuna.study.Study`。"
 
 #: 23dac88488424fe9bfe3d09a34cc0e7c of
 #: pybroker.optimize.WindowOptimizeResult:18
 msgid "optuna.study.study.Study"
-msgstr ""
+msgstr "optuna.study.study.Study"
 
 #: c95e20b1e823457893e926dea70da710 of
 #: pybroker.optimize.WindowOptimizeResult:22
 msgid "``score_fn`` value that ``params`` earned on this window's train data."
-msgstr ""
+msgstr "``params`` 在该窗口训练数据上获得的 ``score_fn`` 值。"
 
 #: b5d1ed9cbc7c4bd9a76e123d27f7867a of
 #: pybroker.optimize.WindowOptimizeResult:29
 msgid ""
 "First date of the window's train data, or ``None`` when the train split "
 "is empty."
-msgstr ""
+msgstr "该窗口训练数据的起始日期；当训练集划分为空时为 ``None``。"
 
 #: 66333892b9d946f49996f21712a64e11 80405d9105d749c29548f1c0bebf3a44
 #: 83624b79737c4635b876ec7c54b5b7ef cc7d083a3b6c4b83be93feb26ebe750c of
@@ -494,14 +546,14 @@ msgstr ""
 #: pybroker.optimize.WindowOptimizeResult:48
 #: pybroker.optimize.WindowOptimizeResult:55
 msgid "datetime.datetime | None"
-msgstr ""
+msgstr "datetime.datetime | None"
 
 #: 424c9f214f814f8eaaa373266fd1cec4 of
 #: pybroker.optimize.WindowOptimizeResult:36
 msgid ""
 "Last date of the window's train data, or ``None`` when the train split is"
 " empty."
-msgstr ""
+msgstr "该窗口训练数据的结束日期；当训练集划分为空时为 ``None``。"
 
 #: 586d31d06d2b492f9af3e742ae1887fd of
 #: pybroker.optimize.WindowOptimizeResult:43
@@ -510,13 +562,15 @@ msgid ""
 "trade in the stitched :attr:`OptimizeResult.result` -- or ``None`` when "
 "the test split is empty."
 msgstr ""
+"该窗口测试数据的起始日期 —— 即其调优后的 ``params`` 在拼接后的 :attr:`OptimizeResult.result` "
+"中进行交易的区间 —— 当测试集划分为空时为 ``None``。"
 
 #: e0c50d8c94494b71a4ded8f81081ad84 of
 #: pybroker.optimize.WindowOptimizeResult:52
 msgid ""
 "Last date of the window's test data, or ``None`` when the test split is "
 "empty."
-msgstr ""
+msgstr "该窗口测试数据的结束日期；当测试集划分为空时为 ``None``。"
 
 #: 41fa73c49c674496a9fa2ba6e7ab23fe of
 #: pybroker.optimize.WindowOptimizeResult:59
@@ -525,74 +579,78 @@ msgid ""
 ":data:`pybroker.common.SymbolSelector` chose them, or ``None`` when no "
 "execution uses a selector."
 msgstr ""
+"当 :data:`pybroker.common.SymbolSelector` 为该窗口选择品种时，每个执行 id "
+"所解析到的品种；如果没有任何执行使用选择器，则为 ``None``。"
 
 #: 65553189b73940b6863106103251a23d of
 #: pybroker.optimize.WindowOptimizeResult:63
 msgid "dict[int, frozenset[str]] | None"
-msgstr ""
+msgstr "dict[int, frozenset[str]] | None"
 
 #: 470eb24d6ae543ba8ea45a2406998f2a of
 #: pybroker.optimize.WindowOptimizeResult.to_json:1
 msgid "Returns JSON-serializable walk-forward optimization window results."
-msgstr ""
+msgstr "返回可 JSON 序列化的向前分析窗口优化结果。"
 
 #: 7f8274db97f9499a979430711b8d9a9a of
 #: pybroker.optimize.build_run_hyperparams:1
 msgid "Builds the hyperparam dict for a single backtest or trial run."
-msgstr ""
+msgstr "为单次回测或单次试验构建超参数字典。"
 
 #: ef0e07873d314033be8d9d7c87ce1d95 of
 #: pybroker.optimize.build_run_hyperparams:3
 msgid "All hyperparams reachable from the strategy."
-msgstr ""
+msgstr "从策略可达的全部超参数。"
 
 #: 5d563bba4de24fb4bf2b5c1bba0e0d8a of
 #: pybroker.optimize.build_run_hyperparams:4
 msgid "Trial or user-supplied values to merge over defaults."
-msgstr ""
+msgstr "要合并到默认值之上的试验值或用户提供的值。"
 
 #: 34e8b6a5f10e4c6e95742535f25ce9cc of
 #: pybroker.optimize.build_run_hyperparams:6
 msgid "Dict of ``name -> value`` for every hyperparam in ``specs``."
-msgstr ""
+msgstr "``specs`` 中每个超参数的 ``name -> value`` 字典。"
 
 #: 768ba61e11be47dfbdb94be6c010672d of pybroker.optimize.collect_hyperparams:1
 msgid "Collects all hyperparams reachable from ``strategy``."
-msgstr ""
+msgstr "收集从 ``strategy`` 可达的全部超参数。"
 
 #: e29402d98b084996b670742dcb94f2a2 of pybroker.optimize.collect_search_space:1
 msgid "Collects searchable hyperparams reachable from ``strategy``."
-msgstr ""
+msgstr "收集从 ``strategy`` 可达的可搜索超参数。"
 
 #: 374fd4e28d184634b754a643bae77d60 of pybroker.optimize.hyperparam:1
 msgid "Creates and registers a :class:`Hyperparam`."
-msgstr ""
+msgstr "创建并注册一个 :class:`Hyperparam`。"
 
 #: 8ce8e77f015e4ad0ae0dd850cb5835e4 of pybroker.optimize.hyperparam:3
 msgid ""
 "Unique identifier for the hyperparam. Referenced in indicator kwargs, "
 "``add_execution(..., hyperparams=[...])``, and ``ctx.hyperparam(name)``."
 msgstr ""
+"该超参数的唯一标识符。在指标关键字参数、``add_execution(..., hyperparams=[...])`` 以及 "
+"``ctx.hyperparam(name)`` 中被引用。"
 
 #: 72616c484bc949848b75143f4793a1ba of pybroker.optimize.hyperparam:6
 msgid "Value used for backtests."
-msgstr ""
+msgstr "用于回测的值。"
 
 #: 3bdb871fa5c44dffb6a764c5f414d409 of pybroker.optimize.hyperparam:8
 msgid "Maximum candidate value searched during optimize (inclusive)."
-msgstr ""
+msgstr "优化期间搜索的候选值上限（含）。"
 
 #: 44d5f62ed978489bb6634c0cefcb583e of pybroker.optimize.hyperparam:9
 msgid "Spacing between candidate values. Must be positive."
-msgstr ""
+msgstr "候选值之间的间隔。必须为正数。"
 
 #: d9507ad5ca744253a3e979adb24f9270 of pybroker.optimize.hyperparam:11
 msgid "The registered :class:`Hyperparam` instance."
-msgstr ""
+msgstr "已注册的 :class:`Hyperparam` 实例。"
 
 #: b124494f630348f99e10ba612080448a of pybroker.optimize.make_objective:1
 msgid "Builds an Optuna objective for train-window scoring."
-msgstr ""
+msgstr "构建一个用于训练窗口打分的 Optuna 目标函数。"
 
 #: bdba2d6832b3430d924c780187ade9c3 of pybroker.optimize.make_objective:3
 msgid ""
@@ -600,12 +658,6 @@ msgid ""
 "with logging suppressed so that per-trial progress bars do not repeat for"
 " every combination searched."
 msgstr ""
-
-#~ msgid ""
-#~ "Number of bars in the future of"
-#~ " the target prediction. Held out "
-#~ "between train and test to prevent "
-#~ "training data from leaking across the"
-#~ " boundary. Defaults to ``1``."
-#~ msgstr ""
+"当 ``verbose`` 为 "
+"``False``（默认值）时，每次试验的回测都会在抑制日志的情况下运行，以避免每个搜索到的组合都重复显示逐次试验的进度条。"
 

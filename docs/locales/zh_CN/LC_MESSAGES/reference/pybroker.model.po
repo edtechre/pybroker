@@ -21,30 +21,30 @@ msgstr ""
 
 #: ../../source/reference/pybroker.model.rst:2 da63a2b8a70a458fbbbe8078de12d4a5
 msgid "pybroker.model module"
-msgstr ""
+msgstr "pybroker.model 模块"
 
 #: f7c2e734742b480aae9dd31fdc0e771c of pybroker.model:1
 msgid "Contains model related functionality."
-msgstr ""
+msgstr "包含与模型相关的功能。"
 
 #: 3a86749f3b8a4a6b80f0870b632a948d of pybroker.model.CachedModel:1
 msgid "Stores cached model data."
-msgstr ""
+msgstr "存储已缓存的模型数据。"
 
 #: 9235e8e989c541c6984dfc2c6d505524 of pybroker.model.CachedModel:5
 msgid ""
 "Names of the columns to be used as input for the model when making "
 "predictions."
-msgstr ""
+msgstr "进行预测时用作模型输入的列名称。"
 
 #: 57523d27676149bf9614ec930381f8bc 794445a5b5d04de7a43754d9f663eacd of
 #: pybroker.model.CachedModel
 msgid "type"
-msgstr ""
+msgstr "类型"
 
 #: 921a6456265a491784bf91c124a28d0c of pybroker.model.CachedModel:8
 msgid "tuple[str] | None"
-msgstr ""
+msgstr "tuple[str] | None"
 
 #: d3610d226baa4b389263b9c238311a1f of pybroker.model.CachedModel:12
 msgid ""
@@ -52,14 +52,16 @@ msgid ""
 "in feature block order. ``None`` when the model was not trained with "
 "``lags``, and when loading a model cached before this field existed."
 msgstr ""
+"训练时用于构建滞后特征的列名称，按特征块顺序排列。如果模型未使用 ``lags`` 训练，或加载的是本字段出现之前缓存的模型，则为 "
+"``None``。"
 
 #: e86e6d97c67441deb66fbcbfe67d4a74 of pybroker.model.CachedModel:17
 msgid "tuple[str, ...] | None"
-msgstr ""
+msgstr "tuple[str, ...] | None"
 
 #: c10d53da9b50453697048e591380ed30 of pybroker.model.CachedModel.model:1
 msgid "Trained model instance."
-msgstr ""
+msgstr "已训练模型实例。"
 
 #: db12f2ea3ee14ebe96162d0e3f7b60ea of pybroker.model.IntervalBoundModel:1
 msgid ""
@@ -67,6 +69,8 @@ msgid ""
 "returned by :meth:`ModelSource.intervals` and passed to the ``models`` "
 "parameter of :meth:`pybroker.strategy.Strategy.add_execution`."
 msgstr ""
+"绑定到一个或多个压缩区间的 :class:`.ModelSource`，由 :meth:`ModelSource.intervals` "
+"返回，并传递给 :meth:`pybroker.strategy.Strategy.add_execution` 的 ``models`` 参数。"
 
 #: cec3069bb14a465a9bd0d711ad148893 of
 #: pybroker.model.IntervalBoundModel.intervals:1
@@ -74,19 +78,21 @@ msgid ""
 "Normalized :class:`~pybroker.interval.TimeframeInterval`\\ s the model is"
 " trained on. May include the literal ``'base'`` for the base timeframe."
 msgstr ""
+"该模型据以训练的规范化 :class:`~pybroker.interval.TimeframeInterval`\\。可能包含字面量 "
+"``'base'`` 表示基础时间框架。"
 
 #: 0df311ff7b2d451295800d614e78cf26 of
 #: pybroker.model.IntervalBoundModel.source:1
 msgid "The bound :class:`.ModelSource`."
-msgstr ""
+msgstr "已绑定的 :class:`.ModelSource`。"
 
 #: 24cd794d27904ec380de39c583fd73f0 of pybroker.model.LagSeriesKey:1
 msgid "Internal cache key for a full-history lagged series."
-msgstr ""
+msgstr "完整历史滞后序列的内部缓存键。"
 
 #: d97503f0674d47cf8721b0a4e07d113d of pybroker.model.ModelInput:1
 msgid "Internal numpy-backed model input with optional lag feature metadata."
-msgstr ""
+msgstr "内部的、numpy 支持的模型输入，带有可选的滞后特征元数据。"
 
 #: 721eaec6f2334883807a3990cce8836f of pybroker.model.ModelInput:3
 msgid ""
@@ -95,11 +101,14 @@ msgid ""
 ":meth:`to_dataframe`, with any lag feature matrix passed explicitly as a "
 "separate :class:`numpy.ndarray` argument."
 msgstr ""
+"不属于公共 API。面向用户的代码会收到通过 :meth:`to_dataframe` 具体化的 "
+":class:`pandas.DataFrame` 实例，任何滞后特征矩阵都会作为单独的 :class:`numpy.ndarray` "
+"参数显式传递。"
 
 #: 16472458e4d94387b5b6697d1e3d81d6 of
 #: pybroker.model.ModelInput.drop_lag_warmup:1
 msgid "Drops the leading rows whose lag features are not yet defined."
-msgstr ""
+msgstr "丢弃滞后特征尚未定义的前导行。"
 
 #: 70c4ac5fe54545cdb7d8a59518a2c4b8 of
 #: pybroker.model.ModelInput.drop_lag_warmup:3
@@ -111,6 +120,9 @@ msgid ""
 "fires, and an all-NaN ``volume`` column is routine for index, FX and CFD "
 "series. Either silently shrinks the training set, or empties it."
 msgstr ""
+"仅裁剪每个品种自身的预热区间。若丢弃所有存在 NaN 滞后特征的行，每当滞后列稀疏时，也会一并移除序列中间的行 —— 通过 "
+":func:`pybroker.scope.register_columns` 注册的事件列，除了触发的那些 K 线外都是 "
+"NaN，而对于指数、外汇和 CFD 序列，全 NaN 的 ``volume`` 列也是常见情况。这样做要么会悄然缩小训练集，要么会将其清空。"
 
 #: b0daf63f88114059a5c04367284854b7 of
 #: pybroker.model.ModelInput.drop_lag_warmup:10
@@ -120,11 +132,13 @@ msgid ""
 "leave every block after the first with its NaN rows intact, which "
 "``sklearn.fit`` rejects outright."
 msgstr ""
+"池化（pooled）输入按每个品种堆叠一个数据块，因此每个数据块都在各自的偏移处带有自己的预热期。仅裁剪矩阵前端，会使第一个数据块之后的每个数据块仍保留其"
+" NaN 行，而这会被 ``sklearn.fit`` 直接拒绝。"
 
 #: a53bb1d4c8e44f3798b141f402193a08 of
 #: pybroker.model.ModelInput.lag_warmup_len:1
 msgid "Returns how many leading rows have undefined lag features."
-msgstr ""
+msgstr "返回有多少前导行的滞后特征未定义。"
 
 #: 0cb8a55e1cdc4e8381b92002619fe344 of
 #: pybroker.model.ModelInput.lag_warmup_len:3
@@ -133,27 +147,29 @@ msgid ""
 "outright, and a NaN-tolerant predict_fn quietly produces a prediction "
 "from features that do not exist yet."
 msgstr ""
+"这些行不能交给估计器：sklearn 会直接拒绝 NaN，而一个能容忍 NaN 的 predict_fn "
+"则会悄悄地根据尚不存在的特征生成一个预测结果。"
 
 #: 24d4ab8f00e2439b975cb3d859576188 of
 #: pybroker.model.ModelInput.select_columns:1
 msgid "Returns a view restricted to ``columns``."
-msgstr ""
+msgstr "返回一个限定在 ``columns`` 范围内的视图。"
 
 #: 34666a62f6c448abafb6fb6f4f99a82c of pybroker.model.ModelInput.slice:1
 msgid "Returns a row slice sharing backing array memory."
-msgstr ""
+msgstr "返回一个共享底层数组内存的行切片。"
 
 #: ea218ab3597c4adb807d9e2d46d0d637 of pybroker.model.ModelInput.slice_range:1
 msgid "Returns a row range sharing backing array memory."
-msgstr ""
+msgstr "返回一个共享底层数组内存的行范围。"
 
 #: 90c6b60eeabd4b80b4d491290643d879 of pybroker.model.ModelInput.to_dataframe:1
 msgid "Materializes a DataFrame of the input columns."
-msgstr ""
+msgstr "将输入列具体化为一个 DataFrame。"
 
 #: a15f679f995246e7b1661f19068d2470 of pybroker.model.ModelLoader:1
 msgid "Loads a pre-trained model."
-msgstr ""
+msgstr "加载一个预训练模型。"
 
 #: ../../source/reference/pybroker.model.rst 0fe4ceafd12e41238fc3de5446078e55
 #: 256732941ba24da1acef22e5c054065f 4abd77e373c84a39806577980aabb9c5
@@ -161,13 +177,13 @@ msgstr ""
 #: 67118fdba4364e838c948aed29fdeee4 b7ef8aa7e74142a281f7d634eca24592
 #: c3315155b2584ed9b091d8cd473ed931 c87a52ae308e493ba521b7422832fdb4
 msgid "Parameters"
-msgstr ""
+msgstr "参数"
 
 #: 27ceaac1396848e8808f46eea5f34047 53685221ed994d7481b5727c1a044e52
 #: 9b6bfbc3d66f4fb9885ff299bfea9d20 of pybroker.model.ModelLoader:3
 #: pybroker.model.ModelSource:4 pybroker.model.ModelTrainer:3
 msgid "Name of model."
-msgstr ""
+msgstr "模型名称。"
 
 #: 9352e78d3ff4410daadf549e64bed536 of pybroker.model.ModelLoader:4
 msgid ""
@@ -177,6 +193,10 @@ msgid ""
 "containing a trained model instance and a :class:`Iterable` of column "
 "names to to be used as input for the model when making predictions."
 msgstr ""
+"用于加载并返回预训练模型的 ``Callable[[symbol: str, train_start_date: datetime, "
+"train_end_date: datetime, ...], "
+"DataFrame]``。该函数应返回一个已训练的模型实例，或一个元组，其中包含已训练的模型实例，以及进行预测时用作模型输入的列名称 "
+":class:`Iterable`。"
 
 #: 662b28ee4a574216a41ba01e605f1763 a8449dece40a496ba9e9a2dc3b7b5bad
 #: be0f020c528e412999469149971dfa97 of pybroker.model.ModelLoader:10
@@ -184,7 +204,7 @@ msgstr ""
 msgid ""
 ":class:`Iterable` of names of :class:`pybroker.indicator.Indicator`\\ s "
 "used as features of the model."
-msgstr ""
+msgstr "用作该模型特征的 :class:`pybroker.indicator.Indicator`\\ 名称的 :class:`Iterable`。"
 
 #: 3d535c690ba54cc684f45cff352aa332 3f0928722c85448dbe00c19c796502ae
 #: ff49ad2f4de444abbe08e82c48b42e77 of pybroker.model.ModelLoader:13
@@ -194,6 +214,9 @@ msgid ""
 "to the model when making predictions. If set, ``input_data_fn`` will be "
 "called with a :class:`pandas.DataFrame` containing all test data."
 msgstr ""
+"用于预处理进行预测时传递给模型的输入数据的 ``Callable[[DataFrame], "
+"DataFrame]``。如果设置了该值，``input_data_fn`` 会以包含全部测试数据的 "
+":class:`pandas.DataFrame` 被调用。"
 
 #: 04ecd94019e9434fa157e53c16e27754 75dfca94778544ecbc53a164f5c206e1
 #: f8287443f7c14c1bbcf42e9aae4f4cd7 of pybroker.model.ModelLoader:17
@@ -205,6 +228,10 @@ msgid ""
 "all test data. When ``lags`` is set, it is instead called with the lag "
 "feature matrix (:class:`numpy.ndarray`) in place of the DataFrame."
 msgstr ""
+"用于覆盖调用模型默认 ``predict`` 函数的 ``Callable[[Model, DataFrame], "
+"ndarray]``。如果设置了该值，``predict_fn`` 会以已训练的模型和包含全部测试数据的 "
+":class:`pandas.DataFrame` 被调用。当设置了 ``lags`` "
+"时，调用时会改为传入滞后特征矩阵（:class:`numpy.ndarray`）而不是 DataFrame。"
 
 #: 10f1445dddb342b1bcc6d823d64aa0f9 80493ff87fbd4627b5383ba6ba95bd6f
 #: 8a30f6918dd24e709bd6a10c5402baef a8f4ed347a964e5cb8c40350563480a5 of
@@ -213,44 +240,44 @@ msgstr ""
 msgid ""
 "If ``True``, the model is trained once per execution using combined "
 "multi-symbol data. Defaults to ``False``."
-msgstr ""
+msgstr "如果为 ``True``，该模型每次执行会使用合并后的多品种数据训练一次。默认为 ``False``。"
 
 #: 3bfd60759ded4444ab4554cdf37c9d18 of pybroker.model.ModelLoader:25
 msgid "``dict`` of kwargs to pass to ``load_fn``."
-msgstr ""
+msgstr "传递给 ``load_fn`` 的关键字参数 ``dict``。"
 
 #: 5a466928c67341c2bc64d2af6d873190 of pybroker.model.ModelLoader.__call__:1
 msgid "Loads pre-trained model."
-msgstr ""
+msgstr "加载预训练模型。"
 
 #: a8ba71416100411da95db9a7d1f3b700 of pybroker.model.ModelLoader.__call__:3
 msgid "Ticker symbol for loading the pre-trained model."
-msgstr ""
+msgstr "加载预训练模型所用的股票代码。"
 
 #: aae27e8f9e944ffcb607395f3f3b0895 of pybroker.model.ModelLoader.__call__:4
 msgid "Start date of training window."
-msgstr ""
+msgstr "训练窗口的起始日期。"
 
 #: ef272c5f08ef4872b7535f64def18dc1 of pybroker.model.ModelLoader.__call__:5
 msgid "End date of training window."
-msgstr ""
+msgstr "训练窗口的结束日期。"
 
 #: ../../source/reference/pybroker.model.rst 1cc1fa86c7aa4d07bb00906aef6548be
 #: 3cced44c654548f3b3efe2634f708c75 3ed693eced6e476fb79e31930b47f402
 #: 8a253fb473ab48a1abb1214028a6f0e0 96394c3a81744876880c28d937ae5b9f
 #: cb0ff4cc4bc54a88a1655096960b1b74
 msgid "Returns"
-msgstr ""
+msgstr "返回"
 
 #: f0a235d589714b40a44fcaee282e1fe3 of pybroker.model.ModelLoader.__call__:7
 msgid "Pre-trained model."
-msgstr ""
+msgstr "预训练模型。"
 
 #: 61f3d7897ada436ab90545cb53c4ba2d of pybroker.model.ModelSource:1
 msgid ""
 "Base class of a model source. A model source provides a model instance "
 "either by training one or by loading a pre-trained model."
-msgstr ""
+msgstr "模型源的基类。模型源要么通过训练，要么通过加载预训练模型来提供一个模型实例。"
 
 #: 11cff4ef6c6449ecb770011416ff07be of pybroker.model.ModelSource:18
 msgid ""
@@ -260,29 +287,34 @@ msgid ""
 "``predict_fn`` in place of the input DataFrame, rather than added as "
 "columns."
 msgstr ""
+"``lag_cols`` 中每一列要包含的滞后值数量，生成一个形状为 ``(n_rows, len(lag_cols) * (lags + "
+"1))`` 的特征矩阵，该矩阵会以 ``lag_train``/``lag_test`` 的形式传递给 ``train_fn``，并替代输入 "
+"DataFrame 传递给 ``predict_fn``，而不是作为列添加。"
 
 #: 074fc04e778547ae90e35df2d9af9bdf of pybroker.model.ModelSource:23
 msgid ""
 "Columns to compute lagged values for. Defaults to the data columns of the"
 " training data, excluding ``date`` and ``symbol``; indicators are lagged "
 "only when named here."
-msgstr ""
+msgstr "要计算滞后值的列。默认为训练数据的数据列，不包括 ``date`` 和 ``symbol``；只有在此处指定名称的指标才会被计算滞后值。"
 
 #: dfbe893815784912826a50dffc920a3d of pybroker.model.ModelSource:26
 msgid ""
 "If ``True``, ``predict_fn`` is called once per bar with input truncated "
 "to rows up to and including the current bar."
-msgstr ""
+msgstr "如果为 ``True``，``predict_fn`` 会按每根 K 线调用一次，输入会被截断至包含当前 K 线在内的各行。"
 
 #: b9d26f9e396b41ada2b97550714aabef of pybroker.model.ModelSource:30
 msgid "``dict`` of additional kwargs."
-msgstr ""
+msgstr "附加关键字参数的 ``dict``。"
 
 #: e4c1c236777a4bac81bec203a0275e9e of pybroker.model.ModelSource.intervals:1
 msgid ""
 "Binds this model to one or more compression intervals for use with "
 ":meth:`pybroker.strategy.Strategy.add_execution`."
 msgstr ""
+"将此模型绑定到一个或多个压缩区间，以便与 :meth:`pybroker.strategy.Strategy.add_execution` "
+"搭配使用。"
 
 #: e6eda6b885db475983a9fdeaf2968c0c of pybroker.model.ModelSource.intervals:4
 msgid ""
@@ -297,12 +329,18 @@ msgid ""
 " in the ``intervals`` parameter of "
 ":meth:`~pybroker.strategy.Strategy.add_execution`::"
 msgstr ""
+"已绑定的模型只会在所列出的区间的压缩 K 线上训练，连同注册给它的任何指标一起。绑定会替代默认的基础时间框架训练；在 ``intervals`` "
+"中包含字面量 ``'base'`` 即可同时在基础时间框架上训练该模型。逐区间的预测结果通过 "
+":meth:`pybroker.context.IntervalContext.preds` 读取。绑定的区间会自动通过 "
+":meth:`pybroker.context.ExecContext.interval` 提供，无需在 "
+":meth:`~pybroker.strategy.Strategy.add_execution` 的 ``intervals`` "
+"参数中再次声明它们::"
 
 #: c0f968b81cfc4d3780d9ed5b45a35b48 of pybroker.model.ModelSource.intervals:20
 msgid ""
 "Only trainable models support interval binding. Calling this on a "
 "pretrained model (a :class:`.ModelLoader`) raises ``ValueError``."
-msgstr ""
+msgstr "只有可训练的模型才支持区间绑定。对预训练模型（:class:`.ModelLoader`）调用本方法会引发 ``ValueError``。"
 
 #: c7df75b235f14645bcc0fb8d30a05745 of pybroker.model.ModelSource.intervals:23
 msgid ""
@@ -310,10 +348,13 @@ msgid ""
 "this model on, each strictly coarser than the base bar spacing of the "
 "backtest data, or the literal ``'base'`` for the base timeframe."
 msgstr ""
+"训练此模型所使用的一个或多个 "
+":class:`~pybroker.interval.TimeframeInterval`\\，每一个都必须严格粗于回测数据的基础 K "
+"线间隔，或使用字面量 ``'base'`` 表示基础时间框架。"
 
 #: a001c0994946430b8204f869b55cf69d of pybroker.model.ModelSource.intervals:29
 msgid ":class:`.IntervalBoundModel` binding this model to ``intervals``."
-msgstr ""
+msgstr "将此模型绑定到 ``intervals`` 的 :class:`.IntervalBoundModel`。"
 
 #: 988274e88d4641c784ff786c68f4472c of
 #: pybroker.model.ModelSource.prepare_input_data:1
@@ -323,10 +364,12 @@ msgid ""
 "preprocess the input data. If ``False``, then indicator columns in ``df``"
 " are used as input features."
 msgstr ""
+"为进行预测时传递给模型准备输入数据的 :class:`pandas.DataFrame`。如果设置了该值，则使用 "
+"``input_data_fn`` 对输入数据进行预处理。如果为 ``False``，则使用 ``df`` 中的指标列作为输入特征。"
 
 #: 229cab28e3014ab1a0b52357ebccc5b5 of pybroker.model.ModelTrainer:1
 msgid "Trains a model."
-msgstr ""
+msgstr "训练一个模型。"
 
 #: 6c721c7393254884b40f588009cbd24a of pybroker.model.ModelTrainer:4
 msgid ""
@@ -341,26 +384,34 @@ msgid ""
 "trained model instance and a :class:`Iterable` of column names to to be "
 "used as input for the model when making predictions."
 msgstr ""
+"当 ``pooled`` 为 ``False`` 时，为 ``Callable[[symbol: str, train_data: "
+"DataFrame, test_data: DataFrame, ...], DataFrame]``。当 ``pooled`` 为 "
+"``True`` 时，为 ``Callable[[symbols: Sequence[str], train_data: DataFrame, "
+"test_data: DataFrame, ...], DataFrame]``。当设置了 ``lags`` 时，``train_fn`` "
+"还会额外接收 ``lag_train=`` 和 ``lag_test=`` 关键字参数，其中包含与 "
+"``train_data``/``test_data`` "
+"逐行对齐的滞后特征矩阵，且该函数必须同时接受这两个参数。该函数应返回一个已训练的模型实例，或一个元组，其中包含已训练的模型实例，以及进行预测时用作模型输入的列名称"
+" :class:`Iterable`。"
 
 #: 2cee24ad01194c9483c1db3929515ce9 of pybroker.model.ModelTrainer:31
 msgid "``dict`` of kwargs to pass to ``train_fn``."
-msgstr ""
+msgstr "传递给 ``train_fn`` 的关键字参数 ``dict``。"
 
 #: e440708348a14388a0535d14bf61157c of pybroker.model.ModelTrainer.__call__:1
 msgid "Trains model per symbol."
-msgstr ""
+msgstr "按品种训练模型。"
 
 #: 6fa0e337df354cb98585636b1c63c534 of pybroker.model.ModelTrainer.__call__:3
 msgid "Ticker symbol of model (models are trained per symbol)."
-msgstr ""
+msgstr "该模型的股票代码（模型按品种训练）。"
 
 #: cad443f104d448d7a518c80bea32b15a of pybroker.model.ModelTrainer.__call__:4
 msgid "Train data."
-msgstr ""
+msgstr "训练数据。"
 
 #: 7031b73f4f154901b0478ca4c4fc0a37 of pybroker.model.ModelTrainer.__call__:5
 msgid "Test data."
-msgstr ""
+msgstr "测试数据。"
 
 #: 8d97d01b8776456ba1d0852dfcbf1daa 9d044fff241c4eb182469a6bbefceeb5 of
 #: pybroker.model.ModelTrainer.__call__:6
@@ -370,6 +421,8 @@ msgid ""
 "``train_fn`` as ``lag_train=`` when the model is registered with "
 "``lags``."
 msgstr ""
+"与 ``train_data`` 逐行对齐的滞后特征矩阵。当模型使用 ``lags`` 注册时，会以 ``lag_train=`` 传递给 "
+"``train_fn``。"
 
 #: 86638d5b05794087ae88663f3f77c776 f52ea992c01e46c4a0d09e01659f615d of
 #: pybroker.model.ModelTrainer.__call__:9
@@ -378,17 +431,19 @@ msgid ""
 "Lag feature matrix aligned one row per ``test_data`` row. Passed to "
 "``train_fn`` as ``lag_test=`` when the model is registered with ``lags``."
 msgstr ""
+"与 ``test_data`` 逐行对齐的滞后特征矩阵。当模型使用 ``lags`` 注册时，会以 ``lag_test=`` 传递给 "
+"``train_fn``。"
 
 #: 7656ab680cf544f2aa6075862bc1cd2e cfdf2d8012fb4be58bcdc934ee36069b of
 #: pybroker.model.ModelTrainer.__call__:13
 #: pybroker.model.ModelTrainer.train_pooled:17
 msgid "Trained model."
-msgstr ""
+msgstr "已训练的模型。"
 
 #: 7a00d8d4a30f44039578571b5eeaf50a of
 #: pybroker.model.ModelTrainer.train_pooled:1
 msgid "Trains model using combined multi-symbol data."
-msgstr ""
+msgstr "使用合并后的多品种数据训练模型。"
 
 #: 44d1c3b3d30b4f7b89300e3fa5c6fff8 of
 #: pybroker.model.ModelTrainer.train_pooled:3
@@ -398,42 +453,44 @@ msgid ""
 "A listed symbol can have no rows in a frame, such as when ``lags`` drops "
 "all of its rows with the lag warmup."
 msgstr ""
+"该池化分组的股票代码，按升序排列，与 ``train_data`` 和 ``test_data`` "
+"中品种数据块出现的顺序一致。列表中的某个品种在某个数据帧中可能没有任何行，例如当 ``lags`` 因滞后预热而丢弃了其所有行时。"
 
 #: 667a594b3e954a58850c61bdedf112d9 of
 #: pybroker.model.ModelTrainer.train_pooled:8
 msgid "Train data containing a ``symbol`` column."
-msgstr ""
+msgstr "包含 ``symbol`` 列的训练数据。"
 
 #: 7d3f94beafb34cc98b8cbc5a1e1ee1ba of
 #: pybroker.model.ModelTrainer.train_pooled:9
 msgid "Test data containing a ``symbol`` column."
-msgstr ""
+msgstr "包含 ``symbol`` 列的测试数据。"
 
 #: 995f56b7d0bf4402988d6c5e65c9e8eb of pybroker.model.ModelsMixin:1
 msgid "Mixin implementing model related functionality."
-msgstr ""
+msgstr "实现与模型相关功能的 Mixin。"
 
 #: dea7057bbe394cff944a66ba395c9bf1 of
 #: pybroker.model.ModelsMixin.train_models:1
 msgid "Trains models for the provided :class:`pybroker.common.ModelSymbol` pairs."
-msgstr ""
+msgstr "为给定的 :class:`pybroker.common.ModelSymbol` 组合训练模型。"
 
 #: 2f994fd2c22a45a3bc0ddf5e2a36655e of
 #: pybroker.model.ModelsMixin.train_models:4
 msgid ""
 "``Iterable`` of :class:`pybroker.common.ModelSymbol` pairs of models to "
 "train."
-msgstr ""
+msgstr "待训练模型的 :class:`pybroker.common.ModelSymbol` 组合的 ``Iterable``。"
 
 #: addca3df7fea4224a7703991f8fb603e of
 #: pybroker.model.ModelsMixin.train_models:6
 msgid ":class:`pandas.DataFrame` of training data."
-msgstr ""
+msgstr "训练数据的 :class:`pandas.DataFrame`。"
 
 #: 085c6d56070c49c7a747b9518de2ee9b of
 #: pybroker.model.ModelsMixin.train_models:7
 msgid ":class:`pandas.DataFrame` of test data."
-msgstr ""
+msgstr "测试数据的 :class:`pandas.DataFrame`。"
 
 #: cc9f4fdb222c4b1db67f5e3a73ac04e2 of
 #: pybroker.model.ModelsMixin.train_models:8
@@ -441,18 +498,20 @@ msgid ""
 "``Mapping`` of :class:`pybroker.common.IndicatorSymbol` pairs to "
 "``pandas.Series`` of :class:`pybroker.indicator.Indicator` values."
 msgstr ""
+"将 :class:`pybroker.common.IndicatorSymbol` 组合映射到 "
+":class:`pybroker.indicator.Indicator` 值 ``pandas.Series`` 的 ``Mapping``。"
 
 #: 988c471974454c468de01daae59ed4d6 of
 #: pybroker.model.ModelsMixin.train_models:12
 msgid "Date fields used to key cache data."
-msgstr ""
+msgstr "用于为缓存数据生成键的日期字段。"
 
 #: 54cb89c9225046fd8ce2542da3e568cc of
 #: pybroker.model.ModelsMixin.train_models:13
 msgid ""
 "If ``True``, :class:`.ModelTrainer` models are trained in parallel using "
 "multiple processes. Defaults to ``False``."
-msgstr ""
+msgstr "如果为 ``True``，:class:`.ModelTrainer` 模型会使用多个进程并行训练。默认为 ``False``。"
 
 #: ce29a926401b49e49bf74fab9fa82a92 of
 #: pybroker.model.ModelsMixin.train_models:16
@@ -460,6 +519,8 @@ msgid ""
 "``Mapping`` of ``(model_name, execution_id)`` pairs to ``frozenset[str]``"
 " of symbols for pooled training. Defaults to ``None``."
 msgstr ""
+"将 ``(model_name, execution_id)`` 组合映射到用于池化训练的品种 ``frozenset[str]`` 的 "
+"``Mapping``。默认为 ``None``。"
 
 #: c93d6fb30cbb400ab80908fcf1c6f075 of
 #: pybroker.model.ModelsMixin.train_models:19
@@ -469,6 +530,8 @@ msgid ""
 "interval holds out ``lookahead`` compressed bars between its train and "
 "test rows. Defaults to ``1``."
 msgstr ""
+"预测目标未来的 K 线数量，以每个模型所拟合的时间框架的 K 线为单位：绑定到某个区间的模型，会在其训练行和测试行之间保留 "
+"``lookahead`` 根压缩 K 线。默认为 ``1``。"
 
 #: e8585aa6b00f4bd083a07e9dfcf918ba of
 #: pybroker.model.ModelsMixin.train_models:25
@@ -476,26 +539,28 @@ msgid ""
 "``dict`` mapping each :class:`pybroker.common.ModelSymbol` pair to a "
 ":class:`pybroker.common.TrainedModel`."
 msgstr ""
+"将每个 :class:`pybroker.common.ModelSymbol` 组合映射到 "
+":class:`pybroker.common.TrainedModel` 的 ``dict``。"
 
 #: 99333273bb2447aeada09c6dab83e78b of
 #: pybroker.model.apply_lags_to_model_input:1
 msgid "Attaches lag feature metadata to ``model_input``."
-msgstr ""
+msgstr "为 ``model_input`` 附加滞后特征元数据。"
 
 #: 798a18daa9e34628a0535089dc479fb8 of
 #: pybroker.model.apply_lags_to_model_input_pooled:1
 msgid "Attaches lag feature metadata to pooled ``model_input``."
-msgstr ""
+msgstr "为池化的 ``model_input`` 附加滞后特征元数据。"
 
 #: 7a2a1deb97a14c2d8a57568dcfaefaa4 of
 #: pybroker.model.apply_prepare_input_data:1
 msgid "Applies a DataFrame-only prepare function to ``model_input``."
-msgstr ""
+msgstr "对 ``model_input`` 应用一个仅接受 DataFrame 的准备函数。"
 
 #: 22f0bcad45354b34a04fa5057ebe08e3 of
 #: pybroker.model.build_lag_feature_matrix:1
 msgid "Builds a lag-expanded feature matrix from numpy arrays."
-msgstr ""
+msgstr "根据 numpy 数组构建一个滞后展开的特征矩阵。"
 
 #: 1442ef63bd9b4a84bd5651b8973c68a2 of
 #: pybroker.model.build_lag_feature_matrix:3
@@ -504,29 +569,31 @@ msgid ""
 "1))``, laid out as one contiguous block per column, each block holding "
 "the column's current value followed by lags 1 through ``lags``."
 msgstr ""
+"返回一个形状为 ``(len(row_dates), len(columns) * (lags + 1))`` "
+"的矩阵，按每列一个连续数据块排列，每个数据块依次存放该列的当前值，以及滞后 1 到 ``lags`` 的值。"
 
 #: 818ce51353a5418ead85dee87094dd81 of
 #: pybroker.model.build_lag_feature_matrix_pooled:1
 msgid "Builds a lag-expanded feature matrix for pooled multi-symbol data."
-msgstr ""
+msgstr "为池化的多品种数据构建一个滞后展开的特征矩阵。"
 
 #: b7451ac678584e34b6e2b8b1dfdcd4ef of pybroker.model.cached_stacked_lags:1
 msgid "Returns a cached stacked array deep enough for ``lags``, else ``None``."
-msgstr ""
+msgstr "返回一个深度足以满足 ``lags`` 的已缓存堆叠数组，否则返回 ``None``。"
 
 #: 747141419bee41169317a7314f910835 of
 #: pybroker.model.compute_lag_series_cache:1
 msgid "Computes full-history lag arrays for daily/base bars."
-msgstr ""
+msgstr "为日线/基础 K 线计算完整历史的滞后数组。"
 
 #: c66b1f6fcfcb47f5ab289e3d27617672 of pybroker.model.history_date_offset:1
 msgid "Returns the start index of ``row_dates`` inside ``history_dates``."
-msgstr ""
+msgstr "返回 ``row_dates`` 在 ``history_dates`` 中的起始索引。"
 
 #: 347a4d964a744e818a2892e1b591a7a7 of
 #: pybroker.model.merge_interval_lag_series_cache:1
 msgid "Adds full-history interval lag arrays into ``cache``."
-msgstr ""
+msgstr "将完整历史的区间滞后数组添加到 ``cache`` 中。"
 
 #: 81d25a0fa5ee472787d2f7cd1ab6d442 of
 #: pybroker.model.merge_interval_lag_series_cache:3
@@ -535,22 +602,24 @@ msgid ""
 "``arrays_by_symbol`` supplies columns the bars cannot -- indicator values"
 " in particular -- and is consulted first when given."
 msgstr ""
+":class:`pybroker.interval.CompressedBars` 仅包含数据列，因此 ``arrays_by_symbol`` "
+"会补充压缩 K 线无法提供的列 —— 尤其是指标值 —— 且在给定时会被优先查询。"
 
 #: 8bb3e5f80336415ea430ba3051c6a0fa of pybroker.model.merge_lag_series_cache:1
 msgid "Adds full-history lag arrays for ``columns`` into ``cache``."
-msgstr ""
+msgstr "将 ``columns`` 的完整历史滞后数组添加到 ``cache`` 中。"
 
 #: 4f7b20fa35b24fd0818a193e6bfdae94 of
 #: pybroker.model.merge_lag_series_cache_from_arrays:1
 msgid "Adds full-history lag arrays built from numpy column data."
-msgstr ""
+msgstr "添加根据 numpy 列数据构建的完整历史滞后数组。"
 
 #: b1b5da0f9a564ba1af38c453c835ee41 of
 #: pybroker.model.merge_lag_series_cache_from_store:1
 msgid ""
 "Adds full-history lag arrays from a "
 ":class:`pybroker.scope.SymbolArrayStore`."
-msgstr ""
+msgstr "从 :class:`pybroker.scope.SymbolArrayStore` 添加完整历史滞后数组。"
 
 #: 084b48ba976a475684642c1bd0660ec2 of
 #: pybroker.model.merge_lag_series_cache_from_store:3
@@ -561,16 +630,18 @@ msgid ""
 "indicator would otherwise fail even though it is a column of the model "
 "input."
 msgstr ""
+":class:`pybroker.scope.SymbolArrayStore` 仅包含数据列，因此指标值会从覆盖各品种完整历史的 "
+"``indicator_data`` 中，对齐到该存储的日期上。否则，即使指标是模型输入的一列，对其计算滞后值也会失败。"
 
 #: f9bbf2833ec140a8afeb0da8a06ac60d of pybroker.model.model:1
 msgid ""
 "Creates a :class:`.ModelSource` instance and registers it globally with "
 "``name``."
-msgstr ""
+msgstr "创建一个 :class:`.ModelSource` 实例，并以 ``name`` 全局注册。"
 
 #: d66b7ae6dbfb445385beada30795b19d of pybroker.model.model:4
 msgid "Name for referencing the model globally."
-msgstr ""
+msgstr "用于全局引用该模型的名称。"
 
 #: 747a5d681bb74c7aa244b279869c1bb1 of pybroker.model.model:5
 msgid ""
@@ -596,12 +667,25 @@ msgid ""
 "models, the ``symbol`` column is omitted from inferred prediction "
 "columns."
 msgstr ""
+"用于训练或加载模型实例的 :class:`Callable`。若用于 ``pooled=False`` 的训练，则 ``fn`` 的签名为 "
+"``Callable[[symbol: str, train_data: DataFrame, test_data: DataFrame, "
+"...], DataFrame]``。若用于 ``pooled=True`` 的训练，则 ``fn`` 的签名为 "
+"``Callable[[symbols: Sequence[str], train_data: DataFrame, test_data: "
+"DataFrame, ...], DataFrame]``，其中 ``symbols`` 包含按升序排列的池化品种，且两个数据帧都包含一个 "
+"``symbol`` 列，各品种的行按该顺序分组排列。列表中的某个品种在某个数据帧中可能没有任何行，例如当 ``lags`` "
+"因滞后预热而丢弃了其所有行时。若用于加载，则 ``fn`` 的签名为 ``Callable[[symbol: str, "
+"train_start_date: datetime, train_end_date: datetime, ...], "
+"DataFrame]``。当设置了 ``lags`` 时，用于训练的 ``fn`` 还会额外接收 ``lag_train=`` 和 "
+"``lag_test=`` "
+"关键字参数，其中包含预先构建好的滞后特征矩阵，且该函数必须同时接受这两个参数。该函数应返回一个已训练的模型实例，或一个元组，其中包含已训练的模型实例，以及进行预测时用作模型输入的列名称"
+" :class:`Iterable`。当只返回模型实例时，会使用训练 DataFrame 中的列用于预测。对于池化模型，推断出的预测列中会省略 "
+"``symbol`` 列。"
 
 #: fdf273625eee4451aff87f6317bccd4a of pybroker.model.model:28
 msgid ""
 ":class:`Iterable` of :class:`pybroker.indicator.Indicator`\\ s used as "
 "features of the model."
-msgstr ""
+msgstr "用作该模型特征的 :class:`pybroker.indicator.Indicator`\\ 的 :class:`Iterable`。"
 
 #: eb52a9ea6b5c42b487cb291ce78558d6 of pybroker.model.model:31
 msgid ""
@@ -623,6 +707,15 @@ msgid ""
 "carried over from the preceding train window instead of ``NaN``. Rows "
 "whose lags are undefined are dropped from training data only."
 msgstr ""
+"``lag_cols`` 中每一列要包含的滞后值数量。这些滞后值会被构建为一个形状为 ``(n_rows, len(lag_cols) * "
+"(lags + 1))`` 的特征矩阵：按 ``lag_cols`` 声明顺序，每列一个连续数据块，每个数据块依次存放该列的当前值，以及滞后 "
+"``1`` 到 ``lags`` 的值，其中滞后 ``1`` 是前一根 K 线的值。该矩阵会以 ``lag_train`` 和 "
+"``lag_test`` 关键字参数的形式传递给用于训练的 ``fn``，与 ``train_data``/``test_data`` "
+"逐行对齐，并替代输入 DataFrame 传递给 ``predict_fn``（或模型默认的 ``predict``）。由于当前 K "
+"线的值是每个数据块的第一个特征，预测目标应为 *下一根* K 线 —— 若以当前 K "
+"线的值作为目标则会造成数据泄漏。滞后数据与模型输入分开保存，而不是作为列添加，因此输入的 :class:`pandas.DataFrame` "
+"永远不会被加宽或复制。滞后值是根据每个品种的完整历史计算的，因此测试窗口开头的行会使用从前一个训练窗口延续下来的真实值，而不是 "
+"``NaN``。滞后值未定义的行仅会从训练数据中被丢弃。"
 
 #: 18066a687be44a0ebe10ebf3edbd32f7 of pybroker.model.model:50
 msgid ""
@@ -633,6 +726,10 @@ msgid ""
 "excluding ``date`` and ``symbol``; indicators are lagged only when named "
 "here."
 msgstr ""
+"要计算滞后值的列名称和/或 :class:`pybroker.indicator.Indicator`\\。此处传入的 "
+":class:`pybroker.indicator.Indicator`\\ 会被添加到 ``indicators`` "
+"中。声明顺序决定了特征块的顺序。默认为训练数据的数据列，不包括 ``date`` 和 "
+"``symbol``；只有在此处指定名称的指标才会被计算滞后值。"
 
 #: cd52f761f63d4d3081b531cd2d57c2b4 of pybroker.model.model:57
 msgid ""
@@ -646,6 +743,10 @@ msgid ""
 "test window. Requires ``predict_fn`` and is not supported with "
 "``pooled=True``."
 msgstr ""
+"如果为 ``True``，``predict_fn`` 会按每根 K 线调用一次，输入会被截断至包含当前 K 线在内的各行，且必须为该根 K "
+"线返回一个标量预测值。当设置了 ``lags`` 时，输入是以同样方式截断的滞后特征矩阵，最后一行为当前 K 线。适用于每根 K "
+"线都重新拟合或更新的模型，例如 GARCH 或状态空间模型。请注意，这会使每个品种每根 K 线都调用一次模型，远慢于对整个测试窗口进行一次向量化的"
+" ``predict_fn`` 调用。需要设置 ``predict_fn``，且不支持与 ``pooled=True`` 同时使用。"
 
 #: f3884c604bd74493b1398d68a84e932f of pybroker.model.model:67
 msgid ""
@@ -658,6 +759,12 @@ msgid ""
 ":meth:`pybroker.context.ExecContext.input` only, since predictions are "
 "made from the lag feature matrix."
 msgstr ""
+"用于预处理进行预测时传递给模型的输入数据的 ``Callable[[DataFrame], "
+"DataFrame]``。如果设置了该值，``input_data_fn`` 会以包含全部测试数据的 "
+":class:`pandas.DataFrame` 被调用，即使在 ``per_bar=True`` 时也是如此。它必须每根 K "
+"线返回一行；增加或删除行会使预测结果与 K 线错位，并引发 :class:`ValueError`。对于使用 ``lags`` "
+"注册的模型，它仅影响 :meth:`pybroker.context.ExecContext.input` "
+"的形态，因为预测是根据滞后特征矩阵进行的。"
 
 #: fdfcb292221f443e8020dd23963fb07b of pybroker.model.model:76
 msgid ""
@@ -669,6 +776,11 @@ msgid ""
 "``per_bar=True``, ``predict_fn`` receives input rows up to and including "
 "the current bar and must return a scalar prediction."
 msgstr ""
+"用于覆盖调用模型默认 ``predict`` 函数的 ``Callable[[Model, DataFrame], "
+"ndarray]``。如果设置了该值，``predict_fn`` 会以已训练的模型和包含全部测试数据的 "
+":class:`pandas.DataFrame` 被调用。当设置了 ``lags`` "
+"时，调用时会改为传入滞后特征矩阵（:class:`numpy.ndarray`）而不是 DataFrame。当 ``per_bar=True`` "
+"时，``predict_fn`` 会接收包含当前 K 线在内的输入行，并且必须返回一个标量预测值。"
 
 #: 3fae483e26f94138ab3c878cbcac3421 of pybroker.model.model:84
 msgid ""
@@ -676,28 +788,30 @@ msgid ""
 "If ``False``, ``fn`` is used to train and return a new model. Defaults to"
 " ``False``."
 msgstr ""
+"如果为 ``True``，则使用 ``fn`` 加载并返回一个预训练模型。如果为 ``False``，则使用 ``fn`` "
+"训练并返回一个新模型。默认为 ``False``。"
 
 #: dd6e10e2900346b58c2c3a895f113237 of pybroker.model.model:89
 msgid "Additional arguments to pass to ``fn``."
-msgstr ""
+msgstr "传递给 ``fn`` 的附加参数。"
 
 #: 641548d28e4042869a442856c5044cdf of pybroker.model.model:91
 msgid ":class:`.ModelSource` instance."
-msgstr ""
+msgstr ":class:`.ModelSource` 实例。"
 
 #: 6e1ef4daeded4a49a4ee8fdf4ff2104e of pybroker.model.model_input_from_arrays:1
 msgid "Builds a :class:`ModelInput` from column arrays."
-msgstr ""
+msgstr "根据列数组构建一个 :class:`ModelInput`。"
 
 #: f4ec235ad2ae41e0b1f25766d944a148 of pybroker.model.model_input_from_frame:1
 msgid "Builds a :class:`ModelInput` from a DataFrame without copying columns."
-msgstr ""
+msgstr "从 DataFrame 构建一个 :class:`ModelInput`，且不复制列。"
 
 #: ddaf0c06e81e4c3fbdefdec9c9581a3b of pybroker.model.shift_array:1
 msgid "Returns ``values`` shifted forward by ``lag`` bars with NaN warmup."
-msgstr ""
+msgstr "返回 ``values`` 向前移动 ``lag`` 根 K 线后的结果，预热部分为 NaN。"
 
 #: 85bfbdeaf87546b48722ac14f7caa6e5 of pybroker.model.symbol_history_arrays:1
 msgid "Extracts sorted full-history date and column arrays for one symbol."
-msgstr ""
+msgstr "为单个品种提取排序后的完整历史日期和列数组。"
 
