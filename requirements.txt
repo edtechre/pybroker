@@ -1,4 +1,4 @@
-akshare>=1.18.81
+akshare>=1.18.83
 alpaca-py>=0.43.5
 diskcache>=5.6.3
 joblib>=1.5.3
