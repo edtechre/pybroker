@@ -52,7 +52,7 @@ msgstr ""
 msgid ""
 "Number of worker jobs. ``-1`` (the default) uses all available cores; "
 "``1`` runs sequentially."
-msgstr "工作进程（worker）的数量。``-1``（默认值）使用所有可用核心；``1`` 表示按顺序运行。"
+msgstr "工作进程（worker）的数量。 ``-1`` （默认值）使用所有可用核心； ``1`` 表示按顺序运行。"
 
 #: 0c0bfb642c5142a8bd7abc77a2c4c5f6 1cf217179cde4477b39f4d97a02394cd
 #: 2d109f5ad0f24a6aa71aab2bae3b106f of pybroker.parallel.ParallelConfig
@@ -69,7 +69,7 @@ msgid ""
 "processes. Any backend registered with joblib is also accepted (e.g. "
 "``'ray'`` after ``ray.util.joblib.register_ray()``)."
 msgstr ""
-"joblib 后端名称。``'loky'``（默认值）会在独立的进程中运行任务。任何已在 joblib 中注册的后端也都可以使用（例如在调用 "
+"joblib 后端名称。 ``'loky'`` （默认值）会在独立的进程中运行任务。任何已在 joblib 中注册的后端也都可以使用（例如在调用 "
 "``ray.util.joblib.register_ray()`` 后使用 ``'ray'``）。"
 
 #: 92c830a6b3ec4982b290584a3c0df815 of pybroker.parallel.ParallelConfig:24
@@ -112,7 +112,7 @@ msgstr "参数"
 msgid ""
 "Number of workers. ``-1`` uses all cores (the default); ``1`` runs "
 "sequentially. Leave as ``None`` to keep the currently configured value."
-msgstr "工作进程的数量。``-1`` 使用所有核心（默认值）；``1`` 表示按顺序运行。保留为 ``None`` 则维持当前已配置的值。"
+msgstr "工作进程的数量。 ``-1`` 使用所有核心（默认值）； ``1`` 表示按顺序运行。保留为 ``None`` 则维持当前已配置的值。"
 
 #: 3d4e9f6b0a244a639dc89c07d41a174c of pybroker.parallel.set_parallel:9
 msgid ""
@@ -122,10 +122,10 @@ msgid ""
 " rejected because its standard pickle serialization cannot ship "
 "PyBroker's dispatch closures."
 msgstr ""
-"joblib 后端名称：``'loky'``（默认值），或通过 :func:`joblib.register_parallel_backend` "
-"注册的任意后端（例如在调用 ``ray.util.joblib.register_ray()`` 后使用 "
-"``'ray'``）。``'multiprocessing'`` 后端会被拒绝，因为其标准 pickle 序列化机制无法传递 PyBroker "
-"的调度闭包。"
+"joblib 后端名称： ``'loky'`` （默认值），或通过 "
+":func:`joblib.register_parallel_backend` 注册的任意后端（例如在调用 "
+"``ray.util.joblib.register_ray()`` 后使用 ``'ray'``）。 ``'multiprocessing'`` "
+"后端会被拒绝，因为其标准 pickle 序列化机制无法传递 PyBroker 的调度闭包。"
 
 #: 40aab51d04bc45e3a1070573b53fe44e of pybroker.parallel.set_parallel:14
 msgid ""

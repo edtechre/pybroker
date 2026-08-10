@@ -48,7 +48,7 @@ msgstr "参数"
 msgid ""
 "Adverse slippage in basis points. ``0`` is a no-op. Must be less than "
 "``10000`` (100%), which would make sell fills non-positive."
-msgstr "以基点表示的不利滑点。``0`` 表示不产生任何效果。必须小于 ``10000``（100%），否则会使卖出成交价变为非正数。"
+msgstr "以基点表示的不利滑点。 ``0`` 表示不产生任何效果。必须小于 ``10000`` （100%），否则会使卖出成交价变为非正数。"
 
 #: 6fefa82948b0402da94ff54f59691f8b of
 #: pybroker.slippage.FixedSlippageModel.adjust_fill_price:1
@@ -75,7 +75,7 @@ msgid ""
 "but never increased: returning more than ``ctx.shares`` (or a negative "
 "quantity) raises a :class:`ValueError` at the fill."
 msgstr ""
-"返回的股数可以减少以模拟部分成交，但不能增加：如果返回值超过 ``ctx.shares``（或为负数），会在成交时引发 "
+"返回的股数可以减少以模拟部分成交，但不能增加：如果返回值超过 ``ctx.shares`` （或为负数），会在成交时引发 "
 ":class:`ValueError`。"
 
 #: ../../source/reference/pybroker.slippage.rst
@@ -294,11 +294,11 @@ msgstr "需要一个 ``volume`` 数据列，该列在 PyBroker 中是可选的�
 
 #: 507aeabc5d8442bba0e39ea55617b8f3 of pybroker.slippage.VolumeSlippageModel:10
 msgid "Square-law impact coefficient. ``0`` disables impact."
-msgstr "平方律冲击系数。``0`` 表示禁用冲击。"
+msgstr "平方律冲击系数。 ``0`` 表示禁用冲击。"
 
 #: 0d74eadd66d84ccaa81fff9a52f086f6 of pybroker.slippage.VolumeSlippageModel:11
 msgid ""
 "Max participation as a fraction of bar volume. ``None`` or ``0`` disables"
 " the cap."
-msgstr "作为 K 线成交量比例的最大参与度。``None`` 或 ``0`` 表示禁用该上限。"
+msgstr "作为 K 线成交量比例的最大参与度。 ``None`` 或 ``0`` 表示禁用该上限。"
 

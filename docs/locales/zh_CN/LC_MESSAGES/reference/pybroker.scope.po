@@ -48,7 +48,7 @@ msgstr "参数"
 msgid ""
 "Pre-built numpy column store, or a MultiIndex :class:`pandas.DataFrame` "
 "(legacy convenience)."
-msgstr "预先构建好的 numpy 列存储，或 MultiIndex :class:`pandas.DataFrame`（为兼容旧版而保留）。"
+msgstr "预先构建好的 numpy 列存储，或 MultiIndex :class:`pandas.DataFrame` （为兼容旧版而保留）。"
 
 #: 4e37d938f42145568c66523dd6d01b70 of
 #: pybroker.scope.ColumnScope.bar_data_from_data_columns:1
@@ -101,7 +101,7 @@ msgstr "返回"
 msgid ""
 ":class:`numpy.ndarray` of column data for every bar until ``end_index`` "
 "(when specified)."
-msgstr "截至 ``end_index``（如指定）为止每根 K 线的列数据 :class:`numpy.ndarray`。"
+msgstr "截至 ``end_index`` （如指定）为止每根 K 线的列数据 :class:`numpy.ndarray`。"
 
 #: b72f5c4f2c4042fd8526cd9b20c13210 of pybroker.scope.ColumnScope.fetch_dict:1
 msgid "Fetches a ``dict`` of column data for ``symbol``."
@@ -172,7 +172,7 @@ msgid ""
 ":class:`numpy.ndarray` of :class:`pybroker.indicator.Indicator` data for "
 "every bar until ``end_index`` (when specified)."
 msgstr ""
-"截至 ``end_index``（如指定）为止每根 K 线的 :class:`pybroker.indicator.Indicator` 数据 "
+"截至 ``end_index`` （如指定）为止每根 K 线的 :class:`pybroker.indicator.Indicator` 数据 "
 ":class:`numpy.ndarray`。"
 
 #: 1e24b987905a4df7bc94dbdbfdf18430 of
@@ -291,7 +291,7 @@ msgstr "截断返回的模型输入数据数组（不含该索引）。如果为
 msgid ""
 ":class:`pandas.DataFrame` of model input data for every bar until "
 "``end_index`` (when specified)."
-msgstr "截至 ``end_index``（如指定）为止每根 K 线的模型输入数据 :class:`pandas.DataFrame`。"
+msgstr "截至 ``end_index`` （如指定）为止每根 K 线的模型输入数据 :class:`pandas.DataFrame`。"
 
 #: a7df5817c74543e39e6b3b5e2d57a510 of
 #: pybroker.scope.ModelInputScope.fetch_model_input:1
@@ -305,7 +305,7 @@ msgstr "以内部 :class:`pybroker.model.ModelInput` 形式获取模型输入（
 msgid ""
 ":class:`pybroker.model.ModelInput` for every bar until ``end_index`` "
 "(when specified)."
-msgstr "截至 ``end_index``（如指定）为止每根 K 线的 :class:`pybroker.model.ModelInput`。"
+msgstr "截至 ``end_index`` （如指定）为止每根 K 线的 :class:`pybroker.model.ModelInput`。"
 
 #: d947fc36a3ee4151b6c31b2534aa4ae9 of pybroker.scope.PendingOrder:1
 msgid "Holds data for a pending order."
@@ -404,7 +404,7 @@ msgid ""
 "Number of bars to retry after the first attempt. ``None`` for a single "
 "attempt, ``-1`` for indefinite persistence, or a positive integer for a "
 "limited number of retry bars."
-msgstr "首次尝试之后重试的 K 线数量。``None`` 表示仅尝试一次，``-1`` 表示无限期保留，正整数表示有限的重试 K 线数量。"
+msgstr "首次尝试之后重试的 K 线数量。 ``None`` 表示仅尝试一次， ``-1`` 表示无限期保留，正整数表示有限的重试 K 线数量。"
 
 #: 5a8cfd820aa64a2187bb94b7de889297 of pybroker.scope.PendingOrder:63
 msgid "Optional[int]"
@@ -546,7 +546,7 @@ msgstr "截断返回的预测结果数组（不含该索引）。如果为 ``Non
 msgid ""
 ":class:`numpy.ndarray` of model predictions for every bar until "
 "``end_index`` (when specified)."
-msgstr "截至 ``end_index``（如指定）为止每根 K 线的模型预测结果 :class:`numpy.ndarray`。"
+msgstr "截至 ``end_index`` （如指定）为止每根 K 线的模型预测结果 :class:`numpy.ndarray`。"
 
 #: 4e76a8eae77b4f1e8e46a7b57a443925 of pybroker.scope.PriceScope:1
 msgid "Retrieves most recent prices."
@@ -565,7 +565,7 @@ msgid ""
 "dict. Keyed by date as well as symbol, like :meth:`.has_bar_on`, so a "
 "stale entry cannot answer for a later bar."
 msgstr ""
-"按 K 线记忆化：``check_stops`` 循环和 ``capture_bar`` 都会在每根 K "
+"按 K 线记忆化： ``check_stops`` 循环和 ``capture_bar`` 都会在每根 K "
 "线为每个品种读取该值，每次未命中都会重新获取列字典。与 :meth:`.has_bar_on` "
 "一样，键同时包含日期和品种，因此过期的条目不会为之后的 K 线给出错误答案。"
 
@@ -607,7 +607,7 @@ msgid ""
 "Keyed by date as well as symbol so a caller that does not call "
 ":meth:`.reset_bar` still reads a correct answer."
 msgstr ""
-"按 K 线记忆化：``check_stops`` 会在每根 K "
+"按 K 线记忆化： ``check_stops`` 会在每根 K "
 "线为每个持有止损的品种调用一次本方法，每次未命中都会获取该品种的完整日期数组。键同时包含日期和品种，因此即使调用方未调用 "
 ":meth:`.reset_bar`，仍能读到正确的结果。"
 
@@ -884,8 +884,8 @@ msgid ""
 msgstr ""
 ":class:`StaticScope` "
 "是每个进程的单例，因此工作进程启动时会得到一个空的单例，无法看到调用方已注册的指标、模型源、参数或自定义列。将分发给 "
-"``pybroker.parallel.parallel()`` "
-"的工作用本方法包裹起来，即可随之传递调用方的作用域。在顺序运行时，``scope`` 已经是已安装的实例，此时本方法不产生任何效果。"
+"``pybroker.parallel.parallel()`` 的工作用本方法包裹起来，即可随之传递调用方的作用域。在顺序运行时， "
+"``scope`` 已经是已安装的实例，此时本方法不产生任何效果。"
 
 #: 8aac2eade17a435ca2d3a0fe047bd7c8 of
 #: pybroker.scope.slice_symbol_array_store_by_dates:1

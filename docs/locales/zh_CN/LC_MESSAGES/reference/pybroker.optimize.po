@@ -104,7 +104,7 @@ msgid ""
 "Maximum candidate value searched during optimize (inclusive). Candidate "
 "values are ``low``, ``low + step``, ... up to the largest value not "
 "exceeding ``high``."
-msgstr "优化期间搜索的候选值上限（含）。候选值依次为 ``low``、``low + step``…，直到不超过 ``high`` 的最大值。"
+msgstr "优化期间搜索的候选值上限（含）。候选值依次为 ``low``、 ``low + step``…，直到不超过 ``high`` 的最大值。"
 
 #: 778ecfb0be95476ca8f53c9f11ecbcb8 of pybroker.optimize.Hyperparam:35
 msgid ""
@@ -194,8 +194,8 @@ msgid ""
 " the worker count; its trials therefore run sequentially, and an info-"
 "level log message notes that parallelism was disabled."
 msgstr ""
-"候选值的选取方式。``\"grid\"``（默认）会穷举所有组合，``\"tpe\"`` 使用 "
-":class:`optuna.samplers.TPESampler`，``\"random\"`` 使用 "
+"候选值的选取方式。 ``\"grid\"`` （默认）会穷举所有组合， ``\"tpe\"`` 使用 "
+":class:`optuna.samplers.TPESampler`， ``\"random\"`` 使用 "
 ":class:`optuna.samplers.RandomSampler`。也可以传入 "
 ":class:`optuna.samplers.BaseSampler` "
 "实例；它会按窗口进行深拷贝并重新播种，而多窗口运行会将副本分发给工作进程，因此该实例必须是可 pickle "
@@ -218,7 +218,7 @@ msgstr ""
 #: 8c5e16dffc224e07b3b3fc20753effe8 of
 #: pybroker.optimize.OptimizeMixin.optimize:36
 msgid "``\"maximize\"`` (default) or ``\"minimize\"`` ``score_fn``."
-msgstr "对 ``score_fn`` 进行 ``\"maximize\"``（默认）或 ``\"minimize\"``。"
+msgstr "对 ``score_fn`` 进行 ``\"maximize\"`` （默认）或 ``\"minimize\"``。"
 
 #: 8447d411ebda4ce5942257d6ca054dc1 of
 #: pybroker.optimize.OptimizeMixin.optimize:37
@@ -311,7 +311,7 @@ msgstr "用于过滤数据的时间段（含边界），为 ``tuple[str, str]``�
 #: dc6c9768fc5f416d8b264aa04395e89c of
 #: pybroker.optimize.OptimizeMixin.optimize:70
 msgid "Days (e.g. ``\"mon\"``, ``\"tues\"``) used to filter the data."
-msgstr "用于过滤数据的星期（例如 ``\"mon\"``、``\"tues\"``）。"
+msgstr "用于过滤数据的星期（例如 ``\"mon\"``、 ``\"tues\"``）。"
 
 #: 04579d9a825a44f6b46e38703d20b3d6 of
 #: pybroker.optimize.OptimizeMixin.optimize:71
@@ -369,9 +369,9 @@ msgid ""
 "them; see :attr:`.OptimizeResult.windows` for the per-window results."
 msgstr ""
 "包含获胜超参数值、其在训练窗口获得的得分，以及其产生的测试窗口 :class:`pybroker.strategy.TestResult` 的 "
-":class:`.OptimizeResult`。当 ``windows`` 大于 ``1`` "
-"时，``best_params``、``best_score`` 和 ``study`` 描述的是 **最后一个** 窗口，而 "
-"``result`` 则是所有窗口拼接后的结果；各窗口的结果参见 :attr:`.OptimizeResult.windows`。"
+":class:`.OptimizeResult`。当 ``windows`` 大于 ``1`` 时， ``best_params``、 "
+"``best_score`` 和 ``study`` 描述的是 **最后一个** 窗口，而 ``result`` "
+"则是所有窗口拼接后的结果；各窗口的结果参见 :attr:`.OptimizeResult.windows`。"
 
 #: ../../source/reference/pybroker.optimize.rst
 #: 20c3f85b419b442e804f7b85192c4f15
@@ -629,7 +629,7 @@ msgid ""
 "Unique identifier for the hyperparam. Referenced in indicator kwargs, "
 "``add_execution(..., hyperparams=[...])``, and ``ctx.hyperparam(name)``."
 msgstr ""
-"该超参数的唯一标识符。在指标关键字参数、``add_execution(..., hyperparams=[...])`` 以及 "
+"该超参数的唯一标识符。在指标关键字参数、 ``add_execution(..., hyperparams=[...])`` 以及 "
 "``ctx.hyperparam(name)`` 中被引用。"
 
 #: 72616c484bc949848b75143f4793a1ba of pybroker.optimize.hyperparam:6
@@ -658,6 +658,6 @@ msgid ""
 "with logging suppressed so that per-trial progress bars do not repeat for"
 " every combination searched."
 msgstr ""
-"当 ``verbose`` 为 "
-"``False``（默认值）时，每次试验的回测都会在抑制日志的情况下运行，以避免每个搜索到的组合都重复显示逐次试验的进度条。"
+"当 ``verbose`` 为 ``False`` "
+"（默认值）时，每次试验的回测都会在抑制日志的情况下运行，以避免每个搜索到的组合都重复显示逐次试验的进度条。"
 

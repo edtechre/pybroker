@@ -300,8 +300,8 @@ msgid ""
 "where ``n > 1``. On 1-minute data, ``5`` yields 5-bar bins (approximately"
 " 5-minute bars)."
 msgstr ""
-"**每 n 根 K 线**（``int``）：将每 ``n`` 根基础 K 线压缩为一根 K 线，其中 ``n > 1``。在 1 "
-"分钟数据上，``5`` 会生成 5 根 K 线一组的分箱（约为 5 分钟 K 线）。"
+"**每 n 根 K 线** （``int``）：将每 ``n`` 根基础 K 线压缩为一根 K 线，其中 ``n > 1``。在 1 分钟数据上，"
+" ``5`` 会生成 5 根 K 线一组的分箱（约为 5 分钟 K 线）。"
 
 #: bec5664f4a2041f7ae2495447760c085 of
 #: pybroker.strategy.Strategy.add_execution:10
@@ -309,8 +309,8 @@ msgid ""
 "**Duration** (``str``): Fixed time span as digits plus one unit letter — "
 "``\"1m\"``, ``\"5m\"``, ``\"1h\"``, ``\"30s\"``, or ``\"1d\"``."
 msgstr ""
-"**时长**（``str``）：以数字加单个单位字母表示的固定时间跨度 —— "
-"``\"1m\"``、``\"5m\"``、``\"1h\"``、``\"30s\"`` 或 ``\"1d\"``。"
+"**时长** （``str``）：以数字加单个单位字母表示的固定时间跨度 —— ``\"1m\"``、 ``\"5m\"``、 "
+"``\"1h\"``、 ``\"30s\"`` 或 ``\"1d\"``。"
 
 #: e9cd59625d0f41e595fff4fc20b3e570 of
 #: pybroker.strategy.Strategy.add_execution:13
@@ -320,9 +320,9 @@ msgid ""
 "Monday, months on the first of the month, quarters in January, April, "
 "July, and October, and years on January 1."
 msgstr ""
-"**日历**（``str``）：日历分桶 —— "
-"``\"daily\"``、``\"weekly\"``、``\"monthly\"``、``\"quarterly\"`` 或 "
-"``\"yearly\"``。周从周一开始，月从每月 1 日开始，季度从 1、4、7、10 月开始，年从 1 月 1 日开始。"
+"**日历** （``str``）：日历分桶 —— ``\"daily\"``、 ``\"weekly\"``、 ``\"monthly\"``、 "
+"``\"quarterly\"`` 或 ``\"yearly\"``。周从周一开始，月从每月 1 日开始，季度从 1、4、7、10 月开始，年从 "
+"1 月 1 日开始。"
 
 #: 4f8e9a87a8404d699a8ed435a04893bd of
 #: pybroker.strategy.Strategy.add_execution:18
@@ -359,13 +359,13 @@ msgid ""
 "randomizes the training frame's row order, so avoid it with a selector "
 "that depends on bar order."
 msgstr ""
-"用于运行 ``fn`` 的股票代码，``fn`` 会为每个品种单独调用。也可以是 "
+"用于运行 ``fn`` 的股票代码， ``fn`` 会为每个品种单独调用。也可以是 "
 ":class:`pybroker.common.SymbolSelector` —— 一个 ``(df) -> Sequence[str]`` "
 "形式的 :class:`Callable`，为每个向前分析窗口选择一次要交易的品种，因此品种池会在回测过程中变化。它接收该窗口的 **训练** "
 "数据，绝不会接收测试数据，因此需要一个训练窗口：:meth:`.backtest` 与 ``train_size=0`` 会引发 "
 "``ValueError``。候选品种池必须以 :class:`pandas.DataFrame` 形式提供，而非 "
 ":class:`pybroker.data.DataSource`，因为在窗口划分之前，待查询的品种是未知的。某个品种在后续窗口中被丢弃时，其仓位会在该窗口的第一根"
-" K 线上平仓；如果该品种已没有剩余 K 线，则会在其最后一根 K 线上平仓。请注意，``shuffle=True`` "
+" K 线上平仓；如果该品种已没有剩余 K 线，则会在其最后一根 K 线上平仓。请注意， ``shuffle=True`` "
 "会打乱训练数据帧的行顺序，因此应避免将其与依赖 K 线顺序的选择器搭配使用。"
 
 #: de97270a055548899aed21578cea395f of
@@ -492,7 +492,7 @@ msgid ""
 msgstr ""
 "指定回测数据时间框架分辨率的格式化字符串。该时间框架字符串支持以下单位：  - ``\"s\"``/``\"sec\"``：秒 - "
 "``\"m\"``/``\"min\"``：分钟 - ``\"h\"``/``\"hour\"``：小时 - "
-"``\"d\"``/``\"day\"``：天 - ``\"w\"``/``\"week\"``：周  时间框架字符串示例：``1h "
+"``\"d\"``/``\"day\"``：天 - ``\"w\"``/``\"week\"``：周  时间框架字符串示例： ``1h "
 "30m``。当任何执行函数声明了 ``intervals`` 时为必需，因为它定义了压缩区间据以验证和对齐的基础 K 线间隔。"
 
 #: 32c3c3e209fb42bd97602ccf627f363b 5b56f74c2c13418f8c2930bfcb830f0a of
@@ -541,8 +541,8 @@ msgid ""
 "declares ``intervals``, since it defines the base bar spacing that "
 "compression intervals are validated and aligned against."
 msgstr ""
-"时间框架字符串示例：``1h 30m``。当任何执行函数声明了 ``intervals`` 时为必需，因为它定义了压缩区间据以验证和对齐的基础 K"
-" 线间隔。"
+"时间框架字符串示例： ``1h 30m``。当任何执行函数声明了 ``intervals`` 时为必需，因为它定义了压缩区间据以验证和对齐的基础 "
+"K 线间隔。"
 
 #: 9600575fe26544ecb7d898897c8bb671 c5aa9a20eec04e80b386bad252ea9a28 of
 #: pybroker.strategy.Strategy.backtest:24
@@ -558,7 +558,7 @@ msgstr "用于过滤回测数据的时间段（含边界），为 ``tuple[str, s
 msgid ""
 "Days (e.g. ``\"mon\"``, ``\"tues\"`` etc.) used to filter the backtesting"
 " data."
-msgstr "用于过滤回测数据的星期（例如 ``\"mon\"``、``\"tues\"`` 等）。"
+msgstr "用于过滤回测数据的星期（例如 ``\"mon\"``、 ``\"tues\"`` 等）。"
 
 #: 6fcbc86ce35f4305aea5b7cc2d8278a4 994a1dcc9ff74d8595231cf4f0ab9aa4
 #: cc603898c3d446d3aec9bf5a4a65fb51 of pybroker.strategy.Strategy.backtest:29
@@ -589,7 +589,7 @@ msgid ""
 "remaining 10% of data being used for testing."
 msgstr ""
 "用于训练的 :class:`pybroker.data.DataSource` 数据量，其中 ``train_size`` 的最大值为 "
-"``1``。例如，``train_size`` 为 ``0.9`` 表示 90% 的数据用于训练，剩余 10% 的数据用于测试。"
+"``1``。例如， ``train_size`` 为 ``0.9`` 表示 90% 的数据用于训练，剩余 10% 的数据用于测试。"
 
 #: 7b4ceb3ab22b44fb9be00a0de3b39daf ff201f01960c4c9f807ccb3647af8f13 of
 #: pybroker.strategy.Strategy.backtest:44
@@ -783,11 +783,10 @@ msgid ""
 "(participation cap and square-law price impact). Pass ``None`` to disable"
 " slippage."
 msgstr ""
-"内置模型包括 "
-":class:`pybroker.slippage.FixedSlippageModel`（固定基点）、:class:`pybroker.slippage.VolatilitySlippageModel`（基于"
-" ATR 缩放）和 "
-":class:`pybroker.slippage.VolumeSlippageModel`（参与度上限与平方律价格冲击）。传入 ``None``"
-" 可禁用滑点。"
+"内置模型包括 :class:`pybroker.slippage.FixedSlippageModel` "
+"（固定基点）、:class:`pybroker.slippage.VolatilitySlippageModel` （基于 ATR 缩放）和 "
+":class:`pybroker.slippage.VolumeSlippageModel` （参与度上限与平方律价格冲击）。传入 "
+"``None`` 可禁用滑点。"
 
 #: ed2e26229fa2496b978f7f929a262d48 of
 #: pybroker.strategy.Strategy.set_slippage_model:9
@@ -942,8 +941,8 @@ msgid ""
 "``null``, and infinite metric values as the string sentinels "
 "``\"Infinity\"``/``\"-Infinity\"``."
 msgstr ""
-"默认包含 ``start_date``、``end_date``、``metrics``、``trades``、``orders`` 以及 "
-"``bootstrap``（如果存在）。诸如 ``portfolio``、``positions``、``signals`` 和 "
+"默认包含 ``start_date``、 ``end_date``、 ``metrics``、 ``trades``、 ``orders`` 以及"
+" ``bootstrap`` （如果存在）。诸如 ``portfolio``、 ``positions``、 ``signals`` 和 "
 "``stops`` 等大型时间序列需要通过 ``include`` 主动选择才会包含。日期以不带时区的 UTC 序列化，NaN 序列化为 "
 "``null``，无穷大的指标值序列化为字符串哨兵值 ``\"Infinity\"``/``\"-Infinity\"``。"
 
@@ -956,15 +955,15 @@ msgid ""
 ":attr:`pybroker.config.StrategyConfig.record_position_bars` is ``True``, "
 "and ``signals``/``stops`` only with their matching config flags."
 msgstr ""
-"要包含的可选结果部分的名称。有效名称为 "
-"``metrics``、``metrics_df``、``trades``、``orders``、``portfolio``、``positions``、``bootstrap``、``signals``"
-" 和 ``stops``。请注意，只有当 "
+"要包含的可选结果部分的名称。有效名称为 ``metrics``、 ``metrics_df``、 ``trades``、 ``orders``、 "
+"``portfolio``、 ``positions``、 ``bootstrap``、 ``signals`` 和 "
+"``stops``。请注意，只有当 "
 ":attr:`pybroker.config.StrategyConfig.record_position_bars` 为 ``True`` 时 "
-"``positions`` 才会有行，``signals``/``stops`` 也仅在各自对应的配置标志开启时才会有内容。"
+"``positions`` 才会有行， ``signals``/``stops`` 也仅在各自对应的配置标志开启时才会有内容。"
 
 #: 9e0b4a051ae04db9a15029bb8575b586 of pybroker.strategy.TestResult.to_json:18
 msgid "Maximum rows per tabular section. ``None`` for no limit."
-msgstr "每个表格部分的最大行数。``None`` 表示不限。"
+msgstr "每个表格部分的最大行数。 ``None`` 表示不限。"
 
 #: 105fd39ed23c411d8be1bb2c097c6c01 of pybroker.strategy.TestResult.to_json:19
 msgid ""
@@ -1015,7 +1014,7 @@ msgid ""
 "result in 90% of data in ``df`` being used for training and the remaining"
 " 10% of data being used for testing."
 msgstr ""
-"``df`` 中用于训练的数据量，其中 ``train_size`` 的最大值为 ``1``。例如，``train_size`` 为 "
+"``df`` 中用于训练的数据量，其中 ``train_size`` 的最大值为 ``1``。例如， ``train_size`` 为 "
 "``0.9`` 表示 ``df`` 中 90% 的数据用于训练，剩余 10% 的数据用于测试。"
 
 #: c349684ab64648fea94e0a300fae6815 of

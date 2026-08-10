@@ -80,7 +80,9 @@ msgid ""
 "Number of bars to retry an unfilled buy limit order after the first "
 "attempt. ``None`` for a single attempt, ``-1`` for indefinite "
 "persistence, or a positive integer for a limited number of retry bars."
-msgstr "未成交的买入限价单在首次尝试后重试的 K 线数量。``None`` 表示仅尝试一次，``-1`` 表示无限期保留，正整数表示有限的重试 K 线数量。"
+msgstr ""
+"未成交的买入限价单在首次尝试后重试的 K 线数量。 ``None`` 表示仅尝试一次， ``-1`` 表示无限期保留，正整数表示有限的重试 K "
+"线数量。"
 
 #: 2978c02c95a24821880780b2e4f5ec50 36329a54547944e38779bff3f40ca34b of
 #: pybroker.context.ExecContext:42 pybroker.context.ExecResult:24
@@ -102,7 +104,9 @@ msgid ""
 "Number of bars to retry an unfilled sell limit order after the first "
 "attempt. ``None`` for a single attempt, ``-1`` for indefinite "
 "persistence, or a positive integer for a limited number of retry bars."
-msgstr "未成交的卖出限价单在首次尝试后重试的 K 线数量。``None`` 表示仅尝试一次，``-1`` 表示无限期保留，正整数表示有限的重试 K 线数量。"
+msgstr ""
+"未成交的卖出限价单在首次尝试后重试的 K 线数量。 ``None`` 表示仅尝试一次， ``-1`` 表示无限期保留，正整数表示有限的重试 K "
+"线数量。"
 
 #: 17ff492888d645e2be71b2c881047e9e 1e9efccdd0354171933b605206c94b22 of
 #: pybroker.context.ExecContext:63 pybroker.context.ExecResult:59
@@ -126,8 +130,8 @@ msgstr ""
 "在对买入和回补信号进行排序时用于给 ``symbol`` 打分。订单会为 ``long_score`` "
 "值最高的品种下达，:class:`pybroker.portfolio.Portfolio` 中任一时刻持有的多头仓位数量由 "
 ":meth:`pybroker.strategy.Strategy.set_max_long_positions` 指定。当通过 "
-":meth:`pybroker.strategy.Strategy.enable_rotation` 启用了轮动时，``long_score`` "
-"会驱动多头轮动，而 :class:`pybroker.strategy.Execution` 中设置的订单会被忽略。"
+":meth:`pybroker.strategy.Strategy.enable_rotation` 启用了轮动时， ``long_score``"
+" 会驱动多头轮动，而 :class:`pybroker.strategy.Execution` 中设置的订单会被忽略。"
 
 #: 85dcbfae19234863916f8071626b9657 997ebeab16064894ae80cc336b729252 of
 #: pybroker.context.ExecContext:80 pybroker.context.ExecResult:45
@@ -144,8 +148,9 @@ msgstr ""
 "在对卖出信号进行排序时用于给 ``symbol`` 打分。订单会为 ``short_score`` "
 "值最高的品种下达，:class:`pybroker.portfolio.Portfolio` 中任一时刻持有的空头仓位数量由 "
 ":meth:`pybroker.strategy.Strategy.set_max_short_positions` 指定。当通过 "
-":meth:`pybroker.strategy.Strategy.enable_rotation` 启用了轮动时，``short_score``"
-" 会驱动空头轮动，而 :class:`pybroker.strategy.Execution` 中设置的订单会被忽略。"
+":meth:`pybroker.strategy.Strategy.enable_rotation` 启用了轮动时， "
+"``short_score`` 会驱动空头轮动，而 :class:`pybroker.strategy.Execution` "
+"中设置的订单会被忽略。"
 
 #: 9448405d047d4d0b927896b8b3ce4cbc of pybroker.context.ExecContext:92
 msgid ""
@@ -278,7 +283,7 @@ msgid ""
 "where the max ``target_size`` is ``1``. For example, a ``target_size`` of"
 " ``0.1`` would represent 10% of deployable capital."
 msgstr ""
-"用于计算股数的可部署资本比例，其中 ``target_size`` 的最大值为 ``1``。例如，``target_size`` 为 "
+"用于计算股数的可部署资本比例，其中 ``target_size`` 的最大值为 ``1``。例如， ``target_size`` 为 "
 "``0.1`` 表示可部署资本的 10%。"
 
 #: cddc850df69d462d9cc2976967f099b8 of
@@ -529,13 +534,13 @@ msgstr ""
 msgid ""
 "**Every-n-bars** (``int``): e.g. ``ctx.interval(5)`` for bars formed from"
 " every 5 base bars."
-msgstr "**每 n 根 K 线**（``int``）：例如 ``ctx.interval(5)`` 表示由每 5 根基础 K 线形成的 K 线。"
+msgstr "**每 n 根 K 线** （``int``）：例如 ``ctx.interval(5)`` 表示由每 5 根基础 K 线形成的 K 线。"
 
 #: 04e02602f1644e94b6d5936d4f6c1145 of pybroker.context.ExecContext.interval:17
 msgid ""
 "**Duration** (``str``): e.g. ``ctx.interval(\"5m\")`` for fixed-duration "
 "bins (digits plus unit letter)."
-msgstr "**时长**（``str``）：例如 ``ctx.interval(\"5m\")`` 表示固定时长的分箱（数字加单位字母）。"
+msgstr "**时长** （``str``）：例如 ``ctx.interval(\"5m\")`` 表示固定时长的分箱（数字加单位字母）。"
 
 #: d987ce1e8109468bac8cf0e28b7923bf of pybroker.context.ExecContext.interval:20
 msgid ""
@@ -543,8 +548,8 @@ msgid ""
 "weekly bars. Weeks start on Monday, months on the first of the month, "
 "quarters in January, April, July, and October, and years on January 1."
 msgstr ""
-"**日历**（``str``）：例如 ``ctx.interval(\"weekly\")`` 表示日历周线 K 线。周从周一开始，月从每月 1 "
-"日开始，季度从 1、4、7、10 月开始，年从 1 月 1 日开始。"
+"**日历** （``str``）：例如 ``ctx.interval(\"weekly\")`` 表示日历周线 K 线。周从周一开始，月从每月 1"
+" 日开始，季度从 1、4、7、10 月开始，年从 1 月 1 日开始。"
 
 #: 309cb6d5a2674c32835d4bb14c5f1f10 of pybroker.context.ExecContext.interval:25
 msgid "For example::"
@@ -745,7 +750,7 @@ msgid ""
 "``1``."
 msgstr ""
 "目标配置，以可部署资本的比例表示，定义为投资组合权益乘以 "
-":attr:`pybroker.config.StrategyConfig.leverage`。``target`` 的最大值为 ``1``。"
+":attr:`pybroker.config.StrategyConfig.leverage`。 ``target`` 的最大值为 ``1``。"
 
 #: dfa22c1f89bc4c188ce2000c4ed0682d of
 #: pybroker.context.ExecContext.set_target_shares:10
@@ -754,9 +759,9 @@ msgid ""
 " :attr:`.sell_shares`. ``\"short\"`` sets :attr:`.sell_shares` to "
 "increase short exposure or :attr:`.cover_shares` to decrease it."
 msgstr ""
-"要再平衡的敞口方向。``\"long\"`` 会设置 :attr:`.buy_shares` 或 "
-":attr:`.sell_shares`。``\"short\"`` 会设置 :attr:`.sell_shares` 以增加空头敞口，或设置 "
-":attr:`.cover_shares` 以减少空头敞口。"
+"要再平衡的敞口方向。 ``\"long\"`` 会设置 :attr:`.buy_shares` 或 :attr:`.sell_shares`。 "
+"``\"short\"`` 会设置 :attr:`.sell_shares` 以增加空头敞口，或设置 :attr:`.cover_shares` "
+"以减少空头敞口。"
 
 #: ed7ad2d83c064562adddeee9c422ed4b of pybroker.context.ExecContext.short_pos:1
 msgid ""
@@ -1012,7 +1017,7 @@ msgstr "pybroker.portfolio.Portfolio"
 msgid ""
 "Rankings computed from rankable :attr:`.ExecContext.long_score` values, "
 "where ``1`` is the highest score."
-msgstr "根据可排序的 :attr:`.ExecContext.long_score` 值计算出的排名，``1`` 为最高分。"
+msgstr "根据可排序的 :attr:`.ExecContext.long_score` 值计算出的排名， ``1`` 为最高分。"
 
 #: 32f0be178e3b42a58eb5a5727f33d854 d0a257cfd0d2498fa12aeb8863960576 of
 #: pybroker.context.RotationContext:21 pybroker.context.RotationContext:29
@@ -1023,7 +1028,7 @@ msgstr "Mapping[str, int]"
 msgid ""
 "Rankings computed from rankable :attr:`.ExecContext.short_score` values, "
 "where ``1`` is the highest score."
-msgstr "根据可排序的 :attr:`.ExecContext.short_score` 值计算出的排名，``1`` 为最高分。"
+msgstr "根据可排序的 :attr:`.ExecContext.short_score` 值计算出的排名， ``1`` 为最高分。"
 
 #: 41acc0e28bd542eabd225f46e2abf0a2 of pybroker.context.RotationContext:35
 msgid "pybroker.config.StrategyConfig"
