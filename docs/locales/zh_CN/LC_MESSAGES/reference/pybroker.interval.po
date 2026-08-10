@@ -22,21 +22,23 @@ msgstr ""
 #: ../../source/reference/pybroker.interval.rst:2
 #: 626a9706dd9a4a8daa1d6f5a8ba6edbf
 msgid "pybroker.interval module"
-msgstr ""
+msgstr "pybroker.interval 模块"
 
 #: a374497a7d7641ce923afc75a2f652d5 of pybroker.interval:1
 msgid "Multi-interval bar compression utilities."
-msgstr ""
+msgstr "多区间 K 线压缩工具。"
 
 #: 7dfbef209af24d9893262069cab82ddd of pybroker.interval:3
 msgid "Copyright (C) 2023 Edward West. All rights reserved."
-msgstr ""
+msgstr "Copyright (C) 2023 Edward West. All rights reserved."
 
 #: 9cb4210f9a784bf68aaf7f35017db374 of pybroker.interval:5
 msgid ""
 "This code is licensed under Apache 2.0 with Commons Clause license (see "
 "LICENSE for details)."
 msgstr ""
+"This code is licensed under Apache 2.0 with Commons Clause license (see "
+"LICENSE for details)."
 
 #: f56fabdb8e4a4c74af04db41e1587e86 of pybroker.interval.BASE_INTERVAL:1
 msgid ""
@@ -44,47 +46,52 @@ msgid ""
 ":meth:`pybroker.model.ModelSource.intervals` to request the base-"
 "timeframe variant in addition to the listed compression intervals."
 msgstr ""
+":meth:`pybroker.indicator.Indicator.intervals` 和 "
+":meth:`pybroker.model.ModelSource.intervals` "
+"所接受的哨兵值，用于在列出的压缩区间之外，额外请求基础时间框架的版本。"
 
 #: 5aeae8ba80ed43ebb812d337fbdd1ab4 of pybroker.interval.CompressedBars:1
 msgid "OHLCV and custom columns aggregated into compressed bars."
-msgstr ""
+msgstr "聚合为压缩 K 线的 OHLCV 及自定义列。"
 
 #: 32837b7d303a41d99d3507afd876f9b9 of
 #: pybroker.interval.CompressedBars.slice_by_dates:1
 msgid "Returns compressed bars restricted to ``dates``."
-msgstr ""
+msgstr "返回限定在 ``dates`` 范围内的压缩 K 线。"
 
 #: 2748fdcf27b345f2a6d017f3596f70d5 of pybroker.interval.CompressedSymbolData:1
 msgid "Compressed bar data and alignment map for one symbol."
-msgstr ""
+msgstr "单个品种的压缩 K 线数据及对齐映射。"
 
 #: dc01eeccdb5147a3823980f318819f6d of
 #: pybroker.interval.INTERVAL_NAME_SEPARATOR:1
 msgid "Separator reserved for interval bindings in indicator and model names."
-msgstr ""
+msgstr "指标和模型名称中为区间绑定保留的分隔符。"
 
 #: 6d4b726ca77c46399eb2aecd389c646b of pybroker.interval.IntervalData:1
 msgid "Compressed data keyed by ``(symbol, interval)``."
-msgstr ""
+msgstr "以 ``(symbol, interval)`` 为键的压缩数据。"
 
 #: 0d7022c5876a43d99b74ab5ddac90fc4 of
 #: pybroker.interval.IntervalData.slice_for_test:1
 msgid "Returns a copy with ``completed`` arrays aligned to test dates."
-msgstr ""
+msgstr "返回一个 ``completed`` 数组已与测试日期对齐的副本。"
 
 #: 07c9731f98e745f0a67d599482fa282b of typing.Union:1
 msgid "Compression interval for multi-interval data."
-msgstr ""
+msgstr "用于多区间数据的压缩区间。"
 
 #: b878a97748bb4f5c931331de191827ef of typing.Union:3
 msgid "``int`` (``n > 1``): every ``n`` base bars (e.g. ``5``)."
-msgstr ""
+msgstr "``int``（``n > 1``）：每 ``n`` 根基础 K 线（例如 ``5``）。"
 
 #: a6d36cdce817424ca40dd16ca1ff06c1 of typing.Union:4
 msgid ""
 "``str`` duration: digits plus one unit letter — ``\"5m\"``, ``\"1h\"``, "
 "``\"30s\"``, or ``\"1d\"`` (letters: ``s``, ``m``, ``h``, ``d``)."
 msgstr ""
+"``str`` 时长：数字加单个单位字母 —— ``\"5m\"``、``\"1h\"``、``\"30s\"`` 或 "
+"``\"1d\"``（字母：``s``、``m``、``h``、``d``）。"
 
 #: 3df8cb31b6fd4b129805d4229c8f284b of typing.Union:6
 msgid ""
@@ -93,32 +100,35 @@ msgid ""
 "weeks start on Monday, months on the first of the month, quarters in "
 "January, April, July, and October, and years on January 1."
 msgstr ""
+"``str`` 日历：``\"daily\"``、``\"weekly\"``、``\"monthly\"``、``\"quarterly\"``"
+" 或 ``\"yearly\"``，对齐到日历边界：周从周一开始，月从每月 1 日开始，季度从 1、4、7、10 月开始，年从 1 月 1 "
+"日开始。"
 
 #: 2ca333af42e74933ac023808c961696c of
 #: pybroker.interval.base_timeframe_to_seconds:1
 msgid "Converts a base timeframe string to seconds."
-msgstr ""
+msgstr "将基础时间框架字符串转换为秒数。"
 
 #: c1dc16ab083c4cd5b386dfa76cb668fe of
 #: pybroker.interval.build_compressed_symbol_arrays:1
 msgid "Builds compressed-bar column arrays with base indicator names."
-msgstr ""
+msgstr "使用基础指标名称构建压缩 K 线的列数组。"
 
 #: c1f768fff4704239a9d06d66b9c5fae7 of
 #: pybroker.interval.build_compressed_symbol_df:1
 msgid "Builds a compressed-bar DataFrame with base indicator column names."
-msgstr ""
+msgstr "使用基础指标列名构建压缩 K 线的 DataFrame。"
 
 #: 274934a531124345856ccf8ba0881b7b of
 #: pybroker.interval.build_compressed_symbol_df:3
 msgid ""
 "Not used on the backtest hot path; prefer "
 ":func:`build_compressed_symbol_arrays`."
-msgstr ""
+msgstr "不用于回测热路径；请优先使用 :func:`build_compressed_symbol_arrays`。"
 
 #: 86811dc966dd423c9ecd8b364c067c29 of pybroker.interval.compress:1
 msgid "Compresses base bars into coarser interval bars."
-msgstr ""
+msgstr "将基础 K 线压缩为更粗粒度的区间 K 线。"
 
 #: 1d351b07bf5644e4801cf438db229635 of pybroker.interval.compress:3
 msgid ""
@@ -126,50 +136,52 @@ msgid ""
 "``completed[t]`` is the index of the last *completed* compressed bar at "
 "base bar ``t``, or ``-1`` during warmup."
 msgstr ""
+"返回压缩 K 线以及一个 ``completed`` 对齐映射，其中 ``completed[t]`` 是基础 K 线 ``t`` 处最后一根 "
+"*已完成* 压缩 K 线的索引，在预热期内为 ``-1``。"
 
 #: 55ffaa27e54d4bc884a860b8aa649c26 of pybroker.interval.compress_bars:1
 msgid "Compresses base OHLCV bars to a coarser ``interval``."
-msgstr ""
+msgstr "将基础 OHLCV K 线压缩为更粗粒度的 ``interval``。"
 
 #: ../../source/reference/pybroker.interval.rst
 #: 634362158dfd436f92f2a36910f02f34 c3568bcb80694a8fabd11dbab0573dd8
 #: dd663de7f1eb4d15b45dbb3a1c65b245 df4c68cbcaaf4039ac798a0624cf66ef
 #: fe854dea8dbd4039b58f9c349ad9edd9
 msgid "Parameters"
-msgstr ""
+msgstr "参数"
 
 #: b2e3316166734bdc8933386d6220eec5 of pybroker.interval.compress_bars:3
 msgid ""
 "Single-symbol :class:`~pybroker.common.BarData` or OHLCV "
 ":class:`pandas.DataFrame`."
-msgstr ""
+msgstr "单品种的 :class:`~pybroker.common.BarData`，或 OHLCV :class:`pandas.DataFrame`。"
 
 #: 75f551229ebf4ed88483a116ba86c091 of pybroker.interval.compress_bars:5
 msgid "Target compression interval."
-msgstr ""
+msgstr "目标压缩区间。"
 
 #: 14d2e268e81f4e05b7b70db710abc75b of pybroker.interval.compress_bars:6
 msgid "Declared base bar spacing (e.g. ``\"1m\"``, ``\"1d\"``)."
-msgstr ""
+msgstr "声明的基础 K 线间隔（例如 ``\"1m\"``、``\"1d\"``）。"
 
 #: ../../source/reference/pybroker.interval.rst
 #: a8a93fc33df347e6bd4d7a219d06d067 f8e5b343e9d04fdebb666c875525dfb2
 msgid "Returns"
-msgstr ""
+msgstr "返回"
 
 #: 3075f43abc6d40a682aa7344c0239e9a of pybroker.interval.compress_bars:8
 msgid "Compressed :class:`~pybroker.common.BarData`."
-msgstr ""
+msgstr "压缩后的 :class:`~pybroker.common.BarData`。"
 
 #: 02dac0b6d4234238abcf6e0f3076d672 of
 #: pybroker.interval.compress_intervals_from_frame:1
 msgid "Compresses each symbol to the intervals declared for it."
-msgstr ""
+msgstr "将每个品种压缩为其声明的区间。"
 
 #: d4bad05552c142b5898b885b2be37af4 of
 #: pybroker.interval.compress_intervals_from_frame:3
 msgid "Multi-symbol OHLCV frame."
-msgstr ""
+msgstr "多品种 OHLCV 数据帧。"
 
 #: b71bd006fc6e4518b35b3dd2415c5d17 of
 #: pybroker.interval.compress_intervals_from_frame:4
@@ -179,30 +191,32 @@ msgid ""
 "interval)`` pairs its executions declare rather than the full symbol x "
 "interval cross product."
 msgstr ""
+"将每个品种映射到其被压缩到的区间。映射中缺失的品种会被跳过，因此策略只会为其执行函数所声明的 ``(symbol, interval)`` "
+"组合付出计算成本，而不是完整的品种 x 区间笛卡尔积。"
 
 #: f5728ab892444624b8069e46a7756949 of
 #: pybroker.interval.compress_intervals_from_frame:8
 msgid "Custom data columns carried onto compressed bars."
-msgstr ""
+msgstr "随同压缩 K 线一起携带的自定义数据列。"
 
 #: 92478e26fc5a4095a126e685c0908d5d of
 #: pybroker.interval.compress_intervals_from_frame:9
 msgid "Bar spacing of the base feed, in seconds."
-msgstr ""
+msgstr "基础数据源的 K 线间隔，以秒为单位。"
 
 #: 45b38e523c494e3d89fe63f81461c176 of pybroker.interval.compress_symbol_df:1
 msgid "Compresses a single-symbol DataFrame."
-msgstr ""
+msgstr "压缩单品种 DataFrame。"
 
 #: ee8fb334603d45bdab3b25f1c672e41c of
 #: pybroker.interval.compress_symbol_from_frame:1
 msgid "Compresses one symbol from a multi-symbol frame without copying rows."
-msgstr ""
+msgstr "从多品种数据帧中压缩单个品种，且不复制行。"
 
 #: a6bfc8b511f240d4b153cd65b66e88c0 of
 #: pybroker.interval.compress_symbol_intervals_from_frame:1
 msgid "Compresses one symbol to multiple intervals with a single OHLCV extract."
-msgstr ""
+msgstr "通过一次 OHLCV 提取，将单个品种压缩为多个区间。"
 
 #: 5eabde8b5b5d41f488445e7dd9005608 of
 #: pybroker.interval.compress_symbol_intervals_from_frame:3
@@ -210,32 +224,32 @@ msgid ""
 "``rows`` optionally supplies this symbol's precomputed row indices, so a "
 "caller compressing many symbols groups the frame once instead of scanning"
 " the symbol column per symbol."
-msgstr ""
+msgstr "``rows`` 可选地提供该品种预先计算好的行索引，使得压缩多个品种的调用方只需对数据帧分组一次，而不必对每个品种都扫描一遍品种列。"
 
 #: 7c410976ba13414b8dfffaee01d59d47 of
 #: pybroker.interval.compressed_bars_to_bar_data:1
 msgid "Converts compressed OHLCV arrays to :class:`~pybroker.common.BarData`."
-msgstr ""
+msgstr "将压缩后的 OHLCV 数组转换为 :class:`~pybroker.common.BarData`。"
 
 #: 1774f8dfdd76428b9d85384252d32cea of pybroker.interval.format_interval:1
 msgid "Returns a stable string representation of ``interval``."
-msgstr ""
+msgstr "返回 ``interval`` 的稳定字符串表示。"
 
 #: 8a2df7bcde98480cb2381f5605794a29 of
 #: pybroker.interval.indicator_interval_name:1
 msgid "Returns the suffixed indicator name for an interval binding."
-msgstr ""
+msgstr "返回某个区间绑定所对应的带后缀指标名称。"
 
 #: d1ad404f5fc64c498324c10557e9be91 of pybroker.interval.is_valid_interval:1
 msgid "Returns whether ``interval`` is valid for the base feed bar spacing."
-msgstr ""
+msgstr "返回 ``interval`` 对于基础数据源的 K 线间隔是否有效。"
 
 #: cbbdd24868b44fe39444041232051bad of
 #: pybroker.interval.lookahead_train_dates:1
 msgid ""
 "Trims compressed train bar dates so the train/test hold-out is "
 "``lookahead`` compressed bars wide."
-msgstr ""
+msgstr "裁剪压缩训练 K 线的日期，使训练/测试之间的保留区间恰为 ``lookahead`` 根压缩 K 线宽。"
 
 #: 55c4cf77b6b94c80b5504172a890d9b3 of
 #: pybroker.interval.lookahead_train_dates:4
@@ -246,28 +260,31 @@ msgid ""
 "train bar satisfies ``compressed_index <= first_test_compressed_index - "
 "lookahead``."
 msgstr ""
+"向前分析的划分会保留 *基础* 时间框架的 ``lookahead`` 根 K 线，但绑定到某个区间的模型是基于压缩 K "
+"线拟合的，因此保留区间必须以压缩 K 线为单位重新度量：每根被保留的训练 K 线都满足 ``compressed_index <= "
+"first_test_compressed_index - lookahead``。"
 
 #: 3b85757f8a404a368c54a9413e0b978d of
 #: pybroker.interval.lookahead_train_dates:10
 msgid "Dates of the full compressed bar history for one symbol."
-msgstr ""
+msgstr "单个品种完整压缩 K 线历史的日期。"
 
 #: 43d171a88d144eab829a153b85f68d69 of
 #: pybroker.interval.lookahead_train_dates:11
 msgid ""
 "Base-timeframe train window dates; compressed bars are selected by "
 "membership of their closing date."
-msgstr ""
+msgstr "基础时间框架的训练窗口日期；压缩 K 线根据其收盘日期是否属于该集合来选取。"
 
 #: d39fd3f11cb34ae69c6bfce5910b0bbf of
 #: pybroker.interval.lookahead_train_dates:13
 msgid "Base-timeframe test window dates."
-msgstr ""
+msgstr "基础时间框架的测试窗口日期。"
 
 #: 541fb75e201640e48ca34e5fc5498f61 of
 #: pybroker.interval.lookahead_train_dates:14
 msgid "Number of compressed bars to hold out."
-msgstr ""
+msgstr "要保留的压缩 K 线数量。"
 
 #: f4f52a6f02ce41ada8286f047a2817a0 of
 #: pybroker.interval.lookahead_train_dates:16
@@ -277,83 +294,85 @@ msgid ""
 "requested train dates are returned unchanged, which matches the one-bar "
 "gap that date membership already produces."
 msgstr ""
+"``(dates_to_select, n_dropped)`` —— 要保留的训练 K 线日期，以及被丢弃的训练压缩 K 线数量。当 "
+"``lookahead <= 1`` 时，请求的训练日期会原样返回，这与日期归属本身已经产生的单根 K 线间隔一致。"
 
 #: 62c1fdd18f5c438e91d3af421798ff37 of pybroker.interval.model_interval_name:1
 msgid "Returns the suffixed model name for an interval binding."
-msgstr ""
+msgstr "返回某个区间绑定所对应的带后缀模型名称。"
 
 #: 7e4f89f47dd34aed8683da15c3e0a4d6 of pybroker.interval.normalize_interval:1
 msgid "Normalizes and validates a compression interval."
-msgstr ""
+msgstr "规范化并验证一个压缩区间。"
 
 #: c242c0a893b04e37b76fbb88907a7a59 of pybroker.interval.normalize_intervals:1
 msgid ""
 "Normalizes one or more compression intervals into a :class:`frozenset`, "
 "rejecting empty input and duplicates."
-msgstr ""
+msgstr "将一个或多个压缩区间规范化为一个 :class:`frozenset`，拒绝空输入和重复项。"
 
 #: 857c55633be84e9ab0f282068a9d9e1d of pybroker.interval.normalize_intervals:4
 msgid "A single :class:`TimeframeInterval` or an :class:`Iterable` of them."
-msgstr ""
+msgstr "单个 :class:`TimeframeInterval`，或由若干个组成的 :class:`Iterable`。"
 
 #: c3fd670dc66746f7b21be2de0da2ce0d of pybroker.interval.normalize_intervals:6
 msgid "Parameter name used in error messages."
-msgstr ""
+msgstr "错误消息中使用的参数名称。"
 
 #: 9d6d2432d49347688d39938f47b13ac3 of pybroker.interval.normalize_intervals:7
 msgid ""
 "If ``True``, the literal ``'base'`` passes through verbatim. Otherwise it"
 " is rejected like any other invalid interval."
-msgstr ""
+msgstr "如果为 ``True``，字面量 ``'base'`` 会原样通过。否则会像其他任何无效区间一样被拒绝。"
 
 #: 82d37180e62644e6be66d81fc3387ef6 of
 #: pybroker.interval.parse_indicator_interval_name:1
 msgid "Parses a suffixed indicator name into base name and interval."
-msgstr ""
+msgstr "将带后缀的指标名称解析为基础名称和区间。"
 
 #: bfe7621fcbdb41c58104cfaa47b181e3 of
 #: pybroker.interval.parse_model_interval_name:1
 msgid "Parses a suffixed model name into base name and interval."
-msgstr ""
+msgstr "将带后缀的模型名称解析为基础名称和区间。"
 
 #: 6e85319ec33648de8a83077c5a457309 of
 #: pybroker.interval.slice_arrays_by_dates:1
 msgid "Filters column arrays to rows whose dates are in ``selected``."
-msgstr ""
+msgstr "将列数组过滤为日期属于 ``selected`` 的行。"
 
 #: fdac8c031387409ea880e5419e326ad6 of
 #: pybroker.interval.slice_compressed_df_by_dates:1
 msgid "Filters a compressed DataFrame to rows whose dates are in ``dates``."
-msgstr ""
+msgstr "将压缩 DataFrame 过滤为日期属于 ``dates`` 的行。"
 
 #: 5213889560ac432e96eb0e85b5fe6a6f of
 #: pybroker.interval.slice_compressed_df_by_dates:3
 msgid "Not used on the backtest hot path; prefer :func:`slice_arrays_by_dates`."
-msgstr ""
+msgstr "不用于回测热路径；请优先使用 :func:`slice_arrays_by_dates`。"
 
 #: 7a8f9f25f6ae497291a7d91ceca8426a of
 #: pybroker.interval.symbol_dates_from_frame:1
 msgid "Extracts per-symbol test dates from a multi-symbol frame."
-msgstr ""
+msgstr "从多品种数据帧中提取每个品种的测试日期。"
 
 #: 9ccf6217a6254c6d9c948c29525a6730 of
 #: pybroker.interval.validate_base_timeframe_data:1
 msgid "Raises if bar timestamps are inconsistent with ``base_bar_seconds``."
-msgstr ""
+msgstr "如果 K 线时间戳与 ``base_bar_seconds`` 不一致，则引发异常。"
 
 #: c220e5dd1bfc414eb50ab270f1c024c5 of pybroker.interval.validate_interval:1
 msgid "Validates an interval against the base feed bar spacing."
-msgstr ""
+msgstr "根据基础数据源的 K 线间隔验证某个区间。"
 
 #: 447847331375451dabac19bfa2ba4b1e of pybroker.interval.validate_source_name:1
 msgid "Raises if ``name`` cannot be used as an indicator or model name."
-msgstr ""
+msgstr "如果 ``name`` 不能用作指标或模型名称，则引发异常。"
 
 #: af4102f6c18247f98bdb25a077397bcf of pybroker.interval.validate_source_name:3
 msgid "Name being registered."
-msgstr ""
+msgstr "正在注册的名称。"
 
 #: 93995acd89954e5d92f62d3af24da2a4 of pybroker.interval.validate_source_name:4
 msgid "``'indicator'`` or ``'model'``, used in the error message."
-msgstr ""
+msgstr "``'indicator'`` 或 ``'model'``，用于错误消息中。"
 

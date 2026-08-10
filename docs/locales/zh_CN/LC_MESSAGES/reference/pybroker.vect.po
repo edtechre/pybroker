@@ -21,15 +21,15 @@ msgstr ""
 
 #: ../../source/reference/pybroker.vect.rst:2 5e9921ded18649d4b66b9bc5e8ed3dfd
 msgid "pybroker.vect module"
-msgstr ""
+msgstr "pybroker.vect 模块"
 
 #: e2df01629df74bfab00be38badedda2c of pybroker.vect:1
 msgid "Contains vectorized utility functions."
-msgstr ""
+msgstr "包含向量化工具函数。"
 
 #: 219f44b5487e4018b75640cc3d65d6b3 of pybroker.vect.adx:1
 msgid "Computes Average Directional Movement Index."
-msgstr ""
+msgstr "计算平均动向指数（Average Directional Movement Index，ADX）。"
 
 #: ../../source/reference/pybroker.vect.rst 0c06eb88d3764dcda44566f161a66c6a
 #: 0fd4d3b646b94d568c04ea567dfe149a 1b21518de89e4d0bb8026052992d5996
@@ -50,7 +50,7 @@ msgstr ""
 #: f435c1a9266d437daf45e560eabb78d9 f5de7ecee91d49059841263659872f34
 #: ff9586a04ff5481a9d64f1d700163b7d
 msgid "Parameters"
-msgstr ""
+msgstr "参数"
 
 #: 047a35b762144cd4a33a647ed1eda717 213d8d72b8c94597bb35f093b9da0195
 #: 3ee42ceb51344696a1d0c3933a1f9571 43613836d9d04ff9b9bf3267c3853971
@@ -70,7 +70,7 @@ msgstr ""
 #: pybroker.vect.quadratic_trend:4 pybroker.vect.reactivity:3
 #: pybroker.vect.stochastic:3
 msgid "High prices."
-msgstr ""
+msgstr "最高价。"
 
 #: 050df55799684c669163271cf2a15707 0812592721e944b4af7d371a7f95023f
 #: 1c027e33db3a4e36ac9f404e8c52ae0f 2d80fae4cfcd4823a9e12647f938c143
@@ -90,7 +90,7 @@ msgstr ""
 #: pybroker.vect.quadratic_trend:5 pybroker.vect.reactivity:4
 #: pybroker.vect.stochastic:4
 msgid "Low prices."
-msgstr ""
+msgstr "最低价。"
 
 #: 0eb34554f69d41ada775d96b86ae61b8 1fe9ee5f7b1c4ab095527324e093199a
 #: 240a3e59005c4907914135f8e504bb72 3012823f7af7401ea36903a39c3e9b7e
@@ -114,7 +114,7 @@ msgstr ""
 #: pybroker.vect.reactivity:5 pybroker.vect.stochastic:5
 #: pybroker.vect.volume_weighted_ma_ratio:3
 msgid "Close prices."
-msgstr ""
+msgstr "收盘价。"
 
 #: 0324d55cd2eb4be7a8a217f40118a5b5 20def35078234372a4acc2363458c85a
 #: 27e8193f91b24e39a1a0fef8dac404ea 280751c823044eb691907170dd911540
@@ -139,7 +139,7 @@ msgstr ""
 #: pybroker.vect.quadratic_trend:7 pybroker.vect.reactivity:7
 #: pybroker.vect.stochastic:6 pybroker.vect.volume_weighted_ma_ratio:5
 msgid "Number of lookback bars."
-msgstr ""
+msgstr "回溯 K 线数量。"
 
 #: ../../source/reference/pybroker.vect.rst 0628ef1a541244baba78ba6f905a5c87
 #: 0f9d305a8fa94cfeb2c86331d140735b 20bf18e675cc488d82c7ceaada26f1a0
@@ -160,7 +160,7 @@ msgstr ""
 #: f2246dfb1df54955a12a4a80ef0c4a0e f91829872ecb4801806dbf3b78c500f6
 #: fe305e4639a84932913cca5055cb036b
 msgid "Returns"
-msgstr ""
+msgstr "返回"
 
 #: 2ef070bbcbcd4896af75a69ae2d9d2c9 5673aa2b6b904940bc7923e7fabc2521
 #: 5763a74ed23c46eaae2dc3d225db97ed 6a14e8f875f74ec8951ff643f2a04556
@@ -173,29 +173,31 @@ msgstr ""
 #: pybroker.vect.money_flow:10 pybroker.vect.stochastic:10
 #: pybroker.vect.stochastic_rsi:8
 msgid ":class:`numpy.ndarray` of computed values."
-msgstr ""
+msgstr "计算结果组成的 :class:`numpy.ndarray`。"
 
 #: a90d7d6594b24d55b0511e6e1bc3cc3d of pybroker.vect.aroon_diff:1
 msgid "Computes Aroon Upward Trend minus Aroon Downward Trend."
-msgstr ""
+msgstr "计算 Aroon 上升趋势指标减去 Aroon 下降趋势指标。"
 
 #: 17c4458d2b7f46eab01a8a7edcb6477b of pybroker.vect.aroon_down:1
 msgid "Computes Aroon Downward Trend."
-msgstr ""
+msgstr "计算 Aroon 下降趋势指标。"
 
 #: 8f7e068d9b3b4be1a48b492a13811d4d of pybroker.vect.aroon_up:1
 msgid "Computes Aroon Upward Trend."
-msgstr ""
+msgstr "计算 Aroon 上升趋势指标。"
 
 #: f1a079d17e5747ca9d46160213bb67e5 of pybroker.vect.atr:1
 msgid "Computes Average True Range (ATR)."
-msgstr ""
+msgstr "计算平均真实波幅（Average True Range，ATR）。"
 
 #: a88039fbfe8c4b158147195c7dac2b27 of pybroker.vect.atr:3
 msgid ""
 "True range is the greatest of ``high - low``, ``abs(high - previous "
 "close)``, and ``abs(low - previous close)``."
 msgstr ""
+"真实波幅取 ``high - low``、``abs(high - previous close)`` 和 ``abs(low - "
+"previous close)`` 三者中的最大值。"
 
 #: 19f15363880c43849f7cd27cdbdb3551 of pybroker.vect.atr:11
 msgid ""
@@ -203,17 +205,19 @@ msgid ""
 "The first ``lookback`` values are ``NaN``, since the true range of the "
 "first bar has no previous close."
 msgstr ""
+"由真实波幅的 ``lookback`` 根 K 线均值组成的 :class:`numpy.ndarray`。前 ``lookback`` 个值为 "
+"``NaN``，因为第一根 K 线的真实波幅没有前一根 K 线的收盘价可供参考。"
 
 #: b289a1704f82441b820d5790a6eb7f3b of pybroker.vect.close_minus_ma:1
 msgid "Computes Close Minus Moving Average."
-msgstr ""
+msgstr "计算收盘价减去移动平均线（Close Minus Moving Average）。"
 
 #: 1d4afeb3f43e403f8f48b893844ed50a 3698f93ccd9747b2b5776769b538cdbf
 #: 4f4f87c188c44a8fa6dc64dc401cf052 8a1e6c7ec17d47188259db9866bc9163 of
 #: pybroker.vect.close_minus_ma:7 pybroker.vect.cubic_trend:8
 #: pybroker.vect.linear_trend:8 pybroker.vect.quadratic_trend:8
 msgid "Lookback length used for Average True Range (ATR) normalization."
-msgstr ""
+msgstr "用于平均真实波幅（ATR）归一化的回溯长度。"
 
 #: 1885931402f046438ade017b9ac923f6 31dfcd4e9ed44a12a0699dbcfd9dd51b
 #: 37201827fd9f4d85a3ddf544ce3cff9e 776f5b29f41344f89ccf022f86e49efd
@@ -224,7 +228,7 @@ msgstr ""
 msgid ""
 "Increase > 1.0 for more compression of return values, decrease < 1.0 for "
 "less. Defaults to ``1.0``."
-msgstr ""
+msgstr "大于 ``1.0`` 会使返回值被压缩得更多，小于 ``1.0`` 则压缩得更少。默认为 ``1.0``。"
 
 #: 001708d3356c4a7dad0af04fd5fe7ca2 066578a5b2f74a469a87871ce2d7fc8f
 #: 0849522ba22f439c92e850d68a526f85 340d0ca963274e76848b251e4187c734
@@ -246,11 +250,11 @@ msgstr ""
 #: pybroker.vect.quadratic_trend:13 pybroker.vect.reactivity:12
 #: pybroker.vect.volume_momentum:9 pybroker.vect.volume_weighted_ma_ratio:9
 msgid ":class:`numpy.ndarray` of computed values ranging [-50, 50]."
-msgstr ""
+msgstr "计算结果组成的 :class:`numpy.ndarray`，取值范围为 [-50, 50]。"
 
 #: 96ad71833f564c9f82dd4b6576f75fc7 of pybroker.vect.cross:1
 msgid "Checks for crossover of ``a`` above ``b``."
-msgstr ""
+msgstr "检测 ``a`` 上穿 ``b`` 的交叉。"
 
 #: 03f7c54da6a341fe904c837ea030c323 53317142860e4f9282eb82b8bd9c2fb9
 #: 6419d423fd914747be5f14440d5b9ee4 9ddef2626bdf4058aba3feeeded70f9c
@@ -258,17 +262,17 @@ msgstr ""
 #: pybroker.vect.cross:4 pybroker.vect.highv:3 pybroker.vect.lowv:3
 #: pybroker.vect.sumv:3
 msgid ":class:`numpy.ndarray` of data."
-msgstr ""
+msgstr "数据组成的 :class:`numpy.ndarray`。"
 
 #: 25fa3cebc7494dab843e5e2fe676cb83 of pybroker.vect.cross:6
 msgid ""
 ":class:`numpy.ndarray` containing values of ``1`` when ``a`` crosses "
 "above ``b``, otherwise values of ``0``."
-msgstr ""
+msgstr "当 ``a`` 上穿 ``b`` 时取值为 ``1``，否则取值为 ``0`` 的 :class:`numpy.ndarray`。"
 
 #: d5f5b7a193974f4fb2a37917216acf1a of pybroker.vect.cubic_deviation:1
 msgid "Computes Deviation from Cubic Trend."
-msgstr ""
+msgstr "计算相对三次趋势的偏离度（Deviation from Cubic Trend）。"
 
 #: 179f3dc3918f4879add342b2341cba9c 21be4a1cbd1d415aaa4910b8e9e8c2d8
 #: 70f8329d85624e9e8f33f160043310e8 7ad32d47542649df87daaa2d70a405fc
@@ -279,7 +283,7 @@ msgstr ""
 #: pybroker.vect.linear_trend:3 pybroker.vect.quadratic_deviation:3
 #: pybroker.vect.quadratic_trend:3 pybroker.vect.stochastic_rsi:3
 msgid ":class:`numpy.ndarray` of input."
-msgstr ""
+msgstr "输入组成的 :class:`numpy.ndarray`。"
 
 #: 75aaaf0a4c624c46b1be2e6c6769931e 92c0f520add74d31a0ffb2a78ff33683
 #: a977aac7783a4e1391a8deb4d2219b8a ba9d1638b4b344a49229bc1e25a5ca31
@@ -291,15 +295,15 @@ msgstr ""
 msgid ""
 "Increase > 1.0 for more compression of return values, decrease < 1.0 for "
 "less. Defaults to ``0.6``."
-msgstr ""
+msgstr "大于 ``1.0`` 会使返回值被压缩得更多，小于 ``1.0`` 则压缩得更少。默认为 ``0.6``。"
 
 #: 8ed0f0cc346140a988a7ad24b9053429 of pybroker.vect.cubic_trend:1
 msgid "Computes Cubic Trend Strength."
-msgstr ""
+msgstr "计算三次趋势强度（Cubic Trend Strength）。"
 
 #: 30c6d6f5e9c241839a1e9c6deac5b8bb of pybroker.vect.delta_on_balance_volume:1
 msgid "Computes Delta On-Balance Volume."
-msgstr ""
+msgstr "计算能量潮变化量（Delta On-Balance Volume）。"
 
 #: 02e36acd3b924e9b895190cd00e34722 0bb5eae7526347069040672550500e80
 #: 186087c4ef624a2c8296af7ab6e1e89a 5a963fac279643e5985522504c8f8349
@@ -313,117 +317,117 @@ msgstr ""
 #: pybroker.vect.price_volume_fit:4 pybroker.vect.reactivity:6
 #: pybroker.vect.volume_momentum:3 pybroker.vect.volume_weighted_ma_ratio:4
 msgid "Trading volume."
-msgstr ""
+msgstr "成交量。"
 
 #: f8557db5851b4edb9889148278f84060 of pybroker.vect.delta_on_balance_volume:6
 msgid "Lag for differencing."
-msgstr ""
+msgstr "差分所使用的滞后期。"
 
 #: f40965910be945a1a385f047bfd2363c of pybroker.vect.detrended_rsi:1
 msgid "Computes Detrended Relative Strength Index (RSI)."
-msgstr ""
+msgstr "计算去趋势相对强弱指数（Detrended RSI）。"
 
 #: 8d70604c545141a2b76800ae91eb2180 of pybroker.vect.detrended_rsi:4
 msgid "Lookback for the short-term RSI."
-msgstr ""
+msgstr "短期 RSI 的回溯长度。"
 
 #: 2d55056393c743e8a4ae612248ddc014 of pybroker.vect.detrended_rsi:5
 msgid "Lookback for the long-term RSI."
-msgstr ""
+msgstr "长期 RSI 的回溯长度。"
 
 #: 0cb4ce0e113443d685bece185bfa236c of pybroker.vect.detrended_rsi:6
 msgid "Number of bars used for linear regressions."
-msgstr ""
+msgstr "用于线性回归的 K 线数量。"
 
 #: 7380003a5e354efb8992f3742ac1b138 of pybroker.vect.highv:1
 msgid "Calculates the highest values for every ``n`` period in ``array``."
-msgstr ""
+msgstr "计算 ``array`` 中每 ``n`` 个周期的最高值。"
 
 #: 0f775f926730468897f96cbb23fa2a48 a3be1e9638414845b3802d9d7ce68cc7
 #: ad44404d8b8d45d3ba8f75606122f833 of pybroker.vect.highv:4
 #: pybroker.vect.lowv:4 pybroker.vect.sumv:4
 msgid "Length of period."
-msgstr ""
+msgstr "周期长度。"
 
 #: e64262a438704c91862d5dfc227206f1 of pybroker.vect.highv:6
 msgid ""
 ":class:`numpy.ndarray` of the highest values for every ``n`` period in "
 "``array``."
-msgstr ""
+msgstr "``array`` 中每 ``n`` 个周期最高值组成的 :class:`numpy.ndarray`。"
 
 #: b84c19d332dd41aeb4aba857ccbe2872 of pybroker.vect.intraday_intensity:1
 msgid "Computes Intraday Intensity."
-msgstr ""
+msgstr "计算日内强度（Intraday Intensity）。"
 
 #: 06e50f0ba8454315a9c6ecac752f0c4c 38f06276660647a289ff8521b00f94dd
 #: c917d890379b4b659293369b0c3c4c16 of pybroker.vect.intraday_intensity:8
 #: pybroker.vect.money_flow:8 pybroker.vect.stochastic_rsi:6
 msgid "Amount of smoothing; <= 1 for none. Defaults to ``0``."
-msgstr ""
+msgstr "平滑量；``<= 1`` 表示不平滑。默认为 ``0``。"
 
 #: 352cf08bae4040d79d8cdccd60e8e829 of pybroker.vect.inverse_normal_cdf:1
 msgid "Computes the inverse CDF of the standard normal distribution."
-msgstr ""
+msgstr "计算标准正态分布的逆累积分布函数（inverse CDF）。"
 
 #: c665f5872ad44697bddebf0d15a526aa of pybroker.vect.laguerre_rsi:1
 msgid "Computes Laguerre Relative Strength Index (RSI)."
-msgstr ""
+msgstr "计算拉盖尔相对强弱指数（Laguerre RSI）。"
 
 #: 4a6a5acf895543f1834ce3819ff1c6b8 9f64224df2464b2abbb444080390e21c of
 #: pybroker.vect.laguerre_rsi:3 pybroker.vect.price_intensity:3
 msgid "Open prices."
-msgstr ""
+msgstr "开盘价。"
 
 #: ff5699c7de884d7ba2017b56494ce5ab of pybroker.vect.laguerre_rsi:7
 msgid "Fractal Energy length. Defaults to ``13``."
-msgstr ""
+msgstr "分形能量（Fractal Energy）长度。默认为 ``13``。"
 
 #: f72210d1763f4d59a154a6fa4f81b93c of pybroker.vect.linear_deviation:1
 msgid "Computes Deviation from Linear Trend."
-msgstr ""
+msgstr "计算相对线性趋势的偏离度（Deviation from Linear Trend）。"
 
 #: d233abc09ccc4cef8e6b719751a57600 of pybroker.vect.linear_trend:1
 msgid "Computes Linear Trend Strength."
-msgstr ""
+msgstr "计算线性趋势强度（Linear Trend Strength）。"
 
 #: 63ffe082ec63469fa84ecc36fc49c20e of pybroker.vect.lowv:1
 msgid "Calculates the lowest values for every ``n`` period in ``array``."
-msgstr ""
+msgstr "计算 ``array`` 中每 ``n`` 个周期的最低值。"
 
 #: 2988158a25494c9b84f8b0567a0a2427 of pybroker.vect.lowv:6
 msgid ""
 ":class:`numpy.ndarray` of the lowest values for every ``n`` period in "
 "``array``."
-msgstr ""
+msgstr "``array`` 中每 ``n`` 个周期最低值组成的 :class:`numpy.ndarray`。"
 
 #: 5f94aa496b694825a8ef2f27a61c9168 of pybroker.vect.macd:1
 msgid "Computes Moving Average Convergence Divergence."
-msgstr ""
+msgstr "计算指数平滑异同移动平均线（Moving Average Convergence Divergence，MACD）。"
 
 #: 6823f78543bd42748887eea98d5ea3e1 of pybroker.vect.macd:6
 msgid "Short-term lookback."
-msgstr ""
+msgstr "短期回溯长度。"
 
 #: f36c35e67a90485eb914808412b7902b of pybroker.vect.macd:7
 msgid "Long-term lookback."
-msgstr ""
+msgstr "长期回溯长度。"
 
 #: bacb708452ac4a018d13a3963fe1ee3a of pybroker.vect.macd:8
 msgid "Compute MACD minus smoothed if >= 2."
-msgstr ""
+msgstr "计算 MACD 减去其平滑值（当参数 ``>= 2`` 时）。"
 
 #: f7ba10cf38af4474a68b58764c4639f1 of pybroker.vect.money_flow:1
 msgid "Computes Chaikin's Money Flow."
-msgstr ""
+msgstr "计算佳庆资金流量指标（Chaikin's Money Flow）。"
 
 #: 4a479c7ad10e4166b880bb6fd0f146f6 of pybroker.vect.normal_cdf:1
 msgid "Computes the CDF of the standard normal distribution."
-msgstr ""
+msgstr "计算标准正态分布的累积分布函数（CDF）。"
 
 #: 134215afb60d40e7a29a3d5024d0c937 of
 #: pybroker.vect.normalized_negative_volume_index:1
 msgid "Computes Normalized Negative Volume Index."
-msgstr ""
+msgstr "计算归一化负成交量指标（Normalized Negative Volume Index）。"
 
 #: 4bffe5abcdde49dcb2954d6feb8c9578 ff45145c0bc141dda8993e8c26f06081 of
 #: pybroker.vect.normalized_negative_volume_index:6
@@ -431,136 +435,136 @@ msgstr ""
 msgid ""
 "Increase > 1.0 for more compression of return values, decrease < 1.0 for "
 "less. Defaults to ``0.5``."
-msgstr ""
+msgstr "大于 ``1.0`` 会使返回值被压缩得更多，小于 ``1.0`` 则压缩得更少。默认为 ``0.5``。"
 
 #: 094019ff31964cf5851e5d63638fefe1 of
 #: pybroker.vect.normalized_on_balance_volume:1
 msgid "Computes Normalized On-Balance Volume."
-msgstr ""
+msgstr "计算归一化能量潮指标（Normalized On-Balance Volume）。"
 
 #: 34e0f623b2754f1c85fa74c769a370c3 of
 #: pybroker.vect.normalized_positive_volume_index:1
 msgid "Computes Normalized Positive Volume Index."
-msgstr ""
+msgstr "计算归一化正成交量指标（Normalized Positive Volume Index）。"
 
 #: 4cb8f19a163b44869e1c98036e6c0ccc of pybroker.vect.price_change_oscillator:1
 msgid "Computes Price Change Oscillator."
-msgstr ""
+msgstr "计算价格变化振荡指标（Price Change Oscillator）。"
 
 #: 0711e011203d4c39b0044d0be3c36a3e 30bf1ec1299f4475b247b4035e2de5b5 of
 #: pybroker.vect.price_change_oscillator:6 pybroker.vect.volume_momentum:4
 msgid "Number of short lookback bars."
-msgstr ""
+msgstr "短期回溯 K 线数量。"
 
 #: 1c63260b4f7346f484699cba2cefa389 of pybroker.vect.price_change_oscillator:7
 msgid ""
 "Multiplier used to compute number of long lookback bars = ``multiplier * "
 "short_length``."
-msgstr ""
+msgstr "用于计算长期回溯 K 线数量的乘数：长期回溯长度 = ``multiplier * short_length``。"
 
 #: 46abcb2f328841b19f2a4d0ec305b787 of pybroker.vect.price_change_oscillator:9
 msgid ""
 "Increase > 1.0 for more compression of return values, decrease < 1.0 for "
 "less. Defaults to ``4.0``."
-msgstr ""
+msgstr "大于 ``1.0`` 会使返回值被压缩得更多，小于 ``1.0`` 则压缩得更少。默认为 ``4.0``。"
 
 #: 0562e376281947a7a7571ca4d4fdc9c7 of pybroker.vect.price_intensity:1
 msgid "Computes Price Intensity."
-msgstr ""
+msgstr "计算价格强度（Price Intensity）。"
 
 #: d6d9319638cb4520b00f4e4f56fe12fa of pybroker.vect.price_intensity:7
 msgid "Amount of smoothing. Defaults to ``0``."
-msgstr ""
+msgstr "平滑量。默认为 ``0``。"
 
 #: 529afdfad7fe4f20bb1919534ddd3fc2 of pybroker.vect.price_intensity:8
 msgid ""
 "Increase > 1.0 for more compression of return values, decrease < 1.0 for "
 "less. Defaults to ``0.8``."
-msgstr ""
+msgstr "大于 ``1.0`` 会使返回值被压缩得更多，小于 ``1.0`` 则压缩得更少。默认为 ``0.8``。"
 
 #: 1729e135ae914969bd97b15945637101 of pybroker.vect.price_volume_fit:1
 msgid "Computes Price Volume Fit."
-msgstr ""
+msgstr "计算价量拟合指标（Price Volume Fit）。"
 
 #: ee3849df185a406abc4e6cd35381970b of pybroker.vect.price_volume_fit:6
 msgid ""
 "Increase > 1.0 for more compression of return values, decrease < 1.0 for "
 "less. Defaults to ``9.0``."
-msgstr ""
+msgstr "大于 ``1.0`` 会使返回值被压缩得更多，小于 ``1.0`` 则压缩得更少。默认为 ``9.0``。"
 
 #: a72150cfb7b54c848a4aed53c44c95e4 of pybroker.vect.quadratic_deviation:1
 msgid "Computes Deviation from Quadratic Trend."
-msgstr ""
+msgstr "计算相对二次趋势的偏离度（Deviation from Quadratic Trend）。"
 
 #: 7f4ce30baf1f425dadbbd8ea027f0244 of pybroker.vect.quadratic_trend:1
 msgid "Computes Quadratic Trend Strength."
-msgstr ""
+msgstr "计算二次趋势强度（Quadratic Trend Strength）。"
 
 #: a00ee32d962e460983034bf099c11291 of pybroker.vect.reactivity:1
 msgid "Computes Reactivity."
-msgstr ""
+msgstr "计算反应性指标（Reactivity）。"
 
 #: ca2b8a8644a44216bc9b27d11384aa4a of pybroker.vect.reactivity:8
 msgid "Smoothing multiplier."
-msgstr ""
+msgstr "平滑乘数。"
 
 #: 88e9c866818d47559b257a2d3464282c of pybroker.vect.returnv:1
 msgid "Calculates returns."
-msgstr ""
+msgstr "计算收益率。"
 
 #: 2d54311506194087bb902cb5807601ae of pybroker.vect.returnv:3
 msgid "Return period. Defaults to 1."
-msgstr ""
+msgstr "收益率计算周期。默认为 1。"
 
 #: c542a22513374912925ea66aaf1e45a5 of pybroker.vect.returnv:5
 msgid ":class:`numpy.ndarray` of returns."
-msgstr ""
+msgstr "收益率组成的 :class:`numpy.ndarray`。"
 
 #: 748c87c0bde544328c44a4b73e3e5d0e of pybroker.vect.stochastic:1
 msgid "Computes Stochastic."
-msgstr ""
+msgstr "计算随机指标（Stochastic，KD）。"
 
 #: a98bc00d88ac43d2be3668394f3abbca of pybroker.vect.stochastic:7
 msgid ""
 "Number of times the raw stochastic is smoothed, either 0, 1, or 2 times. "
 "Defaults to ``0``."
-msgstr ""
+msgstr "原始随机值被平滑的次数，为 0、1 或 2 次。默认为 ``0``。"
 
 #: 014ccb789bf64acaab05740bbb7e032d of pybroker.vect.stochastic_rsi:1
 msgid "Computes Stochastic Relative Strength Index (RSI)."
-msgstr ""
+msgstr "计算随机相对强弱指数（Stochastic RSI）。"
 
 #: 2445be9a8315404ab25079cc68140667 of pybroker.vect.stochastic_rsi:4
 msgid "Lookback length for RSI calculation."
-msgstr ""
+msgstr "RSI 计算的回溯长度。"
 
 #: 486d36769c9643be9df188d09d34b9f6 of pybroker.vect.stochastic_rsi:5
 msgid "Lookback length for Stochastic calculation."
-msgstr ""
+msgstr "随机指标（Stochastic）计算的回溯长度。"
 
 #: 6e5470d43ed34fbbbc66b88421ac3598 of pybroker.vect.sumv:1
 msgid "Calculates the sums for every ``n`` period in ``array``."
-msgstr ""
+msgstr "计算 ``array`` 中每 ``n`` 个周期的总和。"
 
 #: 0af6543b50f944bdb6fe4cd741c7eec2 of pybroker.vect.sumv:6
 msgid ":class:`numpy.ndarray` of the sums for every ``n`` period in ``array``."
-msgstr ""
+msgstr "``array`` 中每 ``n`` 个周期总和组成的 :class:`numpy.ndarray`。"
 
 #: 1bd5124a9ab24637b5bba237d2e1dd76 of pybroker.vect.volume_momentum:1
 msgid "Computes Volume Momentum."
-msgstr ""
+msgstr "计算成交量动量（Volume Momentum）。"
 
 #: be1e117af47c44a9a9e9845e99a6be33 of pybroker.vect.volume_momentum:5
 msgid "Lookback multiplier. Defaults to ``2``."
-msgstr ""
+msgstr "回溯乘数。默认为 ``2``。"
 
 #: dfb741a2adf64381a7c58fb7123b774c of pybroker.vect.volume_momentum:6
 msgid ""
 "Increase > 1.0 for more compression of return values, decrease < 1.0 for "
 "less. Defaults to ``3.0``."
-msgstr ""
+msgstr "大于 ``1.0`` 会使返回值被压缩得更多，小于 ``1.0`` 则压缩得更少。默认为 ``3.0``。"
 
 #: c6c37d0ad4904f168866ae2be30ff943 of pybroker.vect.volume_weighted_ma_ratio:1
 msgid "Computes Volume-Weighted Moving Average Ratio."
-msgstr ""
+msgstr "计算成交量加权移动平均比率（Volume-Weighted Moving Average Ratio）。"
 
