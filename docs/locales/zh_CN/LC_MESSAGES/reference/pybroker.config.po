@@ -22,19 +22,19 @@ msgstr ""
 #: ../../source/reference/pybroker.config.rst:2
 #: e41724840cd2497ebb56c933578c5224
 msgid "pybroker.config module"
-msgstr ""
+msgstr "pybroker.config 模块"
 
 #: 0390e7c5ac814160a51b4aa97b2a53e5 of pybroker.config:1
 msgid "Contains configuration options."
-msgstr ""
+msgstr "包含配置选项。"
 
 #: 216689d9a41c4491b0990cbe19eb175a of pybroker.config.StrategyConfig:1
 msgid "Configuration options for :class:`pybroker.strategy.Strategy`."
-msgstr ""
+msgstr "用于 :class:`pybroker.strategy.Strategy` 的配置选项。"
 
 #: db8c3c735fe54c2490072683f5fcd62d of pybroker.config.StrategyConfig:5
 msgid "Starting cash of strategy."
-msgstr ""
+msgstr "策略的起始资金。"
 
 #: 1a9566392aac46548c294397ba66a170 28472deb7fe44e7aa489683ffaef4900
 #: 295629f824a743fa97865ad41c5b1260 2f2dbcc4eb5f4608be4b2e505bc37eb4
@@ -48,60 +48,62 @@ msgstr ""
 #: f8b5a3c2010444cf82596bec8a338e5b f8bd217d82e9430db3fa5bf5796ec211 of
 #: pybroker.config.StrategyConfig
 msgid "type"
-msgstr ""
+msgstr "类型"
 
 #: 5f3110578cb944378be95a052ef5fae2 75a73ab75a5b4b46b1c2497fd10b6d41
 #: 9ce94e7368d44a4db89543c8e07b3be1 9dd18d7d70224d8db80c8b6966e643a3 of
 #: pybroker.config.StrategyConfig:7 pybroker.config.StrategyConfig:28
 #: pybroker.config.StrategyConfig:144 pybroker.config.StrategyConfig:155
 msgid "float"
-msgstr ""
+msgstr "float"
 
 #: cb42c6f915934d51aea31fc5080a5437 of pybroker.config.StrategyConfig:11
 msgid ""
 ":class:`pybroker.common.FeeMode` for calculating brokerage fees. Supports"
 " one of:"
-msgstr ""
+msgstr "用于计算经纪商手续费的 :class:`pybroker.common.FeeMode`。支持以下选项之一："
 
 #: 07692eb83552431e89cdde1089468038 of pybroker.config.StrategyConfig:14
 msgid "``ORDER_PERCENT``: Fee is a percentage of order amount."
-msgstr ""
+msgstr "``ORDER_PERCENT``：手续费为订单金额的百分比。"
 
 #: b9246b5b3e6c4685beb94058da90f22f of pybroker.config.StrategyConfig:15
 msgid "``PER_ORDER``: Fee is a constant amount per order."
-msgstr ""
+msgstr "``PER_ORDER``：手续费为每笔订单的固定金额。"
 
 #: 21ae889359d4414fb820dd696dd7076e of pybroker.config.StrategyConfig:16
 msgid "``PER_SHARE``: Fee is a constant amount per share in order."
-msgstr ""
+msgstr "``PER_SHARE``：手续费为订单中每股的固定金额。"
 
 #: 2696753ff16e417db9aa5cbb068cb0c5 of pybroker.config.StrategyConfig:17
 msgid "``Callable[[FeeInfo], Decimal]``: Fees are calculated using a"
-msgstr ""
+msgstr "``Callable[[FeeInfo], Decimal]``：手续费的计算方式为，通过一个"
 
 #: a139331959ee4df5aa3bccad32d551f8 of pybroker.config.StrategyConfig:18
 msgid "custom ``Callable`` that is passed :class:`pybroker.common.FeeInfo`."
-msgstr ""
+msgstr "接收 :class:`pybroker.common.FeeInfo` 的自定义 ``Callable``。"
 
 #: af73d9b45d844279981fd63fadb119d8 of pybroker.config.StrategyConfig:20
 msgid "``None``: Fees are disabled (default)."
-msgstr ""
+msgstr "``None``：禁用手续费（默认值）。"
 
 #: f89fb3dfd3b7484ba1e696e13d06c708 of pybroker.config.StrategyConfig:22
 msgid ""
 "pybroker.common.FeeMode | Callable[[pybroker.common.FeeInfo], "
 "decimal.Decimal] | None"
 msgstr ""
+"pybroker.common.FeeMode | Callable[[pybroker.common.FeeInfo], "
+"decimal.Decimal] | None"
 
 #: cf38beabf1d742069f6b864548ba5743 of pybroker.config.StrategyConfig:26
 msgid "Brokerage fee amount."
-msgstr ""
+msgstr "经纪商手续费金额。"
 
 #: 3c8eb9521f324a03bad4045283f8d4c3 of pybroker.config.StrategyConfig:32
 msgid ""
 "Whether to enable trading fractional shares. Set to ``True`` for crypto "
 "trading. Defaults to ``False``."
-msgstr ""
+msgstr "是否启用碎股（fractional shares）交易。加密货币交易请设置为 ``True``。默认为 ``False``。"
 
 #: 05bd43559c7d412085aba07ba8027d81 1c2887993660413aab36d786f3a5459b
 #: 369bcc50d5c34cf9bbbdb618f46e62fb 5e543ad144ef46c8b8557662d62e1d5a
@@ -112,61 +114,61 @@ msgstr ""
 #: pybroker.config.StrategyConfig:128 pybroker.config.StrategyConfig:136
 #: pybroker.config.StrategyConfig:166 pybroker.config.StrategyConfig:176
 msgid "bool"
-msgstr ""
+msgstr "bool"
 
 #: 922e19176c234817b7069fb2823120c5 of pybroker.config.StrategyConfig:39
 msgid "Whether to round fill prices to the nearest cent. Defaults to ``True``."
-msgstr ""
+msgstr "是否将成交价格四舍五入到最接近的美分。默认为 ``True``。"
 
 #: 1e9a5a2263924720810738f80f48d7f1 of pybroker.config.StrategyConfig:46
 msgid "Position mode for :class:`pybroker.strategy.Strategy`. Supports one of:"
-msgstr ""
+msgstr "用于 :class:`pybroker.strategy.Strategy` 的仓位模式。支持以下选项之一："
 
 #: e05cf74a9158468b8e4839ad29a0e4f8 of pybroker.config.StrategyConfig:49
 msgid "``DEFAULT``: Long and short positions."
-msgstr ""
+msgstr "``DEFAULT``：多头和空头仓位。"
 
 #: f3c2ecee7dc14461bcefe9c38da46982 of pybroker.config.StrategyConfig:50
 msgid "``LONG_ONLY``: Long-only positions."
-msgstr ""
+msgstr "``LONG_ONLY``：仅多头仓位。"
 
 #: 6f42fb1b9555467c9e6aa20abc0e02d7 of pybroker.config.StrategyConfig:51
 msgid "``SHORT_ONLY``: Short-only positions."
-msgstr ""
+msgstr "``SHORT_ONLY``：仅空头仓位。"
 
 #: 75c9b1251c9e4d40a9b1a47039c590ed of pybroker.config.StrategyConfig:53
 msgid "pybroker.common.PositionMode"
-msgstr ""
+msgstr "pybroker.common.PositionMode"
 
 #: 0900bb193dc447c7ad70e82d5097c1b2 of pybroker.config.StrategyConfig:57
 msgid ""
 "Number of bars before placing an order for a buy signal. The default "
 "value of ``1`` places a buy order on the next bar. Must be > ``0``."
-msgstr ""
+msgstr "买入信号触发到下单之间等待的 K 线数量。默认值 ``1`` 表示在下一根 K 线下达买单。必须 > ``0``。"
 
 #: 03b2b2d656cb4f638730609dd2a9c30c 062b99c9541843d29df19cbadfceb947
 #: 8ec2e3ccb95249c9bb3ac5ea2a18dd53 of pybroker.config.StrategyConfig:61
 #: pybroker.config.StrategyConfig:69 pybroker.config.StrategyConfig:76
 msgid "int"
-msgstr ""
+msgstr "int"
 
 #: 608ee9ccd8534e82a7db1305dfcc9219 of pybroker.config.StrategyConfig:65
 msgid ""
 "Number of bars before placing an order for a sell signal. The default "
 "value of ``1`` places a sell order on the next bar. Must be > ``0``."
-msgstr ""
+msgstr "卖出信号触发到下单之间等待的 K 线数量。默认值 ``1`` 表示在下一根 K 线下达卖单。必须 > ``0``。"
 
 #: 2191c829ac8b45ef803231658f173740 of pybroker.config.StrategyConfig:73
 msgid ""
 "Number of samples used to compute boostrap metrics. Defaults to "
 "``10_000``."
-msgstr ""
+msgstr "用于计算自助法（bootstrap）指标的样本数量。默认为 ``10_000``。"
 
 #: 00f8d3032cfb47598a4642cea3b94b30 of pybroker.config.StrategyConfig:80
 msgid ""
 "Whether to automatically exit any open positions on the last bar of data "
 "available for a symbol. Defaults to ``False``."
-msgstr ""
+msgstr "是否在某个品种可用数据的最后一根 K 线上自动平掉所有未平仓头寸。默认为 ``False``。"
 
 #: 49f27a10097b4d4883a939930c901096 of pybroker.config.StrategyConfig:88
 msgid ""
@@ -174,6 +176,8 @@ msgid ""
 ":attr:`.exit_on_last_bar` is ``True``. Defaults to "
 ":attr:`pybroker.common.PriceType.MIDDLE`."
 msgstr ""
+"当 :attr:`.exit_on_last_bar` 为 ``True`` 时，用于回补未平仓空头仓位的成交价格。默认为 "
+":attr:`pybroker.common.PriceType.MIDDLE`。"
 
 #: ca1469504c014a43afc0f39a3344027e ef5fc558cb8241ebb7656578b972353c of
 #: pybroker.config.StrategyConfig:92 pybroker.config.StrategyConfig:100
@@ -181,6 +185,8 @@ msgid ""
 "pybroker.common.PriceType | Callable[[str, pybroker.common.BarData], int "
 "| float | decimal.Decimal]"
 msgstr ""
+"pybroker.common.PriceType | Callable[[str, pybroker.common.BarData], int "
+"| float | decimal.Decimal]"
 
 #: 231294ad88d94931834332aaa74e9952 of pybroker.config.StrategyConfig:96
 msgid ""
@@ -188,6 +194,8 @@ msgid ""
 ":attr:`.exit_on_last_bar` is ``True``. Defaults to "
 ":attr:`pybroker.common.PriceType.MIDDLE`."
 msgstr ""
+"当 :attr:`.exit_on_last_bar` 为 ``True`` 时，用于卖出未平仓多头仓位的成交价格。默认为 "
+":attr:`pybroker.common.PriceType.MIDDLE`。"
 
 #: 7415cc2bd36946abbccfc09522c96113 of pybroker.config.StrategyConfig:104
 msgid ""
@@ -197,10 +205,12 @@ msgid ""
 ":attr:`.interest_rate`, and is therefore required when ``interest_rate`` "
 "is set."
 msgstr ""
+"用于将评估指标年化的每年观测数量。例如，日线收益率使用 ``252`` 来年化夏普比率。该值还决定了 :attr:`.interest_rate`"
+" 的计提周期，因此在设置 ``interest_rate`` 时必须同时设置本参数。"
 
 #: 4b101cdd3b494ad59ce5e27e57470a7d of pybroker.config.StrategyConfig:110
 msgid "int | None"
-msgstr ""
+msgstr "int | None"
 
 #: a5b0401fe7a14455b2e5a476729f71a6 of pybroker.config.StrategyConfig:114
 msgid ""
@@ -209,18 +219,25 @@ msgid ""
 "base-timeframe values only; an interval-bound indicator or model appears "
 "only when ``'base'`` is included in its binding. Defaults to ``False``."
 msgstr ""
+"为 ``True`` 时，K 线数据、指标数据和模型预测结果会随 :class:`pybroker.strategy.TestResult` "
+"一并返回。信号仅包含基础时间框架的值；仅当绑定中包含 ``'base'`` 时，绑定到某个区间的指标或模型才会出现在信号中。默认为 "
+"``False``。"
 
 #: 9ccf5d5407cf4888b1cd65b89f523e19 of pybroker.config.StrategyConfig:125
 msgid ""
 "When ``True``, then stop values are returned with "
 ":class:`pybroker.strategy.TestResult`. Defaults to ``False``."
 msgstr ""
+"为 ``True`` 时，止损值会随 :class:`pybroker.strategy.TestResult` 一并返回。默认为 "
+"``False``。"
 
 #: 42e87993d0914ccab4bf5c6970eb65b3 of pybroker.config.StrategyConfig:132
 msgid ""
 "When ``True``, round values in :class:`pybroker.strategy.TestResult` up "
 "to the nearest cent. Defaults to ``True``."
 msgstr ""
+"为 ``True`` 时，:class:`pybroker.strategy.TestResult` 中的数值会被四舍五入到最接近的美分。默认为 "
+"``True``。"
 
 #: ab09d696a0c54c40a5a1eb1c4e721328 of pybroker.config.StrategyConfig:140
 msgid ""
@@ -228,6 +245,8 @@ msgid ""
 " Default ``1.0`` uses cash-only buying. ``2.0`` allows positions up to 2x"
 " equity. Must be ``>= 1.0``."
 msgstr ""
+"多头和空头仓位购买力所使用的账户杠杆倍数。默认值 ``1.0`` 表示仅使用现金买入。``2.0`` 允许持有最多 2 倍权益的仓位。必须 "
+"``>= 1.0``。"
 
 #: 182a8f0dd65d4127ad98262b8c836b47 of pybroker.config.StrategyConfig:148
 msgid ""
@@ -237,6 +256,9 @@ msgid ""
 "``interest_rate / bars_per_year``, so :attr:`.bars_per_year` is required "
 "when this is set. Defaults to ``0`` (disabled)."
 msgstr ""
+"以百分比表示的年利率，作用于净现金余额（``cash - margin_loan``）。净现金为负时收取利息，为正时计入利息收益。按每根 K 线 "
+"``interest_rate / bars_per_year`` 的比例计提一次，因此设置本参数时必须同时设置 "
+":attr:`.bars_per_year`。默认为 ``0``（禁用）。"
 
 #: 0e4918710af341da968c8e45841bc8bc of pybroker.config.StrategyConfig:159
 msgid ""
@@ -246,6 +268,10 @@ msgid ""
 " for :class:`pybroker.strategy.TestResult` and "
 ":class:`pybroker.eval.EvalMetrics`."
 msgstr ""
+"为 ``True`` 时，会在每根 K 线将完整的 :class:`pybroker.portfolio.PortfolioBar` 快照追加到 "
+":attr:`pybroker.portfolio.Portfolio.bars`。为 ``False``（默认）时，逐 K "
+"线指标会存储在一个紧凑缓冲区中，供 :class:`pybroker.strategy.TestResult` 和 "
+":class:`pybroker.eval.EvalMetrics` 使用。"
 
 #: ec227c2d0a174a519f0c9ddbe8a4b805 of pybroker.config.StrategyConfig:170
 msgid ""
@@ -254,29 +280,7 @@ msgid ""
 "bar. When ``False`` (default), "
 ":attr:`pybroker.strategy.TestResult.positions` is empty."
 msgstr ""
-
-#~ msgid ""
-#~ "Deprecated. Use "
-#~ ":meth:`pybroker.strategy.Strategy.set_max_long_positions`. "
-#~ "Maximum number of long positions that"
-#~ " can be held at any time in "
-#~ ":class:`pybroker.portfolio.Portfolio`. Unlimited when "
-#~ "``None``. Defaults to ``None``."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Deprecated. Use "
-#~ ":meth:`pybroker.strategy.Strategy.set_max_short_positions`. "
-#~ "Maximum number of short positions that"
-#~ " can be held at any time in "
-#~ ":class:`pybroker.portfolio.Portfolio`. Unlimited when "
-#~ "``None``. Defaults to ``None``."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "When ``True``, then bar data, indicator"
-#~ " data, and model predictions are "
-#~ "returned with :class:`pybroker.strategy.TestResult`. "
-#~ "Defaults to ``False``."
-#~ msgstr ""
+"为 ``True`` 时，会在每根 K 线将完整的 :class:`pybroker.portfolio.PositionBar` 快照追加到 "
+":attr:`pybroker.portfolio.Portfolio.position_bars`。为 "
+"``False``（默认）时，:attr:`pybroker.strategy.TestResult.positions` 为空。"
 

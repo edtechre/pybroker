@@ -21,197 +21,201 @@ msgstr ""
 
 #: ../../source/reference/pybroker.cache.rst:2 a1d61c2cb2944c65972b31b439f5ddd5
 msgid "pybroker.cache module"
-msgstr ""
+msgstr "pybroker.cache 模块"
 
 #: 869803fc15c14d0bbdc004f4c25ce526 of pybroker.cache:1
 msgid "Contains caching utilities."
-msgstr ""
+msgstr "包含缓存相关的工具。"
 
 #: 899343ac7c31493fb48bc6e66acb7a7e of pybroker.cache:3
 msgid "Copyright (C) 2023 Edward West. All rights reserved."
-msgstr ""
+msgstr "Copyright (C) 2023 Edward West. All rights reserved."
 
 #: 7f860c0dae404b9f94d212450e8caf0c of pybroker.cache:5
 msgid ""
 "This code is licensed under Apache 2.0 with Commons Clause license (see "
 "LICENSE for details)."
 msgstr ""
+"This code is licensed under Apache 2.0 with Commons Clause license (see "
+"LICENSE for details)."
 
 #: 9b72e3a92c084f0bae803b9fda13ff35 of pybroker.cache.CacheDateFields:1
 msgid "Date fields for keying cache data."
-msgstr ""
+msgstr "用于为缓存数据生成键的日期字段。"
 
 #: f0b76f506aa849c8bc7c347d736886da of pybroker.cache.CacheDateFields:5
 msgid "Start date of cache data."
-msgstr ""
+msgstr "缓存数据的起始日期。"
 
 #: 044fb3eec1584502b6209c77f869e2e4 1b1519c35e2740d89ad22416417b3a9b
 #: 309c9e5793f54707865f70b6563a14ee 52d1fd8147bc4b6788365ef0efd4be74
 #: 89ece4116b684ae8af15c1a2fcb091ec of pybroker.cache.CacheDateFields
 msgid "type"
-msgstr ""
+msgstr "类型"
 
 #: a4fc16edde534b8e946dce5edae86d75 e09fbb91c7d1434b9efa22c1acbb5204 of
 #: pybroker.cache.CacheDateFields:7 pybroker.cache.CacheDateFields:13
 msgid "datetime.datetime"
-msgstr ""
+msgstr "datetime.datetime"
 
 #: 093b40ab309f4c96824303881ffcbd7f of pybroker.cache.CacheDateFields:11
 msgid "End date of cache data."
-msgstr ""
+msgstr "缓存数据的结束日期。"
 
 #: c040bc9a7d8d480e80adb9c1bd4d4279 of pybroker.cache.CacheDateFields:17
 msgid "Timeframe resolution of cache data represented in seconds."
-msgstr ""
+msgstr "以秒表示的缓存数据时间框架分辨率。"
 
 #: 7bda18fc0538465087f2e22401b9ecc6 of pybroker.cache.CacheDateFields:19
 msgid "int"
-msgstr ""
+msgstr "int"
 
 #: f74e19025b054fbcbcada9bb25981961 of pybroker.cache.CacheDateFields:23
 msgid ""
 "``tuple[str, str]`` of times of day (e.g. 9:00-9:30 AM) that were used to"
 " filter the cache data."
-msgstr ""
+msgstr "用于过滤缓存数据的时间段，为 ``tuple[str, str]`` 形式（例如 9:00-9:30 AM）。"
 
 #: 82fa114a920d413488c9a80e9d510f2e of pybroker.cache.CacheDateFields:26
 msgid "tuple[str, str] | None"
-msgstr ""
+msgstr "tuple[str, str] | None"
 
 #: 6fe971b95b734eeaabfa6324644988d5 of pybroker.cache.CacheDateFields:30
 msgid ""
 "Days (e.g. ``\"mon\"``, ``\"tues\"`` etc.) that were used to filter the "
 "cache data."
-msgstr ""
+msgstr "用于过滤缓存数据的星期（例如 ``\"mon\"``、``\"tues\"`` 等）。"
 
 #: ea67bf6f7e01467688abe7a43cef12d3 of pybroker.cache.CacheDateFields:33
 msgid "tuple[int] | None"
-msgstr ""
+msgstr "tuple[int] | None"
 
 #: d8b3ad87d33340cfa35bff753e6c0f66 of pybroker.cache.DataSourceCacheKey:1
 msgid "Cache key used for :class:`pybroker.data.DataSource` data."
-msgstr ""
+msgstr "用于 :class:`pybroker.data.DataSource` 数据的缓存键。"
 
 #: ed49338109b6473bb028277665abd7ba of pybroker.cache.IndicatorCacheKey:1
 msgid "Cache key used for indicator data."
-msgstr ""
+msgstr "用于指标数据的缓存键。"
 
 #: 40f9f38d96ba49c89c64c6ecc703c4c0 of pybroker.cache.ModelCacheKey:1
 msgid "Cache key used for trained models."
-msgstr ""
+msgstr "用于已训练模型的缓存键。"
 
 #: cd2c9e04d378423ba55ec69a35fdde51 of pybroker.cache.clear_caches:1
 msgid ""
 "Clears cached data from all caches. :meth:`enable_caches` must be called "
 "first before clearing."
-msgstr ""
+msgstr "清除所有缓存中的数据。清除前必须先调用 :meth:`enable_caches`。"
 
 #: b0dcdbb5814e415dad7507fc2ca3b679 of pybroker.cache.clear_data_source_cache:1
 msgid ""
 "Clears data cached from :class:`pybroker.data.DataSource`\\ s. "
 ":meth:`enable_data_source_cache` must be called first before clearing."
 msgstr ""
+"清除从 :class:`pybroker.data.DataSource`\\ 缓存的数据。清除前必须先调用 "
+":meth:`enable_data_source_cache`。"
 
 #: f978d84c3dc94bd4bdc52b46583fcb20 of pybroker.cache.clear_indicator_cache:1
 msgid ""
 "Clears cached indicator data. :meth:`enable_indicator_cache` must be "
 "called first before clearing."
-msgstr ""
+msgstr "清除已缓存的指标数据。清除前必须先调用 :meth:`enable_indicator_cache`。"
 
 #: afa469519ce64d60b16057cf1fa2fdcf of pybroker.cache.clear_model_cache:1
 msgid ""
 "Clears cached trained models. :meth:`enable_model_cache` must be called "
 "first before clearing."
-msgstr ""
+msgstr "清除已缓存的已训练模型。清除前必须先调用 :meth:`enable_model_cache`。"
 
 #: c0088d61947b48deafa6de2d20d4e34c of pybroker.cache.disable_caches:1
 msgid "Disables all caches."
-msgstr ""
+msgstr "禁用所有缓存。"
 
 #: e9268c493c91415096b5deec289d9744 of
 #: pybroker.cache.disable_data_source_cache:1
 msgid ""
 "Disables caching data retrieved from :class:`pybroker.data.DataSource`\\ "
 "s."
-msgstr ""
+msgstr "禁用对从 :class:`pybroker.data.DataSource`\\ 获取的数据进行缓存。"
 
 #: 1149a349f94e44e5b4b50c6ed9dc19d6 of pybroker.cache.disable_indicator_cache:1
 msgid "Disables caching indicator data."
-msgstr ""
+msgstr "禁用指标数据缓存。"
 
 #: 0581d55f7e2a46588a1b07d326ca13f6 of pybroker.cache.disable_model_cache:1
 msgid "Disables caching trained models."
-msgstr ""
+msgstr "禁用已训练模型缓存。"
 
 #: 0ef841b0907147be8b01a4c343d3c5bf of pybroker.cache.enable_caches:1
 msgid "Enables all caches."
-msgstr ""
+msgstr "启用所有缓存。"
 
 #: ../../source/reference/pybroker.cache.rst 2641ca4686f141d6bdc42528b0b79b6b
 #: 55844fff5daf4731bce6577744431b73 d4ffc0910b6b4134ad1b8b802953bee7
 #: f0a39c74c440425494481386633a6960
 msgid "Parameters"
-msgstr ""
+msgstr "参数"
 
 #: 7e29f202ae624aa5b01685a0c768495e of pybroker.cache.enable_caches:3
 msgid "Namespace shared by cached data."
-msgstr ""
+msgstr "缓存数据共用的命名空间。"
 
 #: 3ca03638bdc84eae863c4ad40b915e63 4e91a423ed5f48629bc9bc1b30984f64 of
 #: pybroker.cache.enable_caches:4 pybroker.cache.enable_data_source_cache:5
 msgid "Directory used to store cached data."
-msgstr ""
+msgstr "用于存储缓存数据的目录。"
 
 #: 044a0ca32ef149e0af46aef95eefd8c8 of pybroker.cache.enable_caches:5
 msgid "Maximum in-process L1 cache entries per cache."
-msgstr ""
+msgstr "每个缓存中进程内 L1 缓存条目的最大数量。"
 
 #: 55bffa54436b40f4b0d04869c77ee61d of
 #: pybroker.cache.enable_data_source_cache:1
 msgid ""
 "Enables caching of data retrieved from "
 ":class:`pybroker.data.DataSource`\\ s."
-msgstr ""
+msgstr "启用对从 :class:`pybroker.data.DataSource`\\ 获取的数据进行缓存。"
 
 #: 71b405de93574427b1f7c61c8a22a0c1 83f222816e3f4f4b9629e3b1fd64cb93
 #: a64ab339f52149089778f95ba22c2bfd of
 #: pybroker.cache.enable_data_source_cache:4
 #: pybroker.cache.enable_indicator_cache:3 pybroker.cache.enable_model_cache:3
 msgid "Namespace of the cache."
-msgstr ""
+msgstr "该缓存的命名空间。"
 
 #: a0696073374747db98fe3c2bd11f4410 b593d3201511473fa26969aec1371dfe
 #: e9ef249a56c54156b3f9f79163f336ea of
 #: pybroker.cache.enable_data_source_cache:6
 #: pybroker.cache.enable_indicator_cache:5 pybroker.cache.enable_model_cache:5
 msgid "Maximum in-process L1 cache entries."
-msgstr ""
+msgstr "进程内 L1 缓存条目的最大数量。"
 
 #: ../../source/reference/pybroker.cache.rst 6b49f8d287d040d2bf568477f88d4167
 #: 9a9ccf3115634f789aaf966f9997dd78 f0f5c9c4fc8c47d1bc9c4260735ec509
 msgid "Returns"
-msgstr ""
+msgstr "返回"
 
 #: 1b5885ab19d84fc8b2566dde48ae6b94 54eec3dcd92d4c3ea44833e0512e6ed1
 #: 6378a3ec535e4b478ae3a694adeb9b8a of
 #: pybroker.cache.enable_data_source_cache:8
 #: pybroker.cache.enable_indicator_cache:7 pybroker.cache.enable_model_cache:7
 msgid ":class:`diskcache.Cache` instance."
-msgstr ""
+msgstr ":class:`diskcache.Cache` 实例。"
 
 #: c0e7a45e34ab40f38365dd62342202a5 of pybroker.cache.enable_indicator_cache:1
 msgid "Enables caching indicator data."
-msgstr ""
+msgstr "启用指标数据缓存。"
 
 #: 6ca8a940624a4ace926d9a67d4da63b3 of pybroker.cache.enable_indicator_cache:4
 msgid "Directory used to store cached indicator data."
-msgstr ""
+msgstr "用于存储已缓存指标数据的目录。"
 
 #: 473ae15db5d1454d9b0b2328dfba7e17 of pybroker.cache.enable_model_cache:1
 msgid "Enables caching trained models."
-msgstr ""
+msgstr "启用已训练模型缓存。"
 
 #: c9064b2c0b32461d97ad0d249dd1fa10 of pybroker.cache.enable_model_cache:4
 msgid "Directory used to store cached models."
-msgstr ""
+msgstr "用于存储已缓存模型的目录。"
 

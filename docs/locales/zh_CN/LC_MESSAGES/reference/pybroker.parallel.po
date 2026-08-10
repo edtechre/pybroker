@@ -22,15 +22,15 @@ msgstr ""
 #: ../../source/reference/pybroker.parallel.rst:2
 #: 1a82c3af2a524dd98773b230f2cb0b86
 msgid "pybroker.parallel module"
-msgstr ""
+msgstr "pybroker.parallel 模块"
 
 #: bf2dd488f2ab427c8d7b50addca05d91 of pybroker.parallel:1
 msgid "Contains parallel execution configuration."
-msgstr ""
+msgstr "包含并行执行配置。"
 
 #: 811e5594c4e947e8aeef34a5145e99a5 of pybroker.parallel.ParallelConfig:1
 msgid "Configuration for parallel execution used by PyBroker."
-msgstr ""
+msgstr "PyBroker 使用的并行执行配置。"
 
 #: 6a10fa73976b48789bac4b3413173681 of pybroker.parallel.ParallelConfig:3
 msgid ""
@@ -42,21 +42,26 @@ msgid ""
 "everything sequentially, and read the current configuration with "
 ":func:`get_parallel_config`."
 msgstr ""
+"PyBroker 可以使用 `joblib <https://joblib.readthedocs.io/>`_ "
+"并行计算指标、训练模型和运行优化。默认情况下，优化试验会使用所有可用核心运行；指标计算和模型训练还需要分别设置 "
+"``parallel_indicators``/``parallel_models`` 标志。调用 "
+"``set_parallel(n_jobs=1)`` 可使所有操作按顺序运行，使用 :func:`get_parallel_config` "
+"可读取当前配置。"
 
 #: 4b3f347407014552a998394e8ecd4a65 of pybroker.parallel.ParallelConfig:13
 msgid ""
 "Number of worker jobs. ``-1`` (the default) uses all available cores; "
 "``1`` runs sequentially."
-msgstr ""
+msgstr "工作进程（worker）的数量。``-1``（默认值）使用所有可用核心；``1`` 表示按顺序运行。"
 
 #: 0c0bfb642c5142a8bd7abc77a2c4c5f6 1cf217179cde4477b39f4d97a02394cd
 #: 2d109f5ad0f24a6aa71aab2bae3b106f of pybroker.parallel.ParallelConfig
 msgid "type"
-msgstr ""
+msgstr "类型"
 
 #: a6320d16c7b14a2eaaaf2045cc377dd8 of pybroker.parallel.ParallelConfig:16
 msgid "int | None"
-msgstr ""
+msgstr "int | None"
 
 #: c2321c0941214a5bb7b9d9d37cbbfe29 of pybroker.parallel.ParallelConfig:20
 msgid ""
@@ -64,10 +69,12 @@ msgid ""
 "processes. Any backend registered with joblib is also accepted (e.g. "
 "``'ray'`` after ``ray.util.joblib.register_ray()``)."
 msgstr ""
+"joblib 后端名称。``'loky'``（默认值）会在独立的进程中运行任务。任何已在 joblib 中注册的后端也都可以使用（例如在调用 "
+"``ray.util.joblib.register_ray()`` 后使用 ``'ray'``）。"
 
 #: 92c830a6b3ec4982b290584a3c0df815 of pybroker.parallel.ParallelConfig:24
 msgid "str | None"
-msgstr ""
+msgstr "str | None"
 
 #: f19ba8358fa5470aa0a9354ddc7452f9 of pybroker.parallel.ParallelConfig:28
 msgid ""
@@ -75,35 +82,37 @@ msgid ""
 " ``n_jobs`` and ``backend`` entirely. When set, PyBroker uses it directly"
 " and the caller owns its lifecycle. Defaults to ``None``."
 msgstr ""
+"可选的、预先构建好的 :class:`joblib.Parallel` 实例，会完全覆盖 ``n_jobs`` 和 "
+"``backend``。设置后，PyBroker 会直接使用该实例，其生命周期由调用方负责管理。默认为 ``None``。"
 
 #: 7e3f8838dc754f1c9f8bdc24076b01ce of pybroker.parallel.ParallelConfig:33
 msgid "joblib.parallel.Parallel | None"
-msgstr ""
+msgstr "joblib.parallel.Parallel | None"
 
 #: bea74399c31542088e32bc095799eb70 of pybroker.parallel.get_parallel_config:1
 msgid "Returns the current parallel configuration"
-msgstr ""
+msgstr "返回当前的并行配置"
 
 #: 729fbb7b85974ef784389f25dfddecb9 of pybroker.parallel.set_parallel:1
 msgid "Configures parallel execution used by PyBroker."
-msgstr ""
+msgstr "配置 PyBroker 使用的并行执行方式。"
 
 #: 6401dc85f44b44e5a0551aeee8974f16 of pybroker.parallel.set_parallel:3
 msgid ""
 "PyBroker uses all available cores by default; call "
 "``set_parallel(n_jobs=1)`` to run sequentially."
-msgstr ""
+msgstr "PyBroker 默认使用所有可用核心；调用 ``set_parallel(n_jobs=1)`` 可按顺序运行。"
 
 #: ../../source/reference/pybroker.parallel.rst
 #: ca9b95b4f8ed4cde959860cca0b1265f
 msgid "Parameters"
-msgstr ""
+msgstr "参数"
 
 #: ec1ef33bbba6488eab09f2a0130ed470 of pybroker.parallel.set_parallel:6
 msgid ""
 "Number of workers. ``-1`` uses all cores (the default); ``1`` runs "
 "sequentially. Leave as ``None`` to keep the currently configured value."
-msgstr ""
+msgstr "工作进程的数量。``-1`` 使用所有核心（默认值）；``1`` 表示按顺序运行。保留为 ``None`` 则维持当前已配置的值。"
 
 #: 3d4e9f6b0a244a639dc89c07d41a174c of pybroker.parallel.set_parallel:9
 msgid ""
@@ -113,17 +122,23 @@ msgid ""
 " rejected because its standard pickle serialization cannot ship "
 "PyBroker's dispatch closures."
 msgstr ""
+"joblib 后端名称：``'loky'``（默认值），或通过 :func:`joblib.register_parallel_backend` "
+"注册的任意后端（例如在调用 ``ray.util.joblib.register_ray()`` 后使用 "
+"``'ray'``）。``'multiprocessing'`` 后端会被拒绝，因为其标准 pickle 序列化机制无法传递 PyBroker "
+"的调度闭包。"
 
 #: 40aab51d04bc45e3a1070573b53fe44e of pybroker.parallel.set_parallel:14
 msgid ""
 "Pre-constructed :class:`joblib.Parallel` instance. Mutually exclusive "
 "with ``n_jobs``/``backend``; caller owns its lifecycle."
 msgstr ""
+"预先构建好的 :class:`joblib.Parallel` 实例。与 ``n_jobs``/``backend`` "
+"互斥；其生命周期由调用方负责管理。"
 
 #: ../../source/reference/pybroker.parallel.rst
 #: d020f6052afe4c8199e6e7f86fe208ea
 msgid "Raises"
-msgstr ""
+msgstr "引发"
 
 #: 6b1b362da9d745dfa2a46bf38d084bc9 of pybroker.parallel.set_parallel:17
 msgid ""
@@ -132,4 +147,6 @@ msgid ""
 "``'multiprocessing'``, or if ``parallel`` returns results out     of "
 "submission order."
 msgstr ""
+"如果 ``parallel`` 与 ``n_jobs`` 或 ``backend`` 一同传入；如果 ``backend`` 不是已注册的 "
+"joblib 后端，或为 ``'multiprocessing'``；或者 ``parallel`` 返回的结果顺序与提交顺序不一致。"
 

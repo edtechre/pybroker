@@ -21,13 +21,13 @@ msgstr ""
 
 #: ../../source/reference/pybroker.rst:2 532d972beae84a479b572361ec25faa6
 msgid "pybroker package"
-msgstr ""
+msgstr "pybroker 包"
 
 #: 1a47a65900134ef9a80bb80d3eb88104 of pybroker:1
 msgid "Global imports."
-msgstr ""
+msgstr "全局导入。"
 
 #: ../../source/reference/pybroker.rst:10 88924575526f4c80a6bf5548e1e1658e
 msgid "Submodules"
-msgstr ""
+msgstr "子模块"
 
