@@ -6,7 +6,7 @@ This reference was generated from the local PyBroker documentation notebook. Use
 
 # Time Series Models
 
-**PyBroker v2** introduces support for backtesting time series models. Instead of relying on a single row of features, these models make predictions based on a series' own past values.
+**PyBroker v2** introduces support for backtesting time series models. Instead of training on examples individually, these models make predictions based on a series' own past values.
 
 To show how this works, we will backtest two different strategies. The first relies on a volatility forecast from a [GARCH(1,1)](https://en.wikipedia.org/wiki/Autoregressive_conditional_heteroskedasticity) model built with the [arch](https://arch.readthedocs.io/) library. The second strategy uses a rolling regression that is refit on every bar. Since **PyBroker** does not include `arch` by default, you must install it first by running `pip install arch`.
 
@@ -52,7 +52,7 @@ def train_garch(symbol, train_data, test_data):
     return am.fit(last_obs=n_train, disp="off")
 ```
 
-The model is built using the combined returns from both the train and test windows. However, passing `last_obs` ensures that parameter estimation relies solely on the train window and isolates the test returns to prevent data leakage.
+The model is built using the combined returns from both the train and test windows. Passing `last_obs` ensures that parameter estimation relies solely on the train window and isolates the test returns to prevent data leakage.
 
 For every test data bar, the prediction function uses the trained model to forecast the variance of the next bar:
 
@@ -67,9 +67,9 @@ def predict_garch(model, data):
     return np.sqrt(variance) / 100 * np.sqrt(252)
 ```
 
-Because the model already stores the full return series, the model input is only the location of the current bar. The forecast then only uses returns up to that point.
+Because the model already stores the full return series, the model input is the location of the current bar. By doing this, the forecast then only uses returns up to that point.
 
-By default, **PyBroker** passes all test window data to the model in a single call. While this vectorized approach is efficient, it fails for autoregressive models since they rely on the previous step's output to generate their next forecast. Passing `per_bar=True` to [model](https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model) will then call [predict_fn](https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model) once per bar:
+By default, **PyBroker** passes all test window data to the model in a single call to make a make a prediction. While this vectorized approach is efficient, it fails for autoregressive models since they rely on the previous step's output to generate their next forecast. Passing `per_bar=True` to [pybroker.model(...)](https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model) will cause the [predict_fn](https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model) to be called once per bar of input:
 
 ```python
 garch_model = pybroker.model(
@@ -81,7 +81,7 @@ garch_model = pybroker.model(
 )
 ```
 
-The strategy uses the volatility forecast from [ctx.preds](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.preds) as a regime filter. It enters a long position when forecast volatility is below the threshold, and exits when it rises above:
+The strategy then uses the volatility forecast from [ctx.preds](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.preds) as a regime filter. It enters a long position when forecast volatility is below the threshold, and exits when it rises above:
 
 ```python
 VOL_THRESHOLD = 0.30
@@ -106,7 +106,7 @@ result.metrics_df.head(20)
 
 ## Random Forest on Lagged Returns
 
-The second strategy trains a [RandomForestRegressor](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html) to predict the next bar's return from lagged returns.
+The second strategy trains a [RandomForestRegressor](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html) to predict the next bar's return from lagged returns:
 
 ```python
 from sklearn.ensemble import RandomForestRegressor
@@ -120,16 +120,16 @@ def train_forest(symbol, train_data, test_data, lag_train, lag_test):
     return forest
 ```
 
-The training function receives `lag_train` and `lag_test` parameters built from the model's [lags](https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model) configuration. Each is a feature matrix with one row per input bar where every row begins with the bar's `log_return` value followed by its lagged values.
+The training function receives `lag_train` and `lag_test` parameters built from configuring the model with the desired number of [lags](https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model). Each parameter is a feature matrix containing one row per example. These rows begin with the bar's `log_return` value, followed by its lagged return values.
 
-Unlike the per-bar GARCH model, the predict function uses **PyBroker's** default behavior and evaluates the entire test window in a single vectorized call:
+Unlike the per-bar GARCH model, the `predict_fn` uses **PyBroker's** default behavior and passes the entire test window in a single  call to generate the model's predictions:
 
 ```python
 def predict_forest(model, data):
     return model.predict(data)
 ```
 
-Registering the model with [lags](https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model) set to `3` will include the past three lagged values for each column in [lag_cols](https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model):
+Registering the model with [lags](https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model) set to `3` will include the past three lagged values for each column declared in [lag_cols](https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model):
 
 ```python
 forest_model = pybroker.model(
@@ -141,7 +141,7 @@ forest_model = pybroker.model(
 )
 ```
 
-The strategy buys when [ctx.preds](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.preds) for the next-bar return is positive and exits when it is negative. After [add_execution](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution), we run a [walkforward](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward) backtest:
+The strategy buys when [ctx.preds](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.preds) for the next-bar return is positive and exits when it is negative. We then run a [walkforward](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward) backtest:
 
 ```python
 def trade_forest(ctx):

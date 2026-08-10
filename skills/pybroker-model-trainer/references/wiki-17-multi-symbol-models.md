@@ -6,9 +6,9 @@ This reference was generated from the local PyBroker documentation notebook. Use
 
 # Multi-Symbol Models
 
-The models trained so far have trained a separate instance for every ticker symbol. Symbols that share the same dynamics, such as stocks in a single industry, can instead be modeled jointly. This approach provides a single model with much more data to learn from.
+The model training used so far has trained a separate instance for every ticker symbol. Instead, a single model can be trained across symbols that behave similarly, such as stocks in a specific industry.
 
-**PyBroker v2** supports training one model across all symbols passed to [add_execution](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution), as shown in this notebook.
+**PyBroker v2** supports training one model across all symbols passed to [Strategy.add_execution](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution), as shown in this notebook.
 
 ```python
 import pybroker
@@ -43,9 +43,9 @@ model_slr = pybroker.model("slr", train_slr, indicators=[cmma_20], pooled=True)
 SYMBOLS = ["MU", "TXN", "ADI", "AMAT"]
 ```
 
-Registering the model with `pooled=True` via [model](https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.model) trains it only once per execution. When you enable this, the training function replaces its single `symbol` argument with a tuple `symbols` and receives their combined train and test splits.
+Registering the model with `pooled=True` will train it only once per execution. This replaces the training function's single `symbol` argument with a `symbols` tuple and passes the combined train and test splits.
 
-During the backtest, the trained model is shared across symbols:
+During the backtest, the trained model is shared across all symbols in the execution:
 
 ```python
 POS_SIZE = 1 / len(SYMBOLS)

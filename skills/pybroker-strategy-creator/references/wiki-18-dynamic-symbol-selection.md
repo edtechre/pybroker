@@ -6,13 +6,13 @@ This reference was generated from the local PyBroker documentation notebook. Use
 
 # Dynamic Symbol Selection
 
-Every strategy so far has traded a fixed list of ticker symbols chosen before the backtest began. Instead, we may want a strategy to target whichever symbols look best right now. These could be the most liquid names, or the ones with the highest momentum or value.
+Every strategy we've seen has traded a fixed list of ticker symbols that were chosen beforehand. Alternatively, we may want a strategy to target whichever symbols look best at any given time. These could be the most liquid names, or the ones with the highest momentum or value.
 
-**PyBroker v2** supports dynamic symbol selection with a [SymbolSelector](https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.SymbolSelector), as shown in this notebook.
+**PyBroker v2** now enables dynamic symbol selection with [SymbolSelector](https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.SymbolSelector).
 
 ## Loading the Candidate Universe
 
-Below, twenty liquid large-caps are downloaded from [YFinance](https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance):
+Below, data is downloaded for twenty liquid large-caps from [YFinance](https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance):
 
 ```python
 import pandas as pd
@@ -53,7 +53,7 @@ df.head()
 
 ## Selecting Symbols by Liquidity
 
-Dynamic symbol selection is done with a [SymbolSelector](https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.SymbolSelector), which can be any callable that takes a [Pandas DataFrame](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html) and returns a sequence of symbols. Pass it to [add_execution](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution) in place of a fixed symbol list.
+Dynamic symbol selection is handled using a [SymbolSelector](https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.SymbolSelector), which can be any callable that takes a [Pandas DataFrame](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html) and returns a sequence of symbols. It is passed to [Strategy.add_execution](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution) instead of a fixed list of symbols.
 
 The example below ranks the universe by average dollar volume and keeps the top three symbols:
 
@@ -69,11 +69,14 @@ def top_dollar_volume(df: pd.DataFrame):
 
 ## Running the Strategy
 
-The example below implements a simple breakout strategy. It buys when a symbol closes above its previous 20-day high, calculated using [highv](https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.highv), and it sells when the symbol closes below its previous 20-day low, calculated using [lowv](https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.lowv). Those values are registered as [indicators](https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.indicator) and read in the execution with [ctx.indicator](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.indicator). The strategy splits capital equally across the top three selected stocks:
+The example below implements a simple breakout strategy. It buys when a symbol closes above its previous 20-day high, and then sells when the it closes below its previous 20-day low. The strategy splits capital equally across the top three selected stocks:
 
 ```python
-high_20 = pybroker.indicator("high_20", lambda data: highv(data.high, 20))
-low_20 = pybroker.indicator("low_20", lambda data: lowv(data.low, 20))
+from pybroker import highest, lowest
+
+
+high_20 = highest("high_20", "high", 20)
+low_20 = lowest("low_20", "low", 20)
 
 POS_SIZE = 1.0 / TOP_N
 
@@ -96,7 +99,7 @@ strategy.add_execution(
 )
 ```
 
-For each [walkforward](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward) window, the `top_dollar_volume` selector runs on the train split and selects the top three stocks to trade in the subsequent test split:
+For each [walkforward](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward) window, the `top_dollar_volume` selector runs on the train split and selects the top three stocks to trade during the subsequent test split:
 
 ```python
 result = strategy.walkforward(windows=4, train_size=0.5)

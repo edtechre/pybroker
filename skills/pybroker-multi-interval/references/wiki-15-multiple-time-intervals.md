@@ -6,15 +6,15 @@ This reference was generated from the local PyBroker documentation notebook. Use
 
 # Multiple Time Intervals
 
-You may want to make trading decisions on a different timeframe than your underlying data source. For instance, you might choose to execute trades on daily bars after confirming the trend on weekly or monthly bars. **PyBroker v2** supports compressing backtest data into coarser intervals and making those compressed bars available to your strategy.
+You may want to make trading decisions on a different timeframe than your underlying data source. For instance, you might choose to execute trades on daily bars after confirming the trend on weekly or monthly bars. **PyBroker v2** supports compressing backtest data into longer intervals and making those compressed bars available to your strategy.
 
 ## Interval Types
 
 You can define an interval using any of these three formats:
 
-*   **Every-n-bars** (`int` greater than `1`): Compresses every `n` base bars into one bar. For example, using `5` on daily data produces one bar per five trading days.
-*   **Duration** (`str`): A fixed time span written as digits followed by a single unit letter (`s`, `m`, `h`, or `d`). For example, `"5m"` compresses 1-minute bars into 5-minute bars.
-*   **Calendar** (`str`): Aligns exactly to standard calendar boundaries using one of the following options:
+*   **Every-n-bars** (`int` greater than `1`): Compresses every `n` base bars into one bar. Using `5` on daily data produces one bar per five trading days.
+*   **Duration** (`str`): A fixed time span written as digits followed by a single unit letter (`s`, `m`, `h`, or `d`). Passing `"5m"` compresses 1-minute bars into 5-minute bars.
+*   **Calendar** (`str`): Aligns compressed bars to calendar boundaries using one of the following options:
 
 | Calendar String | Boundary Alignment |
 | :--- | :--- |
@@ -24,7 +24,7 @@ You can define an interval using any of these three formats:
 | `"quarterly"` | Begins in January, April, July, and October. |
 | `"yearly"` | Starts on January 1. |
 
-Your chosen interval must always be strictly coarser than the bars being compressed. For example, if you fetch daily bars from [YFinance](https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance), `"weekly"` and `"monthly"` are valid intervals. Attempting to use `"daily"` or `"1h"` will raise a `ValueError`.
+Your chosen interval must always be longer than the bars being compressed. For example, if you fetch daily bars from [YFinance](https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance), then `"weekly"` and `"monthly"` are valid intervals. Attempting to use `"daily"` or `"1h"` will raise a `ValueError`.
 
 Before using intervals in a strategy, let's build some intuition by compressing bars directly. We will start by downloading daily data:
 
@@ -43,7 +43,7 @@ df.head()
 
 ## Compressing Bars
 
-The [compress_bars](https://www.pybroker.com/en/latest/reference/pybroker.interval.html#pybroker.interval.compress_bars) function converts single-symbol OHLCV data (either a [Pandas DataFrame](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html) or [BarData](https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.BarData)) to a coarser interval, returning the result as a new [BarData](https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.BarData) object. Every compressed bar is timestamped with the date of the last base bar it contains.
+The [compress_bars](https://www.pybroker.com/en/latest/reference/pybroker.interval.html#pybroker.interval.compress_bars) function converts OHLCV data (either a [Pandas DataFrame](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html) or [BarData](https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.BarData)) to a longer interval, returning the result as a new [BarData](https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.BarData) object. Every compressed bar is timestamped with the date of the last base bar it contains.
 
 When grouping base bars into a compressed bar, the data is aggregated as follows:
 *   **Open:** Taken from the first base bar.
@@ -74,11 +74,13 @@ bars_to_df(compress_bars(amd_df, 5, base_timeframe="1d")).head()
 
 ## A Multi-Timeframe Strategy
 
-When building a backtest, you can declare higher timeframes by passing the `intervals` parameter to [add_execution](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution). Your execution function can then read these compressed bars through [ctx.interval](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.interval), which returns a read-only [IntervalContext](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.IntervalContext). The `intervals` parameter provides bars only. Indicators and models are never computed on these intervals unless you bind them explicitly, as shown in the later sections.
+To use higher timeframes in your backtest, pass the `intervals` parameter to [add_execution](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution). Your execution function can then access the compressed bars through [ctx.interval](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.interval), which returns a read-only [IntervalContext](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.IntervalContext). 
 
-To prevent look-ahead bias, [ctx.interval](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.interval) only ever exposes *completed* bars. The week or month that is currently forming is never visible, ensuring that future data cannot leak into your daily trading decisions.
+Using the `intervals` parameter provides compressed bars only. Indicators and models are never computed on these intervals unless you bind them explicitly, as shown later in this notebook.
 
-To demonstrate this, we will execute trades on daily bars and assign a specific job to each higher timeframe.
+To prevent look-ahead bias, [ctx.interval](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.interval) only ever exposes *completed* bars. For example, the week or month that is currently forming is never visible, ensuring that future data cannot leak into your daily trading decisions.
+
+In the following strategy, we will execute trades on daily bars while using longer intervals to generate different trading signals:
 
 *   **Monthly (Regime):** Only enter when the last completed monthly close is higher than the close from three months ago.
 *   **Weekly (Trend):** Only enter when the last completed weekly close is higher than the close from ten weeks ago, and exit when it falls below.
@@ -114,7 +116,7 @@ result.metrics_df.head(20)
 
 To compute an indicator on compressed bars, bind it to one or more intervals with [Indicator.intervals(...)](https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.Indicator.intervals).
 
-The example below upgrades the weekly trend rule to compare the weekly close against a 10-bar SMA calculated from the weekly bars:
+The example below updates the weekly trend rule to compare the weekly close against a 10-bar SMA calculated from the weekly bars:
 
 ```python
 from pybroker.vect import sumv
@@ -147,9 +149,9 @@ strategy.add_execution(
 )
 ```
 
-**PyBroker** automatically unions bound intervals with the execution's `intervals` parameter, and the `"weekly"` interval in the example is made accessible via [ctx.interval("weekly")](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.interval). The `intervals` parameter only needs to specify `"monthly"`, which provides the raw monthly bars.
+**PyBroker** automatically combines bound intervals with those in the execution's `intervals` parameter. Here, the `"weekly"` interval is made accessible via [ctx.interval("weekly")](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.interval) and the `intervals` parameter only needs to specify `"monthly"` for the raw monthly bars.
 
-Note that binding will override computing the indicator on the base timeframe of the data source. Passing `"base"` to [Indicator.intervals()](https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.Indicator.intervals) will then also compute the indicator on the base timeframe of the data source.
+Note that the binding will override also computing the indicator on the base timeframe of the data source. To also compute the indicator on the base timeframe of the data source, pass `"base"` to [Indicator.intervals()](https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.Indicator.intervals).
 
 ```python
 result = strategy.backtest(timeframe="1d")
@@ -158,9 +160,9 @@ result.metrics_df.head(20)
 
 ## Training a Model on an Interval
 
-You can bind models in the exact same way with [ModelSource.intervals(...)](https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.ModelSource.intervals). **PyBroker** will train models for each interval using the interval's compressed bars and any registered indicators. You can then access the per-interval predictions by calling the [preds](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.IntervalContext.preds) method on that interval's context.
+You can bind models in the same way with [ModelSource.intervals(...)](https://www.pybroker.com/en/latest/reference/pybroker.model.html#pybroker.model.ModelSource.intervals). **PyBroker** will then train models for each interval using the interval's compressed bars and any registered indicators. You can then access the per-interval predictions by calling the [preds](https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.IntervalContext.preds) method on that interval's context.
 
-We train a [LinearRegression](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html) model to predict the next weekly return from the weekly close:
+This example trains a [LinearRegression](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html) model to predict the next weekly return from the weekly close:
 
 ```python
 from sklearn.linear_model import LinearRegression
@@ -197,7 +199,7 @@ strategy.add_execution(
 )
 ```
 
-During [Walkforward Analysis](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward), the `lookahead` between an interval model's train and test data is enforced using the compressed-bar units to prevent future leakage.
+During [Walkforward Analysis](https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward), the `lookahead` between an interval model's train and test data is enforced using the compressed bar units in order to prevent future leakage.
 
 ```python
 result = strategy.walkforward(windows=3, train_size=0.5, timeframe="1d")
