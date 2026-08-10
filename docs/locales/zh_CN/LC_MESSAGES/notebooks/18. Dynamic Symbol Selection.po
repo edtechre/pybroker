@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-05 16:46-0700\n"
+"POT-Creation-Date: 2026-08-09 17:02-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -19,115 +19,100 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../source/notebooks/18. 8f432d904ef4474b9c616190efc5abf5 Dynamic
-#: Selection.ipynb:9 Symbol
+#: ../../source/notebooks/18. Dynamic Selection.ipynb:9 Symbol
+#: c359f0501b9b4dc2a20a05cc15d88afd
 msgid "Dynamic Symbol Selection"
 msgstr "动态品种选择"
 
-#: ../../source/notebooks/18. 963f6188a20e41d1bc576a7e304641c3 Dynamic
+#: ../../source/notebooks/18. 32d66af1b8c149ba8498923c230b995b Dynamic
 #: Selection.ipynb:11 Symbol
 msgid ""
-"Every strategy so far has traded a fixed list of ticker symbols chosen "
-"before the backtest began. Instead, we may want a strategy to target "
-"whichever symbols look best right now. These could be the most liquid "
-"names, or the ones with the highest momentum or value."
+"Every strategy we've seen has traded a fixed list of ticker symbols that "
+"were chosen beforehand. Alternatively, we may want a strategy to target "
+"whichever symbols look best at any given time. These could be the most "
+"liquid names, or the ones with the highest momentum or value."
 msgstr "到目前为止，每个策略交易的都是在回测开始前就已选定的固定股票代码列表。而我们有时希望策略能够瞄准当下表现最好的品种，例如流动性最高的品种，或者动量或价值最高的品种。"
 
-#: ../../source/notebooks/18. 83e90aa165604c599c9993c5d17df06f Dynamic
-#: Selection.ipynb:13 Symbol
+#: ../../source/notebooks/18. Dynamic Selection.ipynb:13 Symbol
+#: c8b7c8f3e4a14d7ea745243ab2de317a
 msgid ""
-"**PyBroker v2** supports dynamic symbol selection with a `SymbolSelector "
-"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.SymbolSelector>`__,"
-" as shown in this notebook."
+"**PyBroker v2** now enables dynamic symbol selection with `SymbolSelector"
+" "
+"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.SymbolSelector>`__."
 msgstr ""
-"**PyBroker v2** 通过 `SymbolSelector "
+"**PyBroker v2** 现已通过 `SymbolSelector "
 "<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.SymbolSelector>`__"
-" 支持动态品种选择，本文档将对此进行演示。"
+" 支持动态品种选择。"
 
-#: ../../source/notebooks/18. 40eebd51bddc4f50a0faf606957a09db Dynamic
+#: ../../source/notebooks/18. 3c4c353af8ff48f48aab77ae77a802a1 Dynamic
 #: Selection.ipynb:25 Symbol
 msgid "Loading the Candidate Universe"
 msgstr "加载候选品种池"
 
 #: ../../source/notebooks/18. Dynamic Selection.ipynb:27 Symbol
-#: d91bc461a1404859874574d7e4fdb1a0
+#: e3d9e358f8be4d3c9f5dc9a8dae183cb
 msgid ""
-"Below, twenty liquid large-caps are downloaded from `YFinance "
+"Below, data is downloaded for twenty liquid large-caps from `YFinance "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance>`__:"
 msgstr ""
 "下面将从 `YFinance "
 "<https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance>`__"
 " 下载二十只流动性良好的大盘股："
 
-#: ../../source/notebooks/18. 8540b6710df14b0b8963fb52913af67d Dynamic
+#: ../../source/notebooks/18. 8aec14bfb9364c56b88080853fc48121 Dynamic
 #: Selection.ipynb:321 Symbol
 msgid "Selecting Symbols by Liquidity"
 msgstr "按流动性选择品种"
 
-#: ../../source/notebooks/18. 776e2b404afa4e7dbe6b1d57a97e66ac Dynamic
-#: Selection.ipynb:323 Symbol
+#: ../../source/notebooks/18. Dynamic Selection.ipynb:323 Symbol
+#: f6595623d51b4267908e912e50f0339c
 msgid ""
-"Dynamic symbol selection is done with a `SymbolSelector "
+"Dynamic symbol selection is handled using a `SymbolSelector "
 "<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.SymbolSelector>`__,"
 " which can be any callable that takes a `Pandas DataFrame "
 "<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__ "
-"and returns a sequence of symbols. Pass it to `add_execution "
+"and returns a sequence of symbols. It is passed to "
+"`Strategy.add_execution "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__"
-" in place of a fixed symbol list."
+" instead of a fixed list of symbols."
 msgstr ""
 "动态品种选择通过 `SymbolSelector "
 "<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.SymbolSelector>`__"
 " 实现，它可以是任意接受 `Pandas DataFrame "
 "<https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`__ "
-"并返回品种序列的可调用对象。将其传递给 `add_execution "
-"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__"
-" 即可替代固定的品种列表。"
+"并返回品种序列的可调用对象。它会被传递给 `Strategy.add_execution "
+"<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`__，以代替固定的品种列表。"
 
-#: ../../source/notebooks/18. Dynamic Selection.ipynb:325 Symbol
-#: b1adb733ea314f99a95c892221e7c2fa
+#: ../../source/notebooks/18. 94daef7491954fa094916163e3e1211f Dynamic
+#: Selection.ipynb:326 Symbol
 msgid ""
 "The example below ranks the universe by average dollar volume and keeps "
 "the top three symbols:"
 msgstr "下面的示例按平均成交额对品种池进行排名，并保留排名前三的品种："
 
-#: ../../source/notebooks/18. 8a3998341d1b4365ba052ffc49e907de Dynamic
-#: Selection.ipynb:353 Symbol
+#: ../../source/notebooks/18. 2d87c851e3aa4525868ecb94fa5669c4 Dynamic
+#: Selection.ipynb:354 Symbol
 msgid "Running the Strategy"
 msgstr "运行策略"
 
-#: ../../source/notebooks/18. 48bb80e07c21432ca65c86f07c0945e3 Dynamic
-#: Selection.ipynb:355 Symbol
+#: ../../source/notebooks/18. 3134e043d8c744a6bfedef0f2fd69053 Dynamic
+#: Selection.ipynb:356 Symbol
 msgid ""
 "The example below implements a simple breakout strategy. It buys when a "
-"symbol closes above its previous 20-day high, calculated using `highv "
-"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.highv>`__,"
-" and it sells when the symbol closes below its previous 20-day low, "
-"calculated using `lowv "
-"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.lowv>`__."
-" Those values are registered as `indicators "
-"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.indicator>`__"
-" and read in the execution with `ctx.indicator "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.indicator>`__."
-" The strategy splits capital equally across the top three selected "
-"stocks:"
+"symbol closes above its previous 20-day high, and then sells when the it "
+"closes below its previous 20-day low. The strategy splits capital equally"
+" across the top three selected stocks:"
 msgstr ""
-"下面的示例实现了一个简单的突破策略：当某品种收盘价高于其此前 20 日高点（使用 `highv "
-"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.highv>`__"
-" 计算）时买入，当收盘价低于其此前 20 日低点（使用 `lowv "
-"<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.lowv>`__"
-" 计算）时卖出。这些数值被注册为 `indicators "
-"<https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.indicator>`__，并在执行函数中通过"
-" `ctx.indicator "
-"<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.indicator>`__"
-" 读取。该策略将资金平均分配到所选的前三只股票上："
+"下面的示例实现了一个简单的突破策略：当某个品种收盘价高于其前 20 日高点时买入，收盘价低于其前 20 "
+"日低点时卖出。该策略会将资金平均分配到排名前三的已选股票上："
 
-#: ../../source/notebooks/18. Dynamic Selection.ipynb:398 Symbol
-#: ffd724e43d1849a9b148de9fe80c172a
+#: ../../source/notebooks/18. Dynamic Selection.ipynb:401 Symbol
+#: f670ec4eee2f42d98e4760199c43bed0
 msgid ""
 "For each `walkforward "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`__"
 " window, the ``top_dollar_volume`` selector runs on the train split and "
-"selects the top three stocks to trade in the subsequent test split:"
+"selects the top three stocks to trade during the subsequent test split:"
 msgstr ""
 "对于每个 `walkforward "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`__"
