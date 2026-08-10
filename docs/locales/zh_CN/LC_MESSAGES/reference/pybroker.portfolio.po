@@ -22,17 +22,17 @@ msgstr ""
 #: ../../source/reference/pybroker.portfolio.rst:2
 #: 94bcc18abb934e619698678c290c88f4
 msgid "pybroker.portfolio module"
-msgstr ""
+msgstr "pybroker.portfolio 模块"
 
 #: 67ac2e57fa824e168b8964a96f47d4f3 of pybroker.portfolio:1
 msgid ""
 "Contains portfolio related functionality, such as portfolio metrics and "
 "placing orders."
-msgstr ""
+msgstr "包含与投资组合相关的功能，例如投资组合指标和下单。"
 
 #: 37d37630a4a04a1195ff74b9fe25a38a of pybroker.portfolio.Entry:1
 msgid "Contains information about an entry into a :class:`.Position`."
-msgstr ""
+msgstr "包含 :class:`.Position` 一次入场的相关信息。"
 
 #: 58d374e0eb4f4833af261eeb33268e0d 648c854a86f347aab8520c3dc8b9c854
 #: 6f6c35a228954124b8932053e394c3c7 77273d16803f4faea28d10c8a7e20a82
@@ -40,7 +40,7 @@ msgstr ""
 #: pybroker.portfolio.Order:5 pybroker.portfolio.Stop:5
 #: pybroker.portfolio.StopRecord:17 pybroker.portfolio.Trade:5
 msgid "Unique identifier."
-msgstr ""
+msgstr "唯一标识符。"
 
 #: 05e83054476348af93e63b74c80d2404 06d877fd7f694731a71519f8e2e95064
 #: 0bacff51b87f4137af67884dfd4f1bbf 0e09ea640c474e2cbf15d25ee62aaf61
@@ -95,7 +95,7 @@ msgstr ""
 #: pybroker.portfolio.Stop pybroker.portfolio.StopRecord
 #: pybroker.portfolio.Trade
 msgid "type"
-msgstr ""
+msgstr "类型"
 
 #: 004721352aa74bfa801d1cb39b0eeefe 135b97b7cd5b412ba6a9b7c8731fbf0b
 #: 18f651ec2501415cb21c3a6d06f1496f 449d7dce513f44699a875caacdc4ada1
@@ -107,11 +107,11 @@ msgstr ""
 #: pybroker.portfolio.Stop:7 pybroker.portfolio.StopRecord:19
 #: pybroker.portfolio.Trade:7 pybroker.portfolio.Trade:74
 msgid "int"
-msgstr ""
+msgstr "int"
 
 #: 8c754651acf14f2e9fdf368d723d8804 of pybroker.portfolio.Entry:11
 msgid "Date of the entry."
-msgstr ""
+msgstr "该次入场的日期。"
 
 #: 1a077688ecb742d9b547ad416d37c05c 308512ff8a4d4638a7630f19a75b677b
 #: 438f8a4caf78499186f2b7d7ed4d46e1 48ea82dfb4744962a59fa6304c0cbd8f
@@ -121,11 +121,11 @@ msgstr ""
 #: pybroker.portfolio.PositionBar:13 pybroker.portfolio.StopRecord:7
 #: pybroker.portfolio.Trade:25 pybroker.portfolio.Trade:31
 msgid "numpy.datetime64"
-msgstr ""
+msgstr "numpy.datetime64"
 
 #: 642e5f9e45fd49a1a815ded4e80fdb46 of pybroker.portfolio.Entry:17
 msgid "Symbol of the entry."
-msgstr ""
+msgstr "该次入场的品种代码。"
 
 #: 24756a6a8d70413696c6e4fb88e82fac 2905a6652bd841fe96e654a15aadb491
 #: 3ffb996e999a4c07a0b9f61af11a4ff0 5a5fc1ddad904f5e891f2f2ff2473602
@@ -136,13 +136,13 @@ msgstr ""
 #: pybroker.portfolio.Stop:13 pybroker.portfolio.StopRecord:13
 #: pybroker.portfolio.StopRecord:25 pybroker.portfolio.Trade:19
 msgid "str"
-msgstr ""
+msgstr "str"
 
 #: 026f194d07444ebfa0b8aacfbbbc9811 7c992f1f8e444553abbac13b124b4582
 #: d45afa45f3334788a83c20e4016bb69b of pybroker.portfolio.Entry:23
 #: pybroker.portfolio.Position:11 pybroker.portfolio.Trade:47
 msgid "Number of shares."
-msgstr ""
+msgstr "股数。"
 
 #: 0589f5e9d0b0424dae87fa1c8e00e297 1824c64fdd7f4762a76af17a258f13ad
 #: 295adf71313c44f5bd111f7a701d1d69 2a9137636efa467fb14059451e85c36d
@@ -188,17 +188,17 @@ msgstr ""
 #: pybroker.portfolio.Trade:68 pybroker.portfolio.Trade:80
 #: pybroker.portfolio.Trade:92 pybroker.portfolio.Trade:98
 msgid "decimal.Decimal"
-msgstr ""
+msgstr "decimal.Decimal"
 
 #: e794c276834f4715adcb80ea68701668 of pybroker.portfolio.Entry:29
 msgid "Share price of the entry."
-msgstr ""
+msgstr "该次入场的股价。"
 
 #: 5e43094b4c6b4967886e5f93609ae9f0 afd20669e66d47d08fcc2114b5604fe9
 #: bad869088b9c484abb444c583fcd85dc of pybroker.portfolio.Entry:35
 #: pybroker.portfolio.Stop:23 pybroker.portfolio.StopRecord:29
 msgid "Type of  :class:`.Position`, either ``long`` or ``short``."
-msgstr ""
+msgstr ":class:`.Position` 的类型，为 ``long`` 或 ``short``。"
 
 #: 147f9391d21a4f0eab82b8bea1ab86e1 2de824a5607f4783b0e5de356c8ea901
 #: 93cafede757347fc8f3781f4998af0e8 95056e9951764b1ea57c7df14c6daa40
@@ -206,7 +206,7 @@ msgstr ""
 #: pybroker.portfolio.Position:19 pybroker.portfolio.Stop:25
 #: pybroker.portfolio.StopRecord:31 pybroker.portfolio.Trade:13
 msgid "Literal['long', 'short']"
-msgstr ""
+msgstr "Literal['long', 'short']"
 
 #: ee47e4d19cc6475ea1fdb273d46d684b of pybroker.portfolio.Entry:41
 msgid ""
@@ -215,6 +215,8 @@ msgid ""
 ":attr:`Trade.bars` and ``pnl_per_bar``, which measure elapsed holding "
 "time."
 msgstr ""
+"自入场以来经过的当前 K 线数，按投资组合的时钟计算：即回测的每一根 K 线，无论 ``symbol`` 在该根 K 线上是否交易。用于 "
+":attr:`Trade.bars` 和 ``pnl_per_bar``，衡量已经过的持仓时间。"
 
 #: 5a674964e0d047558bef754002ab5b53 of pybroker.portfolio.Entry:50
 msgid ""
@@ -225,82 +227,93 @@ msgid ""
 "are ragged, ``bars`` would expire a ``hold_bars`` stop after fewer of the"
 " symbol's own bars than the caller asked for."
 msgstr ""
+"自入场以来 ``symbol`` 自身 K 线的当前数量。仅在 ``symbol`` 存在 K 线的日期才递增，因此与 "
+":attr:`pybroker.context.ExecContext.bars` "
+"所报告的一致。:attr:`pybroker.common.StopType.BAR` "
+"止损正是以此计数：当各品种的交易日历参差不齐时，``bars`` 会使 ``hold_bars`` 止损在该品种自身 K "
+"线数少于调用方所要求的数量时就已到期。"
 
 #: c7e49dc24ba34e4c9b51486750946286 of pybroker.portfolio.Entry:61
 msgid "Stops set on the entry."
-msgstr ""
+msgstr "设置在该次入场上的止损。"
 
 #: 9f6c8aa8f7b84c92ab2debf3575baece of pybroker.portfolio.Entry:63
 msgid "list[pybroker.portfolio.Stop]"
-msgstr ""
+msgstr "list[pybroker.portfolio.Stop]"
 
 #: 09696ca2883141b299d6561675f79d60 48506f83dab2402c8586674052324d10 of
 #: pybroker.portfolio.Entry:67 pybroker.portfolio.Trade:90
 msgid "Maximum adverse excursion (MAE)."
-msgstr ""
+msgstr "最大不利变动（Maximum Adverse Excursion，MAE）。"
 
 #: 4d60f23751d440318e0e4fa83c824663 b11401b9208a4127b7a46820352c7bb6 of
 #: pybroker.portfolio.Entry:73 pybroker.portfolio.Trade:96
 msgid "Maximum favorable excursion (MFE)."
-msgstr ""
+msgstr "最大有利变动（Maximum Favorable Excursion，MFE）。"
 
 #: 5b2d85302d634c158e6b87ac85eee375 of pybroker.portfolio.Order:1
 msgid "Holds information about a filled order."
-msgstr ""
+msgstr "保存已成交订单的相关信息。"
 
 #: 6ac0e847811b4cdc86dfc5111d6ba576 of pybroker.portfolio.Order:11
 msgid "Type of order, either ``buy`` or ``sell``."
-msgstr ""
+msgstr "订单类型，为 ``buy`` 或 ``sell``。"
 
 #: 4f0cbfddacd14839ad3530b4583c5fb3 of pybroker.portfolio.Order:13
 msgid "Literal['buy', 'sell']"
-msgstr ""
+msgstr "Literal['buy', 'sell']"
 
 #: d6f93ebe042a4f93a33f4d5c092b26c1 of pybroker.portfolio.Order:17
 msgid "Ticker symbol of the order."
-msgstr ""
+msgstr "该订单的股票代码。"
 
 #: d35c9940dfe94e1db152f70b0873ab02 of pybroker.portfolio.Order:23
 msgid "Date the order was filled."
-msgstr ""
+msgstr "订单成交的日期。"
 
 #: 2890e2f388054c8db501836373952789 of pybroker.portfolio.Order:29
 msgid "Date the order signal was created, or ``None`` for stop-triggered orders."
-msgstr ""
+msgstr "订单信号生成的日期；对于由止损触发的订单则为 ``None``。"
 
 #: ed6fc1f177ed4ee3b0b9bbdbd96658ba of pybroker.portfolio.Order:32
 msgid "numpy.datetime64 | None"
-msgstr ""
+msgstr "numpy.datetime64 | None"
 
 #: 6334f7dcc2b54f7b85cdf5626d8276f7 of pybroker.portfolio.Order:36
 msgid ""
 "How the order originated, either ``market``, ``limit``, ``stop_bar``, "
 "``stop_loss``, ``stop_profit``, or ``stop_trailing``."
 msgstr ""
+"订单的来源，为 ``market``、``limit``、``stop_bar``、``stop_loss``、``stop_profit`` 或"
+" ``stop_trailing`` 之一。"
 
 #: b2841efc0a07413094a9aa82a58f8b6e of pybroker.portfolio.Order:40
 msgid ""
 "Literal['market', 'limit', 'stop_bar', 'stop_loss', 'stop_profit', "
 "'stop_trailing']"
 msgstr ""
+"Literal['market', 'limit', 'stop_bar', 'stop_loss', 'stop_profit', "
+"'stop_trailing']"
 
 #: f713448486104e16a1dc315b43559e89 of pybroker.portfolio.Order:44
 msgid ""
 "Position intent, either ``buy_to_open``, ``buy_to_close``, "
 "``sell_to_open``, or ``sell_to_close``."
 msgstr ""
+"仓位意图，为 ``buy_to_open``、``buy_to_close``、``sell_to_open`` 或 "
+"``sell_to_close`` 之一。"
 
 #: a6de20a5194d46f3a22904ec5a0f9e8d of pybroker.portfolio.Order:48
 msgid "Literal['buy_to_open', 'buy_to_close', 'sell_to_open', 'sell_to_close']"
-msgstr ""
+msgstr "Literal['buy_to_open', 'buy_to_close', 'sell_to_open', 'sell_to_close']"
 
 #: 3e5a51871a014c448f60dd8a09a69b06 of pybroker.portfolio.Order:52
 msgid "Number of shares bought or sold."
-msgstr ""
+msgstr "买入或卖出的股数。"
 
 #: 91cd282cc7154737a63f2dd4cbd8b824 of pybroker.portfolio.Order:58
 msgid "Limit price that was used for the order."
-msgstr ""
+msgstr "该订单使用的限价。"
 
 #: 241859a5e17d4fafb368ebb5dbf0939a 51ada76f78b549a0a5230c96cda6397e
 #: 54e6ea142a7e4d8c95dcb983f948928b 6158ef162a184a8f87ab434b4793cae0
@@ -312,77 +325,77 @@ msgstr ""
 #: pybroker.portfolio.StopRecord:49 pybroker.portfolio.StopRecord:55
 #: pybroker.portfolio.StopRecord:67 pybroker.portfolio.StopRecord:73
 msgid "decimal.Decimal | None"
-msgstr ""
+msgstr "decimal.Decimal | None"
 
 #: 7eb20ea40b2145a3a399e245548c25f8 of pybroker.portfolio.Order:64
 msgid ""
 "Market price prevailing when the order was filled, before any fill-time "
 "slippage adjustment. Equal to ``fill_price`` when no slippage model is "
 "set."
-msgstr ""
+msgstr "订单成交时的现行市场价格，未经过任何成交时滑点调整。当未设置滑点模型时等于 ``fill_price``。"
 
 #: a0cd97de2f8c44d28ed2d737146d99ee of pybroker.portfolio.Order:72
 msgid "Price that the order was filled at."
-msgstr ""
+msgstr "该订单的成交价格。"
 
 #: 5c29b5f0ef8a4d18ab89f1288ade354f of pybroker.portfolio.Order:78
 msgid "Brokerage fees for order."
-msgstr ""
+msgstr "该订单的经纪商手续费。"
 
 #: 6f6cf494a65044599db182a054126d28 of pybroker.portfolio.Portfolio:1
 msgid ""
 "Class representing a portfolio of holdings. The portfolio contains "
 "information about open positions and balances, and is also used to place "
 "buy and sell orders."
-msgstr ""
+msgstr "表示持仓投资组合的类。该投资组合包含未平仓头寸和余额的相关信息，也用于下达买入和卖出订单。"
 
 #: ../../source/reference/pybroker.portfolio.rst
 #: 0e9be068e9f54f4894c05133422a3cef 534ca2a215e34a588e79a2788276d826
 #: 56b511bbbe4d4bdf8feda9f514d9c34f 86cd39155717450ca0e83357cf414a9e
 msgid "Parameters"
-msgstr ""
+msgstr "参数"
 
 #: 0acab017792543d69fc992a04c5ea726 of pybroker.portfolio.Portfolio:5
 msgid "Starting cash balance."
-msgstr ""
+msgstr "起始现金余额。"
 
 #: 25b60647254e4995846463b3f6143728 of pybroker.portfolio.Portfolio:6
 msgid "Brokerage fee mode."
-msgstr ""
+msgstr "经纪商手续费模式。"
 
 #: 3fa776273b0d4b48b9cdd58a5127000a 7e0c5e43d3544dd78acca7038eb04762 of
 #: pybroker.portfolio.Portfolio:7 pybroker.portfolio.Portfolio:39
 msgid "Brokerage fee amount."
-msgstr ""
+msgstr "经纪商手续费金额。"
 
 #: b96b1e6006e24b099ab04725dafb099d ca81726a97d7401db31f6207665c5116 of
 #: pybroker.portfolio.Portfolio:8 pybroker.portfolio.Portfolio:43
 msgid "Whether to enable trading fractional shares."
-msgstr ""
+msgstr "是否启用碎股（fractional shares）交易。"
 
 #: e8319a07e82f4036a592650bf52ee55b of pybroker.portfolio.Portfolio:9
 msgid "Position mode for :class:`.Portfolio`."
-msgstr ""
+msgstr ":class:`.Portfolio` 的仓位模式。"
 
 #: fcf6d5f3f4784a01baa4201aefd76a8e of pybroker.portfolio.Portfolio:10
 msgid ""
 "Maximum number of long :class:`.Position`\\ s that can be held at a time."
 " If ``None``, then unlimited."
-msgstr ""
+msgstr "同一时间可持有的最大多头 :class:`.Position`\\ 数量。如果为 ``None``，则不限。"
 
 #: 5f2cd512c5854cd68947a0e56ce44dfe of pybroker.portfolio.Portfolio:12
 msgid ""
 "Maximum number of short :class:`.Position`\\ s that can be held at a "
 "time. If ``None``, then unlimited."
-msgstr ""
+msgstr "同一时间可持有的最大空头 :class:`.Position`\\ 数量。如果为 ``None``，则不限。"
 
 #: 61d35e57d53844ec879b129fda7d82f6 of pybroker.portfolio.Portfolio:14
 msgid "Whether to record stop data per-bar."
-msgstr ""
+msgstr "是否按 K 线记录止损数据。"
 
 #: 9e6163801adf43c7962fb50645870cf2 of pybroker.portfolio.Portfolio:18
 msgid "Current cash balance."
-msgstr ""
+msgstr "当前现金余额。"
 
 #: 2d94358495e54065aa84fa78bcde031f of pybroker.portfolio.Portfolio:22
 msgid ""
@@ -390,138 +403,138 @@ msgid ""
 " value of all open long positions plus the collateral posted for all open"
 " short positions. Short positions are held at cost, so their unrealized "
 "PnL is excluded."
-msgstr ""
+msgstr "当前权益金额，定义为净现金余额加上所有未平仓多头仓位的市值，再加上所有未平仓空头仓位所占用的抵押品。空头仓位按成本计价，因此不包含其未实现盈亏。"
 
 #: b464cf5be4b24731a171e5f7c8397404 of pybroker.portfolio.Portfolio:29
 msgid ""
 "Current market value. The market value is defined as :attr:`.equity` "
 "added together with the unrealized PnL of all open short positions."
-msgstr ""
+msgstr "当前市值。市值定义为 :attr:`.equity` 加上所有未平仓空头仓位的未实现盈亏。"
 
 #: 8a0c888f458146f59a48e6258d76e6d7 of pybroker.portfolio.Portfolio:35
 msgid "Current brokerage fees."
-msgstr ""
+msgstr "当前经纪商手续费。"
 
 #: e0ea6c7ff52e4707b20fba621fabeffa of pybroker.portfolio.Portfolio:47
 msgid "``deque`` of all filled orders, sorted in ascending chronological order."
-msgstr ""
+msgstr "所有已成交订单组成的 ``deque``，按时间先后升序排列。"
 
 #: 2b4013790e134c59be70e13e331f37c6 e15edbf4b46a4bdc884ad8b500e2700f of
 #: pybroker.portfolio.Portfolio:52 pybroker.portfolio.PortfolioBar:32
 msgid "Notional exposure of open short positions at mark."
-msgstr ""
+msgstr "未平仓空头仓位按市值计算的名义敞口。"
 
 #: a8d6260e6f6d473181a62c9a5dd20817 f503a276f1904c438340a4a0ff376d06 of
 #: pybroker.portfolio.Portfolio:56 pybroker.portfolio.PortfolioBar:38
 msgid "Borrowed funds used for leveraged long and short positions."
-msgstr ""
+msgstr "用于多头和空头杠杆仓位的借入资金。"
 
 #: 4c79bfb4706f44fd8c0eee9ba71b4cc9 of pybroker.portfolio.Portfolio:61
 msgid "Realized profit and loss (PnL)."
-msgstr ""
+msgstr "已实现盈亏（PnL）。"
 
 #: 78eb22ddb322485fbaae7f6a44c0633b of pybroker.portfolio.Portfolio:65
 msgid "``dict`` mapping ticker symbols to open long :class:`.Position`\\ s."
-msgstr ""
+msgstr "将股票代码映射到未平仓多头 :class:`.Position`\\ 的 ``dict``。"
 
 #: 3ee92b51478f40c783a9a0facc27c50b of pybroker.portfolio.Portfolio:70
 msgid "``dict`` mapping ticker symbols to open short :class:`.Position`\\ s."
-msgstr ""
+msgstr "将股票代码映射到未平仓空头 :class:`.Position`\\ 的 ``dict``。"
 
 #: 4127655a60ed4407819e08b78879a12d of pybroker.portfolio.Portfolio:75
 msgid "Ticker symbols of all currently open positions."
-msgstr ""
+msgstr "当前所有未平仓头寸的股票代码。"
 
 #: e638699741e94a77b511c9bdd9b26619 of pybroker.portfolio.Portfolio:79
 msgid ""
 "``deque`` of snapshots of :class:`.Portfolio` state on every bar, sorted "
 "in ascending chronological order."
-msgstr ""
+msgstr "每根 K 线上 :class:`.Portfolio` 状态快照组成的 ``deque``，按时间先后升序排列。"
 
 #: 79c246997e264a508082369897d726e8 of pybroker.portfolio.Portfolio:84
 msgid ""
 "``deque`` of snapshots of :class:`.Position` states on every bar, sorted "
 "in ascending chronological order."
-msgstr ""
+msgstr "每根 K 线上 :class:`.Position` 状态快照组成的 ``deque``，按时间先后升序排列。"
 
 #: ee3db27b34b44a9491230678377665a6 of pybroker.portfolio.Portfolio:89
 msgid "Running win rate of trades."
-msgstr ""
+msgstr "交易的滚动胜率。"
 
 #: f50f0f9e25ec448d82df4b3656b4ee01 of pybroker.portfolio.Portfolio:93
 msgid "Running loss rate of trades."
-msgstr ""
+msgstr "交易的滚动败率。"
 
 #: e9e9e25241d948299f6b14abc67df22e of pybroker.portfolio.Portfolio.buy:1
 msgid "Places a buy order."
-msgstr ""
+msgstr "下达一笔买入订单。"
 
 #: 9eb4a3fd30fc41ccafd93ab456509b46 dfba9f58c9cd47489906b276b307463f of
 #: pybroker.portfolio.Portfolio.buy:3 pybroker.portfolio.Portfolio.sell:3
 msgid "Date when the :class:`.Order` is placed."
-msgstr ""
+msgstr ":class:`.Order` 下达的日期。"
 
 #: 41f3948b7de74a358b4581a4b87e555d of pybroker.portfolio.Portfolio.buy:4
 msgid "Ticker symbol to buy."
-msgstr ""
+msgstr "要买入的股票代码。"
 
 #: 31d926b24a39405497d1765cb18b6a00 of pybroker.portfolio.Portfolio.buy:5
 msgid "Number of shares to buy."
-msgstr ""
+msgstr "要买入的股数。"
 
 #: 3fc798c68f774e5d96b2af4d7e28bc79 4045db9ab6834a109e17a172a9511bf1 of
 #: pybroker.portfolio.Portfolio.buy:6 pybroker.portfolio.Portfolio.sell:6
 msgid "If filled, the price used to fill the :class:`.Order`."
-msgstr ""
+msgstr "如果成交，用于成交该 :class:`.Order` 的价格。"
 
 #: 23f68c0f0fe54aee85a5865d2b289b81 b9269f0066774bf0bfc3580340f47f9b of
 #: pybroker.portfolio.Portfolio.buy:7 pybroker.portfolio.Portfolio.sell:7
 msgid "Limit price of the :class:`.Order`."
-msgstr ""
+msgstr ":class:`.Order` 的限价。"
 
 #: 5aa1a7926e5d46ecae625ed7fcddeb29 d0735f0edd264c48a9b8166937fd7fac of
 #: pybroker.portfolio.Portfolio.buy:8 pybroker.portfolio.Portfolio.sell:8
 msgid ""
 ":class:`.Stop`\\ s to set on the :class:`.Entry` created from the "
 ":class:`.Order`, if filled."
-msgstr ""
+msgstr "如果成交，要在由该 :class:`.Order` 创建的 :class:`.Entry` 上设置的 :class:`.Stop`\\。"
 
 #: 1c26295e685247178676801f70d93739 81d6f7199b73441d8dd3216200ba965a of
 #: pybroker.portfolio.Portfolio.buy:10 pybroker.portfolio.Portfolio.sell:10
 msgid "Date the order signal was created."
-msgstr ""
+msgstr "订单信号生成的日期。"
 
 #: 095a29ec039547418bfa74334a0a71d7 b205a1408eac49288a4bf03f5d53d95a of
 #: pybroker.portfolio.Portfolio.buy:11 pybroker.portfolio.Portfolio.sell:11
 msgid "How the order originated."
-msgstr ""
+msgstr "订单的来源。"
 
 #: 18370e578974418b8d61e36b4f704cf0 86f0f61f16a3405e8afc21cdbd9010bb of
 #: pybroker.portfolio.Portfolio.buy:12 pybroker.portfolio.Portfolio.sell:12
 msgid ""
 "Market price at fill time, before fill-time slippage. Defaults to "
 "``fill_price``."
-msgstr ""
+msgstr "成交时的市场价格，未经过成交时滑点调整。默认为 ``fill_price``。"
 
 #: ../../source/reference/pybroker.portfolio.rst
 #: 66c271075392465fa6eaecdcf4089a98 6fe9beae798f44efbbf6fb3f5deb61f9
 msgid "Returns"
-msgstr ""
+msgstr "返回"
 
 #: 3d5d2d14f2ed45a3bccf4dcf3d5aae17 f8664e8c02bb4abcb820020b71d56080 of
 #: pybroker.portfolio.Portfolio.buy:15 pybroker.portfolio.Portfolio.sell:15
 msgid ":class:`.Order` if the order was filled, otherwise ``None``."
-msgstr ""
+msgstr "如果订单已成交则为 :class:`.Order`，否则为 ``None``。"
 
 #: ddb3c60ffd864ac89b1ed79d2136577b of
 #: pybroker.portfolio.Portfolio.capture_bar:1
 msgid "Captures portfolio state of the current bar."
-msgstr ""
+msgstr "捕获当前 K 线的投资组合状态。"
 
 #: da6b296a014e41f58e43dac921a62ed2 of
 #: pybroker.portfolio.Portfolio.check_stops:1
 msgid "Checks whether stops are triggered."
-msgstr ""
+msgstr "检查止损是否被触发。"
 
 #: aae21bf769be49308c8ca072faa67106 of
 #: pybroker.portfolio.Portfolio.check_stops:3
@@ -533,6 +546,9 @@ msgid ""
 "attributes were assigned on the context, so precedence is deterministic "
 "but not caller-controlled."
 msgstr ""
+"同一入场上的价格止损按 :attr:`Stop.id` 升序进行评估，第一个触发的止损会平掉该入场。这些 id 是在 "
+":meth:`pybroker.context.ExecContext.to_result` 构建止损时按固定顺序分配的 —— "
+"依次为止损、止盈、移动止损 —— 而不是按属性在上下文中被赋值的顺序，因此优先级是确定的，但不受调用方控制。"
 
 #: fb06140aab04408fb5b9cbe807f97efa of
 #: pybroker.portfolio.Portfolio.check_stops:10
@@ -542,6 +558,8 @@ msgid ""
 "landing on the same bar have no true ordering: the bar's price path "
 "decides, and it is not modeled here."
 msgstr ""
+":attr:`pybroker.common.StopType.BAR` 止损会在价格止损之后评估，无论其 id 为何，因为 K "
+"线计数离场和价格离场若落在同一根 K 线上，二者并无真正的先后顺序：这取决于该 K 线内部的价格走势，而这里并未对此建模。"
 
 #: eb95dc5196df468088cd19ba56c16473 of
 #: pybroker.portfolio.Portfolio.check_stops:15
@@ -550,13 +568,15 @@ msgid ""
 "price. Slippage never affects whether a stop triggers, and share "
 "adjustments are ignored because a stop exits its entry in full."
 msgstr ""
+"当设置了 ``slippage_model`` "
+"时，被触发的止损会以调整后的价格成交。滑点绝不会影响止损是否触发，且股数调整会被忽略，因为止损会全部平掉该次入场。"
 
 #: b697db274ac449409db464026aa8c304 of
 #: pybroker.portfolio.Portfolio.exit_position:1
 msgid ""
 "Exits any long and short positions for ``symbol`` at ``buy_fill_price`` "
 "and ``sell_fill_price``."
-msgstr ""
+msgstr "以 ``buy_fill_price`` 和 ``sell_fill_price`` 平掉 ``symbol`` 的所有多头和空头仓位。"
 
 #: 90e9b8d68c5f441b874c044ab6ccfce3 of
 #: pybroker.portfolio.Portfolio.exit_position:4
@@ -566,10 +586,12 @@ msgid ""
 "unadjusted prices are recorded as ``market_price`` on the resulting "
 ":class:`.Order`\\ s."
 msgstr ""
+"当设置了 ``slippage_model`` 时，两笔成交都会经过该模型调整。股数调整会被忽略，因为仓位是全部平掉的。未经调整的价格会作为 "
+"``market_price`` 记录在生成的 :class:`.Order`\\ 上。"
 
 #: 68125380d4824843ba5f1bc01c70299d of pybroker.portfolio.Portfolio.incr_bars:1
 msgid "Increments the number of bars held by every trade entry."
-msgstr ""
+msgstr "为每一笔交易入场的持仓 K 线数递增。"
 
 #: c9e4799c6e3f4fc1b8776b3451ff8230 of pybroker.portfolio.Portfolio.incr_bars:3
 msgid ""
@@ -580,227 +602,231 @@ msgid ""
 "both counters advance together, matching a calendar where every symbol "
 "trades on every bar."
 msgstr ""
+":attr:`Entry.bars` 会在回测的每根 K 线上递增。当提供了 ``date`` 和 ``price_scope`` "
+"时，:attr:`Entry.sym_bars` 只会在该入场品种自身存在 K 线的日期上递增，这正是 "
+":attr:`pybroker.common.StopType.BAR` "
+"止损所依据的计数。若未提供这两个参数，两个计数器会一同递增，相当于假设每个品种在每根 K 线上都有交易。"
 
 #: 785a6e756963484fab92c5273e47670e of
 #: pybroker.portfolio.Portfolio.remove_stop:1
 msgid "Removes a :class:`.Stop` with ``stop_id``."
-msgstr ""
+msgstr "移除 ``stop_id`` 对应的 :class:`.Stop`。"
 
 #: cd71174806494643bd0d059dc98a10fd of
 #: pybroker.portfolio.Portfolio.remove_stops:1
 msgid "Removes :class:`.Stop`\\ s."
-msgstr ""
+msgstr "移除 :class:`.Stop`\\。"
 
 #: 04cac934fdab42f689b2035f78fbc588 of
 #: pybroker.portfolio.Portfolio.remove_stops:3
 msgid ""
 "Ticker symbol, :class:`.Position`, or :class:`.Entry` for which to cancel"
 " stops."
-msgstr ""
+msgstr "要取消止损的股票代码、:class:`.Position` 或 :class:`.Entry`。"
 
 #: b50d5e0a4d9241ea869a0c4abc2d87ca of
 #: pybroker.portfolio.Portfolio.remove_stops:5
 msgid ":class:`pybroker.common.StopType`."
-msgstr ""
+msgstr ":class:`pybroker.common.StopType`。"
 
 #: 05e76f9c391b4f26abd48f39e8a9e55e of pybroker.portfolio.Portfolio.sell:1
 msgid "Places a sell order."
-msgstr ""
+msgstr "下达一笔卖出订单。"
 
 #: e56332663d794c1789c709d5caeab188 of pybroker.portfolio.Portfolio.sell:4
 msgid "Ticker symbol to sell."
-msgstr ""
+msgstr "要卖出的股票代码。"
 
 #: 7845969300a848ba91ea718077e60a48 of pybroker.portfolio.Portfolio.sell:5
 msgid "Number of shares to sell."
-msgstr ""
+msgstr "要卖出的股数。"
 
 #: 129edce8902a4f72809f4a27e1080756 of pybroker.portfolio.PortfolioBar:1
 msgid "Snapshot of :class:`.Portfolio` state, captured per bar."
-msgstr ""
+msgstr "按 K 线捕获的 :class:`.Portfolio` 状态快照。"
 
 #: 2cd4754e1c984a28a6ec39b420490388 537728519dbc4fa3a5d50f98de2b9682 of
 #: pybroker.portfolio.PortfolioBar:5 pybroker.portfolio.PositionBar:11
 msgid "Date of bar."
-msgstr ""
+msgstr "K 线的日期。"
 
 #: 002c145810fd46b48a64e7d36566b80e of pybroker.portfolio.PortfolioBar:11
 msgid "Available cash in :class:`.Portfolio`."
-msgstr ""
+msgstr ":class:`.Portfolio` 中的可用现金。"
 
 #: 7ca54a715b664c0d8bf12d085f92ed20 of pybroker.portfolio.PortfolioBar:17
 msgid ""
 "Amount of equity in :class:`.Portfolio`. Open short positions are held at"
 " cost, so their unrealized PnL is excluded."
-msgstr ""
+msgstr ":class:`.Portfolio` 中的权益金额。未平仓空头仓位按成本计价，因此不包含其未实现盈亏。"
 
 #: 751ef98e95db4a18af8792d3c60ecf07 of pybroker.portfolio.PortfolioBar:24
 msgid ""
 "Notional exposure of all open positions at mark: the market value of open"
 " long positions plus the ``margin`` of open short positions."
-msgstr ""
+msgstr "所有未平仓头寸按市值计算的名义敞口：未平仓多头仓位的市值加上未平仓空头仓位的 ``margin``。"
 
 #: ac43e9c0eac64b27b6732dd67a1a6779 of pybroker.portfolio.PortfolioBar:45
 msgid "``cash - margin_loan``."
-msgstr ""
+msgstr "``cash - margin_loan``。"
 
 #: 6fcfd2b688ad49baaec0899ce7d8d814 of pybroker.portfolio.PortfolioBar:51
 msgid ""
 "Market value of :class:`.Portfolio`, equal to ``equity`` plus the "
 "unrealized PnL of all open short positions."
-msgstr ""
+msgstr ":class:`.Portfolio` 的市值，等于 ``equity`` 加上所有未平仓空头仓位的未实现盈亏。"
 
 #: 38f0bdfaedb34c8eacf0af4a2652ebb3 of pybroker.portfolio.PortfolioBar:58
 msgid "Realized profit and loss (PnL) of :class:`.Portfolio`."
-msgstr ""
+msgstr ":class:`.Portfolio` 的已实现盈亏（PnL）。"
 
 #: befd0c380d1a416d9e85a67fcf9cfcf4 of pybroker.portfolio.PortfolioBar:64
 msgid ""
 "Unrealized profit and loss (PnL) of :class:`.Portfolio`, equal to "
 "``market_value - equity``."
-msgstr ""
+msgstr ":class:`.Portfolio` 的未实现盈亏（PnL），等于 ``market_value - equity``。"
 
 #: cb8f5f06537a45549050c15643da8093 of pybroker.portfolio.PortfolioBar:71
 msgid "Brokerage fees."
-msgstr ""
+msgstr "经纪商手续费。"
 
 #: 889187c4a4a649d19044455238a48732 of pybroker.portfolio.Position:1
 msgid "Contains information about an open position in ``symbol``."
-msgstr ""
+msgstr "包含 ``symbol`` 未平仓头寸的相关信息。"
 
 #: e45ae09e9799493ea123fe310d783c43 of pybroker.portfolio.Position:5
 msgid "Ticker symbol of the position."
-msgstr ""
+msgstr "该头寸的股票代码。"
 
 #: adedd2b0c7284c45b06bbaadff62c132 of pybroker.portfolio.Position:17
 msgid "Type of position, either ``long`` or ``short``."
-msgstr ""
+msgstr "头寸类型，为 ``long`` 或 ``short``。"
 
 #: 41600d3d66ef4914ae17feb90ce669a0 621b91646a1c4598bb61f1a2bbe2adc8 of
 #: pybroker.portfolio.Position:23 pybroker.portfolio.PositionBar:29
 msgid "Last close price of ``symbol``."
-msgstr ""
+msgstr "``symbol`` 的最新收盘价。"
 
 #: dc499a4a60984350b76e241b71fe9316 of pybroker.portfolio.Position:29
 msgid "Equity in the position."
-msgstr ""
+msgstr "该头寸的权益。"
 
 #: 163ee9f476964c4e9126d131f9a9d19a of pybroker.portfolio.Position:35
 msgid "Market value of position."
-msgstr ""
+msgstr "该头寸的市值。"
 
 #: da2b73d94400446991ecf33384a1b66b of pybroker.portfolio.Position:41
 msgid "Amount of margin in position."
-msgstr ""
+msgstr "该头寸的保证金金额。"
 
 #: 732d80dbff6b46cb861f1c3e986b1d79 of pybroker.portfolio.Position:47
 msgid "Unrealized profit and loss (PnL)."
-msgstr ""
+msgstr "未实现盈亏（PnL）。"
 
 #: 169d7510b01b4f2e807342dc0bfea6d7 of pybroker.portfolio.Position:53
 msgid ""
 "``deque`` of position :class:`.Entry`\\ s sorted in ascending "
 "chronological order."
-msgstr ""
+msgstr "该头寸的 :class:`.Entry`\\ 组成的 ``deque``，按时间先后升序排列。"
 
 #: a8b709c331f1413c870ee5d2c84feb53 of pybroker.portfolio.Position:56
 msgid "collections.deque[pybroker.portfolio.Entry]"
-msgstr ""
+msgstr "collections.deque[pybroker.portfolio.Entry]"
 
 #: 042e8c8059e2401cbdbd3ceee4a713b8 of pybroker.portfolio.Position:60
 msgid "Current number of bars since entry, on the portfolio's clock."
-msgstr ""
+msgstr "按投资组合时钟计算的、自入场以来的当前 K 线数。"
 
 #: 122bca29cd5f4e7d80a6fb2bd882a837 of pybroker.portfolio.Position:66
 msgid "Total cost basis of the position's open entries."
-msgstr ""
+msgstr "该头寸未平仓入场的总成本基础。"
 
 #: dcc504ff553346b78ec7251a17ef7bd3 of pybroker.portfolio.Position:72
 msgid ""
 "Shares acquired since the last mark. Valuing these at :attr:`.close` "
 "would price them at a mark taken before they were bought, so they are "
 "held at cost until the next mark."
-msgstr ""
+msgstr "自上次估值以来新获取的股份。若按 :attr:`.close` 对其估值，会以买入之前的某次估值来定价，因此在下一次估值之前，这些股份按成本计价。"
 
 #: 8837ee6dfca64bacb77b6b7fdfc781c1 of pybroker.portfolio.Position:80
 msgid "Cost of :attr:`.unmarked_shares`, at fill price."
-msgstr ""
+msgstr "按成交价计算的 :attr:`.unmarked_shares` 成本。"
 
 #: 3b8c7e518beb494c89a92e405b898183 of pybroker.portfolio.PositionBar:1
 msgid "Snapshot of an open :class:`.Position`\\ 's state, captured per bar."
-msgstr ""
+msgstr "按 K 线捕获的未平仓 :class:`.Position`\\ 状态快照。"
 
 #: 501ca75280804fd695971c2ee18a52bb of pybroker.portfolio.PositionBar:5
 msgid "Ticker symbol of :class:`.Position`."
-msgstr ""
+msgstr ":class:`.Position` 的股票代码。"
 
 #: cd853b49891240e1821cabf61e230267 of pybroker.portfolio.PositionBar:17
 msgid "Number of shares long in :class:`.Position`."
-msgstr ""
+msgstr ":class:`.Position` 中的多头股数。"
 
 #: 00ceb9feb8bc4db4ba9d8987f63069e5 of pybroker.portfolio.PositionBar:23
 msgid "Number of shares short in :class:`.Position`."
-msgstr ""
+msgstr ":class:`.Position` 中的空头股数。"
 
 #: c9102fe764fa4d76bf04de5f3d66ee24 of pybroker.portfolio.PositionBar:35
 msgid "Amount of equity in :class:`.Position`."
-msgstr ""
+msgstr ":class:`.Position` 中的权益金额。"
 
 #: a7c4f54b2ec74dae99c7bfe79c9bcbb3 of pybroker.portfolio.PositionBar:41
 msgid "Market value of :class:`.Position`."
-msgstr ""
+msgstr ":class:`.Position` 的市值。"
 
 #: 17b506261a8d44b3b70fc2a236a4d696 of pybroker.portfolio.PositionBar:47
 msgid "Amount of margin in :class:`.Position`."
-msgstr ""
+msgstr ":class:`.Position` 中的保证金金额。"
 
 #: 730a06e0432d489aa8dd453ff843b078 of pybroker.portfolio.PositionBar:53
 msgid "Unrealized profit and loss (PnL) of :class:`.Position`."
-msgstr ""
+msgstr ":class:`.Position` 的未实现盈亏（PnL）。"
 
 #: 2643774d0606487884d83fa054214334 of pybroker.portfolio.Stop:1
 msgid "Contains information about a stop set on :class:`.Entry`."
-msgstr ""
+msgstr "包含设置在 :class:`.Entry` 上的止损相关信息。"
 
 #: 732feff44ebc4d988174575662061f03 b5f6edd957194625bf837788d3c47282 of
 #: pybroker.portfolio.Stop:11 pybroker.portfolio.StopRecord:11
 msgid "Symbol of the stop."
-msgstr ""
+msgstr "该止损对应的品种代码。"
 
 #: aa2991b27ed440748643529f961c6dec c9b9c7b1a5c64693848d38c63853bb57 of
 #: pybroker.portfolio.Stop:17 pybroker.portfolio.StopRecord:23
 msgid ":class:`.StopType`."
-msgstr ""
+msgstr ":class:`.StopType`。"
 
 #: d9b3f784e23c4b9e87466bf624b50a86 of pybroker.portfolio.Stop:19
 msgid "pybroker.common.StopType"
-msgstr ""
+msgstr "pybroker.common.StopType"
 
 #: 9428cd9342a043aebc5344e4e2405d91 fb606c803c3d447da99984b0be56aab9 of
 #: pybroker.portfolio.Stop:29 pybroker.portfolio.StopRecord:47
 msgid "Percent from entry price."
-msgstr ""
+msgstr "距入场价格的百分比。"
 
 #: 0f73a020137140f2b3bce0bb5ef88fef 6c94aaedcd5845d1967353e40af7da5d of
 #: pybroker.portfolio.Stop:35 pybroker.portfolio.StopRecord:53
 msgid "Cash amount from entry price."
-msgstr ""
+msgstr "距入场价格的现金金额。"
 
 #: 048ab0ee17274476867928989923496b eacf3d85f2c14e64a1df3b0bededa17c of
 #: pybroker.portfolio.Stop:41 pybroker.portfolio.StopRecord:59
 msgid "Number of bars after which to trigger the stop."
-msgstr ""
+msgstr "触发止损前需要经过的 K 线数。"
 
 #: 755e037cb8d749eda1bba47637b0489c c250b4f87e1b416aa4d13c7ddb0b4879
 #: c5659cfdd6484f31a98a59fcf05ef942 of pybroker.portfolio.Stop:43
 #: pybroker.portfolio.StopRecord:43 pybroker.portfolio.StopRecord:61
 msgid "int | None"
-msgstr ""
+msgstr "int | None"
 
 #: a8c122dd112d424bbb65970ca46580d0 b0503865e7c545b7aa3992ffe261a7f9 of
 #: pybroker.portfolio.Stop:47 pybroker.portfolio.StopRecord:65
 msgid "Price that the stop will be filled at."
-msgstr ""
+msgstr "该止损将以之成交的价格。"
 
 #: 7cc4290934ad464fa81c9e70cc0e69e8 of pybroker.portfolio.Stop:49
 msgid ""
@@ -808,11 +834,14 @@ msgid ""
 "pybroker.common.PriceType | Callable[[str, pybroker.common.BarData], int "
 "| float | decimal.Decimal] | None"
 msgstr ""
+"int | float | numpy.floating | decimal.Decimal | "
+"pybroker.common.PriceType | Callable[[str, pybroker.common.BarData], int "
+"| float | decimal.Decimal] | None"
 
 #: 9ec4648c99514d48828d524b8d0f926d d93ed3fbe9f343a6a099fb1a07e9b62b of
 #: pybroker.portfolio.Stop:53 pybroker.portfolio.StopRecord:71
 msgid "Limit price to use for the stop."
-msgstr ""
+msgstr "该止损使用的限价。"
 
 #: 9629952216c44dfcae468a43354415fc cb47c53f5f7b4dc18b0f7f628d6a1cc9 of
 #: pybroker.portfolio.Stop:59 pybroker.portfolio.StopRecord:77
@@ -821,81 +850,83 @@ msgid ""
 " the stop is checked against the ``exit_price`` and exits at the "
 "``exit_price`` when triggered."
 msgstr ""
+"止损离场时使用的离场 :class:`pybroker.common.PriceType`。如果设置了该值，止损会依据 "
+"``exit_price`` 进行判定，并在触发时以 ``exit_price`` 离场。"
 
 #: 9f968ee636f5424d8073562e2cbe00b8 e2a39fbdc54c454db49a50714ef5602f of
 #: pybroker.portfolio.Stop:63 pybroker.portfolio.StopRecord:81
 msgid "pybroker.common.PriceType | None"
-msgstr ""
+msgstr "pybroker.common.PriceType | None"
 
 #: 8d3631b408f54a1597437597f7cb17d3 of pybroker.portfolio.StopRecord:1
 msgid "Records per-bar data about a stop."
-msgstr ""
+msgstr "按 K 线记录止损的相关数据。"
 
 #: f0d149efdc2f4279bfe5d3b0efa62620 of pybroker.portfolio.StopRecord:5
 msgid "Date of the bar."
-msgstr ""
+msgstr "该 K 线的日期。"
 
 #: a453e147588f4d0789fa4f8ae1be8599 of pybroker.portfolio.StopRecord:35
 msgid "Current value of the stop."
-msgstr ""
+msgstr "该止损的当前值。"
 
 #: 61a1aa9355ec49648a86691191228182 of pybroker.portfolio.StopRecord:41
 msgid "Current bars of the stop."
-msgstr ""
+msgstr "该止损的当前 K 线数。"
 
 #: 6e553c3c9f764d8cb858e54feb2fc1b9 of pybroker.portfolio.Trade:1
 msgid "Holds information about a completed trade (entry and exit)."
-msgstr ""
+msgstr "保存一笔已完成交易（入场和离场）的相关信息。"
 
 #: 1c4233b021df432bb109e3dfb46bd751 of pybroker.portfolio.Trade:11
 msgid "Type of trade, either ``long`` or ``short``."
-msgstr ""
+msgstr "交易类型，为 ``long`` 或 ``short``。"
 
 #: 40449c52333448bf9c4ce5b791ed5294 of pybroker.portfolio.Trade:17
 msgid "Ticker symbol of the trade."
-msgstr ""
+msgstr "该笔交易的股票代码。"
 
 #: fb26cd02ce614c48af8040eaae83f4ee of pybroker.portfolio.Trade:23
 msgid "Entry date."
-msgstr ""
+msgstr "入场日期。"
 
 #: dd865b5d85864a8697633d0fa7193e18 of pybroker.portfolio.Trade:29
 msgid "Exit date."
-msgstr ""
+msgstr "离场日期。"
 
 #: 52f1d14932f44af69747b7451bc854c2 of pybroker.portfolio.Trade:35
 msgid "Entry price."
-msgstr ""
+msgstr "入场价格。"
 
 #: 5f1af317050b4660a75e4fbb8c290834 of pybroker.portfolio.Trade:41
 msgid "Exit price."
-msgstr ""
+msgstr "离场价格。"
 
 #: abffe77e643c472c972ce23b45720778 of pybroker.portfolio.Trade:53
 msgid "Profit and loss (PnL)."
-msgstr ""
+msgstr "盈亏（PnL）。"
 
 #: 07b106175b5d42f697a65aee24255f7f of pybroker.portfolio.Trade:59
 msgid "Return measured in percentage."
-msgstr ""
+msgstr "以百分比衡量的收益率。"
 
 #: 89f12d0ebc4d401d841dce0d4b259a77 of pybroker.portfolio.Trade:65
 msgid "Aggregate profit and loss (PnL) of the strategy after the trade."
-msgstr ""
+msgstr "该笔交易之后策略的累计盈亏（PnL）。"
 
 #: 87d8ef9ed7b84d23a9dc84342b8e8d16 of pybroker.portfolio.Trade:72
 msgid "Number of bars the trade was held."
-msgstr ""
+msgstr "该笔交易的持仓 K 线数。"
 
 #: c099306ea2f945b8b0a22006344933dc of pybroker.portfolio.Trade:78
 msgid "Profit and loss (PnL) per bar held."
-msgstr ""
+msgstr "每根持仓 K 线的盈亏（PnL）。"
 
 #: d3f3f28bb0824fc9884877fa2b57ae6c of pybroker.portfolio.Trade:84
 msgid "Type of stop that was triggered, if any."
-msgstr ""
+msgstr "被触发的止损类型（如有）。"
 
 #: 107109e3e327491fb0b878a49e657b4b of pybroker.portfolio.Trade:86
 msgid "Literal['bar', 'loss', 'profit', 'trailing'] | None"
-msgstr ""
+msgstr "Literal['bar', 'loss', 'profit', 'trailing'] | None"
 

@@ -22,13 +22,13 @@ msgstr ""
 #: ../../source/reference/pybroker.context.rst:2
 #: ebbbad74c39a4a97a99d80fa44c1e4dd
 msgid "pybroker.context module"
-msgstr ""
+msgstr "pybroker.context 模块"
 
 #: 762b597046764648bee3dc640a6e4136 of pybroker.context:1
 msgid ""
 "Contains context related classes. A context provides data during the "
 "execution of a :class:`pybroker.strategy.Strategy`."
-msgstr ""
+msgstr "包含与上下文相关的类。上下文在 :class:`pybroker.strategy.Strategy` 的执行过程中提供数据。"
 
 #: d1b7e0167f6143d4b4a431d4bef10db8 of pybroker.context.ExecContext:1
 msgid ""
@@ -37,6 +37,8 @@ msgid ""
 " portfolio positions, and other relevant context. This class is also used"
 " to set buy and sell signals for placing orders."
 msgstr ""
+"包含 :class:`pybroker.strategy.Strategy` 执行过程中的上下文数据。包括当前 K "
+"线、投资组合头寸以及其他相关上下文的数据。该类也用于设置买入和卖出信号以下单。"
 
 #: 614ebe9a884a430fa7c16bab53ef1640 of pybroker.context.ExecContext:6
 msgid ""
@@ -45,29 +47,32 @@ msgid ""
 " :attr:`pybroker.config.StrategyConfig.buy_delay` and "
 ":attr:`pybroker.config.StrategyConfig.sell_delay`."
 msgstr ""
+"该类中包含的数据是已完成的最新一根 K 线的数据。下单会在由 "
+":attr:`pybroker.config.StrategyConfig.buy_delay` 和 "
+":attr:`pybroker.config.StrategyConfig.sell_delay` 指定的未来某根 K 线上执行。"
 
 #: 45df71b82d884c808e03588194e3928c 6894f30e5ec44459aa1c1897b7e7c920 of
 #: pybroker.context.ExecContext:13 pybroker.context.RotationContext:33
 msgid ":class:`pybroker.config.StrategyConfig`."
-msgstr ""
+msgstr ":class:`pybroker.config.StrategyConfig`。"
 
 #: 45f804d134f44919853e58ff63309bf9 of pybroker.context.ExecContext:17
 msgid "Current ticker symbol of the execution."
-msgstr ""
+msgstr "该执行函数当前的股票代码。"
 
 #: 4649edc0a96c490e9b7a5c75442d2aa5 eae22e026fbe46d48543b8ab5d5d1895 of
 #: pybroker.context.ExecContext:21 pybroker.context.ExecResult:18
 msgid "Fill price to use for a buy (long) order of ``symbol``."
-msgstr ""
+msgstr "``symbol`` 买入（做多）订单使用的成交价格。"
 
 #: 20902760062849fda015a461c191f560 ef8991fb4dc7462f9a40c13c76547591 of
 #: pybroker.context.ExecContext:26 pybroker.context.ExecResult:66
 msgid "Number of shares to buy of ``symbol``."
-msgstr ""
+msgstr "``symbol`` 要买入的股数。"
 
 #: 6ed0b5261b5c45ab859ac2af647fb7ec of pybroker.context.ExecContext:30
 msgid "Limit price to use for a buy (long) order of ``symbol``."
-msgstr ""
+msgstr "``symbol`` 买入（做多）订单使用的限价。"
 
 #: 7103e3d55d8c42d296ed51b35f3fc041 d6619e0994d94a42ad64286cba3fbd20 of
 #: pybroker.context.ExecContext:35 pybroker.context.ExecResult:78
@@ -75,21 +80,21 @@ msgid ""
 "Number of bars to retry an unfilled buy limit order after the first "
 "attempt. ``None`` for a single attempt, ``-1`` for indefinite "
 "persistence, or a positive integer for a limited number of retry bars."
-msgstr ""
+msgstr "未成交的买入限价单在首次尝试后重试的 K 线数量。``None`` 表示仅尝试一次，``-1`` 表示无限期保留，正整数表示有限的重试 K 线数量。"
 
 #: 2978c02c95a24821880780b2e4f5ec50 36329a54547944e38779bff3f40ca34b of
 #: pybroker.context.ExecContext:42 pybroker.context.ExecResult:24
 msgid "Fill price to use for a sell (short) order of ``symbol``."
-msgstr ""
+msgstr "``symbol`` 卖出（做空）订单使用的成交价格。"
 
 #: 0f4256ce5f1f452ea0c1e706ca945729 77574164884b440dbf2668bfe973b6e3 of
 #: pybroker.context.ExecContext:47 pybroker.context.ExecResult:87
 msgid "Number of shares to sell of ``symbol``."
-msgstr ""
+msgstr "``symbol`` 要卖出的股数。"
 
 #: 11e4f21b306643d6a91341e208e38ba3 of pybroker.context.ExecContext:51
 msgid "Limit price to use for a sell (short) order of ``symbol``."
-msgstr ""
+msgstr "``symbol`` 卖出（做空）订单使用的限价。"
 
 #: a546f244a3b3441bb3483b816c2a6451 efff1b0aa5064a96aa99061f7e065798 of
 #: pybroker.context.ExecContext:56 pybroker.context.ExecResult:100
@@ -97,14 +102,14 @@ msgid ""
 "Number of bars to retry an unfilled sell limit order after the first "
 "attempt. ``None`` for a single attempt, ``-1`` for indefinite "
 "persistence, or a positive integer for a limited number of retry bars."
-msgstr ""
+msgstr "未成交的卖出限价单在首次尝试后重试的 K 线数量。``None`` 表示仅尝试一次，``-1`` 表示无限期保留，正整数表示有限的重试 K 线数量。"
 
 #: 17ff492888d645e2be71b2c881047e9e 1e9efccdd0354171933b605206c94b22 of
 #: pybroker.context.ExecContext:63 pybroker.context.ExecResult:59
 msgid ""
 "Number of bars to hold a long or short position for, after which the "
 "position is automatically liquidated."
-msgstr ""
+msgstr "持有多头或空头仓位的 K 线数量，超过后该仓位会自动平仓。"
 
 #: 4fa161a167204c50a27290b6f9cf2860 92690ee7bbf44f66bd11f0b101cba4a5 of
 #: pybroker.context.ExecContext:68 pybroker.context.ExecResult:31
@@ -118,6 +123,11 @@ msgid ""
 "``long_score`` drives long rotation and orders set during an "
 ":class:`pybroker.strategy.Execution` are ignored."
 msgstr ""
+"在对买入和回补信号进行排序时用于给 ``symbol`` 打分。订单会为 ``long_score`` "
+"值最高的品种下达，:class:`pybroker.portfolio.Portfolio` 中任一时刻持有的多头仓位数量由 "
+":meth:`pybroker.strategy.Strategy.set_max_long_positions` 指定。当通过 "
+":meth:`pybroker.strategy.Strategy.enable_rotation` 启用了轮动时，``long_score`` "
+"会驱动多头轮动，而 :class:`pybroker.strategy.Execution` 中设置的订单会被忽略。"
 
 #: 85dcbfae19234863916f8071626b9657 997ebeab16064894ae80cc336b729252 of
 #: pybroker.context.ExecContext:80 pybroker.context.ExecResult:45
@@ -131,28 +141,35 @@ msgid ""
 "``short_score`` drives short rotation and orders set during an "
 ":class:`pybroker.strategy.Execution` are ignored."
 msgstr ""
+"在对卖出信号进行排序时用于给 ``symbol`` 打分。订单会为 ``short_score`` "
+"值最高的品种下达，:class:`pybroker.portfolio.Portfolio` 中任一时刻持有的空头仓位数量由 "
+":meth:`pybroker.strategy.Strategy.set_max_short_positions` 指定。当通过 "
+":meth:`pybroker.strategy.Strategy.enable_rotation` 启用了轮动时，``short_score``"
+" 会驱动空头轮动，而 :class:`pybroker.strategy.Execution` 中设置的订单会被忽略。"
 
 #: 9448405d047d4d0b927896b8b3ce4cbc of pybroker.context.ExecContext:92
 msgid ""
 "``dict`` used to store custom data that persists for each bar during the "
 ":class:`pybroker.strategy.Strategy`\\ 's execution."
 msgstr ""
+"用于存储自定义数据的 ``dict``，在 :class:`pybroker.strategy.Strategy`\\ 的执行过程中按每根 K "
+"线持久化。"
 
 #: 2a280c16cbe241b3be9ae2923139ff45 of pybroker.context.ExecContext:97
 msgid ""
 "Sets stop loss on a new :class:`pybroker.portfolio.Entry`, where value is"
 " measured in points from entry price."
-msgstr ""
+msgstr "在新的 :class:`pybroker.portfolio.Entry` 上设置止损，其值以距入场价格的点数衡量。"
 
 #: 0d65b743bf364320be8936ee31c2e812 of pybroker.context.ExecContext:102
 msgid ""
 "Sets stop loss on a new :class:`pybroker.portfolio.Entry`, where value is"
 " measured in percentage from entry price."
-msgstr ""
+msgstr "在新的 :class:`pybroker.portfolio.Entry` 上设置止损，其值以距入场价格的百分比衡量。"
 
 #: bc42cb6896b54f68b8596269330e3494 of pybroker.context.ExecContext:108
 msgid "Limit price to use for the stop loss."
-msgstr ""
+msgstr "该止损使用的限价。"
 
 #: d8b698ed482147909cddc538b487c2b6 of pybroker.context.ExecContext:112
 msgid ""
@@ -160,22 +177,24 @@ msgid ""
 " set, the stop is checked against the ``exit_price`` and exits at the "
 "``exit_price`` when triggered."
 msgstr ""
+"止损离场时使用的离场 :class:`pybroker.common.PriceType`。如果设置了该值，止损会依据 "
+"``exit_price`` 进行判定，并在触发时以 ``exit_price`` 离场。"
 
 #: 8b4283a694644bedaa88c63f3ec50c10 of pybroker.context.ExecContext:118
 msgid ""
 "Sets profit stop on a new :class:`pybroker.portfolio.Entry`, where value "
 "is measured in points from entry price."
-msgstr ""
+msgstr "在新的 :class:`pybroker.portfolio.Entry` 上设置止盈，其值以距入场价格的点数衡量。"
 
 #: e192c0859a9b4d569c31f451b03e3b39 of pybroker.context.ExecContext:124
 msgid ""
 "Sets profit stop on a new :class:`pybroker.portfolio.Entry`, where value "
 "is measured in percentage from entry price."
-msgstr ""
+msgstr "在新的 :class:`pybroker.portfolio.Entry` 上设置止盈，其值以距入场价格的百分比衡量。"
 
 #: 6c4fbe0c2af74abeaf215c5a9abe9cda of pybroker.context.ExecContext:130
 msgid "Limit price to use for the profit stop."
-msgstr ""
+msgstr "该止盈使用的限价。"
 
 #: 28c5e45702844e6c8da2f7a4146b6d73 of pybroker.context.ExecContext:134
 msgid ""
@@ -183,22 +202,24 @@ msgid ""
 "If set, the stop is checked against the ``exit_price`` and exits at the "
 "``exit_price`` when triggered."
 msgstr ""
+"止盈离场时使用的离场 :class:`pybroker.common.PriceType`。如果设置了该值，止盈会依据 "
+"``exit_price`` 进行判定，并在触发时以 ``exit_price`` 离场。"
 
 #: 9800df73b6e84912a946f120e2c3d123 of pybroker.context.ExecContext:140
 msgid ""
 "Sets a trailing stop loss on a new :class:`pybroker.portfolio.Entry`, "
 "where value is measured in points from entry price."
-msgstr ""
+msgstr "在新的 :class:`pybroker.portfolio.Entry` 上设置移动止损，其值以距入场价格的点数衡量。"
 
 #: ee9fb3d3fe2b446ea5a3d8a63de6ce3b of pybroker.context.ExecContext:146
 msgid ""
 "Sets a trailing stop loss on a new :class:`pybroker.portfolio.Entry`, "
 "where value is measured in percentage from entry price."
-msgstr ""
+msgstr "在新的 :class:`pybroker.portfolio.Entry` 上设置移动止损，其值以距入场价格的百分比衡量。"
 
 #: 45b215c2635147bd8c97107a9c7f2bf3 of pybroker.context.ExecContext:152
 msgid "Limit price to use for the trailing stop loss."
-msgstr ""
+msgstr "该移动止损使用的限价。"
 
 #: 3157403610dd44b1bfdc9db65c8b7c3f of pybroker.context.ExecContext:156
 msgid ""
@@ -206,17 +227,19 @@ msgid ""
 "exit. If set, the stop is checked against the ``exit_price`` and exits at"
 " the ``exit_price`` when triggered."
 msgstr ""
+"移动止损离场时使用的离场 :class:`pybroker.common.PriceType`。如果设置了该值，止损会依据 "
+"``exit_price`` 进行判定，并在触发时以 ``exit_price`` 离场。"
 
 #: f51f37f3770e4b3da131b880621cf6c6 of pybroker.context.ExecContext.bars:1
 msgid "Number of bars of data that have completed."
-msgstr ""
+msgstr "已完成的数据 K 线数量。"
 
 #: 9a96c17282d84ed58569efb32aa4e0d2 of
 #: pybroker.context.ExecContext.buying_power:1
 msgid ""
 "Available buying power for long and short orders given "
 ":attr:`pybroker.config.StrategyConfig.leverage`."
-msgstr ""
+msgstr "在给定 :attr:`pybroker.config.StrategyConfig.leverage` 的情况下，可用于多头和空头订单的购买力。"
 
 #: 555d3fca41cb472f874bf5971fbcd0d3 of
 #: pybroker.context.ExecContext.buying_power:4
@@ -226,13 +249,15 @@ msgid ""
 "capital (equity multiplied by leverage) instead, so the two can differ "
 "once positions are open."
 msgstr ""
+"这正是 :class:`pybroker.portfolio.Portfolio` 在成交时用来限定订单的依据。而 "
+":meth:`.calc_target_shares` 则是按可部署资本（权益乘以杠杆）来确定规模的，因此一旦有仓位开仓，两者可能会出现差异。"
 
 #: 761e219dedf0461fb05d471f69e20dc4 of
 #: pybroker.context.ExecContext.calc_target_shares:1
 msgid ""
 "Calculates the number of shares given a ``target_size`` allocation and "
 "share ``price``."
-msgstr ""
+msgstr "根据 ``target_size`` 分配比例和股票 ``price``，计算股数。"
 
 #: ../../source/reference/pybroker.context.rst 0e02c6d74cd64fbe8ffeee41a3e7100c
 #: 415ffcd914b4434580a3d323384ae64a 417ab692e56643e5abf20cb08b672a71
@@ -244,23 +269,24 @@ msgstr ""
 #: eecbe2a1d7364dbe83eb9e7ce3c6ebbe fc1e39cfbe5f499ebf76167c04f76908
 #: feeab0c4f27c445f9e57458337501f5f
 msgid "Parameters"
-msgstr ""
+msgstr "参数"
 
 #: 1a57581119224edbb1ada126ae3656ae of
 #: pybroker.context.ExecContext.calc_target_shares:4
-#, python-format
 msgid ""
 "Proportion of deployable capital used to calculate the number of shares, "
 "where the max ``target_size`` is ``1``. For example, a ``target_size`` of"
 " ``0.1`` would represent 10% of deployable capital."
 msgstr ""
+"用于计算股数的可部署资本比例，其中 ``target_size`` 的最大值为 ``1``。例如，``target_size`` 为 "
+"``0.1`` 表示可部署资本的 10%。"
 
 #: cddc850df69d462d9cc2976967f099b8 of
 #: pybroker.context.ExecContext.calc_target_shares:8
 msgid ""
 "Share price used to calculate the number of shares. If ``None``, the "
 "share price of the ``ExecContext``\\ 's :attr:`.symbol` is used."
-msgstr ""
+msgstr "用于计算股数的股价。如果为 ``None``，则使用 ``ExecContext``\\ 的 :attr:`.symbol` 的股价。"
 
 #: 8e400c278a174bd5af2cd24249aab4ca of
 #: pybroker.context.ExecContext.calc_target_shares:11
@@ -270,6 +296,9 @@ msgid ""
 ":attr:`pybroker.config.StrategyConfig.leverage`. The resulting order is "
 "still capped by :attr:`.buying_power` when it is placed."
 msgstr ""
+"用于计算股数的资本。如果为 ``None``，则使用可部署资本，定义为投资组合权益乘以 "
+":attr:`pybroker.config.StrategyConfig.leverage`。生成的订单在下达时仍会受到 "
+":attr:`.buying_power` 的限制。"
 
 #: ../../source/reference/pybroker.context.rst 3ba774fda80d47ff85bc4e86a915ab52
 #: 416bd8303143467a85a8da0b827a61bf 59490f55391d48e8a5247a7931ad44fa
@@ -279,7 +308,7 @@ msgstr ""
 #: b9a431553efd43a782a2ad1318a249c1 d076846a164646cab04b027993982085
 #: e99b2719d05643b4b155ca7cd40bc02a ff78d21426904c24a87616d4e9f1bc49
 msgid "Returns"
-msgstr ""
+msgstr "返回"
 
 #: efe1d6134f4a41f68af8d39cc4b66d07 of
 #: pybroker.context.ExecContext.calc_target_shares:18
@@ -288,6 +317,9 @@ msgid ""
 ":attr:`pybroker.config.StrategyConfig.enable_fractional_shares` is "
 "``True``, then a Decimal is returned."
 msgstr ""
+"根据 ``target_size`` 和股票 ``price`` 计算出的股数。如果 "
+":attr:`pybroker.config.StrategyConfig.enable_fractional_shares` 为 "
+"``True``，则返回一个 Decimal。"
 
 #: 2b1928de7818470daa1ca1b5faa29a44 of
 #: pybroker.context.ExecContext.cancel_all_pending_orders:1
@@ -295,21 +327,23 @@ msgid ""
 "Cancels all :class:`pybroker.scope.PendingOrder`\\ s for ``symbol``. When"
 " ``symbol`` is ``None``, all pending orders are canceled."
 msgstr ""
+"取消 ``symbol`` 的所有 :class:`pybroker.scope.PendingOrder`\\。当 ``symbol`` 为 "
+"``None`` 时，取消所有待处理订单。"
 
 #: c2bed64c6f5341ed968651dee547b417 of
 #: pybroker.context.ExecContext.cancel_pending_order:1
 msgid "Cancels a :class:`pybroker.scope.PendingOrder` with ``order_id``."
-msgstr ""
+msgstr "取消 ID 为 ``order_id`` 的 :class:`pybroker.scope.PendingOrder`。"
 
 #: 44020fc84ccb493fb5a4d6bbe840b14b of
 #: pybroker.context.ExecContext.cancel_stop:1
 msgid "Cancels a :class:`pybroker.portfolio.Stop` with ``stop_id``."
-msgstr ""
+msgstr "取消 ID 为 ``stop_id`` 的 :class:`pybroker.portfolio.Stop`。"
 
 #: 4d02cc70f282429c8322a5c8ad8a348f of
 #: pybroker.context.ExecContext.cancel_stops:1
 msgid "Cancels :class:`pybroker.portfolio.Stop`\\ s."
-msgstr ""
+msgstr "取消 :class:`pybroker.portfolio.Stop`\\。"
 
 #: a2f884edf8e8472c90941c244617bfad of
 #: pybroker.context.ExecContext.cancel_stops:3
@@ -317,68 +351,70 @@ msgid ""
 "Ticker symbol, :class:`pybroker.portfolio.Position`, or "
 ":class:`pybroker.portfolio.Entry` for which to cancel stops."
 msgstr ""
+"要取消止损的股票代码、:class:`pybroker.portfolio.Position` 或 "
+":class:`pybroker.portfolio.Entry`。"
 
 #: 5fb9d15d065d446aa9a7ae9fd252faf0 of
 #: pybroker.context.ExecContext.cancel_stops:5
 msgid ":class:`pybroker.common.StopType`."
-msgstr ""
+msgstr ":class:`pybroker.common.StopType`。"
 
 #: 572116c2d7cf411498d3d24d7fb6a190 of pybroker.context.ExecContext.cash:1
 msgid "Total cash currently held in the :class:`pybroker.portfolio.Portfolio`."
-msgstr ""
+msgstr ":class:`pybroker.portfolio.Portfolio` 中当前持有的现金总额。"
 
 #: f34befcf97a943a9ba0f24ba810ef883 of pybroker.context.ExecContext.close:1
 msgid "Current bar's close price."
-msgstr ""
+msgstr "当前 K 线的收盘价。"
 
 #: 2030c8db99ed435690ea28da7bea6990 of
 #: pybroker.context.ExecContext.close_price:1
 msgid "Current bar's close price as a scalar."
-msgstr ""
+msgstr "当前 K 线的收盘价（标量形式）。"
 
 #: 12f4d3600d5043f1b9705a21e0d7f9fd of
 #: pybroker.context.ExecContext.cover_all_shares:1
 msgid "Covers all short shares of :attr:`.ExecContext.symbol`."
-msgstr ""
+msgstr "回补 :attr:`.ExecContext.symbol` 的全部空头股份。"
 
 #: 7f9500f9152148f8a8b75e54832a78da of
 #: pybroker.context.ExecContext.cover_fill_price:1
 msgid ""
 "Alias for :attr:`.buy_fill_price`. When set, this causes the buy order to"
 " be placed before any sell orders."
-msgstr ""
+msgstr ":attr:`.buy_fill_price` 的别名。设置后，会使买入订单在任何卖出订单之前下达。"
 
 #: f642246f482b470698c7d26a8cb02caa of
 #: pybroker.context.ExecContext.cover_limit_price:1
 msgid ""
 "Alias for :attr:`.buy_limit_price`. When set, this causes the buy order "
 "to be placed before any sell orders."
-msgstr ""
+msgstr ":attr:`.buy_limit_price` 的别名。设置后，会使买入订单在任何卖出订单之前下达。"
 
 #: 59459cfc0cb6403985d201e902cffd72 of
 #: pybroker.context.ExecContext.cover_shares:1
 msgid ""
 "Alias for :attr:`.buy_shares`. When set, this causes the buy order to be "
 "placed before any sell orders."
-msgstr ""
+msgstr ":attr:`.buy_shares` 的别名。设置后，会使买入订单在任何卖出订单之前下达。"
 
 #: 2465dcbc4dba4d2290e392d14f087e2d of pybroker.context.ExecContext.dt:1
 msgid "Current bar's date expressed as a ``datetime``."
-msgstr ""
+msgstr "以 ``datetime`` 表示的当前 K 线日期。"
 
 #: 7ca2f70b63b9469fb7bc3b57967c2f22 of pybroker.context.ExecContext.foreign:1
 msgid "Retrieves bar data for another ticker symbol."
-msgstr ""
+msgstr "获取另一个股票代码的 K 线数据。"
 
 #: 0122f93e34c14d0ab5034c64acf80217 of pybroker.context.ExecContext.foreign:3
 msgid "Ticker symbol of the bar data."
-msgstr ""
+msgstr "该 K 线数据的股票代码。"
 
 #: 1843624635a04f9599634dea5f9727e3 of pybroker.context.ExecContext.foreign:4
 msgid ""
 "Name of the data column to retrieve. If ``None``, all data columns are "
 "returned in :class:`pybroker.common.BarData`."
-msgstr ""
+msgstr "要获取的数据列名称。如果为 ``None``，则以 :class:`pybroker.common.BarData` 形式返回所有数据列。"
 
 #: 6326beea0bd0420f9c369a101548c369 of pybroker.context.ExecContext.foreign:7
 msgid ""
@@ -386,30 +422,32 @@ msgid ""
 "containing data of all bars up to the current one. Otherwise, an "
 ":class:`numpy.ndarray` containing values of the column ``col``."
 msgstr ""
+"如果 ``col`` 为 ``None``，则返回一个 :class:`pybroker.common.BarData` 实例，其中包含截至当前 "
+"K 线为止所有 K 线的数据。否则，返回一个包含 ``col`` 列值的 :class:`numpy.ndarray`。"
 
 #: c79a2ab749ff4f6aa13013621bd764ae of
 #: pybroker.context.ExecContext.has_long_positions:1
 msgid "Returns whether any long positions are currently open."
-msgstr ""
+msgstr "返回当前是否存在任何未平仓多头头寸。"
 
 #: 209ef41585e941ab96c2b09c67da9001 of
 #: pybroker.context.ExecContext.has_short_positions:1
 msgid "Returns whether any short positions are currently open."
-msgstr ""
+msgstr "返回当前是否存在任何未平仓空头头寸。"
 
 #: dbd3224b9db34274add821d5dfef3a7c of pybroker.context.ExecContext.high:1
 msgid "Current bar's high price."
-msgstr ""
+msgstr "当前 K 线的最高价。"
 
 #: 7d2cac3b8a564cf89cf92f038597ef44 of
 #: pybroker.context.ExecContext.high_price:1
 msgid "Current bar's high price as a scalar."
-msgstr ""
+msgstr "当前 K 线的最高价（标量形式）。"
 
 #: 0ae0677fdbb04946ba3f8825a97b4aeb of
 #: pybroker.context.ExecContext.hyperparam:1
 msgid "Returns a hyperparameter value for this execution."
-msgstr ""
+msgstr "返回该执行函数的一个超参数值。"
 
 #: 15eed15e25dd4c2ab9f216fee568963f of
 #: pybroker.context.ExecContext.hyperparam:3
@@ -417,53 +455,55 @@ msgid ""
 "The name must have been attached via ``hyperparams=[...]`` on "
 ":meth:`pybroker.strategy.Strategy.add_execution`."
 msgstr ""
+"该名称必须已通过 :meth:`pybroker.strategy.Strategy.add_execution` 上的 "
+"``hyperparams=[...]`` 附加。"
 
 #: 9b3b3fdd70ad454db0d051dbfa5ffaff of pybroker.context.ExecContext.indicator:1
 msgid "Returns indicator data."
-msgstr ""
+msgstr "返回指标数据。"
 
 #: c072e59dcb744ae79f562b6a85f4c75d of pybroker.context.ExecContext.indicator:3
 msgid ""
 "Name used to identify the indicator, registered with "
 ":meth:`pybroker.indicator.indicator`."
-msgstr ""
+msgstr "用于标识该指标的名称，通过 :meth:`pybroker.indicator.indicator` 注册。"
 
 #: c32d98ad063b4b3ba36150f482e32a2b of pybroker.context.ExecContext.indicator:5
 msgid ""
 "Ticker symbol that was used to generate the indicator data. If ``None``, "
 "the ``ExecContext``\\ 's :attr:`.symbol` is used."
-msgstr ""
+msgstr "用于生成该指标数据的股票代码。如果为 ``None``，则使用 ``ExecContext``\\ 的 :attr:`.symbol`。"
 
 #: d5003dd2a59a4335834d81b049e135c3 of pybroker.context.ExecContext.indicator:8
 msgid ""
 ":class:`numpy.ndarray` of indicator values for all bars up to the current"
 " one, sorted in ascending chronological order."
-msgstr ""
+msgstr "截至当前 K 线为止所有 K 线的指标值 :class:`numpy.ndarray`，按时间先后升序排列。"
 
 #: 228e5fb66234426ea6d7fd6cf63e59c7 of pybroker.context.ExecContext.input:1
 msgid "Returns model input data for making predictions."
-msgstr ""
+msgstr "返回用于进行预测的模型输入数据。"
 
 #: 350ae3ba85c2432aa82d306480c037d2 of pybroker.context.ExecContext.input:3
 msgid "Name of the model for the input data."
-msgstr ""
+msgstr "该输入数据对应模型的名称。"
 
 #: 80aea259932942a9b61b7ef200ef3863 of pybroker.context.ExecContext.input:4
 msgid ""
 "Ticker symbol of the model for the input data. If ``None``, the "
 "``ExecContext``\\ 's :attr:`.symbol` is used."
-msgstr ""
+msgstr "该输入数据对应模型的股票代码。如果为 ``None``，则使用 ``ExecContext``\\ 的 :attr:`.symbol`。"
 
 #: a4658fdd53374e7798bb59dcc30d73c7 of pybroker.context.ExecContext.input:7
 msgid ""
 ":class:`pandas.DataFrame` containing the input data, where each row "
 "represents a bar in the sequence up to the current bar. The rows are "
 "sorted in ascending chronological order."
-msgstr ""
+msgstr "包含输入数据的 :class:`pandas.DataFrame`，每一行代表截至当前 K 线为止序列中的一根 K 线。各行按时间先后升序排列。"
 
 #: d01bf1e76fab453b8c65a75ca2c126af of pybroker.context.ExecContext.interval:1
 msgid "Returns a read-only view of compressed bar data for ``interval``."
-msgstr ""
+msgstr "返回 ``interval`` 压缩 K 线数据的只读视图。"
 
 #: 93ead55f3d7d4de4bbd6c6c7da2cac11 of pybroker.context.ExecContext.interval:3
 msgid ""
@@ -477,18 +517,25 @@ msgid ""
 "execution's ``hyperparams``. The same "
 ":class:`~pybroker.interval.TimeframeInterval` forms are supported:"
 msgstr ""
+"``interval`` 必须与该执行函数在 :meth:`pybroker.strategy.Strategy.add_execution` "
+"中通过 ``intervals`` 声明的值匹配，或者与通过 "
+":meth:`pybroker.model.ModelSource.intervals` / "
+":meth:`pybroker.indicator.Indicator.intervals` "
+"绑定到其某个模型或指标的区间匹配。区间的作用域限定在各自的执行函数内：读取另一个执行函数声明的区间会引发 ``ValueError``，这与 "
+":meth:`.hyperparam` 受该执行函数的 ``hyperparams`` 限定的方式相同。支持相同的 "
+":class:`~pybroker.interval.TimeframeInterval` 形式："
 
 #: 81f6fbb7efb74c4a87812a72bd084317 of pybroker.context.ExecContext.interval:14
 msgid ""
 "**Every-n-bars** (``int``): e.g. ``ctx.interval(5)`` for bars formed from"
 " every 5 base bars."
-msgstr ""
+msgstr "**每 n 根 K 线**（``int``）：例如 ``ctx.interval(5)`` 表示由每 5 根基础 K 线形成的 K 线。"
 
 #: 04e02602f1644e94b6d5936d4f6c1145 of pybroker.context.ExecContext.interval:17
 msgid ""
 "**Duration** (``str``): e.g. ``ctx.interval(\"5m\")`` for fixed-duration "
 "bins (digits plus unit letter)."
-msgstr ""
+msgstr "**时长**（``str``）：例如 ``ctx.interval(\"5m\")`` 表示固定时长的分箱（数字加单位字母）。"
 
 #: d987ce1e8109468bac8cf0e28b7923bf of pybroker.context.ExecContext.interval:20
 msgid ""
@@ -496,10 +543,12 @@ msgid ""
 "weekly bars. Weeks start on Monday, months on the first of the month, "
 "quarters in January, April, July, and October, and years on January 1."
 msgstr ""
+"**日历**（``str``）：例如 ``ctx.interval(\"weekly\")`` 表示日历周线 K 线。周从周一开始，月从每月 1 "
+"日开始，季度从 1、4、7、10 月开始，年从 1 月 1 日开始。"
 
 #: 309cb6d5a2674c32835d4bb14c5f1f10 of pybroker.context.ExecContext.interval:25
 msgid "For example::"
-msgstr ""
+msgstr "例如::"
 
 #: 759a16deefd3491bb55735c0020e6eee of pybroker.context.ExecContext.interval:41
 msgid ""
@@ -507,18 +556,20 @@ msgid ""
 ":meth:`pybroker.strategy.Strategy.add_execution`, or bound to one of its "
 "models or indicators."
 msgstr ""
+"该执行函数通过 :meth:`pybroker.strategy.Strategy.add_execution` "
+"声明的压缩区间，或绑定到其某个模型或指标的区间。"
 
 #: e09b047ea9b44b5aacbdec2a2cb4533c of pybroker.context.ExecContext.interval:45
 msgid ""
 ":class:`pybroker.context.IntervalContext` exposing read-only OHLCV, "
 "indicators, and model outputs on the compressed bars."
-msgstr ""
+msgstr "公开压缩 K 线上只读 OHLCV、指标和模型输出的 :class:`pybroker.context.IntervalContext`。"
 
 #: e57af3dcab224365b03d1613d8963b58 of pybroker.context.ExecContext.long_pos:1
 msgid ""
 "Retrieves a current long :class:`pybroker.portfolio.Position` for a "
 "``symbol``."
-msgstr ""
+msgstr "获取 ``symbol`` 当前的多头 :class:`pybroker.portfolio.Position`。"
 
 #: 845c9e976d5d427dbb8c776c514b7852 9db1b093e2024951a45596a3e41dce3c of
 #: pybroker.context.ExecContext.long_pos:4
@@ -527,161 +578,163 @@ msgid ""
 "Ticker symbol of the position to return. If ``None``, the "
 "``ExecContext``\\ 's :attr:`.symbol` is used. Defaults to ``None``."
 msgstr ""
+"要返回的头寸的股票代码。如果为 ``None``，则使用 ``ExecContext``\\ 的 :attr:`.symbol`。默认为 "
+"``None``。"
 
 #: 834d05b2466b4fd8a3babb3ebe3fcba3 b0e665f1380b489bb9d04aa369e4f787
 #: e6e70d94a8174a0995583c7d99c3c788 of pybroker.context.ExecContext.long_pos:8
 #: pybroker.context.ExecContext.pos:8 pybroker.context.ExecContext.short_pos:8
 msgid ":class:`pybroker.portfolio.Position` if one exists, otherwise ``None``."
-msgstr ""
+msgstr "如果存在则为 :class:`pybroker.portfolio.Position`，否则为 ``None``。"
 
 #: 4476d51ed66644ef849b938b11731ed0 of
 #: pybroker.context.ExecContext.long_positions:1
 msgid "Retrieves all current long positions."
-msgstr ""
+msgstr "获取所有当前的多头头寸。"
 
 #: 250da9fc5cdb4b6bab6dedbb5def8d3a of
 #: pybroker.context.ExecContext.long_positions:3
 msgid ""
 "Ticker symbol used to filter positions. If ``None``, long positions for "
 "all symbols are returned. Defaults to ``None``."
-msgstr ""
+msgstr "用于过滤头寸的股票代码。如果为 ``None``，则返回所有品种的多头头寸。默认为 ``None``。"
 
 #: 1a5e401aab584d9b9f7ea2bb16d6fd5b of
 #: pybroker.context.ExecContext.long_positions:7
 msgid ""
 ":class:`Iterator` of currently held long "
 ":class:`pybroker.portfolio.Position` \\s."
-msgstr ""
+msgstr "当前持有的多头 :class:`pybroker.portfolio.Position` 的 :class:`Iterator`。"
 
 #: 0c6c98c1fdc747c8a2cd2296d6021cf2 of pybroker.context.ExecContext.loss_rate:1
 msgid "Running loss rate of trades."
-msgstr ""
+msgstr "交易的滚动败率。"
 
 #: 9bcedb9dc9d544198e7df8282ab26415 of pybroker.context.ExecContext.low:1
 msgid "Current bar's low price."
-msgstr ""
+msgstr "当前 K 线的最低价。"
 
 #: 77ea42a896be40458ea76b1705401c34 of pybroker.context.ExecContext.low_price:1
 msgid "Current bar's low price as a scalar."
-msgstr ""
+msgstr "当前 K 线的最低价（标量形式）。"
 
 #: 6e2b3e6a86c94e55b2cddb10279a56af of
 #: pybroker.context.ExecContext.margin_loan:1
 msgid "Borrowed funds used for leveraged long and short positions."
-msgstr ""
+msgstr "用于多头和空头杠杆仓位的借入资金。"
 
 #: d9c14cc705de4908ae4d527bc151eb48 of pybroker.context.ExecContext.model:1
 msgid "Returns a trained model."
-msgstr ""
+msgstr "返回一个已训练的模型。"
 
 #: e646cbd20b1c43d9b4cb8bc46fb5e4f9 of pybroker.context.ExecContext.model:3
 msgid ""
 "Name used to identify the model that was registered with "
 ":func:`pybroker.model.model`."
-msgstr ""
+msgstr "用于标识该模型的名称，通过 :func:`pybroker.model.model` 注册。"
 
 #: 003ea38f81a04fce85e9a6e7f759891f of pybroker.context.ExecContext.model:5
 msgid ""
 "Ticker symbol of the data that was used to train the model. If ``None``, "
 "the ``ExecContext``\\ 's :attr:`.symbol` is used."
-msgstr ""
+msgstr "用于训练该模型的数据所对应的股票代码。如果为 ``None``，则使用 ``ExecContext``\\ 的 :attr:`.symbol`。"
 
 #: 0311e925708d4da7998bbe6342bea4d0 of pybroker.context.ExecContext.model:8
 msgid "Instance of the trained model."
-msgstr ""
+msgstr "已训练模型的实例。"
 
 #: ac2b7c3c20d748e384e26c9152b531cf of
 #: pybroker.context.ExecContext.net_cash_balance:1
 msgid "Net cash balance (``cash - margin_loan``)."
-msgstr ""
+msgstr "净现金余额（``cash - margin_loan``）。"
 
 #: c62ee0e7d9d04291ab93f9c95dc185aa of pybroker.context.ExecContext.open:1
 msgid "Current bar's open price."
-msgstr ""
+msgstr "当前 K 线的开盘价。"
 
 #: da196a9cee5645c59d71b3f6fb058174 of
 #: pybroker.context.ExecContext.open_price:1
 msgid "Current bar's open price as a scalar."
-msgstr ""
+msgstr "当前 K 线的开盘价（标量形式）。"
 
 #: 584e95253d0c41c8af757ac074d87d8e of pybroker.context.ExecContext.orders:1
 msgid ""
 ":class:`Iterator` of all :class:`pybroker.portfolio.Order`\\ s that have "
 "been placed and filled."
-msgstr ""
+msgstr "所有已下达并成交的 :class:`pybroker.portfolio.Order`\\ 的 :class:`Iterator`。"
 
 #: 99faf63839b04050bf93afef6d8c5553 of pybroker.context.ExecContext.pos:1
 msgid ""
 "Retrieves a current long or short :class:`pybroker.portfolio.Position` "
 "for a ``symbol``."
-msgstr ""
+msgstr "获取 ``symbol`` 当前的多头或空头 :class:`pybroker.portfolio.Position`。"
 
 #: 2fcfa21dfb7e470f9a9458bde6cc4b44 of pybroker.context.ExecContext.pos:4
 msgid "Ticker symbol of the position to return."
-msgstr ""
+msgstr "要返回的头寸的股票代码。"
 
 #: 44abb3ffbbbb4b70a4cdac59acd0f19f of pybroker.context.ExecContext.pos:5
 msgid "Specifies whether to return a ``long`` or ``short`` position."
-msgstr ""
+msgstr "指定要返回 ``long`` 还是 ``short`` 头寸。"
 
 #: a41a74153415443188756277174a97ff of pybroker.context.ExecContext.positions:1
 msgid "Retrieves all current positions."
-msgstr ""
+msgstr "获取所有当前的头寸。"
 
 #: 7db3f8e3ea1a43b9852401acef3474fb of pybroker.context.ExecContext.positions:3
 msgid ""
 "Ticker symbol used to filter positions. If ``None``, positions for all "
 "symbols are returned. Defaults to ``None``."
-msgstr ""
+msgstr "用于过滤头寸的股票代码。如果为 ``None``，则返回所有品种的头寸。默认为 ``None``。"
 
 #: b325cd03d2c243cfad0adf56c5c8388f of pybroker.context.ExecContext.positions:5
 msgid ""
 "Type of positions to return. If ``None``, both ``long`` and ``short`` "
 "positions are returned."
-msgstr ""
+msgstr "要返回的头寸类型。如果为 ``None``，则同时返回 ``long`` 和 ``short`` 头寸。"
 
 #: b75a1420960b4ccea1449d3f615385b4 of pybroker.context.ExecContext.positions:8
 msgid ""
 ":class:`Iterator` of currently held :class:`pybroker.portfolio.Position` "
 "\\s."
-msgstr ""
+msgstr "当前持有的 :class:`pybroker.portfolio.Position` 的 :class:`Iterator`。"
 
 #: b2b69402db77470383c46dda0c66c6fd of pybroker.context.ExecContext.preds:1
 msgid "Returns model predictions."
-msgstr ""
+msgstr "返回模型预测结果。"
 
 #: 5083d2ca5dd0415b8e284cd1633e40de of pybroker.context.ExecContext.preds:3
 msgid "Name of the model that made the predictions."
-msgstr ""
+msgstr "做出该预测的模型名称。"
 
 #: be33a74bce1446ee86d6b9185591768d of pybroker.context.ExecContext.preds:4
 msgid ""
 "Ticker symbol of the model that made the predictions. If ``None``, the "
 "``ExecContext``\\ 's :attr:`.symbol` is used."
-msgstr ""
+msgstr "做出该预测的模型所对应的股票代码。如果为 ``None``，则使用 ``ExecContext``\\ 的 :attr:`.symbol`。"
 
 #: 9cf3b3dce76b4ca8967cd60a9ff850e4 of pybroker.context.ExecContext.preds:7
 msgid ""
 ":class:`numpy.ndarray` containing the sequence of model predictions up to"
 " the current bar. Sorted in ascending chronological order."
-msgstr ""
+msgstr "包含截至当前 K 线为止模型预测结果序列的 :class:`numpy.ndarray`。按时间先后升序排列。"
 
 #: 7898cb16db1b467da03dc0e57d0d35db of
 #: pybroker.context.ExecContext.sell_all_shares:1
 msgid "Sells all long shares of :attr:`.ExecContext.symbol`."
-msgstr ""
+msgstr "卖出 :attr:`.ExecContext.symbol` 的全部多头股份。"
 
 #: 0ad9f3c81aed43e9867189fe9467754b of
 #: pybroker.context.ExecContext.set_target_shares:1
 msgid "Sets orders to reach a target allocation for long or short exposure."
-msgstr ""
+msgstr "设置订单以达到多头或空头敞口的目标配置。"
 
 #: 75769c38626544b2a8e3c1c829fd4233 of
 #: pybroker.context.ExecContext.set_target_shares:3
 msgid ""
 "Calculates the number of shares needed to reach ``target`` using "
 ":meth:`.calc_target_shares`."
-msgstr ""
+msgstr "使用 :meth:`.calc_target_shares` 计算达到 ``target`` 所需的股数。"
 
 #: ed390231cd934d7c8c6c88f53cf56f6b of
 #: pybroker.context.ExecContext.set_target_shares:6
@@ -691,6 +744,8 @@ msgid ""
 ":attr:`pybroker.config.StrategyConfig.leverage`. The max ``target`` is "
 "``1``."
 msgstr ""
+"目标配置，以可部署资本的比例表示，定义为投资组合权益乘以 "
+":attr:`pybroker.config.StrategyConfig.leverage`。``target`` 的最大值为 ``1``。"
 
 #: dfa22c1f89bc4c188ce2000c4ed0682d of
 #: pybroker.context.ExecContext.set_target_shares:10
@@ -699,49 +754,52 @@ msgid ""
 " :attr:`.sell_shares`. ``\"short\"`` sets :attr:`.sell_shares` to "
 "increase short exposure or :attr:`.cover_shares` to decrease it."
 msgstr ""
+"要再平衡的敞口方向。``\"long\"`` 会设置 :attr:`.buy_shares` 或 "
+":attr:`.sell_shares`。``\"short\"`` 会设置 :attr:`.sell_shares` 以增加空头敞口，或设置 "
+":attr:`.cover_shares` 以减少空头敞口。"
 
 #: ed7ad2d83c064562adddeee9c422ed4b of pybroker.context.ExecContext.short_pos:1
 msgid ""
 "Retrieves a current short :class:`pybroker.portfolio.Position` for a "
 "``symbol``."
-msgstr ""
+msgstr "获取 ``symbol`` 当前的空头 :class:`pybroker.portfolio.Position`。"
 
 #: 2b0fa8ee0c5d4001a5f2fe81e88b4621 of
 #: pybroker.context.ExecContext.short_positions:1
 msgid "Retrieves all current short positions."
-msgstr ""
+msgstr "获取所有当前的空头头寸。"
 
 #: f73139784794410c848e379d39034664 of
 #: pybroker.context.ExecContext.short_positions:3
 msgid ""
 "Ticker symbol used to filter positions. If ``None``, short positions for "
 "all symbols are returned. Defaults to ``None``."
-msgstr ""
+msgstr "用于过滤头寸的股票代码。如果为 ``None``，则返回所有品种的空头头寸。默认为 ``None``。"
 
 #: ae0bac0d170c40799e7931a3ac716770 of
 #: pybroker.context.ExecContext.short_positions:7
 msgid ""
 ":class:`Iterator` of currently held short "
 ":class:`pybroker.portfolio.Position` \\s."
-msgstr ""
+msgstr "当前持有的空头 :class:`pybroker.portfolio.Position` 的 :class:`Iterator`。"
 
 #: f58d25048f2943719e4f29a9aa88d7c6 of pybroker.context.ExecContext.to_result:1
 msgid ""
 "Creates an :class:`.ExecResult` from the data set on "
 ":class:`.ExecContext`."
-msgstr ""
+msgstr "根据设置在 :class:`.ExecContext` 上的数据创建一个 :class:`.ExecResult`。"
 
 #: 2d2c63a4e0c443f39de97f639ea62519 of
 #: pybroker.context.ExecContext.total_equity:1
 msgid "Total equity currently held in the :class:`pybroker.portfolio.Portfolio`."
-msgstr ""
+msgstr ":class:`pybroker.portfolio.Portfolio` 中当前持有的权益总额。"
 
 #: cec97329306c45f2959b72a1fb1abfd6 of
 #: pybroker.context.ExecContext.total_margin:1
 msgid ""
 "Total amount of margin currently held in the "
 ":class:`pybroker.portfolio.Portfolio`."
-msgstr ""
+msgstr ":class:`pybroker.portfolio.Portfolio` 中当前持有的保证金总额。"
 
 #: 3174b6841d824430bf565c15835c02ff of
 #: pybroker.context.ExecContext.total_market_value:1
@@ -751,44 +809,46 @@ msgid ""
 " amount of equity held in cash and long positions added together with the"
 " unrealized PnL of all open short positions."
 msgstr ""
+":class:`pybroker.portfolio.Portfolio` "
+"中当前持有的总市值。市值定义为以现金和多头头寸形式持有的权益金额，加上所有未平仓空头头寸的未实现盈亏。"
 
 #: ab3f4a15a7304a26b9d7bb3ba7a5c5d4 of pybroker.context.ExecContext.trades:1
 msgid ""
 ":class:`Iterator` of all :class:`pybroker.portfolio.Trade`\\ s that have "
 "been completed."
-msgstr ""
+msgstr "所有已完成的 :class:`pybroker.portfolio.Trade`\\ 的 :class:`Iterator`。"
 
 #: 9c3a5a89374f422ca7ac907ce9d05247 of pybroker.context.ExecContext.volume:1
 msgid "Current bar's volume."
-msgstr ""
+msgstr "当前 K 线的成交量。"
 
 #: 5098a03e6a1d48628db70847136237c8 of
 #: pybroker.context.ExecContext.volume_value:1
 msgid "Current bar's volume as a scalar."
-msgstr ""
+msgstr "当前 K 线的成交量（标量形式）。"
 
 #: 51d3438815294ef89bfca414943f93fe of pybroker.context.ExecContext.vwap:1
 msgid "Current bar's volume-weighted average price (VWAP)."
-msgstr ""
+msgstr "当前 K 线的成交量加权平均价（VWAP）。"
 
 #: 67980be1286142538a87979456851d46 of
 #: pybroker.context.ExecContext.vwap_value:1
 msgid "Current bar's VWAP as a scalar."
-msgstr ""
+msgstr "当前 K 线的 VWAP（标量形式）。"
 
 #: e7fe753053e7497aa2cb9199d4bdde28 of pybroker.context.ExecContext.win_rate:1
 msgid "Running win rate of trades."
-msgstr ""
+msgstr "交易的滚动胜率。"
 
 #: 0ffc7094fd7049c5b5512bcfddcc8e1c of pybroker.context.ExecResult:1
 msgid ""
 "Holds data that was set during the execution of a "
 ":class:`pybroker.strategy.Strategy`."
-msgstr ""
+msgstr "保存 :class:`pybroker.strategy.Strategy` 执行过程中设置的数据。"
 
 #: 117b2d8e7956471c8a3a4c2de515fc35 of pybroker.context.ExecResult:6
 msgid "Ticker symbol that was used for the execution."
-msgstr ""
+msgstr "该执行函数所使用的股票代码。"
 
 #: 1480ad2b6a764fec954f504ef94022e3 1923a0d7cae743368fb1ae7a9c6cdcc5
 #: 1bfab7242a4946a9911997d79d4532a7 2988f53dcd5c42a692c0a60fadf90e69
@@ -804,19 +864,19 @@ msgstr ""
 #: ff96c5a8eb7340908505738e59e6e2e9 of pybroker.context.ExecResult
 #: pybroker.context.RotationContext
 msgid "type"
-msgstr ""
+msgstr "类型"
 
 #: 81c2a3831b3c488fb3738da0f4c0ada6 of pybroker.context.ExecResult:8
 msgid "str"
-msgstr ""
+msgstr "str"
 
 #: e1ff491b93b24fcba55e841410cbfeaf of pybroker.context.ExecResult:12
 msgid "Timestamp of the bar that was used for the execution."
-msgstr ""
+msgstr "该执行函数所使用 K 线的时间戳。"
 
 #: 5b3132c7be3a4271a05e9b4ad1af83df of pybroker.context.ExecResult:14
 msgid "numpy.datetime64"
-msgstr ""
+msgstr "numpy.datetime64"
 
 #: 9489734ee5274123aca7c4855e40dfd6 9f96c5dd18834c8eb99ba95bc94aa689 of
 #: pybroker.context.ExecResult:20 pybroker.context.ExecResult:27
@@ -825,60 +885,63 @@ msgid ""
 "pybroker.common.PriceType | Callable[[str, pybroker.common.BarData], int "
 "| float | decimal.Decimal]"
 msgstr ""
+"int | float | numpy.floating | decimal.Decimal | "
+"pybroker.common.PriceType | Callable[[str, pybroker.common.BarData], int "
+"| float | decimal.Decimal]"
 
 #: 46f8328e77cc41239136a2fb714a5fe5 7106013a085c494f97e8ed4e899293cd of
 #: pybroker.context.ExecResult:41 pybroker.context.ExecResult:55
 msgid "float | None"
-msgstr ""
+msgstr "float | None"
 
 #: 91b7f036e0764f7f8cfc08e669474a35 c91715268a244b4b94da5d8dab861079
 #: ef9f5a8a6533476497ea4e02042a9808 f31d7814091d48c781d4f1dcac5c9799 of
 #: pybroker.context.ExecResult:62 pybroker.context.ExecResult:83
 #: pybroker.context.ExecResult:105 pybroker.context.ExecResult:132
 msgid "int | None"
-msgstr ""
+msgstr "int | None"
 
 #: 40fb7f71c03a4b72a14f5323e5d84a00 7da4c53810d1434e8637ec673b545442
 #: 95466f9c37cd4eb1970d867d4ee737d6 c457bb2c8d5b49ebafc02eaa89351a9e of
 #: pybroker.context.ExecResult:68 pybroker.context.ExecResult:74
 #: pybroker.context.ExecResult:89 pybroker.context.ExecResult:96
 msgid "decimal.Decimal | None"
-msgstr ""
+msgstr "decimal.Decimal | None"
 
 #: ffd76bdd354643fda6cc942965432e14 of pybroker.context.ExecResult:72
 msgid "Limit price used for a buy (long) order of ``symbol``."
-msgstr ""
+msgstr "``symbol`` 买入（做多）订单使用的限价。"
 
 #: 07fa752bc2bb4c7c927bd6d094483f8c of pybroker.context.ExecResult:93
 msgid "Limit price used for a sell (short) order of ``symbol``."
-msgstr ""
+msgstr "``symbol`` 卖出（做空）订单使用的限价。"
 
 #: aa61514f1e3645d8962eca8830bf581a of pybroker.context.ExecResult:109
 msgid "Stops for long :class:`pybroker.portfolio.Entry`\\ s."
-msgstr ""
+msgstr "多头 :class:`pybroker.portfolio.Entry`\\ 的止损。"
 
 #: 8ca5fbef74d241d9b56e5020c76f4ff3 998df9c1b1444e79aa11b13e5d661fae of
 #: pybroker.context.ExecResult:111 pybroker.context.ExecResult:117
 msgid "frozenset[pybroker.portfolio.Stop] | None"
-msgstr ""
+msgstr "frozenset[pybroker.portfolio.Stop] | None"
 
 #: 42904610015945d7ac5511288b4be31a of pybroker.context.ExecResult:115
 msgid "Stops for short :class:`pybroker.portfolio.Entry`\\ s."
-msgstr ""
+msgstr "空头 :class:`pybroker.portfolio.Entry`\\ 的止损。"
 
 #: bac535b6b6e149088e789113f584d8b9 of pybroker.context.ExecResult:121
 msgid ""
 "Whether ``buy_shares`` are used to cover a short position. If ``True``, "
 "the resulting buy order will be placed before sell orders."
-msgstr ""
+msgstr "``buy_shares`` 是否用于回补空头仓位。如果为 ``True``，生成的买入订单会在卖出订单之前下达。"
 
 #: 3bf2e0c13b91477e960adb75f1739d59 of pybroker.context.ExecResult:125
 msgid "bool"
-msgstr ""
+msgstr "bool"
 
 #: 260c1d3a00e34e6198823d020f51f72e of pybroker.context.ExecResult:129
 msgid "ID of :class:`pybroker.scope.PendingOrder` that was created."
-msgstr ""
+msgstr "已创建的 :class:`pybroker.scope.PendingOrder` 的 ID。"
 
 #: fe556fa60f9d45d897ca688f8bacab40 of pybroker.context.ExecResult:136
 msgid ""
@@ -890,145 +953,91 @@ msgid ""
 "carrying this is clamped at fill time to the shares still held, so it can"
 " only ever close a position and never flip one."
 msgstr ""
+"该订单所平掉的 :class:`pybroker.portfolio.Position` 类型，为 ``long`` 或 "
+"``short``；当该订单不是离场订单时为 ``None``。由 "
+":meth:`.ExecContext.sell_all_shares`、:meth:`.ExecContext.cover_all_shares`，以及目标为零的"
+" :meth:`.ExecContext.set_target_shares` "
+"设置。携带该值的订单在成交时会被限定在仍持有的股数以内，因此只能平仓，永远不会将仓位翻转。"
 
 #: 8bf213f24d5b4c2c8a8531dbc56babff of pybroker.context.ExecResult:144
 msgid "Literal['long', 'short'] | None"
-msgstr ""
+msgstr "Literal['long', 'short'] | None"
 
 #: e405d8dabd854ba48446b10506c53d76 of pybroker.context.IntervalContext:1
 msgid "Read-only view of compressed bar data for a coarser interval."
-msgstr ""
+msgstr "更粗粒度区间的压缩 K 线数据的只读视图。"
 
 #: dae0d7224ac040d784cfc4c1521f76ad of
 #: pybroker.context.IntervalContext.indicator:1
 msgid "Returns indicator values on the compressed interval."
-msgstr ""
+msgstr "返回压缩区间上的指标值。"
 
 #: 8f84e7e529494987a5629a329bdf584d of pybroker.context.IntervalContext.input:1
 msgid "Returns model input data on the compressed interval."
-msgstr ""
+msgstr "返回压缩区间上的模型输入数据。"
 
 #: bb0cd9d9c36d41f699ce973097135523 of pybroker.context.IntervalContext.model:1
 msgid "Returns a trained model on the compressed interval."
-msgstr ""
+msgstr "返回压缩区间上的已训练模型。"
 
 #: 29732aa4a1064a788312d98557be394f of pybroker.context.IntervalContext.preds:1
 msgid "Returns model predictions on the compressed interval."
-msgstr ""
+msgstr "返回压缩区间上的模型预测结果。"
 
 #: c4fb977c314c47d680c08b889c04b12d of pybroker.context.RotationContext:1
 msgid ""
 "Context passed to a rotation sizer set with "
 ":meth:`pybroker.strategy.Strategy.enable_rotation`."
 msgstr ""
+"传递给通过 :meth:`pybroker.strategy.Strategy.enable_rotation` "
+"设置的轮动规模函数（rotation sizer）的上下文。"
 
 #: c1fb0bf3230a434bb4f499f6a24f35ca of pybroker.context.RotationContext:6
 msgid ":class:`Mapping` of all ticker symbols to :class:`.ExecContext`\\ s."
-msgstr ""
+msgstr "将所有股票代码映射到 :class:`.ExecContext`\\ 的 :class:`Mapping`。"
 
 #: 20a6f2e6deec4a8eb2cd61ad6c665704 of pybroker.context.RotationContext:8
 msgid "Mapping[str, pybroker.context.ExecContext]"
-msgstr ""
+msgstr "Mapping[str, pybroker.context.ExecContext]"
 
 #: 1bfac0b8b25d491db8a409f41db481af of pybroker.context.RotationContext:12
 msgid ":class:`pybroker.portfolio.Portfolio`."
-msgstr ""
+msgstr ":class:`pybroker.portfolio.Portfolio`。"
 
 #: cbe2a1f94dee413c906ae6a4927f43dd of pybroker.context.RotationContext:14
 msgid "pybroker.portfolio.Portfolio"
-msgstr ""
+msgstr "pybroker.portfolio.Portfolio"
 
 #: 604300283368444e82e41407496b3a51 of pybroker.context.RotationContext:18
 msgid ""
 "Rankings computed from rankable :attr:`.ExecContext.long_score` values, "
 "where ``1`` is the highest score."
-msgstr ""
+msgstr "根据可排序的 :attr:`.ExecContext.long_score` 值计算出的排名，``1`` 为最高分。"
 
 #: 32f0be178e3b42a58eb5a5727f33d854 d0a257cfd0d2498fa12aeb8863960576 of
 #: pybroker.context.RotationContext:21 pybroker.context.RotationContext:29
 msgid "Mapping[str, int]"
-msgstr ""
+msgstr "Mapping[str, int]"
 
 #: 0c15338c52e14991bc8ebd7d75620540 of pybroker.context.RotationContext:25
 msgid ""
 "Rankings computed from rankable :attr:`.ExecContext.short_score` values, "
 "where ``1`` is the highest score."
-msgstr ""
+msgstr "根据可排序的 :attr:`.ExecContext.short_score` 值计算出的排名，``1`` 为最高分。"
 
 #: 41acc0e28bd542eabd225f46e2abf0a2 of pybroker.context.RotationContext:35
 msgid "pybroker.config.StrategyConfig"
-msgstr ""
+msgstr "pybroker.config.StrategyConfig"
 
 #: a5ca443038604a52801c11631140ced9 of pybroker.context.set_exec_ctx_data:1
 msgid "Sets data on an :class:`.ExecContext` instance."
-msgstr ""
+msgstr "在一个 :class:`.ExecContext` 实例上设置数据。"
 
 #: aee75e0d36c44183970894cc2cfafb80 of pybroker.context.set_exec_ctx_data:3
 msgid ":class:`.ExecContext`."
-msgstr ""
+msgstr ":class:`.ExecContext`。"
 
 #: 14011337740d4264930cdf4d31847856 of pybroker.context.set_exec_ctx_data:4
 msgid "Current bar's date."
-msgstr ""
-
-#~ msgid ""
-#~ "Deprecated. Use ``long_score`` or "
-#~ "``short_score`` instead. When set, ranks "
-#~ "buy and sell signals separately (higher"
-#~ " wins each queue). Mutually exclusive "
-#~ "with ``long_score`` and ``short_score``."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Score used to rank ``symbol`` when "
-#~ "ranking buy and cover signals. Orders"
-#~ " are placed for symbols with the "
-#~ "highest ``long_score`` values, where the "
-#~ "number of long positions held at "
-#~ "any time in the "
-#~ ":class:`pybroker.portfolio.Portfolio` is specified "
-#~ "by :meth:`pybroker.strategy.Strategy.set_max_long_positions`."
-#~ " When rotation is enabled with "
-#~ ":meth:`pybroker.strategy.Strategy.enable_rotation`, "
-#~ "``long_score`` drives long rotation and "
-#~ "orders set during an "
-#~ ":class:`pybroker.strategy.Execution` are ignored. "
-#~ "Mutually exclusive with ``score``."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Score used to rank ``symbol`` when "
-#~ "ranking sell signals. Orders are placed"
-#~ " for symbols with the highest "
-#~ "``short_score`` values, where the number "
-#~ "of short positions held at any "
-#~ "time in the :class:`pybroker.portfolio.Portfolio`"
-#~ " is specified by "
-#~ ":meth:`pybroker.strategy.Strategy.set_max_short_positions`. When"
-#~ " rotation is enabled with "
-#~ ":meth:`pybroker.strategy.Strategy.enable_rotation`, "
-#~ "``short_score`` drives short rotation and "
-#~ "orders set during an "
-#~ ":class:`pybroker.strategy.Execution` are ignored. "
-#~ "Mutually exclusive with ``score``."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "``interval`` must match a value this "
-#~ "execution declared with ``intervals`` in "
-#~ ":meth:`pybroker.strategy.Strategy.add_execution`. Intervals "
-#~ "are scoped per execution: reading an "
-#~ "interval that another execution declared "
-#~ "raises ``ValueError``, the same way "
-#~ ":meth:`.hyperparam` is gated by the "
-#~ "execution's ``hyperparams``. The same "
-#~ ":class:`~pybroker.interval.TimeframeInterval` forms are"
-#~ " supported:"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Compression interval declared for this "
-#~ "execution with "
-#~ ":meth:`pybroker.strategy.Strategy.add_execution`."
-#~ msgstr ""
+msgstr "当前 K 线的日期。"
 

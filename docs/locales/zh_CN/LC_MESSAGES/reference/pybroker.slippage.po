@@ -22,38 +22,38 @@ msgstr ""
 #: ../../source/reference/pybroker.slippage.rst:2
 #: 4c4f6ce6a2534065900a6a55574caa2c
 msgid "pybroker.slippage module"
-msgstr ""
+msgstr "pybroker.slippage 模块"
 
 #: b568430c578d42839040ebc125deff41 of pybroker.slippage:1
 msgid "Implements slippage models."
-msgstr ""
+msgstr "实现滑点模型。"
 
 #: 48659a6bca54454aa65e872d282061d3 of pybroker.slippage.FixedSlippageModel:1
 msgid "Deterministic fixed-basis-point slippage on fill price."
-msgstr ""
+msgstr "对成交价格施加确定性的固定基点滑点。"
 
 #: 74f68a07a77d46a890c84bc0bfb34521 of pybroker.slippage.FixedSlippageModel:3
 msgid ""
 "Buy fills are worsened upward; sell fills are worsened downward. Applies "
 "to long entries, short entries, long exits, and covers."
-msgstr ""
+msgstr "买入成交价会向上调整（变差）；卖出成交价会向下调整（变差）。适用于多头入场、空头入场、多头离场和空头回补。"
 
 #: ../../source/reference/pybroker.slippage.rst
 #: 0cb77d85b8b34dacb91a9bf4f890688a 4261f3ad3f624c339eb2097a5d53b522
 #: d8076cb564f1453580b2088597223465
 msgid "Parameters"
-msgstr ""
+msgstr "参数"
 
 #: 2335a0f7db384ac0a8aa65ffed762e5c of pybroker.slippage.FixedSlippageModel:6
 msgid ""
 "Adverse slippage in basis points. ``0`` is a no-op. Must be less than "
 "``10000`` (100%), which would make sell fills non-positive."
-msgstr ""
+msgstr "以基点表示的不利滑点。``0`` 表示不产生任何效果。必须小于 ``10000``（100%），否则会使卖出成交价变为非正数。"
 
 #: 6fefa82948b0402da94ff54f59691f8b of
 #: pybroker.slippage.FixedSlippageModel.adjust_fill_price:1
 msgid "Returns ``fill_price`` adjusted for ``side`` without extra context."
-msgstr ""
+msgstr "返回根据 ``side`` 调整后的 ``fill_price``，不使用额外的上下文信息。"
 
 #: ac56b56b50f9443da6a88ad7303bfd1f c9656b74eeeb47e28eee85849823f7e9
 #: dfb9bc03f79145c180b42690c5c04ddb f08cab572fa241768aa7736da63e5314 of
@@ -62,7 +62,7 @@ msgstr ""
 #: pybroker.slippage.VolatilitySlippageModel.apply_slippage:1
 #: pybroker.slippage.VolumeSlippageModel.apply_slippage:1
 msgid "Applies slippage using data from the fill bar."
-msgstr ""
+msgstr "使用成交 K 线的数据施加滑点。"
 
 #: 2f7ade290b064eb19150682b30b39bf3 6211c7ad26c64222bbc67522be70ad74
 #: 80d79bec284d488da66501fbac52928b ca4f9cce4b344fc7b519319014f8b97d of
@@ -75,13 +75,15 @@ msgid ""
 "but never increased: returning more than ``ctx.shares`` (or a negative "
 "quantity) raises a :class:`ValueError` at the fill."
 msgstr ""
+"返回的股数可以减少以模拟部分成交，但不能增加：如果返回值超过 ``ctx.shares``（或为负数），会在成交时引发 "
+":class:`ValueError`。"
 
 #: ../../source/reference/pybroker.slippage.rst
 #: 0a38fba020394d5a82a528347f8e0ea7 37c5ea1c83654259bd51c2c0d9336cc2
 #: 41625981c578469ba83069686d286466 986c487b2a074b00827d8bc240d782be
 #: d7bd472a7ba746619776335a7a7e8bb4
 msgid "Returns"
-msgstr ""
+msgstr "返回"
 
 #: 0d33aa6976ce4315b3035a6c83086275 40f198db914e4f26b80075174b996ec7
 #: 657e17bef7194c2dac2bdd0c3444ac3d 71c32638010d4b3d9a3d4ae9c8c6df20
@@ -92,7 +94,7 @@ msgstr ""
 #: pybroker.slippage.VolatilitySlippageModel.apply_slippage:7
 #: pybroker.slippage.VolumeSlippageModel.apply_slippage:7
 msgid "Tuple of ``(shares, fill_price)`` after slippage."
-msgstr ""
+msgstr "滑点调整后的 ``(shares, fill_price)`` 元组。"
 
 #: 164e65335803435098b918000cdec6e2 a26b3835afc54d4bbe434306ec1917f1
 #: ca3f84a7342f40908d1e06c29dd72fdd dceabd73adf540cea0039e75f3822911 of
@@ -101,15 +103,15 @@ msgstr ""
 #: pybroker.slippage.VolatilitySlippageModel.is_fill_noop:1
 #: pybroker.slippage.VolumeSlippageModel.is_fill_noop:1
 msgid "Whether :meth:`apply_slippage` is a no-op for this model."
-msgstr ""
+msgstr "对于该模型，:meth:`apply_slippage` 是否不产生任何效果。"
 
 #: 6ea53e5838814116be23133291f1b141 of pybroker.slippage.SlippageContext:1
 msgid "Context passed to slippage adjustments."
-msgstr ""
+msgstr "传递给滑点调整逻辑的上下文。"
 
 #: 4354a0f322d04d9fb10052371378146c of pybroker.slippage.SlippageContext:5
 msgid "Order side, either ``buy`` or ``sell``."
-msgstr ""
+msgstr "订单方向，为 ``buy`` 或 ``sell``。"
 
 #: 35e1214208e346f1b42d710ab9612e14 94ad5db06c454443ab34aaa5a4f2a387
 #: 9872b15e81b64c4f8d453ca96a80fa67 a67c2c56ba1944c285a7639b03e53be8
@@ -117,32 +119,32 @@ msgstr ""
 #: f3713a5482d14f849ed59d435404ac63 fbc37b604c7f4c1eb30022bfc1c0bf69 of
 #: pybroker.slippage.SlippageContext
 msgid "type"
-msgstr ""
+msgstr "类型"
 
 #: cf62b03761b240fa90c6a3d5f40ab39d of pybroker.slippage.SlippageContext:7
 msgid "Literal['buy', 'sell']"
-msgstr ""
+msgstr "Literal['buy', 'sell']"
 
 #: 6c507ce6ed724c3fa4a5730eb93615a5 of pybroker.slippage.SlippageContext:11
 msgid "Ticker symbol of the order."
-msgstr ""
+msgstr "该订单的股票代码。"
 
 #: 539c10c4dbd84dd0a823d9f73da33628 of pybroker.slippage.SlippageContext:13
 msgid "str"
-msgstr ""
+msgstr "str"
 
 #: 7bf964156b424e649f6146f28dd9db03 of pybroker.slippage.SlippageContext:17
 msgid "Number of shares to fill before slippage."
-msgstr ""
+msgstr "滑点调整前待成交的股数。"
 
 #: 6a9d64ed1f274a5dadef41971688cd37 886eb3b20b994caabd6002baaf9a5bbf of
 #: pybroker.slippage.SlippageContext:19 pybroker.slippage.SlippageContext:25
 msgid "decimal.Decimal"
-msgstr ""
+msgstr "decimal.Decimal"
 
 #: 1cacb621aee746858f90cd3b2d935681 of pybroker.slippage.SlippageContext:23
 msgid "Base fill price resolved on the fill bar."
-msgstr ""
+msgstr "在成交 K 线上确定的基础成交价格。"
 
 #: 1db9afa404d04626981991ee243aa809 of pybroker.slippage.SlippageContext:29
 msgid ""
@@ -154,10 +156,14 @@ msgid ""
 "``None`` when bar data is unavailable, in which case volume- and "
 "volatility-based models leave the fill unadjusted."
 msgstr ""
+"覆盖整个测试窗口的列作用域（column scope）—— **未** 预先切片到成交 K 线。因果读取时，每次获取都必须使用成交 K "
+"线的索引进行限定，例如 ``ctx.col_scope.fetch(ctx.symbol, \"close\", "
+"end_index=ctx.sym_end_index[ctx.symbol])``；不带 ``end_index`` "
+"的获取会返回整个窗口，包括成交之后的 K 线。当 K 线数据不可用时为 ``None``，此时基于成交量和波动率的模型将不对成交进行调整。"
 
 #: 767270bf5a7648eda14fce64a9231828 of pybroker.slippage.SlippageContext:38
 msgid "pybroker.scope.ColumnScope | None"
-msgstr ""
+msgstr "pybroker.scope.ColumnScope | None"
 
 #: a7a8a3754faa45a69059da648e6fe43c of pybroker.slippage.SlippageContext:42
 msgid ""
@@ -166,18 +172,20 @@ msgid ""
 "unavailable, in which case indicator-based models leave the fill "
 "unadjusted."
 msgstr ""
+"覆盖整个测试窗口的指标作用域（indicator scope）—— 与 ``col_scope`` 相同，同样需要使用 ``end_index``"
+" 进行限定。当指标数据不可用时为 ``None``，此时基于指标的模型将不对成交进行调整。"
 
 #: 5e2732b3b62f43e2a3117495bc9717c0 of pybroker.slippage.SlippageContext:47
 msgid "pybroker.scope.IndicatorScope | None"
-msgstr ""
+msgstr "pybroker.scope.IndicatorScope | None"
 
 #: 221ee2fe471341b58d176b241675f120 of pybroker.slippage.SlippageContext:51
 msgid "Current bar index per symbol, or ``None`` when unavailable."
-msgstr ""
+msgstr "每个品种当前的 K 线索引，不可用时为 ``None``。"
 
 #: b0be0c10ec9b4e6a8033c0acfb8a486c of pybroker.slippage.SlippageContext:54
 msgid "Mapping[str, int] | None"
-msgstr ""
+msgstr "Mapping[str, int] | None"
 
 #: 91e12bd509d8491bb205c09dd005fb8c of pybroker.slippage.SlippageContext:58
 msgid ""
@@ -186,20 +194,22 @@ msgid ""
 "model compute price-dependent values (such as volume participation) from "
 "the quantity that will actually fill."
 msgstr ""
+"是否启用碎股（fractional shares）。为 ``False`` "
+"时，调用方会将返回的股数截断为整数；该标志使模型能够根据实际将要成交的数量来计算与价格相关的值（例如成交量参与度）。"
 
 #: 8da2fcb433704f24b4bb9f8dd7513f1a of pybroker.slippage.SlippageContext:64
 msgid "bool"
-msgstr ""
+msgstr "bool"
 
 #: 90b96bbbe4574d0883fce1b1a41ea082 of pybroker.slippage.SlippageModel:1
 msgid "Base class for implementing a slippage model."
-msgstr ""
+msgstr "用于实现滑点模型的基类。"
 
 #: a60855520c4a42de8de0c9e03d558373 of pybroker.slippage.SlippageModel:3
 msgid ""
 "A slippage model may adjust fill price, share quantity, or both, using "
 "data from the fill bar in :meth:`apply_slippage`."
-msgstr ""
+msgstr "滑点模型可以在 :meth:`apply_slippage` 中使用成交 K 线的数据，调整成交价格、股数，或两者同时调整。"
 
 #: df04aa092ff04bc9afbb1f3417133dc9 of pybroker.slippage.SlippageModel:6
 msgid ""
@@ -209,13 +219,16 @@ msgid ""
 "fills apply the returned **fill price only**; a returned share quantity "
 "is ignored, since those paths exit an entry in full."
 msgstr ""
+":meth:`apply_slippage` 会在以下情况下被调用：已排定的买入和卖出订单、止损离场（止损、止盈、移动止损和 K 线止损），以及 "
+":meth:`pybroker.portfolio.Portfolio.exit_position` 成交。止损和离场成交仅应用返回的 "
+"**成交价格**；返回的股数会被忽略，因为这些路径会全部平掉一笔入场。"
 
 #: f6bfdaa477aa4427b9fa7558c7dd5529 of
 #: pybroker.slippage.SlippageModel.adjust_fill:1
 msgid ""
 "Builds a :class:`.SlippageContext` and applies :meth:`apply_slippage` to "
 "it."
-msgstr ""
+msgstr "构建一个 :class:`.SlippageContext`，并对其应用 :meth:`apply_slippage`。"
 
 #: 8e8187d1329e450eb21e286a480fd07e of
 #: pybroker.slippage.SlippageModel.adjust_fill:4
@@ -223,17 +236,19 @@ msgid ""
 "Provided so that callers which cannot import :mod:`pybroker.slippage` "
 "(such as :mod:`pybroker.portfolio`) can still apply slippage to a fill."
 msgstr ""
+"提供此方法是为了让无法导入 :mod:`pybroker.slippage` 的调用方（例如 "
+":mod:`pybroker.portfolio`）仍然能够对成交施加滑点。"
 
 #: 056d736a41d84ffc860ce588cb969cc3 605b10a3b59c41e78e968aa76e93d9ad of
 #: pybroker.slippage.SlippageModel.validate:1
 #: pybroker.slippage.VolumeSlippageModel.validate:1
 msgid "Validates model configuration before a backtest starts."
-msgstr ""
+msgstr "在回测开始前验证模型配置。"
 
 #: ff5b8709c3f54af1b707611be5803037 of
 #: pybroker.slippage.VolatilitySlippageModel:1
 msgid "ATR-scaled slippage on fill price."
-msgstr ""
+msgstr "基于 ATR 缩放的成交价格滑点。"
 
 #: 8ba99a706cdd44c689e6c2d8708fa568 of
 #: pybroker.slippage.VolatilitySlippageModel:3
@@ -244,20 +259,23 @@ msgid ""
 "period -- the first ``atr_period`` bars, which have no full ATR window --"
 " or on bars where the ATR is ``NaN`` are left unadjusted."
 msgstr ""
+"不利价格调整等于成交 K 线上的 ``scale * ATR``，其中平均真实波幅（Average True Range）是基于截至成交 K "
+"线为止的 ``atr_period`` 根 K 线计算的（参见 :func:`pybroker.vect.atr`）。在预热期内（即没有完整 "
+"ATR 窗口的前 ``atr_period`` 根 K 线）成交，或 ATR 为 ``NaN`` 的 K 线上成交，均不会被调整。"
 
 #: 45ed4893bde14f01bb531a9bfe2952b8 of
 #: pybroker.slippage.VolatilitySlippageModel:9
 msgid "Number of lookback bars for the ATR. Defaults to ``14``."
-msgstr ""
+msgstr "ATR 的回溯 K 线数量。默认为 ``14``。"
 
 #: 0a67d72ef83f4887ae7ec4f55ea1e77a of
 #: pybroker.slippage.VolatilitySlippageModel:10
 msgid "Multiplier applied to the ATR value."
-msgstr ""
+msgstr "施加于 ATR 值的乘数。"
 
 #: 3e9026e7b0b94c2b93c3f0d03b989545 of pybroker.slippage.VolumeSlippageModel:1
 msgid "Volume-based participation cap and square-law price impact."
-msgstr ""
+msgstr "基于成交量的参与度上限与平方律价格冲击。"
 
 #: 34a2c876dfc149e2973a1decac5b461a of pybroker.slippage.VolumeSlippageModel:3
 msgid ""
@@ -265,36 +283,22 @@ msgid ""
 "impact is ``price_impact * (filled_shares / bar_volume) ** 2``. Either "
 "effect can be disabled by passing ``0`` or ``None``."
 msgstr ""
+"股数可能会被限制在 ``volume_limit * bar_volume`` 以内。价格冲击为 ``price_impact * "
+"(filled_shares / bar_volume) ** 2``。传入 ``0`` 或 ``None`` 可禁用其中任一效应。"
 
 #: 891cce73e66a4f22b40a7f2eac33827f of pybroker.slippage.VolumeSlippageModel:7
 msgid ""
 "Requires a ``volume`` data column, which is optional in PyBroker. Bars "
 "where the volume is missing or ``NaN`` are left unadjusted."
-msgstr ""
+msgstr "需要一个 ``volume`` 数据列，该列在 PyBroker 中是可选的。成交量缺失或为 ``NaN`` 的 K 线不会被调整。"
 
 #: 507aeabc5d8442bba0e39ea55617b8f3 of pybroker.slippage.VolumeSlippageModel:10
 msgid "Square-law impact coefficient. ``0`` disables impact."
-msgstr ""
+msgstr "平方律冲击系数。``0`` 表示禁用冲击。"
 
 #: 0d74eadd66d84ccaa81fff9a52f086f6 of pybroker.slippage.VolumeSlippageModel:11
 msgid ""
 "Max participation as a fraction of bar volume. ``None`` or ``0`` disables"
 " the cap."
-msgstr ""
-
-#~ msgid ""
-#~ "Column scope for bar data on the"
-#~ " fill bar. ``None`` when bar data "
-#~ "is unavailable, in which case volume-"
-#~ " and volatility-based models leave "
-#~ "the fill unadjusted."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Indicator scope for indicator data on"
-#~ " the fill bar. ``None`` when "
-#~ "indicator data is unavailable, in which"
-#~ " case indicator-based models leave "
-#~ "the fill unadjusted."
-#~ msgstr ""
+msgstr "作为 K 线成交量比例的最大参与度。``None`` 或 ``0`` 表示禁用该上限。"
 

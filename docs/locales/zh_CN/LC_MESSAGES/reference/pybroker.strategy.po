@@ -22,22 +22,22 @@ msgstr ""
 #: ../../source/reference/pybroker.strategy.rst:2
 #: 2d909fbec64542ab91320ef295a6f639
 msgid "pybroker.strategy module"
-msgstr ""
+msgstr "pybroker.strategy 模块"
 
 #: 4d6974fc4fef45b7ba8d42224a1cfd04 of pybroker.strategy:1
 msgid "Contains implementation for backtesting trading strategies."
-msgstr ""
+msgstr "包含用于回测交易策略的实现。"
 
 #: 03202bb60f9c446781816b3bc13edcde of pybroker.strategy.BacktestMixin:1
 msgid "Mixin implementing backtesting functionality."
-msgstr ""
+msgstr "实现回测功能的 Mixin。"
 
 #: 5eb4454795434eb18a3c8dd228ec50db of
 #: pybroker.strategy.BacktestMixin.backtest_executions:1
 msgid ""
 "Backtests a ``set`` of :class:`.Execution`\\ s that implement trading "
 "logic."
-msgstr ""
+msgstr "对实现交易逻辑的一组 :class:`.Execution`\\（``set``）进行回测。"
 
 #: ../../source/reference/pybroker.strategy.rst
 #: 015a8e7e24794f78be2721a737f73e3a 175fc611a53247788e6e0f2d9e8e19b1
@@ -47,17 +47,17 @@ msgstr ""
 #: aa63cb13f4ba4896b8b90b60df1b4a2b cfd4da14a38e4a99b3af8de562b15828
 #: dd17d5de13cf4afdbd9d199d4ca3dae3 e9690cfd5cd943f6a3a978febc391d14
 msgid "Parameters"
-msgstr ""
+msgstr "参数"
 
 #: a9cff23e3bef4626a9c82f01ef2ee16d of
 #: pybroker.strategy.BacktestMixin.backtest_executions:4
 msgid ":class:`pybroker.config.StrategyConfig`."
-msgstr ""
+msgstr ":class:`pybroker.config.StrategyConfig`。"
 
 #: 63b0a5ce68a64024a2dfbaaf74bf1371 of
 #: pybroker.strategy.BacktestMixin.backtest_executions:5
 msgid ":class:`.Execution`\\ s to run."
-msgstr ""
+msgstr "要运行的 :class:`.Execution`\\。"
 
 #: e9878453fb8b4300a0daadc7c6f2764d of
 #: pybroker.strategy.BacktestMixin.backtest_executions:6
@@ -65,6 +65,8 @@ msgid ""
 ":class:`Mapping` of symbols to :class:`Mapping` of custom data that "
 "persists for every bar during the :class:`.Execution`."
 msgstr ""
+"将品种映射到自定义数据 :class:`Mapping` 的 :class:`Mapping`，该数据在 :class:`.Execution` "
+"期间按每根 K 线持久化。"
 
 #: f02a259b5155401fbb12e75c018088d3 of
 #: pybroker.strategy.BacktestMixin.backtest_executions:9
@@ -72,6 +74,8 @@ msgid ""
 ":class:`Mapping` of :class:`pybroker.common.ModelSymbol` pairs to "
 ":class:`pybroker.common.TrainedModel`\\ s."
 msgstr ""
+"将 :class:`pybroker.common.ModelSymbol` 组合映射到 "
+":class:`pybroker.common.TrainedModel`\\ 的 :class:`Mapping`。"
 
 #: e32384b7d4054246ad05c5b8fedffa7a of
 #: pybroker.strategy.BacktestMixin.backtest_executions:11
@@ -79,43 +83,46 @@ msgid ""
 ":class:`Mapping` of :class:`pybroker.common.IndicatorSymbol` pairs to "
 ":class:`pandas.Series` of :class:`pybroker.indicator.Indicator` values."
 msgstr ""
+"将 :class:`pybroker.common.IndicatorSymbol` 组合映射到 "
+":class:`pybroker.indicator.Indicator` 值 :class:`pandas.Series` 的 "
+":class:`Mapping`。"
 
 #: 9f0b6b5eb1e144a0b20f5f0cf2d5baf8 of
 #: pybroker.strategy.BacktestMixin.backtest_executions:15
 msgid ":class:`pandas.DataFrame` of test data."
-msgstr ""
+msgstr "测试数据的 :class:`pandas.DataFrame`。"
 
 #: 7be633bf0dfc4a7b96161f6b790bc28e of
 #: pybroker.strategy.BacktestMixin.backtest_executions:16
 msgid ":class:`pybroker.portfolio.Portfolio`."
-msgstr ""
+msgstr ":class:`pybroker.portfolio.Portfolio`。"
 
 #: f6857c6cf233411ebbb1ef49007bd259 of
 #: pybroker.strategy.BacktestMixin.backtest_executions:17
 msgid ":class:`Mapping` of symbols to exit dates."
-msgstr ""
+msgstr "将品种映射到离场日期的 :class:`Mapping`。"
 
 #: e53e5dfba6494880a19cb853b63f3aea of
 #: pybroker.strategy.BacktestMixin.backtest_executions:18
 msgid "Whether the backtest is run with trading rules or only trains models."
-msgstr ""
+msgstr "该回测是运行交易规则，还是仅训练模型。"
 
 #: 66eda272ccaa4dc48140061f9c75cd27 of
 #: pybroker.strategy.BacktestMixin.backtest_executions:20
 msgid ""
 "``Optional`` :class:`pybroker.slippage.SlippageModel` applied to order "
 "fills, stop exits, and position exits."
-msgstr ""
+msgstr "应用于订单成交、止损离场和头寸离场的 ``Optional`` :class:`pybroker.slippage.SlippageModel`。"
 
 #: a725d6b2f1214a2eade1d89b25f2d863 of
 #: pybroker.strategy.BacktestMixin.backtest_executions:23
 msgid "Whether to enable trading fractional shares."
-msgstr ""
+msgstr "是否启用碎股（fractional shares）交易。"
 
 #: 9dbd9ed3231a42d3882b8de5e8dbc9f4 of
 #: pybroker.strategy.BacktestMixin.backtest_executions:25
 msgid "Whether to round fill prices to the nearest cent."
-msgstr ""
+msgstr "是否将成交价格四舍五入到最接近的美分。"
 
 #: 00db65e319ef46b2b63566a6e4ece841 9457e42dbcb5477c8a9eed62fb087609
 #: c4c81d1191ae44d49081d1c281a1cff4 of
@@ -123,13 +130,13 @@ msgstr ""
 #: pybroker.strategy.Strategy.backtest:55
 #: pybroker.strategy.Strategy.walkforward:61
 msgid "Number of bars that need to pass before running the executions."
-msgstr ""
+msgstr "运行执行函数之前需要经过的 K 线数量。"
 
 #: ../../source/reference/pybroker.strategy.rst
 #: 191be7fa9d60431680a38071abb5fb75 4c97c96a0bfb48cf9204643dc823187e
 #: 89f56c64f306466597eb851915a4d54b f70df1bf0cac4bc9b391ccb2dcc2081e
 msgid "Returns"
-msgstr ""
+msgstr "返回"
 
 #: dc4e49de08fe4532a5dbd97545e9e38d ef40de15f278482481124682eadc7c31 of
 #: pybroker.strategy.BacktestMixin.backtest_executions:29
@@ -141,16 +148,20 @@ msgid ""
 "Signals contain base-timeframe values only; an interval-bound indicator "
 "or model appears only when ``'base'`` is included in its binding."
 msgstr ""
+"当 :attr:`pybroker.config.StrategyConfig.return_signals` 为 ``True`` "
+"时，返回一个字典，其中包含每个品种的 K 线数据、指标数据和模型预测结果的 "
+":class:`pandas.DataFrame`\\。信号仅包含基础时间框架的值；仅当绑定中包含 ``'base'`` "
+"时，绑定到某个区间的指标或模型才会出现在信号中。"
 
 #: 7cd5bcef91c94bb2872985577fb34a19 of pybroker.strategy.Execution:1
 msgid ""
 "Represents an execution of a :class:`.Strategy`. Holds a reference to a "
 ":class:`Callable` that implements trading logic."
-msgstr ""
+msgstr "表示 :class:`.Strategy` 的一次执行。持有一个实现交易逻辑的 :class:`Callable` 的引用。"
 
 #: 67bbc599ce33447594a1da0ed3ba92e8 of pybroker.strategy.Execution:6
 msgid "Unique ID."
-msgstr ""
+msgstr "唯一 ID。"
 
 #: 01f6084ad70c48e1828a65577002992c 0277217d5fe048ef86d74b9d8c3938b6
 #: 06e7aaadfcbf4ea0b550032d958e59b2 14b1cda8d4cd4835a3b8e1cf8b1914f9
@@ -166,27 +177,27 @@ msgstr ""
 #: pybroker.strategy.Execution pybroker.strategy.TestResult
 #: pybroker.strategy.WalkforwardWindow
 msgid "type"
-msgstr ""
+msgstr "类型"
 
 #: 960526c46f574487852da1d62bd8518e of pybroker.strategy.Execution:8
 msgid "int"
-msgstr ""
+msgstr "int"
 
 #: 88df6309ab2249fb99e260f9ea3dd759 of pybroker.strategy.Execution:12
 msgid "Ticker symbols used for execution of ``fn``."
-msgstr ""
+msgstr "用于执行 ``fn`` 的股票代码。"
 
 #: f794b14b4c104d8c848338f0dcd18e9a of pybroker.strategy.Execution:14
 msgid "frozenset[str] | Callable[[pandas.DataFrame], Sequence[str]]"
-msgstr ""
+msgstr "frozenset[str] | Callable[[pandas.DataFrame], Sequence[str]]"
 
 #: 28553f4609804fefb33b24ab924559d9 of pybroker.strategy.Execution:18
 msgid "Implements trading logic."
-msgstr ""
+msgstr "实现交易逻辑。"
 
 #: d2497c92c7054273bb8873fa22c9fd39 of pybroker.strategy.Execution:20
 msgid "Callable[[pybroker.context.ExecContext], None] | None"
-msgstr ""
+msgstr "Callable[[pybroker.context.ExecContext], None] | None"
 
 #: a1fe0698e2f64ba48315baece9fefb69 of pybroker.strategy.Execution:24
 msgid ""
@@ -194,12 +205,14 @@ msgid ""
 "``fn``, including the suffixed per-interval names of interval-bound "
 "models."
 msgstr ""
+"用于执行 ``fn`` 的 :class:`pybroker.model.ModelSource`\\ "
+"名称，包括绑定到某个区间的模型的带后缀区间名称。"
 
 #: 4e821ba1a09a41d38bc7e79a0a4ee695 9dd186f3460843bd956831bf32b77cb7
 #: d1e138b7ac6e469bab4dfa84a5238fae of pybroker.strategy.Execution:28
 #: pybroker.strategy.Execution:36 pybroker.strategy.TestResult:81
 msgid "frozenset[str]"
-msgstr ""
+msgstr "frozenset[str]"
 
 #: f2f6f6f43fbc4f66ac68236181235fcc of pybroker.strategy.Execution:32
 msgid ""
@@ -207,6 +220,8 @@ msgid ""
 "``fn``, including the suffixed per-interval names of interval-bound "
 "indicators."
 msgstr ""
+"用于执行 ``fn`` 的 :class:`pybroker.indicator.Indicator`\\ "
+"名称，包括绑定到某个区间的指标的带后缀区间名称。"
 
 #: 32a294c75bf0421e83d165df3cbe7f48 of pybroker.strategy.Execution:40
 msgid ""
@@ -216,62 +231,67 @@ msgid ""
 ":meth:`pybroker.strategy.Strategy.add_execution` and the intervals bound "
 "to the execution's models and indicators."
 msgstr ""
+"``fn`` 可通过 :meth:`pybroker.context.ExecContext.interval` 使用的压缩区间：即在 "
+":meth:`pybroker.strategy.Strategy.add_execution` 上声明的 "
+"``intervals``，与绑定到该执行函数的模型和指标的区间的并集。"
 
 #: 36da44e99c144b1d9b4ee10f7057f43e of pybroker.strategy.Execution:46
 msgid ""
 "frozenset[int | Literal['daily', 'weekly', 'monthly', 'quarterly', "
 "'yearly'] | str]"
 msgstr ""
+"frozenset[int | Literal['daily', 'weekly', 'monthly', 'quarterly', "
+"'yearly'] | str]"
 
 #: c5a3a246980844d7bc5fceddc551364a of pybroker.strategy.Execution:50
 msgid "Additional positional arguments for ``fn``."
-msgstr ""
+msgstr "``fn`` 的额外位置参数。"
 
 #: 570b55e87ef24c0cb443f1ea080a62de of pybroker.strategy.Execution:52
 msgid "tuple[Any, ...]"
-msgstr ""
+msgstr "tuple[Any, ...]"
 
 #: 21cc8a361610411ca138d59c2c48dc28 of pybroker.strategy.Execution:56
 msgid "Additional keyword arguments for ``fn``."
-msgstr ""
+msgstr "``fn`` 的额外关键字参数。"
 
 #: de614b9cdc99469ebeb6b8ec017ed891 of pybroker.strategy.Execution:58
 msgid "tuple[tuple[str, Any], ...]"
-msgstr ""
+msgstr "tuple[tuple[str, Any], ...]"
 
 #: 2f1cd7ce4dda4719890d1e085e15bc2e of pybroker.strategy.Strategy:1
 msgid "Class representing a trading strategy to backtest."
-msgstr ""
+msgstr "表示要回测的交易策略的类。"
 
 #: 63a180fceb564b139d469a91c84cfe3b of pybroker.strategy.Strategy:3
 msgid ""
 ":class:`pybroker.data.DataSource` or :class:`pandas.DataFrame` of "
 "backtesting data."
-msgstr ""
+msgstr "回测数据的 :class:`pybroker.data.DataSource` 或 :class:`pandas.DataFrame`。"
 
 #: 5a55a81ea03846aca069a44047252f2e of pybroker.strategy.Strategy:5
 msgid "Starting date of the data to fetch from ``data_source`` (inclusive)."
-msgstr ""
+msgstr "从 ``data_source`` 获取数据的起始日期（含）。"
 
 #: 14734d34def149b694082abc456d3f11 of pybroker.strategy.Strategy:7
 msgid "Ending date of the data to fetch from ``data_source`` (inclusive)."
-msgstr ""
+msgstr "从 ``data_source`` 获取数据的结束日期（含）。"
 
 #: 605550396f2a4ddd9f8bd15a91e26e71 of pybroker.strategy.Strategy:9
 msgid "``Optional`` :class:`pybroker.config.StrategyConfig`."
-msgstr ""
+msgstr "``Optional`` :class:`pybroker.config.StrategyConfig`。"
 
 #: 324716c3988844088e6441fa4060214f of
 #: pybroker.strategy.Strategy.add_execution:1
 msgid "Adds an execution to backtest."
-msgstr ""
+msgstr "添加一个要回测的执行函数。"
 
 #: 748ebe767ec84c3f99f3410daca087c4 of
 #: pybroker.strategy.Strategy.add_execution:3
 msgid ""
 "A :class:`~pybroker.interval.TimeframeInterval` passed to ``intervals`` "
 "is one of the following:"
-msgstr ""
+msgstr "传递给 ``intervals`` 的 :class:`~pybroker.interval.TimeframeInterval` 为以下之一："
 
 #: eea423f18f324f14bc5c4742e8831b5a of
 #: pybroker.strategy.Strategy.add_execution:6
@@ -280,6 +300,8 @@ msgid ""
 "where ``n > 1``. On 1-minute data, ``5`` yields 5-bar bins (approximately"
 " 5-minute bars)."
 msgstr ""
+"**每 n 根 K 线**（``int``）：将每 ``n`` 根基础 K 线压缩为一根 K 线，其中 ``n > 1``。在 1 "
+"分钟数据上，``5`` 会生成 5 根 K 线一组的分箱（约为 5 分钟 K 线）。"
 
 #: bec5664f4a2041f7ae2495447760c085 of
 #: pybroker.strategy.Strategy.add_execution:10
@@ -287,6 +309,8 @@ msgid ""
 "**Duration** (``str``): Fixed time span as digits plus one unit letter — "
 "``\"1m\"``, ``\"5m\"``, ``\"1h\"``, ``\"30s\"``, or ``\"1d\"``."
 msgstr ""
+"**时长**（``str``）：以数字加单个单位字母表示的固定时间跨度 —— "
+"``\"1m\"``、``\"5m\"``、``\"1h\"``、``\"30s\"`` 或 ``\"1d\"``。"
 
 #: e9cd59625d0f41e595fff4fc20b3e570 of
 #: pybroker.strategy.Strategy.add_execution:13
@@ -296,13 +320,16 @@ msgid ""
 "Monday, months on the first of the month, quarters in January, April, "
 "July, and October, and years on January 1."
 msgstr ""
+"**日历**（``str``）：日历分桶 —— "
+"``\"daily\"``、``\"weekly\"``、``\"monthly\"``、``\"quarterly\"`` 或 "
+"``\"yearly\"``。周从周一开始，月从每月 1 日开始，季度从 1、4、7、10 月开始，年从 1 月 1 日开始。"
 
 #: 4f8e9a87a8404d699a8ed435a04893bd of
 #: pybroker.strategy.Strategy.add_execution:18
 msgid ""
 "For example, to read 5-bar bins and 1-hour duration bars on a 1-minute "
 "feed, and additionally compute ``sma`` on weekly bars::"
-msgstr ""
+msgstr "例如，要在 1 分钟数据源上读取 5 根 K 线分箱和 1 小时时长 K 线，并额外在周线 K 线上计算 ``sma``::"
 
 #: a3804eeeeabd477388c4a6d8202c891a of
 #: pybroker.strategy.Strategy.add_execution:29
@@ -311,6 +338,8 @@ msgid ""
 "passed an :class:`pybroker.context.ExecContext` for each ticker symbol in"
 " ``symbols``."
 msgstr ""
+"在回测期间的每根数据 K 线上被调用，并为 ``symbols`` 中的每个股票代码传入一个 "
+":class:`pybroker.context.ExecContext` 的 :class:`Callable`。"
 
 #: 29ff3bc8ef7b49a39b60263438853ed7 of
 #: pybroker.strategy.Strategy.add_execution:32
@@ -330,6 +359,14 @@ msgid ""
 "randomizes the training frame's row order, so avoid it with a selector "
 "that depends on bar order."
 msgstr ""
+"用于运行 ``fn`` 的股票代码，``fn`` 会为每个品种单独调用。也可以是 "
+":class:`pybroker.common.SymbolSelector` —— 一个 ``(df) -> Sequence[str]`` "
+"形式的 :class:`Callable`，为每个向前分析窗口选择一次要交易的品种，因此品种池会在回测过程中变化。它接收该窗口的 **训练** "
+"数据，绝不会接收测试数据，因此需要一个训练窗口：:meth:`.backtest` 与 ``train_size=0`` 会引发 "
+"``ValueError``。候选品种池必须以 :class:`pandas.DataFrame` 形式提供，而非 "
+":class:`pybroker.data.DataSource`，因为在窗口划分之前，待查询的品种是未知的。某个品种在后续窗口中被丢弃时，其仓位会在该窗口的第一根"
+" K 线上平仓；如果该品种已没有剩余 K 线，则会在其最后一根 K 线上平仓。请注意，``shuffle=True`` "
+"会打乱训练数据帧的行顺序，因此应避免将其与依赖 K 线顺序的选择器搭配使用。"
 
 #: de97270a055548899aed21578cea395f of
 #: pybroker.strategy.Strategy.add_execution:48
@@ -347,6 +384,13 @@ msgid ""
 "``lookahead`` compressed bars are held out between its train and test "
 "rows."
 msgstr ""
+"要为回测训练/加载的 :class:`pybroker.model.ModelSource`\\ 的 "
+":class:`Iterable`。直接传入的模型会在基础时间框架上训练。使用 "
+":meth:`pybroker.model.ModelSource.intervals` 将模型绑定到压缩区间后，该模型会改为在所列区间的压缩 K"
+" 线上训练，连同注册给它的指标一起；在绑定中包含字面量 ``'base'`` 即可同时在基础时间框架上训练。逐区间的预测结果通过 "
+":meth:`pybroker.context.IntervalContext.preds` 读取。绑定到某个区间的模型会以该区间的单位遵循传递给"
+" :meth:`.backtest`、:meth:`.walkforward` 或 :meth:`.optimize` 的 "
+"``lookahead``：其训练行和测试行之间会保留 ``lookahead`` 根压缩 K 线。"
 
 #: 974b56a836b24dd0aeedea27fb56fd07 of
 #: pybroker.strategy.Strategy.add_execution:61
@@ -359,6 +403,11 @@ msgid ""
 ":meth:`pybroker.context.IntervalContext.indicator`; include the literal "
 "``'base'`` in the binding to also compute it on the base timeframe."
 msgstr ""
+"要为回测计算的 :class:`pybroker.indicator.Indicator`\\ 的 "
+":class:`Iterable`。直接传入的指标会在基础时间框架上计算。使用 "
+":meth:`pybroker.indicator.Indicator.intervals` 将指标绑定到压缩区间后，该指标会改为在所列区间的压缩"
+" K 线上计算，通过 :meth:`pybroker.context.IntervalContext.indicator` "
+"读取；在绑定中包含字面量 ``'base'`` 即可同时在基础时间框架上计算。"
 
 #: 375ee7a9a71c418d8e3369810d605b40 of
 #: pybroker.strategy.Strategy.add_execution:71
@@ -366,6 +415,8 @@ msgid ""
 ":class:`Iterable` of :class:`pybroker.optimize.Hyperparam`\\ s that "
 "``fn`` can read with :meth:`pybroker.context.ExecContext.hyperparam`."
 msgstr ""
+"``fn`` 可通过 :meth:`pybroker.context.ExecContext.hyperparam` 读取的 "
+":class:`pybroker.optimize.Hyperparam`\\ 的 :class:`Iterable`。"
 
 #: 8485ddbf08ee4f0786d086df0d1d42d6 of
 #: pybroker.strategy.Strategy.add_execution:74
@@ -386,34 +437,45 @@ msgid ""
 " a :meth:`.set_before_exec` or :meth:`.set_after_exec` callback, which "
 "receives contexts from every execution."
 msgstr ""
+"一个或多个压缩区间，其 K 线会通过 :meth:`pybroker.context.ExecContext.interval` 提供给 "
+"``fn``。在此处声明一个区间仅提供压缩 K 线，*不会* 在该区间上计算指标或训练模型。请改为通过 "
+":meth:`pybroker.indicator.Indicator.intervals` 和 "
+":meth:`pybroker.model.ModelSource.intervals` 按来源分别绑定；已绑定的区间会自动通过 "
+":meth:`~pybroker.context.ExecContext.interval` "
+"提供，无需在此处重复声明。每个区间都必须严格粗于传递给 :meth:`.backtest` 或 :meth:`.walkforward` 的 "
+"``timeframe`` 所指定的基础 K 线间隔；无效的组合会在回测运行时引发 "
+"``ValueError``。区间的作用域限定在本执行函数内，因此另一个执行函数的 "
+":class:`pybroker.context.ExecContext` 无法读取它们 —— 即使在 "
+":meth:`.set_before_exec` 或 :meth:`.set_after_exec` "
+"回调中也是如此，尽管该回调会接收所有执行函数的上下文。"
 
 #: 61ed020abe174a6f90abaf6fadc934bc of
 #: pybroker.strategy.Strategy.add_execution:93
 msgid "Positional arguments passed to ``fn``."
-msgstr ""
+msgstr "传递给 ``fn`` 的位置参数。"
 
 #: 0917d6da10494df987fa7306aa28c85b of
 #: pybroker.strategy.Strategy.add_execution:94
 msgid "Keyword arguments passed to ``fn``."
-msgstr ""
+msgstr "传递给 ``fn`` 的关键字参数。"
 
 #: 75fb94c039db43cb82beb9d58c7b65db of pybroker.strategy.Strategy.backtest:1
 msgid ""
 "Backtests the trading strategy by running executions that were added with"
 " :meth:`.add_execution`."
-msgstr ""
+msgstr "通过运行使用 :meth:`.add_execution` 添加的执行函数，对交易策略进行回测。"
 
 #: 2c056cf3b4474f14864cabc7e757d417 of pybroker.strategy.Strategy.backtest:4
 msgid ""
 "Starting date of the backtest (inclusive). Must be within ``start_date`` "
 "and ``end_date`` range that was passed to :class:`.Strategy`."
-msgstr ""
+msgstr "回测的起始日期（含）。必须在传递给 :class:`.Strategy` 的 ``start_date`` 和 ``end_date`` 范围之内。"
 
 #: 06a5360fab2040e9a1eedc5d6fd4d1c8 of pybroker.strategy.Strategy.backtest:7
 msgid ""
 "Ending date of the backtest (inclusive). Must be within ``start_date`` "
 "and ``end_date`` range that was passed to :class:`.Strategy`."
-msgstr ""
+msgstr "回测的结束日期（含）。必须在传递给 :class:`.Strategy` 的 ``start_date`` 和 ``end_date`` 范围之内。"
 
 #: 008d2098052c48d892454ae180e9ba89 4f14c50fa2c140099353f997c7ec22c6 of
 #: pybroker.strategy.Strategy.backtest:10
@@ -428,6 +490,10 @@ msgid ""
 " base bar spacing that compression intervals are validated and aligned "
 "against."
 msgstr ""
+"指定回测数据时间框架分辨率的格式化字符串。该时间框架字符串支持以下单位：  - ``\"s\"``/``\"sec\"``：秒 - "
+"``\"m\"``/``\"min\"``：分钟 - ``\"h\"``/``\"hour\"``：小时 - "
+"``\"d\"``/``\"day\"``：天 - ``\"w\"``/``\"week\"``：周  时间框架字符串示例：``1h "
+"30m``。当任何执行函数声明了 ``intervals`` 时为必需，因为它定义了压缩区间据以验证和对齐的基础 K 线间隔。"
 
 #: 32c3c3e209fb42bd97602ccf627f363b 5b56f74c2c13418f8c2930bfcb830f0a of
 #: pybroker.strategy.Strategy.backtest:10
@@ -435,37 +501,37 @@ msgstr ""
 msgid ""
 "Formatted string that specifies the timeframe resolution of the "
 "backtesting data. The timeframe string supports the following units:"
-msgstr ""
+msgstr "指定回测数据时间框架分辨率的格式化字符串。该时间框架字符串支持以下单位："
 
 #: 187148abd54c4cf180c49305d547b7d7 20fb795953774e03aaa16b97bd6deac4 of
 #: pybroker.strategy.Strategy.backtest:14
 #: pybroker.strategy.Strategy.walkforward:20
 msgid "``\"s\"``/``\"sec\"``: seconds"
-msgstr ""
+msgstr "``\"s\"``/``\"sec\"``：秒"
 
 #: 44e68d15c3f74e90b4deacb90b663d74 969da8003bd44990b4a5f5d38f47fe6e of
 #: pybroker.strategy.Strategy.backtest:15
 #: pybroker.strategy.Strategy.walkforward:21
 msgid "``\"m\"``/``\"min\"``: minutes"
-msgstr ""
+msgstr "``\"m\"``/``\"min\"``：分钟"
 
 #: a63b6655f122422ba3b16a035e763aca f344e7f4523b4515955cf36e8aa7da29 of
 #: pybroker.strategy.Strategy.backtest:16
 #: pybroker.strategy.Strategy.walkforward:22
 msgid "``\"h\"``/``\"hour\"``: hours"
-msgstr ""
+msgstr "``\"h\"``/``\"hour\"``：小时"
 
 #: 74d2a85c9ef64e27901a3a360739f293 f522ec12b64342508bc08285e098fde5 of
 #: pybroker.strategy.Strategy.backtest:17
 #: pybroker.strategy.Strategy.walkforward:23
 msgid "``\"d\"``/``\"day\"``: days"
-msgstr ""
+msgstr "``\"d\"``/``\"day\"``：天"
 
 #: 1c482373474d45db9a49f392a041596a 860a1b93da7946bdbf2dda6c8867db9c of
 #: pybroker.strategy.Strategy.backtest:18
 #: pybroker.strategy.Strategy.walkforward:24
 msgid "``\"w\"``/``\"week\"``: weeks"
-msgstr ""
+msgstr "``\"w\"``/``\"week\"``：周"
 
 #: bf7039e77e214280a9f594683239a5a1 fa75f5191ecc4c4aaf76b91fe6e97907 of
 #: pybroker.strategy.Strategy.backtest:20
@@ -475,6 +541,8 @@ msgid ""
 "declares ``intervals``, since it defines the base bar spacing that "
 "compression intervals are validated and aligned against."
 msgstr ""
+"时间框架字符串示例：``1h 30m``。当任何执行函数声明了 ``intervals`` 时为必需，因为它定义了压缩区间据以验证和对齐的基础 K"
+" 线间隔。"
 
 #: 9600575fe26544ecb7d898897c8bb671 c5aa9a20eec04e80b386bad252ea9a28 of
 #: pybroker.strategy.Strategy.backtest:24
@@ -482,7 +550,7 @@ msgstr ""
 msgid ""
 "``tuple[str, str]`` of times of day e.g. ('9:30', '16:00') used to filter"
 " the backtesting data (inclusive)."
-msgstr ""
+msgstr "用于过滤回测数据的时间段（含边界），为 ``tuple[str, str]``，例如 ('9:30', '16:00')。"
 
 #: 1e7ed91496b24726b58f7ddaf861421a a06299379c6d430c8fe484cc521ec24e of
 #: pybroker.strategy.Strategy.backtest:27
@@ -490,7 +558,7 @@ msgstr ""
 msgid ""
 "Days (e.g. ``\"mon\"``, ``\"tues\"`` etc.) used to filter the backtesting"
 " data."
-msgstr ""
+msgstr "用于过滤回测数据的星期（例如 ``\"mon\"``、``\"tues\"`` 等）。"
 
 #: 6fcbc86ce35f4305aea5b7cc2d8278a4 994a1dcc9ff74d8595231cf4f0ab9aa4
 #: cc603898c3d446d3aec9bf5a4a65fb51 of pybroker.strategy.Strategy.backtest:29
@@ -506,17 +574,22 @@ msgid ""
 " of that interval, not of the base timeframe. No bar in a window's test "
 "set is ever used to fit that window's models."
 msgstr ""
+"预测目标未来的 K 线数量。例如，预测下一根 K 线的收益率对应的 ``lookahead`` 为 "
+"``1``。需要这个量来防止训练数据泄漏到测试边界。它以每个模型所拟合的时间框架的 K 线为单位：通过 "
+":meth:`pybroker.model.ModelSource.intervals` 绑定到某个区间的模型，会保留该区间的 "
+"``lookahead`` 根 K 线，而不是基础时间框架的 K 线。某个窗口测试集中的任何 K 线都绝不会被用于拟合该窗口的模型。"
 
 #: 52ba4361db2d42a7ac75f4e942a072f1 c7316d3df1dc4c6bb4835fdf61f73198 of
 #: pybroker.strategy.Strategy.backtest:39
 #: pybroker.strategy.Strategy.walkforward:45
-#, python-format
 msgid ""
 "Amount of :class:`pybroker.data.DataSource` data to use for training, "
 "where the max ``train_size`` is ``1``. For example, a ``train_size`` of "
 "``0.9`` would result in 90% of data being used for training and the "
 "remaining 10% of data being used for testing."
 msgstr ""
+"用于训练的 :class:`pybroker.data.DataSource` 数据量，其中 ``train_size`` 的最大值为 "
+"``1``。例如，``train_size`` 为 ``0.9`` 表示 90% 的数据用于训练，剩余 10% 的数据用于测试。"
 
 #: 7b4ceb3ab22b44fb9be00a0de3b39daf ff201f01960c4c9f807ccb3647af8f13 of
 #: pybroker.strategy.Strategy.backtest:44
@@ -526,6 +599,8 @@ msgid ""
 "``False``. Disabled when model caching is enabled via "
 ":meth:`pybroker.cache.enable_model_cache`."
 msgstr ""
+"是否随机打乱用于训练的数据。默认为 ``False``。当通过 :meth:`pybroker.cache.enable_model_cache`"
+" 启用模型缓存时，该选项会被禁用。"
 
 #: 96aa18c4be244daf9b3264a0fbb003be c3cd380ffa6c4fab9db0710a00ee6b5c of
 #: pybroker.strategy.Strategy.backtest:47
@@ -533,7 +608,7 @@ msgstr ""
 msgid ""
 "Whether to compute randomized bootstrap evaluation metrics. Defaults to "
 "``False``."
-msgstr ""
+msgstr "是否计算随机自助法评估指标。默认为 ``False``。"
 
 #: 34834041eba246c09d7c952022bcb844 50082363797549ccb094487eafc1492a of
 #: pybroker.strategy.Strategy.backtest:49
@@ -542,6 +617,8 @@ msgid ""
 "If ``True``, :class:`pybroker.indicator.Indicator` data is computed in "
 "parallel using multiple processes. Defaults to ``False``."
 msgstr ""
+"如果为 ``True``，:class:`pybroker.indicator.Indicator` 数据会使用多个进程并行计算。默认为 "
+"``False``。"
 
 #: 3e52737bc1d347a2874137d1148d4b58 bebd6d2933ee4e61aea06e1f0250c631 of
 #: pybroker.strategy.Strategy.backtest:52
@@ -550,24 +627,26 @@ msgid ""
 "If ``True``, :class:`pybroker.model.ModelTrainer` models are trained in "
 "parallel using multiple processes. Defaults to ``False``."
 msgstr ""
+"如果为 ``True``，:class:`pybroker.model.ModelTrainer` 模型会使用多个进程并行训练。默认为 "
+"``False``。"
 
 #: 2827a64168154940acd96ba027097501 c52f169b6e8843b58a3fa5715ce31839 of
 #: pybroker.strategy.Strategy.backtest:57
 #: pybroker.strategy.Strategy.walkforward:63
 msgid "Custom :class:`pybroker.portfolio.Portfolio` to use for backtests."
-msgstr ""
+msgstr "用于回测的自定义 :class:`pybroker.portfolio.Portfolio`。"
 
 #: 2c8466841dbf4b52a976b06fdba5e6c8 c1ffce2eabb24fe4bfb58fe1b628b91a of
 #: pybroker.strategy.Strategy.backtest:59
 #: pybroker.strategy.Strategy.walkforward:65
 msgid "The type of adjustment to make to the :class:`pybroker.data.DataSource`."
-msgstr ""
+msgstr "对 :class:`pybroker.data.DataSource` 应用的复权调整类型。"
 
 #: d5ac506e8b23427699c0bad031aaf264 f26b40a378aa40a49ba5d1710ff21249 of
 #: pybroker.strategy.Strategy.backtest:61
 #: pybroker.strategy.Strategy.walkforward:67
 msgid "Random seed used for reproducibility. Defaults to ``42``."
-msgstr ""
+msgstr "用于结果可复现的随机种子。默认为 ``42``。"
 
 #: 41a1943f33ef408c86072124e1914ac4 4a781d453f824be1ae18b4b7e565b3ad of
 #: pybroker.strategy.Strategy.backtest:63
@@ -575,17 +654,17 @@ msgstr ""
 msgid ""
 ":class:`.TestResult` containing portfolio balances, order history, and "
 "evaluation metrics."
-msgstr ""
+msgstr "包含投资组合余额、订单历史和评估指标的 :class:`.TestResult`。"
 
 #: 4f34d0fc736c4ce69e2d6c7e61f9ad7e of
 #: pybroker.strategy.Strategy.clear_executions:1
 msgid "Clears executions that were added with :meth:`.add_execution`."
-msgstr ""
+msgstr "清除通过 :meth:`.add_execution` 添加的执行函数。"
 
 #: 1dd27fa3473345f690c56b1c0bd8956c of
 #: pybroker.strategy.Strategy.enable_rotation:1
 msgid "Enables rotational hold-band logic and optional custom sizing."
-msgstr ""
+msgstr "启用轮动持仓带逻辑，以及可选的自定义规模计算。"
 
 #: 0a3de01a09a54092a2ca66ae26285700 of
 #: pybroker.strategy.Strategy.enable_rotation:3
@@ -596,6 +675,9 @@ msgid ""
 "across :meth:`.set_max_long_positions` plus "
 ":meth:`.set_max_short_positions` slots."
 msgstr ""
+"每根 K 线，排名劣于 ``worst_rank_held`` 的持仓会被平仓，排名靠前的品种会入场以填补剩余的仓位名额。若未提供 "
+"``sizer``，入场会在 :meth:`.set_max_long_positions` 加 "
+":meth:`.set_max_short_positions` 的名额上等权重分配。"
 
 #: 1d94cbf39b884afdade99f4681dcd485 of
 #: pybroker.strategy.Strategy.enable_rotation:9
@@ -606,13 +688,16 @@ msgid ""
 " :class:`.Execution` are ignored. Fill prices and stops set during an "
 "execution are kept and applied to the orders rotation places."
 msgstr ""
+"轮动是排他性的：交易完全由 :attr:`pybroker.context.ExecContext.long_score` 和 "
+":attr:`pybroker.context.ExecContext.short_score` 驱动，:class:`.Execution` "
+"下达的订单会被忽略。执行函数中设置的成交价格和止损会被保留，并应用于轮动所下达的订单。"
 
 #: 3ef7eb6702e945daae2f426b6adc0e73 of
 #: pybroker.strategy.Strategy.enable_rotation:15
 msgid ""
 "Ranking spans the whole portfolio, so a held position without a rankable "
 "score is liquidated even when another :class:`.Execution` opened it."
-msgstr ""
+msgstr "排名覆盖整个投资组合，因此即使某个持仓是由另一个 :class:`.Execution` 开立的，只要它没有可排序的得分，也会被平仓。"
 
 #: 8b55bee101694f1e87f2eeb6ba7de0e3 of
 #: pybroker.strategy.Strategy.enable_rotation:19
@@ -622,6 +707,8 @@ msgid ""
 "Must be greater than or equal to the maximum long and short position "
 "counts."
 msgstr ""
+"持仓被保留所允许的最差得分排名，可以是一个可搜索的 :class:`pybroker.optimize.Hyperparam`，或 "
+"``None`` 以禁用轮动。必须大于或等于多头和空头仓位数量上限。"
 
 #: e9c3973ada3f403aa741d18bb33fbffa of
 #: pybroker.strategy.Strategy.enable_rotation:23
@@ -631,13 +718,15 @@ msgid ""
 "sizing after rotation decisions are made. Do not override sell or cover "
 "signals set by rotation."
 msgstr ""
+"可选的 :class:`Callable`，接收一个 "
+":class:`pybroker.context.RotationContext`，用于在轮动决策做出之后覆盖等权重的入场规模计算。不要覆盖轮动设置的卖出或回补信号。"
 
 #: f92f11219061450a9ab320b75e2da64f of
 #: pybroker.strategy.Strategy.set_after_exec:1
 msgid ""
 "``Callable[[Mapping[str, ExecContext]], None]`` that runs after all "
 "execution functions."
-msgstr ""
+msgstr "在所有执行函数之后运行的 ``Callable[[Mapping[str, ExecContext]], None]``。"
 
 #: 3f8b50a6d902471d98b0690767bc0537 dc5b8868ecbf4cf7b8f6371a9ec626a7 of
 #: pybroker.strategy.Strategy.set_after_exec:4
@@ -646,42 +735,44 @@ msgid ""
 ":class:`Callable` that takes a :class:`Mapping` of all ticker symbols to "
 ":class:`~pybroker.context.ExecContext`\\ s."
 msgstr ""
+"接收一个将所有股票代码映射到 :class:`~pybroker.context.ExecContext`\\ 的 "
+":class:`Mapping` 的 :class:`Callable`。"
 
 #: 5e135966981f416db91f2fe4e79c2685 of
 #: pybroker.strategy.Strategy.set_before_exec:1
 msgid ""
 "``Callable[[Mapping[str, ExecContext]], None]`` that runs before all "
 "execution functions."
-msgstr ""
+msgstr "在所有执行函数之前运行的 ``Callable[[Mapping[str, ExecContext]], None]``。"
 
 #: 50f3370ba36b4acf9c79991551e00ed7 of
 #: pybroker.strategy.Strategy.set_max_long_positions:1
 msgid "Sets the maximum number of long positions held at any time."
-msgstr ""
+msgstr "设置任一时刻持有的最大多头仓位数量。"
 
 #: a1faf00f16c04f359f2f092ccab78858 of
 #: pybroker.strategy.Strategy.set_max_long_positions:3
 msgid ""
 "Maximum long positions, a searchable "
 ":class:`pybroker.optimize.Hyperparam`, or ``None`` for unlimited."
-msgstr ""
+msgstr "最大多头仓位数量，可以是一个可搜索的 :class:`pybroker.optimize.Hyperparam`，或 ``None`` 表示不限。"
 
 #: 0050db82391743a29dc3dc8ab094b9ee of
 #: pybroker.strategy.Strategy.set_max_short_positions:1
 msgid "Sets the maximum number of short positions held at any time."
-msgstr ""
+msgstr "设置任一时刻持有的最大空头仓位数量。"
 
 #: 7844258007ae4505a4984f455ff250ac of
 #: pybroker.strategy.Strategy.set_max_short_positions:3
 msgid ""
 "Maximum short positions, a searchable "
 ":class:`pybroker.optimize.Hyperparam`, or ``None`` for unlimited."
-msgstr ""
+msgstr "最大空头仓位数量，可以是一个可搜索的 :class:`pybroker.optimize.Hyperparam`，或 ``None`` 表示不限。"
 
 #: 0f552b99033e4a84a45101dcb2843c4c of
 #: pybroker.strategy.Strategy.set_slippage_model:1
 msgid "Sets :class:`pybroker.slippage.SlippageModel`."
-msgstr ""
+msgstr "设置 :class:`pybroker.slippage.SlippageModel`。"
 
 #: f083209a544448ed8e8b9364df5d58d0 of
 #: pybroker.strategy.Strategy.set_slippage_model:3
@@ -692,6 +783,11 @@ msgid ""
 "(participation cap and square-law price impact). Pass ``None`` to disable"
 " slippage."
 msgstr ""
+"内置模型包括 "
+":class:`pybroker.slippage.FixedSlippageModel`（固定基点）、:class:`pybroker.slippage.VolatilitySlippageModel`（基于"
+" ATR 缩放）和 "
+":class:`pybroker.slippage.VolumeSlippageModel`（参与度上限与平方律价格冲击）。传入 ``None``"
+" 可禁用滑点。"
 
 #: ed2e26229fa2496b978f7f929a262d48 of
 #: pybroker.strategy.Strategy.set_slippage_model:9
@@ -700,7 +796,7 @@ msgid ""
 "exits. Stop and position exits use the adjusted fill price only; share "
 "adjustments are ignored on those paths because they exit an entry in "
 "full."
-msgstr ""
+msgstr "成交时滑点适用于已排定的订单、止损离场和头寸离场。止损和头寸离场仅使用调整后的成交价格；这些路径上的股数调整会被忽略，因为它们会全部平掉一笔入场。"
 
 #: a38816fc17e24c8ca4249704f5e05f8e of pybroker.strategy.Strategy.walkforward:1
 msgid ""
@@ -713,12 +809,18 @@ msgid ""
 "through each window, running executions that were added with "
 ":meth:`.add_execution`."
 msgstr ""
+"使用 `向前分析（Walkforward Analysis） "
+"<https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html"
+"#Walkforward-Analysis>`_ 对交易策略进行回测。由 :class:`pybroker.data.DataSource` "
+"提供的回测数据会被划分为 ``windows`` 个大小相等的时间窗口，每个窗口再按照 ``train_size`` "
+"指定的比例划分为训练数据和测试数据。回测会在时间上依次“向前”经过每个窗口，运行通过 :meth:`.add_execution` "
+"添加的执行函数。"
 
 #: 1ef89c91d704438fbe8112dc27e83f45 71ac7f714f6943b98b51822a19c2b9a2 of
 #: pybroker.strategy.Strategy.walkforward:9
 #: pybroker.strategy.WalkforwardMixin.walkforward_split:8
 msgid "Number of walkforward time windows."
-msgstr ""
+msgstr "向前分析的时间窗口数量。"
 
 #: c07b7ff0df294d3f9c1e878b57ceb472 of
 #: pybroker.strategy.Strategy.walkforward:10
@@ -727,6 +829,8 @@ msgid ""
 "``start_date`` and ``end_date`` range that was passed to "
 ":class:`.Strategy`."
 msgstr ""
+"向前分析的起始日期（含）。必须在传递给 :class:`.Strategy` 的 ``start_date`` 和 ``end_date`` "
+"范围之内。"
 
 #: 4f8b73222ea448449dfee87161a1f1d3 of
 #: pybroker.strategy.Strategy.walkforward:13
@@ -735,29 +839,33 @@ msgid ""
 "``start_date`` and ``end_date`` range that was passed to "
 ":class:`.Strategy`."
 msgstr ""
+"向前分析的结束日期（含）。必须在传递给 :class:`.Strategy` 的 ``start_date`` 和 ``end_date`` "
+"范围之内。"
 
 #: 78f5ed2378194f09a9d3499e739cbce0 of pybroker.strategy.TestResult:1
 msgid "Contains the results of backtesting a :class:`.Strategy`."
-msgstr ""
+msgstr "包含 :class:`.Strategy` 的回测结果。"
 
 #: 28f13cc0e1c04a54b58d492a62b8cb22 of pybroker.strategy.TestResult:5
 msgid "Starting date of backtest."
-msgstr ""
+msgstr "回测的起始日期。"
 
 #: 7c0a5f6fc3544d858002d436e9968152 e6383ec191664e41a99e5ad0fd197b69 of
 #: pybroker.strategy.TestResult:7 pybroker.strategy.TestResult:13
 msgid "datetime.datetime"
-msgstr ""
+msgstr "datetime.datetime"
 
 #: 2e16a4e56d6e424d8db4092feca57233 of pybroker.strategy.TestResult:11
 msgid "Ending date of backtest."
-msgstr ""
+msgstr "回测的结束日期。"
 
 #: 1f4b61e9068449a284d736b2a2d70fc7 of pybroker.strategy.TestResult:17
 msgid ""
 ":class:`pandas.DataFrame` of :class:`pybroker.portfolio.Portfolio` "
 "balances for every bar."
 msgstr ""
+"每根 K 线的 :class:`pybroker.portfolio.Portfolio` 余额 "
+":class:`pandas.DataFrame`。"
 
 #: 042b83f44f89407db4e143060e3072c6 0ebfcc7715944214b27b13f83361f145
 #: 58104880049744399eaf40ef18f86577 63d4cd1c8ae24a069d52d4bed8fd0d86
@@ -765,63 +873,65 @@ msgstr ""
 #: pybroker.strategy.TestResult:27 pybroker.strategy.TestResult:33
 #: pybroker.strategy.TestResult:39 pybroker.strategy.TestResult:51
 msgid "pandas.DataFrame"
-msgstr ""
+msgstr "pandas.DataFrame"
 
 #: cd8fe34ea6d04046ba0193436e2636ed of pybroker.strategy.TestResult:24
 msgid ""
 ":class:`pandas.DataFrame` of :class:`pybroker.portfolio.Position` "
 "balances for every bar."
-msgstr ""
+msgstr "每根 K 线的 :class:`pybroker.portfolio.Position` 余额 :class:`pandas.DataFrame`。"
 
 #: bda8877099924cf59afca83f33828e3a of pybroker.strategy.TestResult:31
 msgid ":class:`pandas.DataFrame` of all orders that were placed."
-msgstr ""
+msgstr "所有已下达订单的 :class:`pandas.DataFrame`。"
 
 #: a5938787978c49abb4e70f5a1a8f625e of pybroker.strategy.TestResult:37
 msgid ":class:`pandas.DataFrame` of all trades that were made."
-msgstr ""
+msgstr "所有已成交交易的 :class:`pandas.DataFrame`。"
 
 #: e89a373d7d57405c9e4bf1174139ac2e of pybroker.strategy.TestResult:43
 msgid "Evaluation metrics."
-msgstr ""
+msgstr "评估指标。"
 
 #: 37765c5646794971aec41ce8e7130ade of pybroker.strategy.TestResult:45
 msgid "pybroker.eval.EvalMetrics"
-msgstr ""
+msgstr "pybroker.eval.EvalMetrics"
 
 #: 425e7618f9e44f84a52f1ea0f267e0de of pybroker.strategy.TestResult:49
 msgid ":class:`pandas.DataFrame` of evaluation metrics."
-msgstr ""
+msgstr "评估指标的 :class:`pandas.DataFrame`。"
 
 #: fe1b391b87134d5aab1443be033d137d of pybroker.strategy.TestResult:55
 msgid "Randomized bootstrap evaluation metrics."
-msgstr ""
+msgstr "随机自助法评估指标。"
 
 #: 67a759e524c34c5194a1b579abb562e5 of pybroker.strategy.TestResult:57
 msgid "pybroker.eval.BootstrapResult | None"
-msgstr ""
+msgstr "pybroker.eval.BootstrapResult | None"
 
 #: 091cce1285154d929b7cf52332903654 of pybroker.strategy.TestResult:68
 msgid "dict[str, pandas.DataFrame] | None"
-msgstr ""
+msgstr "dict[str, pandas.DataFrame] | None"
 
 #: a68d70fef5b84e10b916bb0d16419af8 of pybroker.strategy.TestResult:72
 msgid ""
 ":class:`pandas.DataFrame` containing stop data per-bar when "
 ":attr:`pybroker.config.StrategyConfig.return_stops` is ``True``."
 msgstr ""
+"当 :attr:`pybroker.config.StrategyConfig.return_stops` 为 ``True`` 时，包含按 K "
+"线记录的止损数据的 :class:`pandas.DataFrame`。"
 
 #: 4f959af0a3844af980b754adf463fac7 of pybroker.strategy.TestResult:75
 msgid "pandas.DataFrame | None"
-msgstr ""
+msgstr "pandas.DataFrame | None"
 
 #: 53e582c0c0854aab88793fc9af275d17 of pybroker.strategy.TestResult:79
 msgid "Ticker symbols that were backtested."
-msgstr ""
+msgstr "已回测的股票代码。"
 
 #: ad8b9b3d3d65488bb61d7e6046de996f of pybroker.strategy.TestResult.to_json:1
 msgid "Returns JSON-serializable backtest results."
-msgstr ""
+msgstr "返回可 JSON 序列化的回测结果。"
 
 #: d68b9f3f6f184094a2e2b8c792d33d5f of pybroker.strategy.TestResult.to_json:3
 msgid ""
@@ -832,6 +942,10 @@ msgid ""
 "``null``, and infinite metric values as the string sentinels "
 "``\"Infinity\"``/``\"-Infinity\"``."
 msgstr ""
+"默认包含 ``start_date``、``end_date``、``metrics``、``trades``、``orders`` 以及 "
+"``bootstrap``（如果存在）。诸如 ``portfolio``、``positions``、``signals`` 和 "
+"``stops`` 等大型时间序列需要通过 ``include`` 主动选择才会包含。日期以不带时区的 UTC 序列化，NaN 序列化为 "
+"``null``，无穷大的指标值序列化为字符串哨兵值 ``\"Infinity\"``/``\"-Infinity\"``。"
 
 #: 9f39edba91b6409b80879c8607d227f4 of pybroker.strategy.TestResult.to_json:10
 msgid ""
@@ -842,21 +956,26 @@ msgid ""
 ":attr:`pybroker.config.StrategyConfig.record_position_bars` is ``True``, "
 "and ``signals``/``stops`` only with their matching config flags."
 msgstr ""
+"要包含的可选结果部分的名称。有效名称为 "
+"``metrics``、``metrics_df``、``trades``、``orders``、``portfolio``、``positions``、``bootstrap``、``signals``"
+" 和 ``stops``。请注意，只有当 "
+":attr:`pybroker.config.StrategyConfig.record_position_bars` 为 ``True`` 时 "
+"``positions`` 才会有行，``signals``/``stops`` 也仅在各自对应的配置标志开启时才会有内容。"
 
 #: 9e0b4a051ae04db9a15029bb8575b586 of pybroker.strategy.TestResult.to_json:18
 msgid "Maximum rows per tabular section. ``None`` for no limit."
-msgstr ""
+msgstr "每个表格部分的最大行数。``None`` 表示不限。"
 
 #: 105fd39ed23c411d8be1bb2c097c6c01 of pybroker.strategy.TestResult.to_json:19
 msgid ""
 "When set, filter symbol-specific sections to these tickers. Must be a "
 "non-empty subset of :attr:`.symbols`."
-msgstr ""
+msgstr "设置后，会将各品种专属的部分过滤为这些股票代码。必须是 :attr:`.symbols` 的一个非空子集。"
 
 #: ba362f23e87e433e9d2f6d96679db178 of
 #: pybroker.strategy.TestResult.to_json_str:1
 msgid "Returns strict JSON text from :meth:`to_json`."
-msgstr ""
+msgstr "从 :meth:`to_json` 返回严格的 JSON 文本。"
 
 #: 151e8b6028114d1eb394d87f70959358 of pybroker.strategy.WalkforwardMixin:1
 msgid ""
@@ -864,6 +983,9 @@ msgid ""
 "<https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html"
 "#Walkforward-Analysis>`_."
 msgstr ""
+"实现 `向前分析（Walkforward Analysis） "
+"<https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html"
+"#Walkforward-Analysis>`_ 逻辑的 Mixin。"
 
 #: 47028fbeb64c41acbd678a26a0ea6603 of
 #: pybroker.strategy.WalkforwardMixin.walkforward_split:1
@@ -874,134 +996,56 @@ msgid ""
 "<https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html"
 "#Walkforward-Analysis>`_."
 msgstr ""
+"将包含多个股票代码数据的 :class:`pandas.DataFrame`，为 `向前分析（Walkforward Analysis） "
+"<https://www.pybroker.com/en/latest/notebooks/6.%20Training%20a%20Model.html"
+"#Walkforward-Analysis>`_ 拆分为训练/测试时间窗口的 :class:`Iterator`。"
 
 #: c62da3b464c34996aa3256ad1ca406f9 of
 #: pybroker.strategy.WalkforwardMixin.walkforward_split:6
 msgid ""
 ":class:`pandas.DataFrame` of data to split into train/test windows for "
 "Walkforward Analysis."
-msgstr ""
+msgstr "要为向前分析拆分为训练/测试窗口的数据 :class:`pandas.DataFrame`。"
 
 #: 7d4a4c5b85c54cf593e43a5908f1dbbd of
 #: pybroker.strategy.WalkforwardMixin.walkforward_split:19
-#, python-format
 msgid ""
 "Amount of data in ``df`` to use for training, where the max "
 "``train_size`` is ``1``. For example, a ``train_size`` of ``0.9`` would "
 "result in 90% of data in ``df`` being used for training and the remaining"
 " 10% of data being used for testing."
 msgstr ""
+"``df`` 中用于训练的数据量，其中 ``train_size`` 的最大值为 ``1``。例如，``train_size`` 为 "
+"``0.9`` 表示 ``df`` 中 90% 的数据用于训练，剩余 10% 的数据用于测试。"
 
 #: c349684ab64648fea94e0a300fae6815 of
 #: pybroker.strategy.WalkforwardMixin.walkforward_split:23
 msgid ""
 "Whether to randomly shuffle the data used for training. Defaults to "
 "``False``."
-msgstr ""
+msgstr "是否随机打乱用于训练的数据。默认为 ``False``。"
 
 #: 4703ac85efe748b5a92795be173f704f of
 #: pybroker.strategy.WalkforwardMixin.walkforward_split:26
 msgid ""
 ":class:`Iterator` of :class:`.WalkforwardWindow`\\ s containing train and"
 " test data."
-msgstr ""
+msgstr "包含训练和测试数据的 :class:`.WalkforwardWindow`\\ 的 :class:`Iterator`。"
 
 #: 96f1a5655d3b4d67aeef6b887021a83d of pybroker.strategy.WalkforwardWindow:1
 msgid "Contains train/test row indices for a walkforward window."
-msgstr ""
+msgstr "包含某个向前分析窗口的训练/测试行索引。"
 
 #: 4243acaf9ec34255bd37b02a63ddedc7 of pybroker.strategy.WalkforwardWindow:5
 msgid "Integer row indices into the master frame for training."
-msgstr ""
+msgstr "指向主数据帧中用于训练的整数行索引。"
 
 #: c7eb3d39581245d3ad99513cca899ae2 ece57dcb25a046dba95a4f424f12a44c of
 #: pybroker.strategy.WalkforwardWindow:7 pybroker.strategy.WalkforwardWindow:13
 msgid "numpy.ndarray[tuple[Any, ...], numpy.dtype[numpy.int64]]"
-msgstr ""
+msgstr "numpy.ndarray[tuple[Any, ...], numpy.dtype[numpy.int64]]"
 
 #: 3722c6a9644b4411a025b3f3a8a2f289 of pybroker.strategy.WalkforwardWindow:11
 msgid "Integer row indices into the master frame for testing."
-msgstr ""
-
-#~ msgid ""
-#~ "Dictionary of :class:`pandas.DataFrame`\\ s "
-#~ "containing bar data, indicator data, and"
-#~ " model predictions for each symbol "
-#~ "when :attr:`pybroker.config.StrategyConfig.return_signals` "
-#~ "is ``True``."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Names of :class:`pybroker.model.ModelSource`\\ s "
-#~ "used for execution of ``fn``."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Names of :class:`pybroker.indicator.Indicator`\\ s"
-#~ " used for execution of ``fn``."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Compression intervals available to ``fn`` "
-#~ "through :meth:`pybroker.context.ExecContext.interval`."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "For example, to use weekly bars, "
-#~ "5-bar bins, and 1-hour duration bars "
-#~ "on a 1-minute feed::"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":class:`Iterable` of :class:`pybroker.model.ModelSource`\\"
-#~ " s to train/load for backtesting."
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":class:`Iterable` of "
-#~ ":class:`pybroker.indicator.Indicator`\\ s to compute"
-#~ " for backtesting."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "One or more compression intervals made"
-#~ " available to ``fn`` through "
-#~ ":meth:`pybroker.context.ExecContext.interval`. Each must"
-#~ " be strictly coarser than the base"
-#~ " bar spacing passed as ``timeframe`` "
-#~ "to :meth:`.backtest` or :meth:`.walkforward`; "
-#~ "invalid combinations raise ``ValueError`` when"
-#~ " the backtest runs. Intervals are "
-#~ "scoped to this execution, so another "
-#~ "execution's :class:`pybroker.context.ExecContext` cannot"
-#~ " read them — including inside a "
-#~ ":meth:`.set_before_exec` or :meth:`.set_after_exec` "
-#~ "callback, which receives contexts from "
-#~ "every execution."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Number of bars in the future of"
-#~ " the target prediction. For example, "
-#~ "predicting returns for the next bar "
-#~ "would have a ``lookahead`` of ``1``. "
-#~ "This quantity is needed to prevent "
-#~ "training data from leaking into the "
-#~ "test boundary."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "By default includes ``start_date``, "
-#~ "``end_date``, ``metrics``, ``trades``, ``orders``,"
-#~ " and ``bootstrap`` (when present). Large"
-#~ " time series such as ``portfolio``, "
-#~ "``positions``, ``signals``, and ``stops`` are"
-#~ " opt-in via ``include``."
-#~ msgstr ""
-
-#~ msgid "Names of optional result sections to include."
-#~ msgstr ""
-
-#~ msgid "When set, filter symbol-specific sections to these tickers."
-#~ msgstr ""
+msgstr "指向主数据帧中用于测试的整数行索引。"
 
