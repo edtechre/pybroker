@@ -76,6 +76,75 @@ Breaking changes
 
 * Adds ``order_id`` parameter to `PendingOrderScope.orders() <https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.PendingOrderScope.orders>`_.
 
+* Adds :doc:`Agent Skills <agent-skills>`.
+
+* Broad performance improvements to bar capture, scope fetches, and position lookups.
+
+* Improves Alpaca crypto and AKShare reliability.
+
+1.2.12
+======
+
+* Supports Pandas 3.
+
+1.2.11
+======
+
+* Fixes readonly NumPy arrays returned by Pandas 2.3.
+
+* Adds `clear_params <https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.clear_params>`_ to clear global parameters.
+
+* Forwards ``*args`` and ``**kwargs`` from `Strategy.add_execution <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.add_execution>`_ to the execution function.
+
+* Adds ``seed`` to `backtest <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`_ / `walkforward <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`_ for reproducible bootstrap results.
+
+* Removes redundant ``subtract_fees`` config option.
+
+1.2.10
+======
+
+* Uses per-bar returns instead of absolute per-bar deltas for Sharpe, Sortino, and Calmar ratios.
+
+1.2.9
+=====
+
+* Upgrades to NumPy 2 while still supporting NumPy 1.
+
+* Adds ``LONG_ONLY`` and ``SHORT_ONLY`` `position modes <https://www.pybroker.com/en/latest/reference/pybroker.config.html#pybroker.config.StrategyConfig>`_.
+
+* Adds ``max_drawdown_date`` to `EvalMetrics <https://www.pybroker.com/en/latest/reference/pybroker.eval.html#pybroker.eval.EvalMetrics>`_.
+
+* Fixes ``yfinance`` dependency version.
+
+1.2.8
+=====
+
+* Fixes NumPy typecheck errors.
+
+1.2.7
+=====
+
+* Fixes ``df.loc[index]`` returning a DataFrame when the index is not unique.
+
+1.2.6
+=====
+
+* Fixes missing ``Adj Close`` column from `YFinance <https://www.pybroker.com/en/latest/reference/pybroker.data.html#pybroker.data.YFinance>`_; adds ``auto_adjust`` argument.
+
+* Raises an error when ``sell_all_shares`` or ``cover_all_shares`` is called with no open position.
+
+1.2.5
+=====
+
+* Adds ``adjust`` parameter to `backtest <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.backtest>`_ / `walkforward <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`_.
+
+* Fixes mypy typecheck errors.
+
+1.2.4
+=====
+
+* Guarantees ``largest_loss_pct`` is always negative and ``largest_win_pct`` is always positive in `EvalMetrics <https://www.pybroker.com/en/latest/reference/pybroker.eval.html#pybroker.eval.EvalMetrics>`_.
+
 1.2.3
 =====
 
