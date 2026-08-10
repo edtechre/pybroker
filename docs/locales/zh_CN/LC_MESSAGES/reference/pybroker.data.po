@@ -21,15 +21,15 @@ msgstr ""
 
 #: ../../source/reference/pybroker.data.rst:2 75b6669e1df044998fc0e43c4c6111a5
 msgid "pybroker.data module"
-msgstr ""
+msgstr "pybroker.data 模块"
 
 #: ccdb88b63a5c4aef894ee84cef31a61f of pybroker.data:1
 msgid "Contains :class:`.DataSource`\\ s used to fetch external data."
-msgstr ""
+msgstr "包含用于获取外部数据的 :class:`.DataSource`\\ 。"
 
 #: a3ff998a7e2f42c2922d535a39af0952 of pybroker.data.Alpaca:1
 msgid "Retrieves stock data from `Alpaca <https://alpaca.markets/>`_."
-msgstr ""
+msgstr "从 `Alpaca <https://alpaca.markets/>`_ 获取股票数据。"
 
 #: 26639d8ca3fe44c0aa01a904969b0312 968193aedbc9499997eb6d52cb28d237
 #: c81f7dabe03b4c6dacd4fee3fd3eb61e of pybroker.data.Alpaca.query:1
@@ -38,6 +38,8 @@ msgid ""
 "Queries data. Cached data is returned if caching is enabled by calling "
 ":meth:`pybroker.cache.enable_data_source_cache`."
 msgstr ""
+"查询数据。如果通过调用 :meth:`pybroker.cache.enable_data_source_cache` "
+"启用了缓存，则返回缓存的数据。"
 
 #: ../../source/reference/pybroker.data.rst 047804a9390c4c0ba62018746e8968b8
 #: 19b48ce30c3848049e36c458156e968f 1f35da6904b948e6908de5b81986f46d
@@ -45,13 +47,13 @@ msgstr ""
 #: 6b19f265fc8742128ae935e097ab8880 747ca46e9f9d4f16a77844a812f311c9
 #: b70b4bfc96924b32a15423bfa254d8bb bd3c5d7ec06e4da8ad30a1d11cee8c5d
 msgid "Parameters"
-msgstr ""
+msgstr "参数"
 
 #: 07c034a8e5d84875b3d1bebfffcf9633 0ce58e19387e45c584459a52ed5f819c
 #: fc5475b393694467872fd11580c8f14d of pybroker.data.Alpaca.query:4
 #: pybroker.data.AlpacaCrypto.query:4 pybroker.data.DataSource.query:4
 msgid "Symbols of the data to query."
-msgstr ""
+msgstr "待查询数据的品种代码。"
 
 #: 0858edd06f98447585234abdd35fbc5e 1d81a5556a554c5bb5bf164112a479e4
 #: 45aced4db03248ff922bbc0237f88b37 e8bd5a37f4b74417b48a80ec2fc32acb
@@ -59,7 +61,7 @@ msgstr ""
 #: pybroker.data.AlpacaCrypto.query:5 pybroker.data.DataSource._fetch_data:9
 #: pybroker.data.DataSource.query:5 pybroker.data.YFinance.query:5
 msgid "Start date of the data to query (inclusive)."
-msgstr ""
+msgstr "待查询数据的起始日期（含）。"
 
 #: 3938d245f5cd4d918bd3e34f5808eaee 3969ec8a5c2042679ec92064d0dce31a
 #: 77fa4d476a104fdb92ab8fc345e8c48c d3a63f53fb3a4fbb9428c46b315b7b77
@@ -67,7 +69,7 @@ msgstr ""
 #: pybroker.data.AlpacaCrypto.query:6 pybroker.data.DataSource._fetch_data:10
 #: pybroker.data.DataSource.query:6 pybroker.data.YFinance.query:6
 msgid "End date of the data to query (inclusive)."
-msgstr ""
+msgstr "待查询数据的结束日期（含）。"
 
 #: 18de57b119174f8facfb0bffbea8476c 6223afd2424a419284192759855b294d
 #: 7950fb949f4f45df8cdf5ad5436d7aa1 a90a461f4a9e4d5191421a2c07da16f6 of
@@ -80,6 +82,9 @@ msgid ""
 "- ``\"d\"``/``\"day\"``: days - ``\"w\"``/``\"week\"``: weeks  An example"
 " timeframe string is ``1h 30m``."
 msgstr ""
+"指定要查询的时间框架分辨率的格式化字符串。该时间框架字符串支持以下单位：  - ``\"s\"``/``\"sec\"``：秒 - "
+"``\"m\"``/``\"min\"``：分钟 - ``\"h\"``/``\"hour\"``：小时 - "
+"``\"d\"``/``\"day\"``：天 - ``\"w\"``/``\"week\"``：周  时间框架字符串示例：``1h 30m``。"
 
 #: 5a1e184b4e92452e9da29911b769c793 5e7f998fc4e94f0fb055db694d008240
 #: 7cc0229eee394bdea8e57eff126b33f8 a9243b4a329a43828861b138b9ec8d08 of
@@ -88,7 +93,7 @@ msgstr ""
 msgid ""
 "Formatted string that specifies the timeframe resolution to query. The "
 "timeframe string supports the following units:"
-msgstr ""
+msgstr "指定要查询的时间框架分辨率的格式化字符串。该时间框架字符串支持以下单位："
 
 #: 178e0f9453ab41b5bf605ab2ee65ded7 26a8c337bd2f409c9f5a5e3ac150edd8
 #: 4e8c52b8a62f4f55950e73d2d77156e1 68f3660c3cb24d1cbb949cccb0e6aa5f
@@ -98,7 +103,7 @@ msgstr ""
 #: pybroker.data.DataSourceCacheMixin.get_cached:9
 #: pybroker.data.DataSourceCacheMixin.set_cached:8
 msgid "``\"s\"``/``\"sec\"``: seconds"
-msgstr ""
+msgstr "``\"s\"``/``\"sec\"``：秒"
 
 #: 1eb0c65f334f41c596023245c22a9dba 628eb81154784253b83e2d75188063c0
 #: aa2da92d82fe47918ae51aace74abcc3 bae744a6b4d244e0ba60613a382bb0a2
@@ -108,7 +113,7 @@ msgstr ""
 #: pybroker.data.DataSourceCacheMixin.get_cached:10
 #: pybroker.data.DataSourceCacheMixin.set_cached:9
 msgid "``\"m\"``/``\"min\"``: minutes"
-msgstr ""
+msgstr "``\"m\"``/``\"min\"``：分钟"
 
 #: 0cbc5d88107e437bbe1419b2ce37afeb 276d0ba7b6224964b6111202dc9d56a8
 #: 643adb7fbb2e47a28f28671fe1caf297 7a6d75abf00e49caabc5086fcdf9df7c
@@ -118,7 +123,7 @@ msgstr ""
 #: pybroker.data.DataSourceCacheMixin.get_cached:11
 #: pybroker.data.DataSourceCacheMixin.set_cached:10
 msgid "``\"h\"``/``\"hour\"``: hours"
-msgstr ""
+msgstr "``\"h\"``/``\"hour\"``：小时"
 
 #: 132122642aba413d99df5deafbb53d6f 2b9707c33dce46dfb01a41849747bed6
 #: 406645970e1e43f89d72611941f3d0f9 44b72500b1e14986ba1378c8326a19b8
@@ -128,7 +133,7 @@ msgstr ""
 #: pybroker.data.DataSourceCacheMixin.get_cached:12
 #: pybroker.data.DataSourceCacheMixin.set_cached:11
 msgid "``\"d\"``/``\"day\"``: days"
-msgstr ""
+msgstr "``\"d\"``/``\"day\"``：天"
 
 #: 16c2e66e51214637a28478fb94ff1947 3e80df8bb850431da4c812de7116c4bd
 #: 5410bfb4b6cc40cfad19d338b9ee77fc 64289b89e8e04a33ac91ddb3a99859f5
@@ -138,7 +143,7 @@ msgstr ""
 #: pybroker.data.DataSourceCacheMixin.get_cached:13
 #: pybroker.data.DataSourceCacheMixin.set_cached:12
 msgid "``\"w\"``/``\"week\"``: weeks"
-msgstr ""
+msgstr "``\"w\"``/``\"week\"``：周"
 
 #: 5d98a2097287477abf7f3daa59e47536 a454baeced7c49229f47ce9673b3cb34
 #: c9727cf31de746fb92e6b9b2fa7bee9e fb4f76f07cf54d24a0c17e9dc5863683
@@ -147,7 +152,7 @@ msgstr ""
 #: pybroker.data.DataSource.query:17
 #: pybroker.data.DataSourceCacheMixin.get_cached:16
 msgid "An example timeframe string is ``1h 30m``."
-msgstr ""
+msgstr "时间框架字符串示例：``1h 30m``。"
 
 #: 439ab308b8374a299b891c37cd03dede 89b9c6434dd7491c82abab18b0bfa283
 #: 8a80fada4949414ebf26082fe9e8fae8 b526ca7e43ee49938671214fb148edae
@@ -157,14 +162,14 @@ msgstr ""
 #: pybroker.data.DataSourceCacheMixin.get_cached:19
 #: pybroker.data.DataSourceCacheMixin.set_cached:17
 msgid "The type of adjustment to make."
-msgstr ""
+msgstr "要应用的复权调整类型。"
 
 #: ../../source/reference/pybroker.data.rst 145a6cadae9f4de69ee17002e71ec6e5
 #: 23f5d76788f24422974e52b63b9b59b6 4d1c00ca83aa4033a35a19d6b7c256bf
 #: 6927dd05b5fa45209b7dbb7e0a892fe8 760bf7b4b9b94c978e28a0fa2b5a2d04
 #: a918998103fb4756a6cdf0dfe2425ea7
 msgid "Returns"
-msgstr ""
+msgstr "返回"
 
 #: 4c2dc0c1fe7644329518168ef203a349 85f4d6b7316e40548a579b4456cb1c3b
 #: ad7e7600cb164980948fa7711fac8506 bb78c02220a54f199ab6601dcd38f30f
@@ -172,19 +177,19 @@ msgstr ""
 #: pybroker.data.AlpacaCrypto.query:20 pybroker.data.DataSource._fetch_data:24
 #: pybroker.data.DataSource.query:20 pybroker.data.YFinance.query:8
 msgid ":class:`pandas.DataFrame` containing the queried data."
-msgstr ""
+msgstr "包含查询结果的 :class:`pandas.DataFrame`。"
 
 #: 0fab8a777b8c4746b5f33456475232e3 of pybroker.data.AlpacaCrypto:1
 msgid "Retrieves crypto data from `Alpaca <https://alpaca.markets/>`_."
-msgstr ""
+msgstr "从 `Alpaca <https://alpaca.markets/>`_ 获取加密货币数据。"
 
 #: 17d6394a99624334b397259d977c597f of pybroker.data.AlpacaCrypto:3
 msgid "Alpaca API key."
-msgstr ""
+msgstr "Alpaca 的 API key。"
 
 #: 86013da899db43e7b394b7fd3e383119 of pybroker.data.AlpacaCrypto:4
 msgid "Alpaca API secret."
-msgstr ""
+msgstr "Alpaca 的 API secret。"
 
 #: 9e8ea3f699e54577a1f6961e0b043c6e of pybroker.data.DataSource:1
 msgid ""
@@ -193,6 +198,8 @@ msgid ""
 ":class:`.DataSource` that can be used with "
 ":class:`pybroker.strategy.Strategy`."
 msgstr ""
+"用于从外部数据源查询数据的基类。继承此类并重写 :meth:`._fetch_data`，即可实现一个可与 "
+":class:`pybroker.strategy.Strategy` 搭配使用的自定义 :class:`.DataSource`。"
 
 #: d9a20f39fee44569a074540f4298d146 of pybroker.data.DataSource._fetch_data:3
 msgid ""
@@ -200,29 +207,31 @@ msgid ""
 ":class:`pandas.DataFrame` must contain the following columns: ``symbol``,"
 " ``date``, ``open``, ``high``, ``low``, and ``close``."
 msgstr ""
+"重写此方法以从自定义数据源返回数据。返回的 :class:`pandas.DataFrame` "
+"必须包含以下列：``symbol``、``date``、``open``、``high``、``low`` 和 ``close``。"
 
 #: c06f9dfcbc734128b6a84b07ebc5cdb3 db7ef492b958477d978f378f0b60cfee of
 #: pybroker.data.DataSource._fetch_data:8 pybroker.data.YFinance.query:4
 msgid "Ticker symbols of the data to query."
-msgstr ""
+msgstr "待查询数据的股票代码。"
 
 #: ff933b2b592349f1a4bdfc527b34c7a2 of pybroker.data.DataSourceCacheMixin:1
 msgid ""
 "Mixin that implements fetching and storing cached :class:`.DataSource` "
 "data."
-msgstr ""
+msgstr "实现获取和存储已缓存 :class:`.DataSource` 数据的 Mixin。"
 
 #: 88cbe05b0e8c4589ad4cb310f03cb098 of
 #: pybroker.data.DataSourceCacheMixin.get_cached:1
 msgid ""
 "Retrieves cached data from disk when caching is enabled with "
 ":meth:`pybroker.cache.enable_data_source_cache`."
-msgstr ""
+msgstr "当通过 :meth:`pybroker.cache.enable_data_source_cache` 启用缓存时，从磁盘获取已缓存的数据。"
 
 #: d63355977a4c4a88b76bbc2252c30817 of
 #: pybroker.data.DataSourceCacheMixin.get_cached:4
 msgid ":class:`Iterable` of symbols for fetching cached data."
-msgstr ""
+msgstr "用于获取已缓存数据的品种代码 :class:`Iterable`。"
 
 #: 4689059ed8d543aaa7aedf4dadb35fa3 of
 #: pybroker.data.DataSourceCacheMixin.get_cached:5
@@ -234,23 +243,27 @@ msgid ""
 "``\"w\"``/``\"week\"``: weeks   An example timeframe string is ``1h "
 "30m``."
 msgstr ""
+"指定已缓存数据的时间框架分辨率的格式化字符串。该时间框架字符串支持以下单位：  - ``\"s\"``/``\"sec\"``：秒 - "
+"``\"m\"``/``\"min\"``：分钟 - ``\"h\"``/``\"hour\"``：小时 - "
+"``\"d\"``/``\"day\"``：天 - ``\"w\"``/``\"week\"``：周   时间框架字符串示例：``1h "
+"30m``。"
 
 #: c47366bdfa0144e3909d018708ee93f6 of
 #: pybroker.data.DataSourceCacheMixin.get_cached:5
 msgid ""
 "Formatted string that specifies the timeframe resolution of the cached "
 "data. The timeframe string supports the following units:"
-msgstr ""
+msgstr "指定已缓存数据的时间框架分辨率的格式化字符串。该时间框架字符串支持以下单位："
 
 #: 3e130418a4b949d49556e9f8ba1873a2 of
 #: pybroker.data.DataSourceCacheMixin.get_cached:17
 msgid "Starting date of the cached data (inclusive)."
-msgstr ""
+msgstr "已缓存数据的起始日期（含）。"
 
 #: a1a6e30d0802406e8dba27a7da04150a of
 #: pybroker.data.DataSourceCacheMixin.get_cached:18
 msgid "Ending date of the cached data (inclusive)."
-msgstr ""
+msgstr "已缓存数据的结束日期（含）。"
 
 #: e982a41858364b07be69057268d7872c of
 #: pybroker.data.DataSourceCacheMixin.get_cached:21
@@ -259,13 +272,15 @@ msgid ""
 ":class:`pandas.DataFrame` with the cached data, and an ``Iterable[str]`` "
 "of symbols for which no cached data was found."
 msgstr ""
+"``tuple[pandas.DataFrame, Iterable[str]]``，包含一个存有已缓存数据的 "
+":class:`pandas.DataFrame`，以及一个记录未找到缓存数据的品种代码的 ``Iterable[str]``。"
 
 #: dafb86c4069f4e3fa87172a234c3d8d4 of
 #: pybroker.data.DataSourceCacheMixin.set_cached:1
 msgid ""
 "Stores data to disk cache when caching is enabled with "
 ":meth:`pybroker.cache.enable_data_source_cache`."
-msgstr ""
+msgstr "当通过 :meth:`pybroker.cache.enable_data_source_cache` 启用缓存时，将数据存储到磁盘缓存。"
 
 #: 4a70e659ae2a4e55a9353b0021d99dc8 of
 #: pybroker.data.DataSourceCacheMixin.set_cached:4
@@ -277,59 +292,62 @@ msgid ""
 "``\"w\"``/``\"week\"``: weeks  An example timeframe string would be ``1h "
 "30m``."
 msgstr ""
+"指定待缓存数据的时间框架分辨率的格式化字符串。该时间框架字符串支持以下单位：  - ``\"s\"``/``\"sec\"``：秒 - "
+"``\"m\"``/``\"min\"``：分钟 - ``\"h\"``/``\"hour\"``：小时 - "
+"``\"d\"``/``\"day\"``：天 - ``\"w\"``/``\"week\"``：周  时间框架字符串示例：``1h 30m``。"
 
 #: 2c90bd93f3684a22a46de48d1921b972 of
 #: pybroker.data.DataSourceCacheMixin.set_cached:4
 msgid ""
 "Formatted string that specifies the timeframe resolution of the data to "
 "cache. The timeframe string supports the following units:"
-msgstr ""
+msgstr "指定待缓存数据的时间框架分辨率的格式化字符串。该时间框架字符串支持以下单位："
 
 #: 61035cb695c2426594ef7b89a18f2c01 of
 #: pybroker.data.DataSourceCacheMixin.set_cached:14
 msgid "An example timeframe string would be ``1h 30m``."
-msgstr ""
+msgstr "时间框架字符串示例：``1h 30m``。"
 
 #: f22adbbb114848b5bb4376368f36533e of
 #: pybroker.data.DataSourceCacheMixin.set_cached:15
 msgid "Starting date of the data to cache (inclusive)."
-msgstr ""
+msgstr "待缓存数据的起始日期（含）。"
 
 #: 176f8fc4801a47579e0637c4645eb576 of
 #: pybroker.data.DataSourceCacheMixin.set_cached:16
 msgid "Ending date of the data to cache (inclusive)."
-msgstr ""
+msgstr "待缓存数据的结束日期（含）。"
 
 #: 8f88187b5dcc471c8da01f45155f5af7 of
 #: pybroker.data.DataSourceCacheMixin.set_cached:18
 msgid ":class:`pandas.DataFrame` containing the data to cache."
-msgstr ""
+msgstr "包含待缓存数据的 :class:`pandas.DataFrame`。"
 
 #: ceaac782a48341088ca2db8b000215f9 of pybroker.data.YFinance:1
 msgid "Retrieves data from `Yahoo Finance <https://finance.yahoo.com/>`_\\ ."
-msgstr ""
+msgstr "从 `Yahoo Finance <https://finance.yahoo.com/>`_\\ 获取数据。"
 
 #: 0b11130c7f5b451c82216c8af0b2c4ca of pybroker.data.YFinance:3
 msgid ""
 "Whether to auto adjust close prices. If ``True``, then adjusted close "
 "prices are stored in the ``close`` column. Defaults to ``False``."
-msgstr ""
+msgstr "是否自动复权收盘价。如果为 ``True``，则 ``close`` 列会存储复权后的收盘价。默认为 ``False``。"
 
 #: e86fa987c257409fa55b7a206546f51a of pybroker.data.YFinance:9
 msgid "Column name of adjusted close prices."
-msgstr ""
+msgstr "复权收盘价所在列的列名。"
 
 #: 3d7727b404e142ef988869b67522784d of pybroker.data.YFinance
 msgid "type"
-msgstr ""
+msgstr "类型"
 
 #: c8dacb27d70f43e290595bb3de607b7b of pybroker.data.YFinance:11
 msgid "Final"
-msgstr ""
+msgstr "Final"
 
 #: 2fb445c071aa4825b89e0705f77da171 of pybroker.data.YFinance.query:1
 msgid ""
 "Queries data from `Yahoo Finance <https://finance.yahoo.com/>`_\\ . The "
 "timeframe of the data is limited to per day only."
-msgstr ""
+msgstr "从 `Yahoo Finance <https://finance.yahoo.com/>`_\\ 查询数据。数据的时间框架仅限于按天。"
 

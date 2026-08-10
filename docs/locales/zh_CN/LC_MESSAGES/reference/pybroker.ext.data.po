@@ -22,19 +22,19 @@ msgstr ""
 #: ../../source/reference/pybroker.ext.data.rst:2
 #: d295cb79a3164e32aad03aa65836cc11
 msgid "pybroker.ext.data module"
-msgstr ""
+msgstr "pybroker.ext.data 模块"
 
 #: afa0e2587bf4467da8b98fb067ca2341 of pybroker.ext.data:1
 msgid "Contains extension classes."
-msgstr ""
+msgstr "包含扩展类。"
 
 #: 736d400ae7254928803cd8e9e0bc2e91 of pybroker.ext.data.AKShare:1
 msgid "Retrieves data from `AKShare <https://akshare.akfamily.xyz/>`_."
-msgstr ""
+msgstr "从 `AKShare <https://akshare.akfamily.xyz/>`_ 获取数据。"
 
 #: a1bcfab648444017ba299b3647cd6b3d of pybroker.ext.data.YQuery:1
 msgid ""
 "Retrieves data from Yahoo Finance using `Yahooquery "
 "<https://github.com/dpguthrie/yahooquery>`_\\ ."
-msgstr ""
+msgstr "使用 `Yahooquery <https://github.com/dpguthrie/yahooquery>`_\\ 从雅虎财经获取数据。"
 
