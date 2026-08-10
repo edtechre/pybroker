@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-04 18:14-0700\n"
+"POT-Creation-Date: 2026-08-09 17:02-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -19,12 +19,12 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../source/notebooks/14. 713a4fa27a534cbd9e140c6d67902a87 Modeling
+#: ../../source/notebooks/14. 9600f1cf95cb49f09576496e858bb15c Modeling
 #: Slippage.ipynb:9
 msgid "Modeling Slippage"
 msgstr "建模滑点"
 
-#: ../../source/notebooks/14. 69101739ed2e4e8d872804d380221c1d Modeling
+#: ../../source/notebooks/14. 960706e05cb84b22a2e104ccf1bc4ed1 Modeling
 #: Slippage.ipynb:11
 msgid ""
 "In live trading, orders rarely fill at the exact price a backtest "
@@ -32,12 +32,10 @@ msgid ""
 " order push fill prices in an adverse direction. This difference is "
 "called *slippage*. A backtest that ignores it will overstate a strategy's"
 " true performance."
-msgstr ""
-"在实盘交易中，订单很少能以回测所假设的确切价格成交。买卖价差、延迟以及你自己订单造成的市场冲击等因素，"
-"都会使成交价格朝不利方向偏移。这种差异被称为*滑点*。如果回测忽略了滑点，就会高估策略的真实表现。"
+msgstr "在实盘交易中，订单很少能以回测所假设的确切价格成交。买卖价差、延迟以及你自己订单造成的市场冲击等因素，都会使成交价格朝不利方向偏移。这种差异被称为*滑点*。如果回测忽略了滑点，就会高估策略的真实表现。"
 
-#: ../../source/notebooks/14. Modeling Slippage.ipynb:13
-#: e8cb604c0d8e473098e3bbcfc8764a85
+#: ../../source/notebooks/14. 74f67ff28d134300b37a40912cc54c05 Modeling
+#: Slippage.ipynb:13
 msgid ""
 "This notebook demonstrates **PyBroker's** three built-in slippage models "
 "added in v2. It also introduces the `SlippageModel "
@@ -48,12 +46,12 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.SlippageModel>`__"
 " 基类，你可以使用它来编写自己的自定义模型。"
 
-#: ../../source/notebooks/14. Modeling Slippage.ipynb:25
-#: b51962d4ea2a45db95556df23118ff38
+#: ../../source/notebooks/14. 5ed6d95578b247afbb096454eb604274 Modeling
+#: Slippage.ipynb:25
 msgid "A Baseline Strategy"
 msgstr "基准策略"
 
-#: ../../source/notebooks/14. 6010fcff6098459b880cf1568f22eb63 Modeling
+#: ../../source/notebooks/14. 7416e1ec9a084a39bc4662d737c4f894 Modeling
 #: Slippage.ipynb:27
 #, python-format
 msgid ""
@@ -66,8 +64,8 @@ msgid ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.calc_target_shares>`__"
 " and hold it for 3 bars via `hold_bars "
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.hold_bars>`__."
-" Because this strategy trades frequently, small per-fill costs compound "
-"into a visible difference in total return."
+" Because this strategy trades frequently, small per-fill costs will "
+"compound into a noticeable difference in total return."
 msgstr ""
 "为了观察每种模型的效果，我们复用 `回测策略 "
 "<https://www.pybroker.com/en/latest/notebooks/2.%20Backtesting%20a%20Strategy.html>`__"
@@ -77,125 +75,124 @@ msgstr ""
 "<https://www.pybroker.com/en/latest/reference/pybroker.context.html#pybroker.context.ExecContext.hold_bars>`__"
 " 持有 3 根 K 线。由于该策略交易频繁，每次成交的微小成本会累积成总回报中一个明显的差异。"
 
-#: ../../source/notebooks/14. 9226a974c7f54112a4604ba5cb77179e Modeling
-#: Slippage.ipynb:71
+#: ../../source/notebooks/14. Modeling Slippage.ipynb:71
+#: ef2d6b6c97c243c8b0bd0b3090901af8
 msgid ""
-"First, we run a baseline backtest with no slippage. Every order fills at "
-"the unadjusted fill price. By default, this is the midpoint between the "
-"bar's low and high prices (`PriceType.MIDDLE "
-"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.PriceType.MIDDLE>`__):"
+"Now, we run the baseline backtest with no slippage. Every order fills at "
+"the the midpoint between the bar's low and high prices (`PriceType.MIDDLE"
+" "
+"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.PriceType.MIDDLE>`__)"
+" by default:"
 msgstr ""
-"首先，我们运行一次没有滑点的基准回测。每笔订单都以未经调整的成交价格成交，默认情况下，该价格是该 K 线最低价与最高价的中点"
-"（`PriceType.MIDDLE "
-"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.PriceType.MIDDLE>`__）："
+"现在，我们运行没有滑点的基准回测。默认情况下，每笔订单都以该 K 线最低价与最高价的中点（`PriceType.MIDDLE "
+"<https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.PriceType.MIDDLE>`__）成交："
 
 #: ../../source/notebooks/14. Modeling Slippage.ipynb:438
-#: b457babb830e4f108dc7beb551a9d170
+#: b611f4004d584ddc933d9d2751b94bc8
 msgid "Fixed Slippage"
 msgstr "固定滑点"
 
-#: ../../source/notebooks/14. Modeling Slippage.ipynb:440
-#: bb4e71a9394b4ef19f0a497b41f323f5
+#: ../../source/notebooks/14. 1984ffffc68c4bcea0f62696c7193b0c Modeling
+#: Slippage.ipynb:440
 msgid ""
 "The `FixedSlippageModel "
 "<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.FixedSlippageModel>`__"
-" applies a deterministic, adverse adjustment measured in basis points "
-"(where 1 basis point equals 0.01%). Buy fills are increased by ``bps``, "
-"while sell fills are decreased. Passing ``bps=0`` disables the adjustment"
-" entirely."
+" applies a fixed, adverse price adjustment measured in basis points "
+"(where 1 basis point equals 0.01%). Buy prices are increased by ``bps``, "
+"while sell prices are decreased. Passing ``bps=0`` disables the "
+"adjustment entirely."
 msgstr ""
 "`FixedSlippageModel "
 "<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.FixedSlippageModel>`__"
-" 会施加一个确定性的、不利的调整，以基点为单位（1 个基点等于 0.01%）。买入成交价会上调 ``bps``，"
-"卖出成交价则会下调 ``bps``。传入 ``bps=0`` 会完全禁用该调整。"
+" 会施加一个固定的、不利的价格调整，以基点为单位（1 个基点等于 0.01%）。买入价格会上调 ``bps``，卖出价格则会下调 "
+"``bps``。传入 ``bps=0`` 会完全禁用该调整。"
 
-#: ../../source/notebooks/14. Modeling Slippage.ipynb:442
-#: c54626e845994594977ef3da03bb6177
+#: ../../source/notebooks/14. 53b05195d4de4dff8e1a5e9131df7d31 Modeling
+#: Slippage.ipynb:442
 msgid ""
 "Because the remaining examples run several more backtests, we will also "
 "disable logging with `disable_logging "
 "<https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.disable_logging>`__"
-" to keep the output short. Attach the model to a `Strategy "
+" to keep the output short. Next, we attach the model to a `Strategy "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy>`__"
 " with `set_slippage_model "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_slippage_model>`__:"
 msgstr ""
 "由于接下来的示例还会运行多次回测，我们也会使用 `disable_logging "
 "<https://www.pybroker.com/en/latest/reference/pybroker.scope.html#pybroker.scope.disable_logging>`__"
-" 禁用日志记录，以保持输出简洁。使用 `set_slippage_model "
+" 禁用日志记录，以保持输出简洁。接下来，我们使用 `set_slippage_model "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.set_slippage_model>`__"
 " 将模型附加到 `Strategy "
 "<https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy>`__："
 
-#: ../../source/notebooks/14. 5daadd2f8c924ef483330f2cde7e99e9 Modeling
-#: Slippage.ipynb:695
+#: ../../source/notebooks/14. Modeling Slippage.ipynb:695
+#: e6bae790b5e34b75ae3e3457b5008630
 msgid "Volatility Slippage"
 msgstr "波动率滑点"
 
-#: ../../source/notebooks/14. Modeling Slippage.ipynb:697
-#: e429b9c69adf44db9dd962fd1c5e334c
+#: ../../source/notebooks/14. 0f61bdcd17c14b4e81360030b75d2e53 Modeling
+#: Slippage.ipynb:697
 msgid ""
 "Because slippage tends to grow as volatility rises, the "
 "`VolatilitySlippageModel "
 "<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.VolatilitySlippageModel>`__"
-" ties its adverse adjustment to the market's movement. It scales the "
-"slippage using the `Average True Range (ATR) "
-"<https://en.wikipedia.org/wiki/Average_true_range>`__ of the fill bar "
-"(see `atr "
+" ties its adverse price adjustment directly to market movement. It scales"
+" the slippage using the fill bar's `Average True Range (ATR) "
+"<https://en.wikipedia.org/wiki/Average_true_range>`__ (see `atr "
 "<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.atr>`__),"
-" pushing the fill price against your order by ``scale * ATR``. The ATR is"
-" computed over the ``atr_period`` bars ending at the fill bar; fills "
-"during the warmup period, before a full ATR window exists, are left "
-"unadjusted:"
+" moving the fill price against your order by ``scale * ATR``. The ATR is "
+"calculated over the ``atr_period`` leading up to the fill bar, and any "
+"fills during the warmup period (before a full ATR window is established) "
+"remain unadjusted:"
 msgstr ""
 "由于滑点往往会随着波动率上升而增大，`VolatilitySlippageModel "
 "<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.VolatilitySlippageModel>`__"
-" 将其不利调整与市场波动联系起来。它使用成交 K 线的 `平均真实波幅（ATR） "
-"<https://en.wikipedia.org/wiki/Average_true_range>`__"
-" （参见 `atr "
+" 将其不利价格调整直接与市场波动联系起来。它使用成交 K 线的 `平均真实波幅（ATR） "
+"<https://en.wikipedia.org/wiki/Average_true_range>`__ （参见 `atr "
 "<https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.atr>`__）"
-" 来缩放滑点，按 ``scale * ATR`` 将成交价格推向不利于你订单的方向。ATR 是基于截至成交 K 线为止的 ``atr_period``"
-" 根 K 线计算的；在预热期内（即尚未形成完整 ATR 窗口之前）的成交将不会被调整："
+" 来缩放滑点，按 ``scale * ATR`` 将成交价格推向不利于你订单的方向。ATR 是基于截至成交 K 线为止的 "
+"``atr_period`` 根 K 线计算的；在预热期内（即尚未形成完整 ATR 窗口之前）的成交将不会被调整："
 
-#: ../../source/notebooks/14. 468b989b3b4d41209f99eb1c17e3fd8c Modeling
+#: ../../source/notebooks/14. 237490288db446078bddb36dbcf986f7 Modeling
 #: Slippage.ipynb:948
 msgid "Volume Slippage"
 msgstr "成交量滑点"
 
-#: ../../source/notebooks/14. Modeling Slippage.ipynb:950
-#: a804ccd44947403b85f6399aaa765ed1
+#: ../../source/notebooks/14. 9803b74ce4c34a768aa4c8a43ced0ef3 Modeling
+#: Slippage.ipynb:950
 msgid ""
 "The `VolumeSlippageModel "
 "<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.VolumeSlippageModel>`__"
-" accounts for finite liquidity by introducing two effects:"
+" accounts for limited market liquidity by applying two mechanics:"
 msgstr ""
 "`VolumeSlippageModel "
 "<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.VolumeSlippageModel>`__"
-" 通过引入以下两种效应来考虑有限的流动性："
+" 通过施加以下两种机制来考虑有限的市场流动性："
 
 #: ../../source/notebooks/14. Modeling Slippage.ipynb:952
-#: e0c99f3528a04a349f6619d69df87eb3
+#: b46b9cdeaef64453b1ca38f1b9b4ed80
 msgid ""
 "**Volume limit:** The number of filled shares is capped at a percentage "
-"of the bar's total volume (``volume_limit * volume``). Any remaining "
-"shares in the order are dropped rather than filled later."
+"of the bar's total volume (``volume_limit * volume``). Any shares "
+"exceeding this limit are canceled rather than carried over to the next "
+"bar."
 msgstr ""
-"**成交量限制：** 成交股数会被限制在该 K 线总成交量的一定比例以内（``volume_limit * volume``）。"
-"订单中剩余的股数会被直接丢弃，而不会延后成交。"
+"**成交量限制：** 成交股数会被限制在该 K 线总成交量的一定比例以内（``volume_limit * "
+"volume``）。超出该限制的股数会被取消，而不会延后到下一根 K 线成交。"
 
 #: ../../source/notebooks/14. Modeling Slippage.ipynb:953
-#: dc92a81248694ede96387b067024b049
+#: bc415b0a2c9643b8ba270bb6b3106d84
 msgid ""
-"**Price impact:** The fill price moves against you based on your order "
-"size relative to the market. The adjustment is calculated as "
-"``price_impact * (filled_shares / volume) ** 2`` multiplied by the fill "
-"price."
+"**Price impact:** The execution price moves against your order based on "
+"its size relative to the market. This adverse adjustment is calculated as"
+" ``price_impact * (filled_shares / volume) ** 2`` multiplied by the "
+"initial fill price."
 msgstr ""
-"**价格冲击：** 成交价格会根据你的订单规模相对于市场的大小向不利方向变动。该调整量的计算方式为 "
-"``price_impact * (filled_shares / volume) ** 2`` 乘以成交价格。"
+"**价格冲击：** 成交价格会根据你的订单规模相对于市场的大小向不利方向变动。该调整量的计算方式为 ``price_impact * "
+"(filled_shares / volume) ** 2`` 乘以最初的成交价格。"
 
-#: ../../source/notebooks/14. Modeling Slippage.ipynb:955
-#: f90f531a97894d20879108c4b85b0f2b
+#: ../../source/notebooks/14. 3002cdd2fa814d78a834114cfd5384d1 Modeling
+#: Slippage.ipynb:955
 msgid ""
 "A $100,000 account will rarely hit these limits when trading liquid large"
 " caps. For example, a 25% allocation would just be a rounding error in "
@@ -204,17 +201,16 @@ msgid ""
 "volume model, the backtest unrealistically assumes the entire order fills"
 " at the quoted price:"
 msgstr ""
-"一个 10 万美元的账户在交易流动性充足的大盘股时，很少会触及这些限制。例如，25% 的配置比例在福特汽车的日成交量中"
-"甚至算不上一个舍入误差。然而，同样的配置比例在交易清淡的小盘股中，却可能占当日成交量的相当大一部分。如果没有"
-"成交量模型，回测就会不切实际地假设整笔订单都能以报价成交："
+"一个 10 万美元的账户在交易流动性充足的大盘股时，很少会触及这些限制。例如，25% "
+"的配置比例在福特汽车的日成交量中甚至算不上一个舍入误差。然而，同样的配置比例在交易清淡的小盘股中，却可能占当日成交量的相当大一部分。如果没有成交量模型，回测就会不切实际地假设整笔订单都能以报价成交："
 
-#: ../../source/notebooks/14. 62d2a9edd93b4989bc2c9389d6fef372 Modeling
-#: Slippage.ipynb:1215
+#: ../../source/notebooks/14. Modeling Slippage.ipynb:1215
+#: e97016286aac4b88afd036f323f9766f
 msgid "Writing a Custom Slippage Model"
 msgstr "编写自定义滑点模型"
 
-#: ../../source/notebooks/14. Modeling Slippage.ipynb:1217
-#: df5a4b7307964d89aab9d56082622ea7
+#: ../../source/notebooks/14. 1ceacc1057b14671afaed2a98c2b4682 Modeling
+#: Slippage.ipynb:1217
 msgid ""
 "To create your own model, subclass `SlippageModel "
 "<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.SlippageModel>`__"
@@ -242,16 +238,17 @@ msgstr ""
 " 对象，其中包含订单的 `side "
 "<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.SlippageContext.side>`__"
 " （``\"buy\"`` 或 ``\"sell\"``）、`symbol "
-"<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.SlippageContext.symbol>`__、"
-"`shares "
+"<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.SlippageContext.symbol>`__、`shares"
+" "
 "<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.SlippageContext.shares>`__"
 " 以及初始的 `fill_price "
-"<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.SlippageContext.fill_price>`__"
-"。你的方法随后必须返回一个包含调整后 ``(shares, fill_price)`` 的元组。"
+"<https://www.pybroker.com/en/latest/reference/pybroker.slippage.html#pybroker.slippage.SlippageContext.fill_price>`__。你的方法随后必须返回一个包含调整后"
+" ``(shares, fill_price)`` 的元组。"
 
-#: ../../source/notebooks/14. 0265dc7ecc11457b94dfddcb43f8eee6 Modeling
+#: ../../source/notebooks/14. 6c9a012e181041b38c0351feb1dd464c Modeling
 #: Slippage.ipynb:1221
 msgid ""
-"The following example demonstrates a model that applies a random amount "
-"of adverse slippage to every fill:"
+"The following example shows a model that applies a random amount of "
+"adverse slippage to every fill:"
 msgstr "以下示例演示了一个对每笔成交都施加随机数量的不利滑点的模型："
+
