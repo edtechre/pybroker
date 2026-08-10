@@ -58,7 +58,6 @@ msgstr "购买 20 天涨幅（ROC）最高的两只股票。"
 
 #: ../../source/notebooks/10. 31268fb95da643d088fc11be227754d6 Rotational
 #: Trading.ipynb:61
-#, python-format
 msgid "Allocate 50% of our capital to each stock."
 msgstr "将我们的资本的 50% 分配给每只股票。"
 
@@ -104,7 +103,6 @@ msgstr ""
 
 #: ../../source/notebooks/10. Rotational Trading.ipynb:98
 #: acebe59edf5347f4b5404f88daec5bfd
-#, python-format
 msgid ""
 "We cap long positions at ``2`` with `set_max_long_positions <https://www."
 "pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy."
@@ -151,7 +149,6 @@ msgstr ""
 
 #: ../../source/notebooks/10. Rotational Trading.ipynb:674
 #: bb0b3251d1ff448f97efc624960944b7
-#, python-format
 msgid ""
 "Let's reuse our strategy, but this time allocate 70% of our capital to "
 "the top-ranked stock and 30% to the second:"

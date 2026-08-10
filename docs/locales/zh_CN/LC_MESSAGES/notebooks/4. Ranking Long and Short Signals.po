@@ -44,7 +44,6 @@ msgstr "让我们从一个示例开始，说明如何在下买单时根据成交
 
 #: ../../source/notebooks/4. Long Ranking Short Signals.ipynb:89 and
 #: c58cc01be5a246ce9eee0161196559bd
-#, no-python-format, python-format
 msgid ""
 "The ``buy_highest_volume`` function allocates 100% of the portfolio and "
 "holds for 2 bars. It sets ``ctx.long_score`` to ``ctx.volume[-1]`` so "
