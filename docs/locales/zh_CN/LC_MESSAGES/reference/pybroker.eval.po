@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-05 15:57-0700\n"
+"POT-Creation-Date: 2026-08-11 13:18-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -19,84 +19,84 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../source/reference/pybroker.eval.rst:2 e04050144dfe4a62b88fdef9cacb5c4a
+#: ../../source/reference/pybroker.eval.rst:2 c6acaa6d24ac472695695c60eff97c79
 msgid "pybroker.eval module"
 msgstr "pybroker.eval 模块"
 
-#: ba99ab3ffb5c40b3afa09f297887d59d of pybroker.eval:1
+#: 4d1d3afb3f1c4f18b51f909615995d9e of pybroker.eval:1
 msgid "Contains implementation of evaluation metrics."
 msgstr "包含评估指标的实现。"
 
-#: 2ad01831de9e4908b9423a413b34e1b9 of pybroker.eval.BootConfIntervals:1
+#: c642e679bcb240d1b8508f098a1b7eb3 of pybroker.eval.BootConfIntervals:1
 msgid "Holds confidence intervals of bootstrap tests."
 msgstr "保存自助法检验的置信区间。"
 
-#: cf8df996a9c44938bb145812f3891058 of pybroker.eval.BootConfIntervals:5
+#: 2a62d04f3bd14286901694ee346d98bf of pybroker.eval.BootConfIntervals:5
 msgid "Lower bound of 97.5% confidence interval."
 msgstr "97.5% 置信区间的下界。"
 
-#: 01cdc1851bf14819af35f35e154253ca 08f814573ce94768a74cfa1366b5bfbf
-#: 0eb9a1813908425faf01afcb3501f9be 11fd89da5c384b1e8c2feb91233ecdcd
-#: 1b9272f74bc54656839b031eb2d4a076 1d05fb9923664b8594f4c336f6620e8f
-#: 22aa80baad1f4cadb49f3ade48bc1adf 276c898a972a4b13b785bcf7c0f8c3b8
-#: 27736574246b4457a50177ba1adad7a7 29dddf0f963b43d996f0e94f66e349ee
-#: 2ef75dda48c14b8583dd1c363de7f7a7 31e19d80cc494a65b92b4fefc1dd9834
-#: 36e01f09e22c49a4828a548f923ab6fd 3700f800677942ceb3d5cec9c76bbb43
-#: 3f84d763cf9f4e3b8a91990209c14c63 425ce126581244f8a0b19b2f3d744248
-#: 434a3a0aec02472a84166bbe108b505d 447feb61704645a0a8e7302866d7380c
-#: 44e9315fef674ac8bab12d2d8e7a6781 47bc2af6df7341d3baff19a4dd363b7b
-#: 4d6414cfd7b14e3fbde794fb53b35e84 4e9b3f781af74365bba5af6d404ebff9
-#: 4f1b8b5cc43c45a792794c60b91d3cd3 50c9315dd6034928bc289381244e318a
-#: 560c6c87ca514edb9d04d77d291ca8ac 58ec49d822c4402e92e19fc30a773604
-#: 5f003be032e44f3b8a2bc86e205fef88 6194190829b34b3e952371e28cf37d86
-#: 6365421df00f4042aa3cdba6b752f4de 63abf2b79466414599ec7db2e3046dd2
-#: 68b23d9ee4364eed8053040a47cd9379 68d2b16410804d3586076beab4c0c9d1
-#: 6ae1e62aa165430191ec7e52a4bb95aa 7571aeb8485b4082ad509ee99c44abf2
-#: 7ccb084b99954bf5b11f40db0862a18a 7eeb30262c934075b1564cd433ada6a2
-#: 8bb7e4582c5e4b74a61ce599a72a4c79 8e84ff73f86d45a4bdbf90922ac3276a
-#: 8f0baf5761e44d5abac8605e39000aa0 950684cf9c184a978419318e25742633
-#: 9625f0d7c63a464c94105897212f8bc7 9716631da4bd45ebafac64236c22e850
-#: 9885404f96c848edb39af3b89029f634 9a8baaf069294e0782bafe3f71a7e3c6
-#: 9b0c976ea8364da18b8b82a2b4b06a49 a589385020aa4bc7b3fb6a569376860a
-#: a90091d1c7484cd391a6cc0946a6ca10 a91426a9db9b473481e4cd890654fa87
-#: b03258a83b1a4065a805bd243ff3d4d0 c13c3d6c2def410b82aa6c2135c16e62
-#: c3e461244cb748f682f6e0025ae1ea01 cccda388bb9a43c2b85ef7b8a34da5f0
-#: cf2bd50c22d145269b0df49ef4e37c83 d1b6e879927d485697c52b7d859453ab
-#: d2a061caaa1f4297ac594d99d3798fa6 d3059bd6df2149fe948e97c5ccac0cef
-#: db917f042a1848cead8c3d886036fd7e dd2b444dcd474f968ef64d1e1e4c9c7b
-#: def167324a53482e9fc31b116db32cf5 e0cffd287efc477a8b49315f7bc6678e
-#: e2cb62ad6e1746bfa5979a7bccfee95b e82750a6c9d647909d75405dc5d352c9
-#: ee03dfa4e639457bad2097a4211c92ba ee10662483944f35bf1390dcfbfc276f
-#: f533fce7e06b4bd4aeec6d9d3a6f5842 fb2f18b9dad44b5f8e8291fc2097496a
-#: fbead10d44714758a3ac27e24ec1271c of pybroker.eval.BootConfIntervals
+#: 0132a6f056d241e6a8df7b5b842fb8a3 01f14f13751749ad8dfbcb0ecf08e5e1
+#: 0232a3344fa943cbae7ab4ecdad09c3f 0c8141a294284d4eadb8edc58907dc33
+#: 0ffd8a1cda4b47148d2018a2f11e3c7b 115da43c21b54ba183ff4a0fc51b6847
+#: 11caf35a408e487fa57496adfae39ef3 1395e02c3e7543caa4148615e3cd9c76
+#: 13ad041abe3148fba11e4234729f2434 1b7e4fefd6c64e50af172947c07949ad
+#: 1dec71ac87054943828d3443cfa08a42 2098848f8160461388d9e54e993b1625
+#: 22d245cb2c4a4b92b5cd8395255fcd7d 259618a5226349e092646e52e08efe27
+#: 26c9f0f492a0434ea71699430f88feba 2a79176688ad4e96b853005d7bb017ca
+#: 2e67f2b0586b4795abc18494576c611c 31618fcbf3074ddf8313cedf533c0659
+#: 31748604fe094b07b117609f72486ad3 31ce573489e84f039d746b95e8424327
+#: 31e06daf6b014935979fe5a77606c1b5 3489a667d3b849ea9542ccc4295fa91c
+#: 3bc7e0f43739499a800ba51f305592a2 3cbdc5df131d44f4b97be2b64e3e8a67
+#: 4c0871a016cc40d1a027a1e33f09c108 4c3478bf128342b69873b4bc7a09c010
+#: 4d7b949dbd7742b693530273246c5529 502eb76a5709434080e2f7703144e646
+#: 5916bde7c66140a0a760fc4049542b03 5e96ac41b6df4e25bf45531e959d7c40
+#: 629dcc51854540139fa6e01ed9fe77b4 6ba05163ea6c412dbb0086281b151e80
+#: 6e757674298d4dcc9e3038c53da90e6b 7137d234cf894051b50009167f454000
+#: 76d24ffac59d4e778f0a99bcb0af3412 773fc0eb1b17441bb024691e4b8db019
+#: 7c86e00261fb4d71a5df4fdb1cbfd4a0 7dae68ba13d045bc80927afab4311fd5
+#: 7f80fa29dbf5495195a741e14a44ddd1 7ff8bab3476e4b29a60ed9cafafac5bc
+#: 857ce86c4f364537a4915cf5632427e5 867c1a6b7ec04a42babd0badbbddd8d8
+#: 874d992686844368b9b79a8236b26379 8b720c4435e04832b63224c79f8d92d4
+#: 8c06aaaffd4f4b66902e5a2ec6fd5349 8f6242754df640ec860860d67477e99b
+#: 934739a4cc7c4a899b3721e01c911be0 96a42b3094fa479ca6088e1d94f8bf2c
+#: a16a7ee1f9184469a30e0b967ffbb8e0 ac6438db68e640c09763d1133a801f9d
+#: adf0db2a30a44aad86176724d1a2e92a ae2fcc5713e748da863ce84951aecc95
+#: aebae13a6ab4436892457df54cea8b6b b129fb363f4b42b48a9f947b12e5a195
+#: b646b0987bb9495b8ecb93fc514af62a ba6df84fe52646c99f07c8ed3b1037f2
+#: bc5bd01a016a47e5b6cb2022402bbccf bf7d1948ea7d43918470abe07a1a56ac
+#: df753e9c75b843959fc38e8a2023277a dfe971f965374b98bd2a5f56c831a3cc
+#: e068e7d273b644efb591f57972bb77b3 ee3790a1011446b395eefa2075b2d678
+#: ef60ebdd2fa149e3911a26af7b01ebb0 f141806ce89b4c32ace3a05a8741cfb7
+#: f5bc261192894927a40be59b334b4f85 fad0d2adc5464e1da7beb1456136734a
+#: feeb252e89c643e0bff3834f1a704d30 of pybroker.eval.BootConfIntervals
 #: pybroker.eval.BootstrapResult pybroker.eval.ConfInterval
 #: pybroker.eval.DrawdownConfs pybroker.eval.DrawdownMetrics
 #: pybroker.eval.EvalMetrics pybroker.eval.EvalResult
 msgid "type"
 msgstr "类型"
 
-#: 062ac7182e134247a7bbdeb834bc943e 1c74f89cc879490cac70c69899feb6c3
-#: 255fad5a0eba49c6bf2c33a87b524c13 2a8cb2f45bee4d41b22506f30debd47f
-#: 2b69b3227e9e4c6d88e2bf49cba48918 2d8dff79df124f1894132ec22b53a1f8
-#: 2ee94534a612496ba79e115870e36e65 3972a39a0bc749dab4b58dcea697d297
-#: 3d5fdfae473a4449a2c17f70999ebd0b 41746a08801247c9bfdd325a3a68381d
-#: 4610bd70ad1a4223a2dbff69d5b1a114 47a58b5dc05449bd9844a66cf6f3a5fe
-#: 4850c98df83444cdb0b84dc9d08dc3ba 4c75346ccf3e45c09b79a01a984c206c
-#: 69fbd830eda14871b5a3f8b9d72b78d7 6d9a06904e804b8c9754fab69dc643d7
-#: 79dbffdb0e924b258500856a7289d2b5 7bf0c1f5d7c54de79ffbf28a4ac66033
-#: 85091f860d864aa79ad6510c292d129f 879f9d0ab16a497cb845d8a62091221c
-#: 89aba454944c4976baa5df84c9e122a5 8a718e5017a2494fb108e8ae1f898af7
-#: 8ba603e86faf4356a15f4df07451bac4 8c9f256b34d642cb9c7d13e1578bb6d6
-#: 963541e1e1044b00a840c8a5cf8a77ab 9dbb58103b58422bbdd20794f9f74362
-#: 9e37099345794083a5f4911a6d87c988 9f2bc15cb7e3433faaea584aa46e86ab
-#: a977fcd0fcb144e5bea1a4ee4845ab1f aa647b8ef1024cacba37b46dd0f727a5
-#: aaaa044a8a0d45ebadf525449176d1c6 afd10903f71140aa98b44daded4f843d
-#: ca2c2494f6e3413c81e734a4f2026bcd e0405efac2a745f78c5d696f6ea8e6bb
-#: ec1ab44cb77f4b09a95bb62cec579ae0 ec8f4cd3401d44c2a0e4f5ff4d794927
-#: ee918a13f04a4b0cafa4548b5c89bc9b ef345ee8832649e6ab8f445b7918b4bf
-#: ef488051adeb4bd998822a2654d6b4e0 f0e73aaaaebb4be6a45f6119a6486e90
-#: f914ace4ded34a9f87a6ca4009c6faa0 f9685bbecf424461ba9003ed4cbd6238
-#: fa3bcdb9897f4b1bbbb320e36337edcf fa8adf616c79493ba028e1c20f7dcf61 of
+#: 05a7f0c27f8b45b2bc0307e481ebf425 0dc150aa2ed74dd88c18d83cc90befa1
+#: 0e0cb77fb2044dc4acde650e9e9c05c2 12b1defcb40d4ce2bcdb9bdd57b437bc
+#: 162aa75cb7ea4f91b06a47da163936c3 212a96342f0e446ebb8cb8d77d77ae48
+#: 273eb7051f4646b19601c9850f597800 2b160dbd4e664e5aa573d6fbdbe86fec
+#: 3e8c34a9c87b433e9cfba3c83b2b3e5a 43bfe0c6313f4eb08fee319f52c04144
+#: 4a62486f780042ce872571956e4c303d 5577b5d93ef74e1cb67183963420e3ca
+#: 5acb7f36d3a84b7198f811ffdb170591 6022e78aa155475dbd90891c2e7dd19c
+#: 62069ea95a1340e4a8df09744bcb3c69 6d21a74d5f074bf98b832fcc1072ecd2
+#: 6fe9a0da30614bcabe6bb26187a92180 7a4115f5fdfa4b03a3707a17add17432
+#: 7bf594d861b74cfc9d1826ecb6660044 7e564e2a2cc04583bacdea2727384210
+#: 82d1ca01ebce4340821d2b0e1fca1262 8e493d807ca54f9fade383b9e53f8f8c
+#: 9639ea6835e3433da34295aa5b99daf9 9b87263102a64ece8e4b8181d33a76a8
+#: 9bbe7d6800f64330bbb3855b4c47b8e0 a1b7c8092fd64cbd8db989e6d5d5e727
+#: a390e97d391c462b97c6bccafc66f79a a983df52a51b47979a7cad3840cbc3c2
+#: b09aa0e767744ddf9ea8bd62c206966c b384046d0fd6491888acb6249a61b19c
+#: b4f4e7030c7046b29af9f9407d27ec85 b503881ff1db448ab0d0aaf13a30ca90
+#: b9cd24b2d5024fa7a62f8dfa5c95b523 bdfbc07a7ff54c578ab482a9af8fb391
+#: bfe48437e2c0462995635acf4dac2537 cccb826ac4e948dda414fda69aa6d8db
+#: dce1e9ca9da047699be3daaa01b47e80 e15c470a80a14c73885e9d3ea345083f
+#: e18b8acb9d754bb08200da28d9bc3b43 e1af3e685cea415fa71f2c3c841234c5
+#: ee5657e185a443d0954ac5338abeaa40 f2434e90fa1a45abbf17c7eb82111f9a
+#: f3b0a15a2eae4bc38fe17559867984bf f6ab50d26dcc4725a66c7010eac8af25 of
 #: pybroker.eval.BootConfIntervals:7 pybroker.eval.BootConfIntervals:13
 #: pybroker.eval.BootConfIntervals:19 pybroker.eval.BootConfIntervals:25
 #: pybroker.eval.BootConfIntervals:31 pybroker.eval.BootConfIntervals:37
@@ -105,48 +105,48 @@ msgstr "类型"
 #: pybroker.eval.DrawdownConfs:19 pybroker.eval.DrawdownConfs:25
 #: pybroker.eval.EvalMetrics:14 pybroker.eval.EvalMetrics:21
 #: pybroker.eval.EvalMetrics:27 pybroker.eval.EvalMetrics:33
-#: pybroker.eval.EvalMetrics:39 pybroker.eval.EvalMetrics:52
-#: pybroker.eval.EvalMetrics:58 pybroker.eval.EvalMetrics:65
-#: pybroker.eval.EvalMetrics:71 pybroker.eval.EvalMetrics:77
-#: pybroker.eval.EvalMetrics:89 pybroker.eval.EvalMetrics:95
-#: pybroker.eval.EvalMetrics:113 pybroker.eval.EvalMetrics:119
-#: pybroker.eval.EvalMetrics:125 pybroker.eval.EvalMetrics:131
-#: pybroker.eval.EvalMetrics:137 pybroker.eval.EvalMetrics:143
-#: pybroker.eval.EvalMetrics:149 pybroker.eval.EvalMetrics:155
-#: pybroker.eval.EvalMetrics:161 pybroker.eval.EvalMetrics:167
-#: pybroker.eval.EvalMetrics:173 pybroker.eval.EvalMetrics:185
-#: pybroker.eval.EvalMetrics:191 pybroker.eval.EvalMetrics:216
-#: pybroker.eval.EvalMetrics:225 pybroker.eval.EvalMetrics:240
-#: pybroker.eval.EvalMetrics:247 pybroker.eval.EvalMetrics:255
-#: pybroker.eval.EvalMetrics:262 pybroker.eval.EvalMetrics:269
+#: pybroker.eval.EvalMetrics:40 pybroker.eval.EvalMetrics:53
+#: pybroker.eval.EvalMetrics:59 pybroker.eval.EvalMetrics:66
+#: pybroker.eval.EvalMetrics:72 pybroker.eval.EvalMetrics:78
+#: pybroker.eval.EvalMetrics:90 pybroker.eval.EvalMetrics:96
+#: pybroker.eval.EvalMetrics:114 pybroker.eval.EvalMetrics:120
+#: pybroker.eval.EvalMetrics:126 pybroker.eval.EvalMetrics:132
+#: pybroker.eval.EvalMetrics:138 pybroker.eval.EvalMetrics:144
+#: pybroker.eval.EvalMetrics:150 pybroker.eval.EvalMetrics:156
+#: pybroker.eval.EvalMetrics:162 pybroker.eval.EvalMetrics:168
+#: pybroker.eval.EvalMetrics:174 pybroker.eval.EvalMetrics:186
+#: pybroker.eval.EvalMetrics:192 pybroker.eval.EvalMetrics:217
+#: pybroker.eval.EvalMetrics:226 pybroker.eval.EvalMetrics:242
+#: pybroker.eval.EvalMetrics:250 pybroker.eval.EvalMetrics:261
+#: pybroker.eval.EvalMetrics:268 pybroker.eval.EvalMetrics:276
 msgid "float"
 msgstr "float"
 
-#: 605181b4daee474fa1715e6958aef0cc of pybroker.eval.BootConfIntervals:11
+#: ef5d1b3ad37945b3814c8aa4117a1a08 of pybroker.eval.BootConfIntervals:11
 msgid "Upper bound of 97.5% confidence interval."
 msgstr "97.5% 置信区间的上界。"
 
-#: 254d80062c6143c4805cdabf4cac7b2c of pybroker.eval.BootConfIntervals:17
+#: 935e494a3ff74e5db4fd9d68bbc0145c of pybroker.eval.BootConfIntervals:17
 msgid "Lower bound of 95% confidence interval."
 msgstr "95% 置信区间的下界。"
 
-#: 874d13721c4a488a9d7a028dded62f70 of pybroker.eval.BootConfIntervals:23
+#: 6d8113519e1a48fcbe9b9aad1435e94f of pybroker.eval.BootConfIntervals:23
 msgid "Upper bound of 95% confidence interval."
 msgstr "95% 置信区间的上界。"
 
-#: 2b20350450fe4607a20d24a7e0209073 of pybroker.eval.BootConfIntervals:29
+#: 70b4abe96089418794db5145d3ac81b5 of pybroker.eval.BootConfIntervals:29
 msgid "Lower bound of 90% confidence interval."
 msgstr "90% 置信区间的下界。"
 
-#: ba701654871a49eeb5848ad732eb19c2 of pybroker.eval.BootConfIntervals:35
+#: f43e351cbbeb4c09920dd3ffee01a270 of pybroker.eval.BootConfIntervals:35
 msgid "Upper bound of 90% confidence interval."
 msgstr "90% 置信区间的上界。"
 
-#: f439e681a0354083857b403822acf9d3 of pybroker.eval.BootstrapResult:1
+#: c80f7dd0379643d094fbd91558d8c8cb of pybroker.eval.BootstrapResult:1
 msgid "Contains results of bootstrap tests."
 msgstr "包含自助法检验的结果。"
 
-#: b3ff737af6294289b939043632a3f04c of pybroker.eval.BootstrapResult:5
+#: df8033057bb3465691edaec77891d82a of pybroker.eval.BootstrapResult:5
 msgid ""
 ":class:`pandas.DataFrame` containing confidence intervals for "
 ":func:`.log_profit_factor` and :func:`.sharpe_ratio`."
@@ -154,272 +154,274 @@ msgstr ""
 "包含 :func:`.log_profit_factor` 和 :func:`.sharpe_ratio` 置信区间的 "
 ":class:`pandas.DataFrame`。"
 
-#: 9f7d391c6de74996a415497a270f14cc f355c3ae9b74479e80d633de1c25bc8d of
+#: 869b061409f04e788ed9e0dde91931da c8819de890ca420c990b16e945836f1a of
 #: pybroker.eval.BootstrapResult:8 pybroker.eval.BootstrapResult:15
 msgid "pandas.DataFrame"
 msgstr "pandas.DataFrame"
 
-#: bbbdcc7d207a465cb473929230b765c7 of pybroker.eval.BootstrapResult:12
+#: 9aff8a0d65da42ec89abded0357649ae of pybroker.eval.BootstrapResult:12
 msgid ""
 ":class:`pandas.DataFrame` containing upper bounds of confidence intervals"
 " for maximum drawdown."
 msgstr "包含最大回撤置信区间上界的 :class:`pandas.DataFrame`。"
 
-#: 85d3f67cc665452691038b8a161c5d7d of pybroker.eval.BootstrapResult:19
+#: 4255e21716ed4554918141698f589f78 of pybroker.eval.BootstrapResult:19
 msgid "Contains profit factor confidence intervals."
 msgstr "包含盈利因子（profit factor）的置信区间。"
 
-#: 722f3fc242db4eb6a490cb39d5640f3e c0f8c4e37e5a4a74b00cd819099c8d4e of
+#: 28ad27125a1049ccbf8217421583c924 58304f3c158c408d991b9560a2bd93af of
 #: pybroker.eval.BootstrapResult:21 pybroker.eval.BootstrapResult:27
 msgid "pybroker.eval.BootConfIntervals"
 msgstr "pybroker.eval.BootConfIntervals"
 
-#: 0170da9055be4f268a564d4e5431e635 of pybroker.eval.BootstrapResult:25
+#: c4baf0dd3baa4d37850df7570b7c860f of pybroker.eval.BootstrapResult:25
 msgid "Contains Sharpe Ratio confidence intervals."
 msgstr "包含夏普比率的置信区间。"
 
-#: 14055321ce7f4dee9b53de017d58058e of pybroker.eval.BootstrapResult:31
+#: 312b87977d7a4d6cb0eaf7c8d04219dc of pybroker.eval.BootstrapResult:31
 msgid "Contains drawdown confidence intervals."
 msgstr "包含回撤置信区间。"
 
-#: 40fd7554af614f8997ec47ca35879bf7 of pybroker.eval.BootstrapResult:33
+#: 111d406c1d79498a89dd391017d166c6 of pybroker.eval.BootstrapResult:33
 msgid "pybroker.eval.DrawdownMetrics"
 msgstr "pybroker.eval.DrawdownMetrics"
 
-#: d0a8d5a99267484fa8a95ce9b028315d of pybroker.eval.BootstrapResult.to_json:1
+#: dbddbf86a6a54c479d7b900a687044a0 of pybroker.eval.BootstrapResult.to_json:1
 msgid "Returns JSON-serializable bootstrap evaluation metrics."
 msgstr "返回可 JSON 序列化的自助法评估指标。"
 
-#: 4125b22442714ed8bef128f5bb9459fa of pybroker.eval.ConfInterval:1
+#: cdb7685905d04b15a53e5875fffbf331 of pybroker.eval.ConfInterval:1
 msgid "Confidence interval upper and low bounds."
 msgstr "置信区间的上界和下界。"
 
-#: 71d7f180633e4bbba0ab575875c941e5 of pybroker.eval.ConfInterval:5
+#: 6e5401df3edc47759f73a6ee0da2c776 of pybroker.eval.ConfInterval:5
 msgid "Parameter name."
 msgstr "参数名称。"
 
-#: 451a54c9d4d24c85b9c3d085c37d7a33 a0e911e801c64b5dbc86477d6916d072 of
+#: 5dc345772dbb4a2991897f986c53b1ee 836ba574d9404fcd99983e7c4055b544 of
 #: pybroker.eval.ConfInterval:7 pybroker.eval.ConfInterval:13
 msgid "str"
 msgstr "str"
 
-#: d5eba058997d4a96b4a82f8e1a59b02d of pybroker.eval.ConfInterval:11
+#: fc98688c9fa54a6e846bf7802cf3deec of pybroker.eval.ConfInterval:11
 msgid "Confidence interval percentage represented as a ``str``."
 msgstr "以 ``str`` 表示的置信区间百分比。"
 
-#: d5a6425f06a94090b7c59f696087d25a of pybroker.eval.ConfInterval:17
+#: 87106bdd5ec2411a967b1de845eefd64 of pybroker.eval.ConfInterval:17
 msgid "Lower bound."
 msgstr "下界。"
 
-#: 36e1bf36714f4de192f08efab6359631 of pybroker.eval.ConfInterval:23
+#: 2bfc15e374964c40a36a0c2cebcde550 of pybroker.eval.ConfInterval:23
 msgid "Upper bound."
 msgstr "上界。"
 
-#: 305a62ab7c6745678adb85dd5d550453 of pybroker.eval.DrawdownConfs:1
+#: 52951e1c2564462ea2ef084844bd2c1c of pybroker.eval.DrawdownConfs:1
 msgid "Contains upper bounds of confidence intervals for maximum drawdown."
 msgstr "包含最大回撤置信区间的上界。"
 
-#: dfd4d08c0c8040b68f9509557429eb62 of pybroker.eval.DrawdownConfs:5
+#: 899c5018473a44aca29cb1238f9803d2 of pybroker.eval.DrawdownConfs:5
 msgid "99.9% confidence upper bound."
 msgstr "99.9% 置信上界。"
 
-#: 4e5fee83a3014ccd9e31e5f9a2294d36 of pybroker.eval.DrawdownConfs:11
+#: 61d70676140c44899fa6c916a532a64c of pybroker.eval.DrawdownConfs:11
 msgid "99% confidence upper bound."
 msgstr "99% 置信上界。"
 
-#: bf8ab345950147cdbe9c8d24d2680594 of pybroker.eval.DrawdownConfs:17
+#: 2528da30120945c3957718a48f12f62b of pybroker.eval.DrawdownConfs:17
 msgid "95% confidence upper bound."
 msgstr "95% 置信上界。"
 
-#: 4ac3e03a9d154d1d921fd0cbbc8fd2de of pybroker.eval.DrawdownConfs:23
+#: 73a75eceb2994523a2dcc7871add5dbd of pybroker.eval.DrawdownConfs:23
 msgid "90% confidence upper bound."
 msgstr "90% 置信上界。"
 
-#: 3ffbec18af2145018101c7d21a2840fd of pybroker.eval.DrawdownMetrics:1
+#: b05a45faa66c4885a608ab150bd435af of pybroker.eval.DrawdownMetrics:1
 msgid "Contains drawdown metrics."
 msgstr "包含回撤指标。"
 
-#: aadb085b345f443f87937ecd6247637e of pybroker.eval.DrawdownMetrics:5
+#: c4e2a07b1d214c20a6da251eaa2102de of pybroker.eval.DrawdownMetrics:5
 msgid ""
 "Upper bounds of confidence intervals for maximum drawdown, measured in "
 "cash."
 msgstr "以现金衡量的最大回撤置信区间上界。"
 
-#: 88d1517de28f48f29f9fd38d3154303a dbba67f1e5fa44f2b63a49e13e2cf9ff of
+#: 19db4acda3634d09893e1400ab7dde6a 66a85145a07f470ea9ad543f32b86f72 of
 #: pybroker.eval.DrawdownMetrics:8 pybroker.eval.DrawdownMetrics:15
 msgid "pybroker.eval.DrawdownConfs"
 msgstr "pybroker.eval.DrawdownConfs"
 
-#: 3c94e54d3b6c4e15801a83f43451fb77 of pybroker.eval.DrawdownMetrics:12
+#: fd2443d0955e441986aa99ebeb8dec68 of pybroker.eval.DrawdownMetrics:12
 msgid ""
 "Upper bounds of confidence intervals for maximum drawdown, measured in "
 "percentage."
 msgstr "以百分比衡量的最大回撤置信区间上界。"
 
-#: 93e897c5d46a4973a8a27cf030d56906 of pybroker.eval.EvalMetrics:1
+#: 977dac043949440a902e4e086fa1efa6 of pybroker.eval.EvalMetrics:1
 msgid "Contains metrics for evaluating a :class:`pybroker.strategy.Strategy`."
 msgstr "包含用于评估 :class:`pybroker.strategy.Strategy` 的指标。"
 
-#: b8e547d6634e4cbc83d17be7baf1cf1f of pybroker.eval.EvalMetrics:5
+#: 0dd4745e2b314fc2a46b0c1eca438695 of pybroker.eval.EvalMetrics:5
 msgid "Number of trades that were filled."
 msgstr "已成交的交易笔数。"
 
-#: 039d2d01c8fd439dbf3db4f81801213a 5a2b048646a94368856d8dba6d14c267
-#: 6e237f84742a4911af634436d7ef87de a3e46aff081445e68f2b49ea321b720f
-#: a9224ca9b8a44aa3a9474d817844718f afb73e6282934cd698108b7db36f429b
-#: f0bb7317325d425783ad5246740e207f of pybroker.eval.EvalMetrics:7
-#: pybroker.eval.EvalMetrics:101 pybroker.eval.EvalMetrics:107
-#: pybroker.eval.EvalMetrics:179 pybroker.eval.EvalMetrics:197
-#: pybroker.eval.EvalMetrics:203 pybroker.eval.EvalMetrics:209
+#: 1c6df8ad70d746919ba9c7950957340f 31efd27d72b246439af4695554b05fbb
+#: 33e44afdbc2044bfafddebca37fb6641 76b187b13a1f4e12aae252ceed31a602
+#: 8dba6f64c9b341db8a58c0f8b06df9fa ea289a1d0d8f4af0bd20666f6fe60465
+#: fa1d2c5cddf845fd980abd91aecc29e5 of pybroker.eval.EvalMetrics:7
+#: pybroker.eval.EvalMetrics:102 pybroker.eval.EvalMetrics:108
+#: pybroker.eval.EvalMetrics:180 pybroker.eval.EvalMetrics:198
+#: pybroker.eval.EvalMetrics:204 pybroker.eval.EvalMetrics:210
 msgid "int"
 msgstr "int"
 
-#: a344e51923ab4e23a27f368e5d5c754a of pybroker.eval.EvalMetrics:11
+#: 94e64fe1f0e14a40a72f92c0f1fa3f40 of pybroker.eval.EvalMetrics:11
 msgid "Initial market value of the :class:`pybroker.portfolio.Portfolio`."
 msgstr ":class:`pybroker.portfolio.Portfolio` 的初始市值。"
 
-#: 6eb968e5217f46998faa80c78622b639 of pybroker.eval.EvalMetrics:18
+#: bbfb234f68514989a68e216a95f290dd of pybroker.eval.EvalMetrics:18
 msgid "Ending market value of the :class:`pybroker.portfolio.Portfolio`."
 msgstr ":class:`pybroker.portfolio.Portfolio` 的期末市值。"
 
-#: 196c4eaa704047cd969eb7e90f2f6e1b of pybroker.eval.EvalMetrics:25
-msgid "Total realized profit and loss (PnL)."
-msgstr "已实现盈亏（PnL）总额。"
+#: 3823303d9a3442dda4da66d13fa3c359 of pybroker.eval.EvalMetrics:25
+msgid "Total realized profit and loss (PnL), gross of fees."
+msgstr "已实现盈亏（PnL）总额，未扣除手续费。"
 
-#: b9e4f192a5624971b29bf1e5db1be1a6 of pybroker.eval.EvalMetrics:31
+#: 0eb02aef8e0a4b868e12623299ed9f9d of pybroker.eval.EvalMetrics:31
 msgid "Total unrealized profit and loss (PnL)."
 msgstr "未实现盈亏（PnL）总额。"
 
-#: 541adcb67eed46829a0d8bc79de629b9 of pybroker.eval.EvalMetrics:37
-msgid "Total realized return measured in percentage."
-msgstr "以百分比衡量的已实现收益率总额。"
+#: 3d5e7edcbe684871ac28b959f5a70e1c of pybroker.eval.EvalMetrics:37
+msgid ""
+"Total realized return measured in percentage, gross of fees. Fees are "
+"reported separately in ``total_fees``."
+msgstr "以百分比衡量的已实现收益率总额，未扣除手续费。手续费单独体现在 ``total_fees`` 中。"
 
-#: 69d648a962864115bff56939cd529ed9 of pybroker.eval.EvalMetrics:43
-msgid "Annualized total realized return measured in percentage."
-msgstr "以百分比衡量的年化已实现收益率总额。"
+#: 7a6270111119445e85e8355337eb7adf of pybroker.eval.EvalMetrics:44
+msgid "Annualized total realized return measured in percentage, gross of fees."
+msgstr "以百分比衡量的年化已实现收益率总额，未扣除手续费。"
 
-#: 190bd5eb543e43ed9664357141b3918d 2507ca982aa644ea901c5d906a5f12b9
-#: d53f03999be8497aba18be249664ad17 ec9679414b30464693e2aceaf9a3b311 of
-#: pybroker.eval.EvalMetrics:46 pybroker.eval.EvalMetrics:234
-#: pybroker.eval.EvalMetrics:276 pybroker.eval.EvalMetrics:283
+#: 22decbe9523c436ab78899fe693d46b0 2328416279f0416d886f8c90f5e64413
+#: 66c023a293d84076b10ce315cfe4deab 72175c57cce544ba8c05b11f50989427 of
+#: pybroker.eval.EvalMetrics:47 pybroker.eval.EvalMetrics:236
+#: pybroker.eval.EvalMetrics:283 pybroker.eval.EvalMetrics:290
 msgid "float | None"
 msgstr "float | None"
 
-#: ec3db61d000a42919123bc8b8f361231 of pybroker.eval.EvalMetrics:50
+#: 5c5e8902e96e48a7b37ddedd2a72365b of pybroker.eval.EvalMetrics:51
 msgid "Total realized profit."
 msgstr "已实现盈利总额。"
 
-#: ef785891eaf0486899db8176afb6afb7 of pybroker.eval.EvalMetrics:56
+#: 340cf9d96aa34c78b8cb20a2559e7086 of pybroker.eval.EvalMetrics:57
 msgid "Total realized loss."
 msgstr "已实现亏损总额。"
 
-#: 3749052ec0184b22b4c7d1d4a1bc3c6f of pybroker.eval.EvalMetrics:62
+#: 8f9110f5769b45cb85fa6567bacf7faa of pybroker.eval.EvalMetrics:63
 msgid ""
 "Total brokerage fees. See :attr:`pybroker.config.StrategyConfig.fee_mode`"
 " for more info."
 msgstr "经纪商手续费总额。更多信息参见 :attr:`pybroker.config.StrategyConfig.fee_mode`。"
 
-#: 14888525fd9645bba13a2f4030d71524 of pybroker.eval.EvalMetrics:69
+#: 77710ef6dc514fed97afe70371153658 of pybroker.eval.EvalMetrics:70
 msgid "Maximum drawdown, measured in cash."
 msgstr "以现金衡量的最大回撤。"
 
-#: cd7fc9fcad8949b9aedfcfd59865839e of pybroker.eval.EvalMetrics:75
+#: d7efc0ef1c454b98976362d66f3034bb of pybroker.eval.EvalMetrics:76
 msgid "Maximum drawdown, measured in percentage."
 msgstr "以百分比衡量的最大回撤。"
 
-#: 9b885ea69367472fb84c011d627770e5 of pybroker.eval.EvalMetrics:81
+#: 9acafdc44b5d440baec18cca89cca61d of pybroker.eval.EvalMetrics:82
 msgid "Date of maximum drawdown."
 msgstr "最大回撤发生的日期。"
 
-#: f9f0b219fd004980955e18f74a7bfcf7 of pybroker.eval.EvalMetrics:83
+#: c73c0dcc74164db298ce03cbd1120a2e of pybroker.eval.EvalMetrics:84
 msgid "datetime.datetime | None"
 msgstr "datetime.datetime | None"
 
-#: 3b329bc7e6b341f6bb6e652d58d13985 of pybroker.eval.EvalMetrics:87
+#: 8b468ade9e7643b3aa1b82453a8d0a47 of pybroker.eval.EvalMetrics:88
 msgid "Win rate of trades."
 msgstr "交易胜率。"
 
-#: 6ef4f565072c46cfa7ec1696e2e6c146 of pybroker.eval.EvalMetrics:93
+#: 9280b67cce174e439e24ccfd1eaa92dd of pybroker.eval.EvalMetrics:94
 msgid "Loss rate of trades."
 msgstr "交易败率。"
 
-#: bf0da1a0ce7b402d80fb5c47795348f9 of pybroker.eval.EvalMetrics:99
+#: 713428ab84204731a0f42207b10d879d of pybroker.eval.EvalMetrics:100
 msgid "Number of winning trades."
 msgstr "盈利交易笔数。"
 
-#: b81b161c086f4bf39469fef3b9228b38 of pybroker.eval.EvalMetrics:105
+#: 4eee90a61dfa4f42ab1fe7912f796bfa of pybroker.eval.EvalMetrics:106
 msgid "Number of losing trades."
 msgstr "亏损交易笔数。"
 
-#: 46d649ea03a0464596505ab1ff7bd85e of pybroker.eval.EvalMetrics:111
+#: 2668f5138d4d46f2afb0c63ad23439bd of pybroker.eval.EvalMetrics:112
 msgid "Average profit and loss (PnL) per trade, measured in cash."
 msgstr "以现金衡量的每笔交易平均盈亏（PnL）。"
 
-#: 810e3fbe2f1b42e2a981d5da374f8bbc of pybroker.eval.EvalMetrics:117
+#: 4a93e37c71fe43ec91938659f110f2be of pybroker.eval.EvalMetrics:118
 msgid "Average return per trade, measured in percentage."
 msgstr "以百分比衡量的每笔交易平均收益率。"
 
-#: fe0700863dfd4c66b5aec171cf4864be of pybroker.eval.EvalMetrics:123
+#: cafc1354c8064854a798498d045053d0 of pybroker.eval.EvalMetrics:124
 msgid "Average number of bars per trade."
 msgstr "每笔交易的平均持仓 K 线数。"
 
-#: d96559c5f3ee4effbd51417485e8cc9d of pybroker.eval.EvalMetrics:129
+#: 4ffd6dfa80e04b8f921910619c3dad8e of pybroker.eval.EvalMetrics:130
 msgid "Average profit per trade, measured in cash."
 msgstr "以现金衡量的每笔交易平均盈利。"
 
-#: 95c98ebad9384995910fcab7765af86d of pybroker.eval.EvalMetrics:135
+#: d3791e135d684469aeefb08630f3190f of pybroker.eval.EvalMetrics:136
 msgid "Average profit per trade, measured in percentage."
 msgstr "以百分比衡量的每笔交易平均盈利。"
 
-#: 8ede669f6ebc41eca2cf0961d817475f of pybroker.eval.EvalMetrics:141
+#: be7990c1fae543cebe3716fadcf1a0e6 of pybroker.eval.EvalMetrics:142
 msgid "Average number of bars per winning trade."
 msgstr "每笔盈利交易的平均持仓 K 线数。"
 
-#: 63c11e29d1eb4895b27a02cdb4bb7a9e of pybroker.eval.EvalMetrics:147
+#: 270e96337f454da2bfe8e57a2ea5890b of pybroker.eval.EvalMetrics:148
 msgid "Average loss per trade, measured in cash."
 msgstr "以现金衡量的每笔交易平均亏损。"
 
-#: 9f50e168da0d48ce9f23b4c9636b529b of pybroker.eval.EvalMetrics:153
+#: 36822962d43749fdb66c3f0e09022a19 of pybroker.eval.EvalMetrics:154
 msgid "Average loss per trade, measured in percentage."
 msgstr "以百分比衡量的每笔交易平均亏损。"
 
-#: 05ad9b2595b34ed39c3abd44ef0b7467 of pybroker.eval.EvalMetrics:159
+#: 324885182c6348deb73ec1624c310c53 of pybroker.eval.EvalMetrics:160
 msgid "Average number of bars per losing trade."
 msgstr "每笔亏损交易的平均持仓 K 线数。"
 
-#: 505571b22c344184a4c0f63896ccde2a of pybroker.eval.EvalMetrics:165
+#: afc68fa76f0d471d8ce98ac5e234a117 of pybroker.eval.EvalMetrics:166
 msgid "Largest profit of a trade, measured in cash."
 msgstr "以现金衡量的单笔交易最大盈利。"
 
-#: 3a56af19eabd467193f71ddd93487808 of pybroker.eval.EvalMetrics:171
+#: bb19686251b047b5833688b2f7cda376 of pybroker.eval.EvalMetrics:172
 msgid "Largest profit of a trade, measured in percentage"
 msgstr "以百分比衡量的单笔交易最大盈利"
 
-#: e6d172ad7c0f4ed68bc5a942e010111d of pybroker.eval.EvalMetrics:177
+#: d82da6b0677143fbb4b58f40b6e07bb8 of pybroker.eval.EvalMetrics:178
 msgid "Number of bars in the largest winning trade."
 msgstr "最大盈利交易的持仓 K 线数。"
 
-#: 23da5b0636a64af6a6ffef0b796311e5 of pybroker.eval.EvalMetrics:183
+#: 147c3a367cf44a18be2adb3c8a622774 of pybroker.eval.EvalMetrics:184
 msgid "Largest loss of a trade, measured in cash."
 msgstr "以现金衡量的单笔交易最大亏损。"
 
-#: aba49b52967340d19c32a6408452dab3 of pybroker.eval.EvalMetrics:189
+#: 779457581b034461b8840b36cdbf8303 of pybroker.eval.EvalMetrics:190
 msgid "Largest loss of a trade, measured in percentage."
 msgstr "以百分比衡量的单笔交易最大亏损。"
 
-#: 43b6bbcf5d1a451a9a2e1e62d291262c of pybroker.eval.EvalMetrics:195
+#: f8a2decf304648b49c4813d589fe852f of pybroker.eval.EvalMetrics:196
 msgid "Number of bars in the largest losing trade."
 msgstr "最大亏损交易的持仓 K 线数。"
 
-#: bf89290747ec4393ac0d3095836b423b of pybroker.eval.EvalMetrics:201
+#: 14afff482c034eb885d5febf5ce38f3e of pybroker.eval.EvalMetrics:202
 msgid "Maximum number of consecutive winning trades."
 msgstr "最大连续盈利交易笔数。"
 
-#: 6d6880ef02ff4a2d94e7ab80bb54dad8 of pybroker.eval.EvalMetrics:207
+#: a9908439ee4944fe8ffb7e7a818392e4 of pybroker.eval.EvalMetrics:208
 msgid "Maximum number of consecutive losing trades."
 msgstr "最大连续亏损交易笔数。"
 
-#: a3e0a26d8b374d949e692fb3814fe34c of pybroker.eval.EvalMetrics:213
+#: 9e3fb2657ae9408192157bf97247ee32 of pybroker.eval.EvalMetrics:214
 msgid ""
 "`Sharpe Ratio <https://en.wikipedia.org/wiki/Sharpe_ratio>`_, computed "
 "per bar."
@@ -427,7 +429,7 @@ msgstr ""
 "按每根 K 线计算的 `夏普比率（Sharpe Ratio） "
 "<https://en.wikipedia.org/wiki/Sharpe_ratio>`_。"
 
-#: 743394f409f94f44a49c4c0ac5d3f344 of pybroker.eval.EvalMetrics:220
+#: 20544cd3fea04ebc99d4ae9ba3dd972a of pybroker.eval.EvalMetrics:221
 msgid ""
 "`Sortino Ratio <https://en.wikipedia.org/wiki/Sortino_ratio>`_, computed "
 "per bar. ``inf`` when there are no losing bars and the mean return is "
@@ -437,188 +439,201 @@ msgstr ""
 "<https://en.wikipedia.org/wiki/Sortino_ratio>`_。当没有亏损 K 线且平均收益率为正时为 "
 "``inf``。"
 
-#: 6660d0f0c7904a64aadf639e1f8ebc1d of pybroker.eval.EvalMetrics:229
+#: 8ba0bbf63da54869803fac79293e6323 of pybroker.eval.EvalMetrics:230
 msgid ""
-"Calmar Ratio, computed per bar. ``None`` when "
+"Calmar Ratio: annualized return (CAGR) of the equity curve divided by its"
+" maximum drawdown percentage. ``None`` when "
 ":attr:`pybroker.config.StrategyConfig.bars_per_year` is not set, since "
-"the ratio annualizes; ``inf`` when there is no drawdown and the mean "
-"return is positive."
+"the ratio annualizes; ``inf`` when there is no drawdown and the equity "
+"curve gained."
 msgstr ""
-"按每根 K 线计算的卡玛比率（Calmar Ratio）。由于该比率需要年化，当未设置 "
+"卡玛比率（Calmar Ratio）：权益曲线的复合年增长率（CAGR）除以其最大回撤百分比。由于该比率需要年化，未设置 "
 ":attr:`pybroker.config.StrategyConfig.bars_per_year` 时为 "
-"``None``；当没有回撤且平均收益率为正时为 ``inf``。"
+"``None``；没有回撤且权益曲线上涨时为 ``inf``。"
 
-#: 4cfd1fdc734748b68cfac4c96f3a0278 of pybroker.eval.EvalMetrics:238
+#: 3c702ef6072547eb87f7200134783b15 of pybroker.eval.EvalMetrics:240
 msgid "Ratio of gross profit to gross loss, computed per bar."
 msgstr "按每根 K 线计算的总盈利与总亏损之比。"
 
-#: 7d9cc3f1b5ef4f43ba05028dcdceb79e of pybroker.eval.EvalMetrics:244
+#: feae84192a234c60a0d244b5b87d34a0 of pybroker.eval.EvalMetrics:246
 msgid ""
-"`Ulcer Index <https://en.wikipedia.org/wiki/Ulcer_index>`_, computed per "
-"bar."
+"`Ulcer Index <https://en.wikipedia.org/wiki/Ulcer_index>`_: root mean "
+"square of the equity curve's percentage drawdowns from its running peak."
 msgstr ""
-"按每根 K 线计算的 `溃疡指数（Ulcer Index） "
-"<https://en.wikipedia.org/wiki/Ulcer_index>`_。"
+"`溃疡指数（Ulcer Index） "
+"<https://en.wikipedia.org/wiki/Ulcer_index>`_：权益曲线相对其滚动最高点的百分比回撤的均方根值。"
 
-#: c6745a2b26c24fcf88f7c5cc6364306e of pybroker.eval.EvalMetrics:251
+#: 3b2e36a917b4488ea075bf2eafd0f4e0 of pybroker.eval.EvalMetrics:254
 msgid ""
-"`Ulcer Performance Index <https://en.wikipedia.org/wiki/Ulcer_index>`_, "
-"computed per bar. ``inf`` for a genuinely drawdown-free gain."
+"`Ulcer Performance Index <https://en.wikipedia.org/wiki/Ulcer_index>`_: "
+"return divided by the Ulcer Index. The return is annualized (CAGR) when "
+":attr:`pybroker.config.StrategyConfig.bars_per_year` is set, and is the "
+"mean per-bar return otherwise. ``inf`` for a genuinely drawdown-free "
+"gain."
 msgstr ""
-"按每根 K 线计算的 `溃疡表现指数（Ulcer Performance Index） "
-"<https://en.wikipedia.org/wiki/Ulcer_index>`_。对于真正无回撤的收益为 ``inf``。"
+"`溃疡表现指数（Ulcer Performance Index） "
+"<https://en.wikipedia.org/wiki/Ulcer_index>`_：收益除以溃疡指数（Ulcer Index）。设置 "
+":attr:`pybroker.config.StrategyConfig.bars_per_year` "
+"时，收益按复合年增长率（CAGR）计算；否则为每根 K 线的平均收益率。对于真正无回撤的收益为 ``inf``。"
 
-#: d446e9aa0235478f96101f001b73fe62 of pybroker.eval.EvalMetrics:259
+#: 14ac9e36cdcf413b84aa007371ac745d of pybroker.eval.EvalMetrics:265
 msgid "R^2 of the equity curve, computed per bar on market values of portfolio."
 msgstr "按每根 K 线基于投资组合市值计算的权益曲线 R^2。"
 
-#: 920ebe89e3cb40c0a1f631d3f455f2b3 of pybroker.eval.EvalMetrics:266
-msgid "Standard error, computed per bar on market values of portfolio."
-msgstr "按每根 K 线基于投资组合市值计算的标准误差。"
+#: 9577fa0cc7f048b8928691224a1bdc29 of pybroker.eval.EvalMetrics:272
+msgid ""
+"Standard deviation of the portfolio market values across all bars. This "
+"measures dispersion of the equity curve's level; it is not a regression "
+"standard error."
+msgstr "投资组合市值在所有 K 线上的标准差。用于衡量权益曲线水平的离散程度；而非回归标准误差。"
 
-#: 3e21107f58f849b4a160bdc14d0abb3e of pybroker.eval.EvalMetrics:273
-msgid "Annualized standard error, computed per bar on market values of portfolio."
-msgstr "按每根 K 线基于投资组合市值计算的年化标准误差。"
+#: cf217a4c2eb9489c8e1ccfba60d5e2e0 of pybroker.eval.EvalMetrics:280
+msgid ""
+"``std_error`` multiplied by the square root of "
+":attr:`pybroker.config.StrategyConfig.bars_per_year`."
+msgstr ""
+"``std_error`` 乘以 :attr:`pybroker.config.StrategyConfig.bars_per_year` "
+"的平方根。"
 
-#: 6db8028d5a4f44c498b05a84c3e1aa21 of pybroker.eval.EvalMetrics:280
+#: 1e8e8a57298d4ca0a459dbd4b9a41c91 of pybroker.eval.EvalMetrics:287
 msgid ""
 "Annualized volatility percentage, computed per bar on market values of "
 "portfolio."
 msgstr "按每根 K 线基于投资组合市值计算的年化波动率百分比。"
 
-#: de238646ded2471fbd859b517fff4b75 of pybroker.eval.EvalMetrics.to_json:1
+#: c90c6b150c7f4874bd8d9aee332a1bb1 of pybroker.eval.EvalMetrics.to_json:1
 msgid "Returns JSON-serializable evaluation metrics."
 msgstr "返回可 JSON 序列化的评估指标。"
 
-#: 055f2895a6d94883b1cc7b7b3aa5c09b of pybroker.eval.EvalResult:1
+#: ad162b389e2b4c61aef6809588e9ccbc of pybroker.eval.EvalResult:1
 msgid "Contains evaluation result."
 msgstr "包含评估结果。"
 
-#: fe3d3842eae949248f4edc1cf32fac2e of pybroker.eval.EvalResult:5
+#: 00919bb1ae9f4d47aa5add6ec61fe367 of pybroker.eval.EvalResult:5
 msgid "Evaluation metrics."
 msgstr "评估指标。"
 
-#: 152fab01c81543239ffb3773dff07dc3 of pybroker.eval.EvalResult:7
+#: 53443e69070a4a8d8666167599152d27 of pybroker.eval.EvalResult:7
 msgid "pybroker.eval.EvalMetrics"
 msgstr "pybroker.eval.EvalMetrics"
 
-#: 6eb579128698462faf335d2baffd15e8 of pybroker.eval.EvalResult:11
+#: fb2502d9859b4757bd0bb4cbff5b90bd of pybroker.eval.EvalResult:11
 msgid "Randomized bootstrap metrics."
 msgstr "随机自助法指标。"
 
-#: fcafb329f7ca467bb3ed6cf2a2b34709 of pybroker.eval.EvalResult:13
+#: 8c1e8e72615b4183b1ab6080560f9bb0 of pybroker.eval.EvalResult:13
 msgid "pybroker.eval.BootstrapResult | None"
 msgstr "pybroker.eval.BootstrapResult | None"
 
-#: 5c8040ebc3fd4f33a80437e01b9be11b of pybroker.eval.EvaluateMixin:1
+#: 29da1d96e4c949c2ba1a23e717c500bc of pybroker.eval.EvaluateMixin:1
 msgid "Mixin for computing evaluation metrics."
 msgstr "用于计算评估指标的 Mixin。"
 
-#: f7a738c47f68400eb779ccd37b6db1e2 of pybroker.eval.EvaluateMixin.evaluate:1
+#: c02a35e8ce184e108b22a3537586ec50 of pybroker.eval.EvaluateMixin.evaluate:1
 msgid "Computes evaluation metrics."
 msgstr "计算评估指标。"
 
-#: ../../source/reference/pybroker.eval.rst 178637dfee9b48cfa0d3338dd0447dbe
-#: 210a9f01d5a94c3bbdeeae015e6a98c2 3a27742cdd14465fb6004d1ca421d002
-#: 3bd4f047c3f54d6ab070b3b0de602a51 7ad88e1bb77046bc9b268d5e6e548295
-#: 83e6ed4244f144e28445d97bc7f1c7be 85bcfcbcfce5462eb51b38a86d6fa7ba
-#: 8a8713f1ae80423c85a2180853fd6fd3 9aedc8523cf0405e80a535719b165ca0
-#: a4340b5e331d402585dfc9aea0e541a1 a6237f42697e468fb402f003e90bf2fd
-#: bd34cb1ff825442f922dcc70370aab93 c3f62275709d4875b65091175ec59e1f
-#: d969ec15b895456b9fe704676410e42c f80f4d656a654364af32ee87d28451e0
-#: ff0bc19be00c4556861ce17d27f46026
+#: ../../source/reference/pybroker.eval.rst 01afd416095642b8850210f6f51ebc48
+#: 036e799ccb6f4cb3850b5589043d693c 2805ea00b22d40128f4fe60795de96ee
+#: 2c150d8b82a044ed977cdea7d0e4edad 4cbd82b0bdac4c1f9fae445aa0c00238
+#: 5c078c342c5d40b694366c61869853e5 619a1036403f467bbeb55c8bda551b82
+#: 7cd00a4bd0ff43569eb6ee8a2d9c0e52 8d670ca301044ff0a0a7f21cda2506c7
+#: 9c5059a4d7014f86bd4bfb5b6ebd7ac2 a87616204fbc4205bb4991bfbfaf042a
+#: b2f8c28c1ffc4eeba0adfe561a45f176 b91bc7477d0643dfb563471e51432fb7
+#: ccb68cfb9a5e4791bbd2b80014405b62 ee582b76d6f6435c84f354aef5227689
+#: f9c1bb0eea26496b84d7ee99701e3ad2
 msgid "Parameters"
 msgstr "参数"
 
-#: af0b93ffa26945e1bb2ba4d08b48d8b2 of pybroker.eval.EvaluateMixin.evaluate:3
+#: 9c6e165ec5d04693b5d39b03ececc302 of pybroker.eval.EvaluateMixin.evaluate:3
 msgid ":class:`pandas.DataFrame` of portfolio market values per bar."
 msgstr "每根 K 线投资组合市值的 :class:`pandas.DataFrame`。"
 
-#: 5251c033f9b54b89aefbc35cc55195d7 of pybroker.eval.EvaluateMixin.evaluate:5
+#: c5d5688470c14d1b8263b1e5d47326cf of pybroker.eval.EvaluateMixin.evaluate:5
 msgid ":class:`pandas.DataFrame` of trades."
 msgstr "交易记录的 :class:`pandas.DataFrame`。"
 
-#: cd1e867711e447519af8e288a5957269 of pybroker.eval.EvaluateMixin.evaluate:6
+#: 16b87a564b984545922dd21b19023f80 of pybroker.eval.EvaluateMixin.evaluate:6
 msgid "``True`` to calculate randomized bootstrap metrics."
 msgstr "为 ``True`` 时计算随机自助法指标。"
 
-#: 526ffc3953fd4be9841d14c4596ae122 5839b7d87b684eb1b57cc7dc408c0338 of
+#: 4169a0e103984185b8fc2dcb4e13b226 d119e413e6604b53bf806d794af4b12a of
 #: pybroker.eval.EvaluateMixin.evaluate:7 pybroker.eval.bca_boot_conf:7
 msgid "Number of random bootstrap samples to use."
 msgstr "使用的随机自助法样本数量。"
 
-#: bc6efb15932b40c7be128cc73b002996 of pybroker.eval.EvaluateMixin.evaluate:8
+#: 79280895164640d780bc731ae31b3cc1 of pybroker.eval.EvaluateMixin.evaluate:8
 msgid ""
 "Number of observations per years that will be used to annualize "
 "evaluation metrics. For example, a value of ``252`` would be used to "
 "annualize the Sharpe Ratio for daily returns."
 msgstr "用于将评估指标年化的每年观测数量。例如，日线收益率使用 ``252`` 来年化夏普比率。"
 
-#: f11dd3337fd44c0b9f303970abd6d055 of pybroker.eval.EvaluateMixin.evaluate:12
+#: 5f32a96069d24cd6a402de3ae2230e48 of pybroker.eval.EvaluateMixin.evaluate:12
 msgid "Random seed for reproducibility. Defaults to 42."
 msgstr "用于结果可复现的随机种子。默认为 42。"
 
-#: ../../source/reference/pybroker.eval.rst 04155ed93a3140508283702c7290c3f8
-#: 04ac2da7d3054f958e7383801e34d661 67f312a2c0714b28b6b799c6f3c061db
-#: 6ec27593b3c7447aa64154b704dd7303 8599693f09584dcf8c4dadcd983b06b2
-#: 9cc06963f78f49c5b76615e58c092ec4 9d697e85c0494260a6c0e0baf394cb9d
-#: abcbc3313f1d4c41b636668971dbf26b b7fbae35546349759ae0f76900a0d544
+#: ../../source/reference/pybroker.eval.rst 17aeda4cc8644c81b009efd8c2ebda70
+#: 2015c4a42cfc409b85f037db87c1fcb8 2c140d3c93a44e0a9e1178e6d0136c37
+#: 4b8d2fd068e94320949e9870f3a27ff8 65bad460fb2748cf91b6c5061b2f773a
+#: 7526e84c91b5481bb45981d8f2637717 b8f88ff0c1eb4470995ba5dfa2a1cba8
+#: c98f6738dc484852bbad3c79439c7517 e3e2cfe64f26442694a248c75545f06b
 msgid "Returns"
 msgstr "返回"
 
-#: 52f269c75e2d4a06acc13415a9ee6143 of pybroker.eval.EvaluateMixin.evaluate:14
+#: c9ab679366a44339a424ca38d9eca766 of pybroker.eval.EvaluateMixin.evaluate:14
 msgid ":class:`.EvalResult` containing evaluation metrics."
 msgstr "包含评估指标的 :class:`.EvalResult`。"
 
-#: 59a08cf4f7ae44cabcdeb4f25107cf53 of pybroker.eval.TradeStats:1
+#: 61c191fbf81b4c01834791ed7055ce4a of pybroker.eval.TradeStats:1
 msgid "Trade statistics computed in a single pass."
 msgstr "单次遍历中计算出的交易统计信息。"
 
-#: 1d9e2576503c443dbdcfa239b17e820e of
+#: a50fdb00c0ad410e866ed3ead3e81850 of
 #: pybroker.eval.annual_total_return_percent:1
 msgid "Computes annualized total return as percentage."
 msgstr "计算以百分比表示的年化总收益率。"
 
-#: e515278149e541a596a024567918602d e96ec575c67b47b3a02caceb2ffe2a33 of
+#: 476b3ba56b4e4557b44f6d21d140bb3e 8abadf52c050441695076eb97839ada3 of
 #: pybroker.eval.annual_total_return_percent:3
 #: pybroker.eval.total_return_percent:3
 msgid "Initial value."
 msgstr "初始值。"
 
-#: 2ccbf1c9c7224e6896bd3d21bc1cbcca 56867f490b5f41f6b187650e73d8b19b of
+#: 23966bf0e4574da1b806019a3a7419ae 7dcf64948271476bb9f61f2f265988ae of
 #: pybroker.eval.annual_total_return_percent:4
 #: pybroker.eval.total_return_percent:4
 msgid "Total profit and loss (PnL)."
 msgstr "总盈亏（PnL）。"
 
-#: b1469f9d32f54d248550fe52bbe55d09 b2feae4d97764e8191b81c564093e2f9 of
-#: pybroker.eval.annual_total_return_percent:5 pybroker.eval.calmar_ratio:4
+#: 96ba8e02be324c4fb7383e8384c287f4 c11db92682874a06925033a4073ca2c7 of
+#: pybroker.eval.annual_total_return_percent:5 pybroker.eval.calmar_ratio:6
 msgid "Number of bars per annum."
 msgstr "每年的 K 线数量。"
 
-#: 37325cd46db94d858464780843627005 of
+#: 72c93476f18946fa8b2a459993678f4a of
 #: pybroker.eval.annual_total_return_percent:6
 msgid "Total number of bars of the return."
 msgstr "该收益率对应的 K 线总数。"
 
-#: 9854c2d602f349c7b486a825352a0c9c of pybroker.eval.avg_profit_loss:1
+#: cf1ea0124ab5419aa3ca914777ac88de of pybroker.eval.avg_profit_loss:1
 msgid "Computes the average profit and average loss per trade."
 msgstr "计算每笔交易的平均盈利和平均亏损。"
 
-#: 1d1787d7715843339a11b1151a0d5a15 2c16f572aa38436ebf9e6cc6dabb3dda
-#: 32b74898e54e4cd88e87057d88734945 8578134ed2824754ac17b5abcf8f73b6
-#: c323e2354a604845928dd3ad7b89c373 fa5f650d916d4840abe666eafb851f62 of
+#: 3270c90575af488e9f573c2d6b7c557c 42032d69459a4eb58270fd35d39be1c2
+#: 7bb590a36c0f431c8d387aae3e550451 d0b77ee5e3e04c94982cfd189c1474c0
+#: d923b468cb9743ca8a4ded440c50c322 fa1ccf80608647048987941d5e5d2789 of
 #: pybroker.eval.avg_profit_loss:3 pybroker.eval.largest_win_loss:3
 #: pybroker.eval.max_wins_losses:3 pybroker.eval.total_profit_loss:3
 #: pybroker.eval.win_loss_rate:3 pybroker.eval.winning_losing_trades:3
 msgid "Array of profits and losses (PnLs) per trade."
 msgstr "每笔交易盈亏（PnL）组成的数组。"
 
-#: b69984c985f34090adcc2655587ee66a of pybroker.eval.avg_profit_loss:5
+#: 4fdb478344894477b6b22021ff8b9516 of pybroker.eval.avg_profit_loss:5
 msgid "``tuple[float, float]`` of average profit and average loss."
 msgstr "平均盈利和平均亏损组成的 ``tuple[float, float]``。"
 
-#: b402f1b34222461eb033667ac69322b6 of pybroker.eval.bca_boot_conf:1
+#: dc725429b06d43529e9b12493d27a043 of pybroker.eval.bca_boot_conf:1
 msgid ""
 "Computes confidence intervals for a user-defined parameter using the "
 "`bias corrected and accelerated (BCa) bootstrap method. "
@@ -628,47 +643,50 @@ msgstr ""
 "使用 `偏差校正加速（BCa）自助法 <https://blogs.sas.com/content/iml/2017/07/12"
 "/bootstrap-bca-interval.html>`_ 计算用户定义参数的置信区间。"
 
-#: 85c51ca71f3f41388b7e7686d9bf0d31 of pybroker.eval.bca_boot_conf:5
+#: 8aa0dffbc203440cbbae3c131413e3cd of pybroker.eval.bca_boot_conf:5
 msgid ""
 ":class:`numpy.ndarray` containing the data for the randomized bootstrap "
 "sampling."
 msgstr "用于随机自助法抽样的数据 :class:`numpy.ndarray`。"
 
-#: a47a7d2c2b4140629fa24c709c1fc020 of pybroker.eval.bca_boot_conf:8
+#: 04efb971436e4019b3fbfdddb6e09d94 of pybroker.eval.bca_boot_conf:8
 msgid ""
 ":class:`Callable` for computing the parameter used for the confidence "
 "intervals."
 msgstr "用于计算置信区间所需参数的 :class:`Callable`。"
 
-#: fbc3dded9f6542dd8a047adc07c742e0 of pybroker.eval.bca_boot_conf:11
+#: 14029922c5094ad8bdab0cd4fb430ae9 of pybroker.eval.bca_boot_conf:11
 msgid ":class:`.BootConfIntervals` containing the computed confidence intervals."
 msgstr "包含计算出的置信区间的 :class:`.BootConfIntervals`。"
 
-#: bbaeb3ea633f4d4c9f37b6d0216cc6a5 of pybroker.eval.bootstrap_eval_all:1
+#: 30cff96b9736438d8f1e4549c0e9c441 of pybroker.eval.bootstrap_eval_all:1
 msgid "Computes all bootstrap metrics in one shared resampling pass."
 msgstr "在一次共享的重采样过程中计算所有自助法指标。"
 
-#: f4b225b691924955bf3242b94aa852c8 of pybroker.eval.calmar_ratio:1
-msgid "Computes the Calmar Ratio."
-msgstr "计算卡玛比率（Calmar Ratio）。"
+#: b910e0de240e49af8582a6aa08dae273 of pybroker.eval.calmar_ratio:1
+msgid ""
+"Computes the Calmar Ratio, defined as the annualized return (CAGR of the "
+"compounded ``returns``) divided by the maximum drawdown percentage of the"
+" compounded ``returns``."
+msgstr "计算卡玛比率（Calmar Ratio），即 ``returns`` 复利累积序列的复合年增长率（CAGR）除以该序列的最大回撤百分比。"
 
-#: 630997afb451473a846bbdf100dda6cc 6c8317a33e0d4cf0aa3e101b412d0394
-#: 72959c61f4d64463a3db8a49a595f2b3 b09a1b4bb6b649a88908d050496e1a0b
-#: d1e9fdf3ed134999a8905a6accdeb883 of pybroker.eval.calmar_ratio:3
+#: 0f765d16a6a0451ba3adc61dbdf22226 8e1ceebb037e40948198188531b7116a
+#: e1363ad49ada4f1a88d9ca3985e90742 f63f72a09db44d38a5d04c8bcc04880a
+#: f9b506268579492c8a14341bcc191e4f of pybroker.eval.calmar_ratio:5
 #: pybroker.eval.downside_deviation:7 pybroker.eval.max_drawdown_percent:3
-#: pybroker.eval.sharpe_ratio:4 pybroker.eval.sortino_ratio:10
+#: pybroker.eval.sharpe_ratio:5 pybroker.eval.sortino_ratio:10
 msgid "Array of returns centered at 0."
 msgstr "以 0 为中心的收益率数组。"
 
-#: 0e18f4343f12410686b8a8f5843abaf5 of pybroker.eval.conf_profit_factor:1
+#: 7d6fa18c77fd48a0b0fa9866f9679581 of pybroker.eval.conf_profit_factor:1
 msgid "Computes confidence intervals for ``profit_factor``."
 msgstr "计算 ``profit_factor`` 的置信区间。"
 
-#: dca55ccfa4e743e7a94a36c6f855777b of pybroker.eval.conf_sharpe_ratio:1
+#: c6d1531ec889445dad7b09ee9550b7d9 of pybroker.eval.conf_sharpe_ratio:1
 msgid "Computes confidence intervals for :func:`.sharpe_ratio`."
 msgstr "计算 :func:`.sharpe_ratio` 的置信区间。"
 
-#: 99d83088af2846ecaf6e5ca84005b227 of pybroker.eval.downside_deviation:1
+#: 40765770b7204cb29716556e21781910 of pybroker.eval.downside_deviation:1
 msgid ""
 "Computes downside deviation, the denominator of the `Sortino Ratio "
 "<https://en.wikipedia.org/wiki/Sortino_ratio>`_."
@@ -676,13 +694,13 @@ msgstr ""
 "计算下行标准差，即 `索提诺比率（Sortino Ratio） "
 "<https://en.wikipedia.org/wiki/Sortino_ratio>`_ 的分母。"
 
-#: 6eb7429eb02c429894fd205f64e49c99 of pybroker.eval.downside_deviation:4
+#: fb757b20ccb74968ac763f2550604a3f of pybroker.eval.downside_deviation:4
 msgid ""
 "Negative returns are squared about zero and averaged over **all** "
 "observations, not just the negative ones."
 msgstr "负收益率相对于零取平方，并对 **所有** 观测值求平均，而不仅仅是负收益率的观测值。"
 
-#: cdf7635364b540f9ad4773d3acd83600 of pybroker.eval.iqr:1
+#: 7093ae2d84af40acac57cc349a7c8f41 of pybroker.eval.iqr:1
 msgid ""
 "Computes the `interquartile range (IQR) "
 "<https://en.wikipedia.org/wiki/Interquartile_range>`_ of ``values``."
@@ -690,77 +708,82 @@ msgstr ""
 "计算 ``values`` 的 `四分位距（IQR） "
 "<https://en.wikipedia.org/wiki/Interquartile_range>`_。"
 
-#: 9b0dbffc5ad04100b4082dc380588aab of pybroker.eval.largest_win_loss:1
+#: 4a1ccb8ddc444304b6dfe93b0a6ed953 of pybroker.eval.largest_win_loss:1
 msgid "Computes the largest profit and largest loss of all trades."
 msgstr "计算所有交易中的最大盈利和最大亏损。"
 
-#: b988458bd34c43b58f59e74a7a882e7d of pybroker.eval.largest_win_loss:5
+#: 9f6a724dc9ed404d81c7a5b3e0f50b8f of pybroker.eval.largest_win_loss:5
 msgid "``tuple[float, float]`` of largest profit and largest loss."
 msgstr "最大盈利和最大亏损组成的 ``tuple[float, float]``。"
 
-#: e9b1aec3f4a9473690cb3b25994d5cd9 of pybroker.eval.log_profit_factor:1
+#: b1bf0839df5646b2baab18130232572b of pybroker.eval.log_profit_factor:1
 msgid ""
 "Computes the log transformed profit factor, which is the ratio of gross "
 "profit to gross loss."
 msgstr "计算对数变换后的盈利因子，即总盈利与总亏损之比。"
 
-#: 93549960878b46e9ac9a31f17600053c of pybroker.eval.log_profit_factor:4
+#: ef68501d247744c6b2c8ddd8c3cd8195 of pybroker.eval.log_profit_factor:4
 msgid "Array of differences between each bar and the previous bar."
 msgstr "每根 K 线与前一根 K 线之差组成的数组。"
 
-#: 6a644c9a41fe4828934934330ca16510 of pybroker.eval.max_drawdown_percent:1
+#: 7ecae91857a34c1e9aa2f4617ba16eec of pybroker.eval.max_drawdown_percent:1
 msgid "Computes maximum drawdown, measured in percentage loss."
 msgstr "计算以百分比亏损衡量的最大回撤。"
 
-#: 73f665062de049c5bc35b4d9eb26f4d6 of pybroker.eval.max_drawdown_percent:5
+#: 2ff2541a3cc143168aef1e9457e536e5 of pybroker.eval.max_drawdown_percent:5
 msgid ""
 "- Maximum drawdown, measured in percentage loss. - Index of the maximum "
 "drawdown."
 msgstr "- 以百分比亏损衡量的最大回撤。 - 最大回撤发生处的索引。"
 
-#: 36c98ce167e94edfa8ac71c01217efe3 of pybroker.eval.max_drawdown_percent:7
+#: bed728d1ce6846ca833064088141d6ff of pybroker.eval.max_drawdown_percent:7
 msgid "Maximum drawdown, measured in percentage loss."
 msgstr "以百分比亏损衡量的最大回撤。"
 
-#: dde50e08a4324bf6a0497124292bd64b of pybroker.eval.max_drawdown_percent:8
+#: 7cf771e03ad94bb9bb5d50f455e4dfda of pybroker.eval.max_drawdown_percent:8
 msgid "Index of the maximum drawdown."
 msgstr "最大回撤发生处的索引。"
 
-#: 68307d8cfe7843b798027c19c163c623 of pybroker.eval.max_wins_losses:1
+#: 2575d476f0a14086978aaba96f2589e0 of pybroker.eval.max_wins_losses:1
 msgid "Computes the max consecutive wins and max consecutive losses."
 msgstr "计算最大连续盈利次数和最大连续亏损次数。"
 
-#: 117c8213b2214fb29911026f67f1b8f0 of pybroker.eval.max_wins_losses:5
+#: 2e918b03a3d8479fbee45f2e4942b6ba of pybroker.eval.max_wins_losses:5
 msgid "``tuple[int, int]`` of max consecutive wins and max consecutive losses."
 msgstr "最大连续盈利次数和最大连续亏损次数组成的 ``tuple[int, int]``。"
 
-#: 45c6c45eedde461a9a9f287e9f2d4034 of pybroker.eval.r_squared:1
+#: 3727a29e75b345a2a57135efa8cecf33 of pybroker.eval.r_squared:1
 msgid "Computes R-squared of ``values``."
 msgstr "计算 ``values`` 的 R 平方。"
 
-#: 8b97aca4e4dc4d0f9bb311c626bce822 of pybroker.eval.relative_entropy:1
+#: 6c5f088298f0436faa9374fd76b91d57 of pybroker.eval.relative_entropy:1
 msgid ""
 "Computes the relative `entropy "
 "<https://en.wikipedia.org/wiki/Entropy_(information_theory)>`_."
 msgstr "计算相对 `熵 <https://en.wikipedia.org/wiki/Entropy_(information_theory)>`_。"
 
-#: f57b5e14a144480fbd2d5eaa7938ae7c of pybroker.eval.sharpe_ratio:1
-msgid "Computes the `Sharpe Ratio <https://en.wikipedia.org/wiki/Sharpe_ratio>`_."
-msgstr "计算 `夏普比率（Sharpe Ratio） <https://en.wikipedia.org/wiki/Sharpe_ratio>`_。"
+#: 5972b4d619104b51aded9b7674de2410 of pybroker.eval.sharpe_ratio:1
+msgid ""
+"Computes the `Sharpe Ratio "
+"<https://en.wikipedia.org/wiki/Sharpe_ratio>`_, using the population "
+"standard deviation of ``returns``."
+msgstr ""
+"计算 `夏普比率（Sharpe Ratio） <https://en.wikipedia.org/wiki/Sharpe_ratio>`_，使用 "
+"``returns`` 的总体标准差。"
 
-#: 188c857ed6f14020a56eb5034104435b of pybroker.eval.sharpe_ratio:5
+#: 9e75d48938a446b68f3311c0bdf2b6d4 of pybroker.eval.sharpe_ratio:6
 msgid ""
 "Number of observations used to annualize the Sharpe Ratio. For example, a"
 " value of ``252`` would be used to annualize daily returns."
 msgstr "用于年化夏普比率的观测数量。例如，日线收益率使用 ``252``。"
 
-#: 11360a6c425a4db3aa84797693ab7453 of pybroker.eval.sortino_ratio:1
+#: 7c11bff8664f456ab29ba527a960cac6 of pybroker.eval.sortino_ratio:1
 msgid ""
 "Computes the `Sortino Ratio "
 "<https://en.wikipedia.org/wiki/Sortino_ratio>`_."
 msgstr "计算 `索提诺比率（Sortino Ratio） <https://en.wikipedia.org/wiki/Sortino_ratio>`_。"
 
-#: 82bb7950820b49c28aa976e71dc9cbfd of pybroker.eval.sortino_ratio:4
+#: 6fd1dc96ec834a589b8ae2ed3c7b6096 of pybroker.eval.sortino_ratio:4
 msgid ""
 "With no downside to divide by the ratio is unbounded, so a positive mean "
 "returns ``inf`` -- genuinely the best score, and one Optuna accepts -- "
@@ -772,37 +795,61 @@ msgstr ""
 "而平均收益率非正时返回 ``0``。``NaN`` 则保留给完全无法计算的情况，因为 NaN 得分会将一次 Optuna 试验标记为 "
 "*失败*，从而丢弃该次运行，而不是对其排名。"
 
-#: dcafe6cd959743e0bda4919f819d08d8 of pybroker.eval.sortino_ratio:11
+#: 71e7e78ea2454be9b93dd5837d4c88c1 of pybroker.eval.sortino_ratio:11
 msgid ""
 "Number of observations used to annualize the Sortino Ratio. For example, "
 "a value of ``252`` would be used to annualize daily returns."
 msgstr "用于年化索提诺比率的观测数量。例如，日线收益率使用 ``252``。"
 
-#: 4f196c41a8c440af863a042dec2a56d9 of pybroker.eval.total_profit_loss:1
+#: 2e08ebbfaf8b4d87bc115d3fc2ce55d2 of pybroker.eval.total_profit_loss:1
 msgid "Computes total profit and loss."
 msgstr "计算总盈亏。"
 
-#: ccbc46e4d2c8496da1d3413d8f0b10e4 of pybroker.eval.total_profit_loss:5
+#: 7b063bfed25b49239bb721ae9ae74ef9 of pybroker.eval.total_profit_loss:5
 msgid "``tuple[float, float]`` of total profit and total loss."
 msgstr "总盈利和总亏损组成的 ``tuple[float, float]``。"
 
-#: eaa8d2f14b60406ab02fb0c3e8a9d7ee of pybroker.eval.total_return_percent:1
+#: d2c214997b03443c887b9b7c1385ca11 of pybroker.eval.total_return_percent:1
 msgid "Computes total return as percentage."
 msgstr "计算以百分比表示的总收益率。"
 
-#: 2d612fd779fe4ec58e4fb7aefc4ea0d0 of pybroker.eval.win_loss_rate:1
+#: f0e76a028050451d92612dd490984fdc of pybroker.eval.win_loss_rate:1
 msgid "Computes the win rate and loss rate as percentages."
 msgstr "计算以百分比表示的胜率和败率。"
 
-#: 8651301326f34eb8bf992539e0abf0b5 of pybroker.eval.win_loss_rate:5
+#: a3f958a7eff240f0b1952174438ab44e of pybroker.eval.win_loss_rate:5
 msgid "``tuple[float, float]`` of win rate and loss rate."
 msgstr "胜率和败率组成的 ``tuple[float, float]``。"
 
-#: 7c02fee68a18424b9f7d35d5f0c29c19 of pybroker.eval.winning_losing_trades:1
+#: 5d3a16a845bd466580f02b82005f2e86 of pybroker.eval.winning_losing_trades:1
 msgid "Returns the number of winning and losing trades."
 msgstr "返回盈利和亏损的交易笔数。"
 
-#: dab51aa78489451f9bd149192c7162ae of pybroker.eval.winning_losing_trades:5
+#: 5d66c1786e334481a5f896d102298f48 of pybroker.eval.winning_losing_trades:5
 msgid "``tuple[int, int]`` containing numbers of winning and losing trades."
 msgstr "包含盈利和亏损交易笔数的 ``tuple[int, int]``。"
+
+#~ msgid "Total realized return measured in percentage."
+#~ msgstr "以百分比衡量的已实现收益率总额。"
+
+#~ msgid ""
+#~ "`Ulcer Performance Index "
+#~ "<https://en.wikipedia.org/wiki/Ulcer_index>`_, computed "
+#~ "per bar. ``inf`` for a genuinely "
+#~ "drawdown-free gain."
+#~ msgstr ""
+#~ "按每根 K 线计算的 `溃疡表现指数（Ulcer Performance "
+#~ "Index） <https://en.wikipedia.org/wiki/Ulcer_index>`_。对于真正无回撤的收益为"
+#~ " ``inf``。"
+
+#~ msgid "Standard error, computed per bar on market values of portfolio."
+#~ msgstr "按每根 K 线基于投资组合市值计算的标准误差。"
+
+#~ msgid ""
+#~ "Annualized standard error, computed per "
+#~ "bar on market values of portfolio."
+#~ msgstr "按每根 K 线基于投资组合市值计算的年化标准误差。"
+
+#~ msgid "Computes the Calmar Ratio."
+#~ msgstr "计算卡玛比率（Calmar Ratio）。"
 

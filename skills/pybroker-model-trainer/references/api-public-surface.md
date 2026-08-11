@@ -401,13 +401,13 @@ Holds confidence intervals of bootstrap tests.
 - `bca_boot_conf(x: NDArray[np.float64], n_boot: int, fn: Callable[[NDArray[np.float64]], float]) -> BootConfIntervals`: Computes confidence intervals for a user-defined parameter using the `bias corrected and accelerated (BCa) bootstrap method.
 - `profit_factor(changes: NDArray[np.float64], use_log: bool=False) -> float`: Computes the profit factor, which is the ratio of gross profit to gross loss.
 - `log_profit_factor(changes: NDArray[np.float64]) -> float`: Computes the log transformed profit factor, which is the ratio of gross profit to gross loss.
-- `sharpe_ratio(returns: NDArray[np.float64], obs: Optional[int]=None) -> float`: Computes the `Sharpe Ratio <https://en.wikipedia.org/wiki/Sharpe_ratio>`_.
+- `sharpe_ratio(returns: NDArray[np.float64], obs: Optional[int]=None) -> float`: Computes the `Sharpe Ratio <https://en.wikipedia.org/wiki/Sharpe_ratio>`_, using the population standard deviation of ``returns``.
 - `downside_deviation(returns: NDArray[np.float64]) -> float`: Computes downside deviation, the denominator of the `Sortino Ratio <https://en.wikipedia.org/wiki/Sortino_ratio>`_.
 - `sortino_ratio(returns: NDArray[np.float64], obs: Optional[int]=None) -> float`: Computes the `Sortino Ratio <https://en.wikipedia.org/wiki/Sortino_ratio>`_.
 - `conf_profit_factor(x: NDArray[np.float64], n_boot: int) -> BootConfIntervals`: Computes confidence intervals for ``profit_factor``.
 - `conf_sharpe_ratio(x: NDArray[np.float64], n_boot: int, obs: Optional[int]=None) -> BootConfIntervals`: Computes confidence intervals for :func:`.sharpe_ratio`.
 - `max_drawdown(changes: NDArray[np.float64]) -> float`: Computes maximum drawdown, measured in cash.
-- `calmar_ratio(returns: NDArray[np.float64], bars_per_year: int) -> float`: Computes the Calmar Ratio.
+- `calmar_ratio(returns: NDArray[np.float64], bars_per_year: int) -> float`: Computes the Calmar Ratio, defined as the annualized return (CAGR of the compounded ``returns``) divided by the maximum drawdown percentage of the compounded ``returns``.
 - `max_drawdown_percent(returns: NDArray[np.float64]) -> tuple[float, Optional[int]]`: Computes maximum drawdown, measured in percentage loss.
 
 ### `class DrawdownConfs`
@@ -430,8 +430,8 @@ Contains drawdown metrics.
 - `bootstrap_eval_all(changes: NDArray[np.float64], returns: NDArray[np.float64], n_boot: int, bars_per_year: int) -> tuple[BootConfIntervals, BootConfIntervals, DrawdownMetrics]`: Computes all bootstrap metrics in one shared resampling pass.
 - `relative_entropy(values: NDArray[np.float64]) -> float`: Computes the relative `entropy <https://en.wikipedia.org/wiki/Entropy_(information_theory)>`_.
 - `iqr(values: NDArray[np.float64]) -> float`: Computes the `interquartile range (IQR) <https://en.wikipedia.org/wiki/Interquartile_range>`_ of ``values``.
-- `ulcer_index(values: NDArray[np.float64], period: int=14) -> float`: Computes the `Ulcer Index <https://en.wikipedia.org/wiki/Ulcer_index>`_ of ``values``.
-- `upi(values: NDArray[np.float64], period: int=14, ui: Optional[float]=None) -> float`: Computes the `Ulcer Performance Index <https://en.wikipedia.org/wiki/Ulcer_index>`_ of ``values``.
+- `ulcer_index(values: NDArray[np.float64], period: Optional[int]=None) -> float`: Computes the `Ulcer Index <https://en.wikipedia.org/wiki/Ulcer_index>`_ of ``values``: the root mean square of percentage drawdowns from the running peak.
+- `upi(values: NDArray[np.float64], period: Optional[int]=None, ui: Optional[float]=None, bars_per_year: Optional[int]=None) -> float`: Computes the `Ulcer Performance Index <https://en.wikipedia.org/wiki/Ulcer_index>`_ of ``values``: return divided by the :func:`.ulcer_index`.
 - `win_loss_rate(pnls: NDArray[np.float64]) -> tuple[float, float]`: Computes the win rate and loss rate as percentages.
 - `winning_losing_trades(pnls: NDArray[np.float64]) -> tuple[int, int]`: Returns the number of winning and losing trades.
 - `total_profit_loss(pnls: NDArray[np.float64]) -> tuple[float, float]`: Computes total profit and loss.

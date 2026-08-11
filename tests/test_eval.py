@@ -321,8 +321,11 @@ def test_max_drawdown(values, expected_dd):
 @pytest.mark.parametrize(
     "values, bars_per_year, expected_calmar",
     [
-        ([0.1, 0.15, -0.05, 0.1, -0.25, -0.15, 0], 252, -9),
-        ([0.1, -0.4], 252, -94.5),
+        ([0.1, 0.15, -0.05, 0.1, -0.25, -0.15, 0], 252, -2.75279396935151),
+        ([0.1, -0.4], 252, -2.5),
+        # A bar losing 100% zeroes the compounded curve: CAGR is a total
+        # annual loss, not NaN.
+        ([0.05, -1.0], 252, -1.0),
         # No drawdown to divide by: unbounded, not worst-possible.
         ([1, 1, 1, 1], 252, float("inf")),
         ([1], 252, float("inf")),
@@ -387,6 +390,15 @@ def test_relative_entropy(values, expected_entropy):
 @pytest.mark.parametrize(
     "values, period, expected_ui",
     [
+        # period=None measures drawdowns against the running peak over the
+        # whole series.
+        ([100, 101, 102, 100, 99, 103, 103, 102], None, 1.296041),
+        ([100, 90, 80], None, 12.909944),
+        ([0, 0, 0, 0, 0], None, 0),
+        ([1, 1, 1, 1, 1], None, 0),
+        ([100], None, 0),
+        ([], None, 0),
+        # An explicit period keeps the trailing-window variant.
         ([100, 101, 102, 100, 99, 103, 103, 102], 2, 0.909259),
         ([100, 101, 102, 100, 99, 103, 103, 102], 1, 0),
         ([0, 0, 0, 0, 0], 2, 0),
@@ -411,6 +423,10 @@ def test_ulcer_index_when_invalid_period_then_error(values, period):
 @pytest.mark.parametrize(
     "values, period, ui, expected_upi",
     [
+        # period=None divides the mean per-bar return percentage by the
+        # whole-series ulcer_index.
+        ([100, 101, 102, 100, 99, 103, 103, 102], None, None, 0.231346),
+        ([100, 101], None, None, float("inf")),
         ([100, 101, 102, 100, 99, 103, 103, 102], 2, None, 0.329757),
         # Explicit ui=0 with real mid-curve drawdowns: not genuinely
         # drawdown-free, so no inf.
@@ -436,6 +452,28 @@ def test_ulcer_index_when_invalid_period_then_error(values, period):
 )
 def test_upi(values, period, ui, expected_upi):
     assert_metric(upi(np.array(values), period=period, ui=ui), expected_upi)
+
+
+@pytest.mark.parametrize(
+    "values, ui, expected_upi",
+    [
+        # Annualized (CAGR) return percentage over the whole-series
+        # ulcer_index: (102 / 100) ** (252 / 7) - 1 is a 103.99% CAGR.
+        ([100, 101, 102, 100, 99, 103, 103, 102], None, 80.23564719096491),
+        ([100, 101, 102, 100, 99, 103, 103, 102], 1.0, 103.98873437157054),
+        ([100, 90, 80], None, -7.745966692410065),
+        # An end value wiped out to zero: CAGR is a total annual loss of
+        # -100%, not NaN.
+        ([100, 50, 0], None, -1.5491933384829666),
+        # The degenerate drawdown-free branch ignores annualization.
+        ([100, 101], None, float("inf")),
+        ([], None, 0),
+    ],
+)
+def test_upi_annualized(values, ui, expected_upi):
+    assert_metric(
+        upi(np.array(values), ui=ui, bars_per_year=252), expected_upi
+    )
 
 
 @pytest.mark.parametrize(
@@ -577,9 +615,12 @@ def test_total_return_percent(initial_value, pnl, expected_return):
 @pytest.mark.parametrize(
     "initial_value, pnl, bars_per_year, total_bars, expected_return",
     [
-        (100, 10, 252, 756, 3.22),
+        # 756 bar values span 755 return intervals.
+        (100, 10, 252, 756, 3.23),
         (0, 10, 252, 756, 0),
         (100, 10, 252, 0, 0),
+        # A single bar spans no return interval to annualize.
+        (100, 10, 252, 1, 0),
     ],
 )
 def test_annual_total_return_percent(
@@ -684,20 +725,21 @@ class TestEvaluateMixin:
         assert metrics.sharpe == expected_sharpe
         assert metrics.sortino == expected_sortino
         assert metrics.profit_factor == 1.0759385033768167
-        assert metrics.ulcer_index == 1.898347959437099
-        assert metrics.upi == 0.01844528848501509
+        assert metrics.ulcer_index == 2.351691016175545
         assert metrics.equity_r2 == 0.8979045919638434
         assert metrics.std_error == 69646.36129687089
         assert metrics.total_fees == 0
         if bars_per_year is not None:
-            assert metrics.calmar == 1.1557170701224246
+            assert metrics.calmar == 0.854883652700917
+            assert metrics.upi == 2.874861720548727
             assert truncate(metrics.annual_return_pct, 6) == truncate(
-                5.897743691129764, 6
+                5.9025675998261695, 6
             )
             assert metrics.annual_std_error == 1105601.710272446
             assert metrics.annual_volatility_pct == 21.36797425126505
         else:
             assert metrics.calmar is None
+            assert metrics.upi == 0.014889530774200667
             assert metrics.annual_return_pct is None
             assert metrics.annual_std_error is None
             assert metrics.annual_volatility_pct is None
@@ -800,6 +842,31 @@ class TestEvaluateMixin:
             assert result.bootstrap.drawdown is not None
         else:
             assert result.bootstrap is None
+
+    def test_evaluate_unrealized_pnl_excludes_fees(self, calc_bootstrap):
+        """Market values are net of fees while per-trade PnL is gross of
+        them, so ``mv[-1] - mv[0] - total_pnl`` understated unrealized PnL
+        by every fee paid; a fully closed portfolio with fees reported a
+        negative unrealized PnL equal to ``-total_fees``."""
+        mixin = EvaluateMixin()
+        portfolio_df = pd.DataFrame(
+            {
+                "market_value": [1000.0, 1010.0, 1005.0, 1030.0],
+                "fees": [0.0, 2.0, 5.0, 9.0],
+            },
+            index=pd.date_range("2023-04-12", periods=4),
+        )
+        result = mixin.evaluate(
+            portfolio_df,
+            pd.DataFrame(columns=["pnl", "return_pct", "bars"]),
+            calc_bootstrap,
+            bootstrap_samples=100,
+            bars_per_year=None,
+        )
+        metrics = result.metrics
+        # A 30 market-value gain despite 9 of fees: unrealized PnL is 39.
+        assert metrics.unrealized_pnl == 1030.0 - 1000.0 + 9.0
+        assert metrics.total_fees == 9.0
 
     def test_evaluate_bootstrap_is_reproducible_with_seed(
         self, portfolio_df, trades_df

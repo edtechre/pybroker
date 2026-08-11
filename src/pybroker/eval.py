@@ -371,7 +371,8 @@ def sharpe_ratio(
     obs: Optional[int] = None,
 ) -> float:
     """Computes the
-    `Sharpe Ratio <https://en.wikipedia.org/wiki/Sharpe_ratio>`_.
+    `Sharpe Ratio <https://en.wikipedia.org/wiki/Sharpe_ratio>`_, using the
+    population standard deviation of ``returns``.
 
     Args:
         returns: Array of returns centered at 0.
@@ -510,7 +511,9 @@ def max_drawdown(changes: NDArray[np.float64]) -> float:
 
 
 def calmar_ratio(returns: NDArray[np.float64], bars_per_year: int) -> float:
-    """Computes the Calmar Ratio.
+    """Computes the Calmar Ratio, defined as the annualized return (CAGR of
+    the compounded ``returns``) divided by the maximum drawdown percentage
+    of the compounded ``returns``.
 
     Args:
         returns: Array of returns centered at 0.
@@ -518,18 +521,27 @@ def calmar_ratio(returns: NDArray[np.float64], bars_per_year: int) -> float:
     """
     if not len(returns):
         return 0.0
-    mean = np.mean(returns)
-    if np.isnan(mean):
+    growth = float(np.prod(1.0 + returns))
+    if np.isnan(growth):
         # Mirrors sortino_ratio: NaN comparisons are all False, so falling
         # through would score a non-computable input inf -- the best rank.
         return np.nan
-    max_dd = np.abs(max_drawdown(returns))
+    max_dd_pct, _ = max_drawdown_percent(returns)
+    max_dd = abs(max_dd_pct) / 100.0
     if max_dd == 0:
-        # No drawdown to divide by, so the ratio is unbounded. See
+        # No drawdown to divide by, so the ratio is unbounded. A zero
+        # drawdown means no bar ever declined, hence growth >= 1. See
         # sortino_ratio: inf for a gain, 0 for no gain, never NaN -- a NaN
         # score marks an Optuna trial failed.
-        return 0.0 if mean <= 0 else np.inf
-    return mean * bars_per_year / max_dd
+        return 0.0 if growth <= 1.0 else np.inf
+    if growth <= 0.0:
+        # A bar losing 100% or more zeroes out (or flips) the compounded
+        # curve; a fractional power of a non-positive base is NaN, and NaN
+        # fails an Optuna trial. A wiped-out account is a total annual loss.
+        cagr = -1.0
+    else:
+        cagr = growth ** (bars_per_year / len(returns)) - 1.0
+    return float(cagr / max_dd)
 
 
 @njit(cache=True)
@@ -793,11 +805,33 @@ def _iqr(values: NDArray[np.float64]) -> float:
 
 
 @njit(cache=True)
-def ulcer_index(values: NDArray[np.float64], period: int = 14) -> float:
+def ulcer_index(
+    values: NDArray[np.float64], period: Optional[int] = None
+) -> float:
     """Computes the
-    `Ulcer Index <https://en.wikipedia.org/wiki/Ulcer_index>`_ of ``values``.
+    `Ulcer Index <https://en.wikipedia.org/wiki/Ulcer_index>`_ of ``values``:
+    the root mean square of percentage drawdowns from the running peak.
+
+    Args:
+        values: Array of values.
+        period: When ``None``, drawdowns are measured against the running
+            peak over all of ``values``. When set, drawdowns are measured
+            against a trailing ``period``-bar high instead.
     """
     n = len(values)
+    if period is None:
+        if not n:
+            return 0
+        dd = np.zeros(n)
+        peak = values[0]
+        for i in range(n):
+            if values[i] > peak:
+                peak = values[i]
+            if peak == 0:
+                dd[i] = 0
+            else:
+                dd[i] = (values[i] - peak) / peak * 100
+        return np.sqrt(np.mean(np.square(dd)))
     if n <= period:
         return 0
     start = period - 1
@@ -813,19 +847,33 @@ def ulcer_index(values: NDArray[np.float64], period: int = 14) -> float:
 
 @njit(cache=True)
 def upi(
-    values: NDArray[np.float64], period: int = 14, ui: Optional[float] = None
+    values: NDArray[np.float64],
+    period: Optional[int] = None,
+    ui: Optional[float] = None,
+    bars_per_year: Optional[int] = None,
 ) -> float:
     """Computes the `Ulcer Performance Index
-    <https://en.wikipedia.org/wiki/Ulcer_index>`_ of ``values``.
+    <https://en.wikipedia.org/wiki/Ulcer_index>`_ of ``values``: return
+    divided by the :func:`.ulcer_index`.
+
+    Args:
+        values: Array of values.
+        period: Passed to :func:`.ulcer_index` when ``ui`` is ``None``.
+        ui: Precomputed :func:`.ulcer_index` of ``values``.
+        bars_per_year: Number of bars per annum. When set, the numerator is
+            the annualized return (CAGR) of ``values``, measured in
+            percentage; when ``None``, the numerator is the mean per-bar
+            return percentage.
     """
     if len(values) <= 1:
         return 0.0
     if ui is None:
         ui = ulcer_index(values, period)
     if ui == 0:
-        # ulcer_index skips its first ``period`` bars, so a zero ulcer does
-        # not prove the curve never drew down -- a drawdown confined to that
-        # warmup is invisible to it. inf is awarded only to a genuinely
+        # A rolling-window ulcer_index skips its first ``period`` bars, so a
+        # zero ulcer does not prove the curve never drew down -- a drawdown
+        # confined to that warmup is invisible to it (and a passed-in ``ui``
+        # proves nothing at all). inf is awarded only to a genuinely
         # drawdown-free gain; a rankable curve scores 0.
         if np.isnan(values).any():
             # Scanned before the direction test: a NaN bar is invisible to
@@ -843,6 +891,22 @@ def upi(
                 return 0.0
             peak = values[i]
         return np.inf
+    if bars_per_year is not None:
+        # A zero starting value cannot produce a return; see the guard on
+        # the per-bar path below.
+        if values[0] == 0:
+            return 0.0
+        ratio = values[-1] / values[0]
+        if ratio <= 0:
+            # An end value wiped out to zero or below: a fractional power
+            # of a non-positive base is NaN, and NaN fails an Optuna trial.
+            # A wiped-out account is a total annual loss.
+            cagr_pct = -100.0
+        else:
+            cagr_pct = (
+                ratio ** (bars_per_year / (len(values) - 1)) - 1.0
+            ) * 100.0
+        return float(cagr_pct / ui)
     r = np.zeros(len(values) - 1)
     for i in range(len(r)):
         prev = values[i]
@@ -988,11 +1052,13 @@ def annual_total_return_percent(
         bars_per_year: Number of bars per annum.
         total_bars: Total number of bars of the return.
     """
-    if initial_value == 0 or total_bars == 0:
+    if initial_value == 0 or total_bars <= 1:
         return 0
+    # total_bars values span total_bars - 1 return intervals.
     return (
         np.power(
-            (pnl + initial_value) / initial_value, bars_per_year / total_bars
+            (pnl + initial_value) / initial_value,
+            bars_per_year / (total_bars - 1),
         )
         - 1
     ) * 100
@@ -1231,11 +1297,12 @@ class EvalMetrics:
             :class:`pybroker.portfolio.Portfolio`.
         end_market_value: Ending market value of the
             :class:`pybroker.portfolio.Portfolio`.
-        total_pnl: Total realized profit and loss (PnL).
+        total_pnl: Total realized profit and loss (PnL), gross of fees.
         unrealized_pnl: Total unrealized profit and loss (PnL).
-        total_return_pct: Total realized return measured in percentage.
+        total_return_pct: Total realized return measured in percentage,
+            gross of fees. Fees are reported separately in ``total_fees``.
         annual_return_pct: Annualized total realized return measured in
-            percentage.
+            percentage, gross of fees.
         total_profit: Total realized profit.
         total_loss: Total realized loss.
         total_fees: Total brokerage fees. See
@@ -1270,22 +1337,28 @@ class EvalMetrics:
             <https://en.wikipedia.org/wiki/Sortino_ratio>`_, computed per bar.
             ``inf`` when there are no losing bars and the mean return is
             positive.
-        calmar: Calmar Ratio, computed per bar. ``None`` when
+        calmar: Calmar Ratio: annualized return (CAGR) of the equity curve
+            divided by its maximum drawdown percentage. ``None`` when
             :attr:`pybroker.config.StrategyConfig.bars_per_year` is not set,
             since the ratio annualizes; ``inf`` when there is no drawdown and
-            the mean return is positive.
+            the equity curve gained.
         profit_factor: Ratio of gross profit to gross loss, computed per bar.
         ulcer_index: `Ulcer Index
-            <https://en.wikipedia.org/wiki/Ulcer_index>`_, computed per bar.
+            <https://en.wikipedia.org/wiki/Ulcer_index>`_: root mean square
+            of the equity curve's percentage drawdowns from its running peak.
         upi: `Ulcer Performance Index
-            <https://en.wikipedia.org/wiki/Ulcer_index>`_, computed per bar.
-            ``inf`` for a genuinely drawdown-free gain.
+            <https://en.wikipedia.org/wiki/Ulcer_index>`_: return divided by
+            the Ulcer Index. The return is annualized (CAGR) when
+            :attr:`pybroker.config.StrategyConfig.bars_per_year` is set, and
+            is the mean per-bar return otherwise. ``inf`` for a genuinely
+            drawdown-free gain.
         equity_r2: R^2 of the equity curve, computed per bar on market values
             of portfolio.
-        std_error: Standard error, computed per bar on market values of
-            portfolio.
-        annual_std_error: Annualized standard error, computed per bar on market
-            values of portfolio.
+        std_error: Standard deviation of the portfolio market values across
+            all bars. This measures dispersion of the equity curve's level;
+            it is not a regression standard error.
+        annual_std_error: ``std_error`` multiplied by the square root of
+            :attr:`pybroker.config.StrategyConfig.bars_per_year`.
         annual_volatility_pct: Annualized volatility percentage, computed per
             bar on market values of portfolio.
     """
@@ -1520,13 +1593,24 @@ class EvaluateMixin:
         pf = profit_factor(bar_changes)
         r2 = r_squared(market_values)
         ui = ulcer_index(market_values)
-        upi_ = upi(market_values, ui=ui)
+        upi_ = upi(market_values, ui=ui, bars_per_year=bars_per_year)
         std_error = float(np.std(market_values))
         total_pnl = float(trade_stats.total_pnl)
         total_return_pct = total_return_percent(
             initial_value=market_values[0], pnl=total_pnl
         )
-        unrealized_pnl = market_values[-1] - market_values[0] - total_pnl
+        # Market values are net of fees while per-trade PnL is gross of them
+        # (fees only ever reduce cash), so the difference of the two absorbs
+        # every fee paid. Add the fees accrued over the run back so this
+        # reports unrealized PnL alone. The fees column is cumulative;
+        # subtracting fees[0] keeps the identity exact even if the first
+        # recorded bar carried fees.
+        unrealized_pnl = (
+            market_values[-1]
+            - market_values[0]
+            - total_pnl
+            + (float(fees[-1]) - float(fees[0]) if len(fees) else 0.0)
+        )
         annual_return_pct = None
         annual_std_error = None
         annual_volatility_pct = None

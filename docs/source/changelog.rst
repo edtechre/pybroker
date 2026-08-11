@@ -54,6 +54,14 @@ Breaking changes
 
 * Removes ``akshare`` from install dependencies; install it separately to use `AKShare <https://www.pybroker.com/en/latest/reference/pybroker.ext.data.html#pybroker.ext.data.AKShare>`_.
 
+* Fixes the `Calmar Ratio <https://www.pybroker.com/en/latest/reference/pybroker.eval.html#pybroker.eval.calmar_ratio>`_ to the standard definition of annualized return (CAGR) divided by maximum drawdown percentage; it previously annualized arithmetically and measured drawdown on the cumulative sum of per-bar returns.
+
+* Fixes the `Ulcer Index <https://www.pybroker.com/en/latest/reference/pybroker.eval.html#pybroker.eval.ulcer_index>`_ to measure drawdowns from the running peak over the whole equity curve, and the `Ulcer Performance Index <https://www.pybroker.com/en/latest/reference/pybroker.eval.html#pybroker.eval.upi>`_ to use the annualized (CAGR) return when ``bars_per_year`` is set; passing a ``period`` to the functions keeps the previous trailing-window behavior.
+
+* Fixes ``unrealized_pnl`` in `EvalMetrics <https://www.pybroker.com/en/latest/reference/pybroker.eval.html#pybroker.eval.EvalMetrics>`_, which previously understated unrealized PnL by the total fees paid (per-trade PnL is gross of fees while market values are net of them).
+
+* `annual_total_return_percent <https://www.pybroker.com/en/latest/reference/pybroker.eval.html#pybroker.eval.annual_total_return_percent>`_ now counts ``n`` bar values as ``n - 1`` return intervals when annualizing.
+
 1.2.14
 ======
 
