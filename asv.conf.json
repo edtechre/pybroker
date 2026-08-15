@@ -3,7 +3,7 @@
   "project": "pybroker",
   "project_url": "https://www.pybroker.com",
   "repo": ".",
-  "branches": ["master"],
+  "branches": ["dev"],
   "dvcs": "git",
   "environment_type": "virtualenv",
   "install_timeout": 600,

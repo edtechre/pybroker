@@ -91,6 +91,13 @@ def check_setup_cfg(
             f"{basepython!r}, expected 'python{tooling}'."
         )
 
+    docs_basepython = cfg.get("testenv:docs", "basepython").strip()
+    if docs_basepython != f"python{tooling}":
+        fail.append(
+            f"setup.cfg [testenv:docs]: 'basepython' is "
+            f"{docs_basepython!r}, expected 'python{tooling}'."
+        )
+
 
 def check_readthedocs(
     versions: list[str], tooling: str, fail: list[str]
