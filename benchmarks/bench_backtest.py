@@ -12,6 +12,7 @@ invocation pays Numba JIT compile cost — useful for tracking the benefit of
 
 from __future__ import annotations
 
+import dataclasses
 import sys
 import zlib
 from pathlib import Path
@@ -1731,16 +1732,16 @@ def _build_pyramid_strategy(df: pd.DataFrame, fast_marking: bool) -> Strategy:
 
     start = df["date"].min().strftime("%Y-%m-%d")
     end = df["date"].max().strftime("%Y-%m-%d")
-    strategy = Strategy(
-        df,
-        start,
-        end,
-        StrategyConfig(
-            initial_cash=2_000_000,
-            fast_marking=fast_marking,
-            exit_on_last_bar=True,
-        ),
-    )
+    config_kwargs = {
+        "initial_cash": 2_000_000,
+        "exit_on_last_bar": True,
+    }
+    # asv continuous runs this file against the PR's base commit too, which
+    # may predate fast_marking; omit it there rather than crash, so both
+    # parametrizations fall back to the same (only) available code path.
+    if "fast_marking" in {f.name for f in dataclasses.fields(StrategyConfig)}:
+        config_kwargs["fast_marking"] = fast_marking
+    strategy = Strategy(df, start, end, StrategyConfig(**config_kwargs))
     strategy.add_execution(
         exec_fn,
         symbols=sorted(df["symbol"].unique().tolist()),
