@@ -19,7 +19,8 @@ Finance, AKShare) or any user-supplied DataFrame/`DataSource`.
 
 Import name `pybroker`, PyPI name `lib-pybroker`. Version is
 single-sourced at `src/pybroker/__init__.py:__version__` (setup.cfg reads
-it via `attr:`). Active branch is `v2_preview`; PRs target `master`. This
+it via `attr:`). Work integrates on `dev`; PRs target `dev`, and `master`
+is the release branch. This
 file governs changes to the core library (`src/pybroker/`) and the
 distributable agent skills (`skills/`).
 
@@ -29,10 +30,11 @@ distributable agent skills (`skills/`).
 # Setup (once): Python 3.11+ venv, then editable install with test deps
 pip install -e ".[test]"
 
-# Tests (~5,000). Local venvs are gitignored (.venv*) — use the project's
-# venv python if the checkout has one (e.g. .venv12/bin/python -m pytest).
+# Tests (~5,000). Local venvs are gitignored (.venv*) — use a project venv
+# on the tooling Python (3.12) if the checkout has one, e.g.
+# .venv-bench/bin/python -m pytest.
 python -m pytest                           # full suite
-python -m pytest tests/test_<module>.py    # one module (1:1 with src)
+python -m pytest tests/test_<module>.py    # one module (mostly 1:1 with src)
 python -m pytest -n auto --dist loadgroup  # parallel; keeps xdist_group pins (ray/loky)
 python -m pytest -p no:randomly ...        # deterministic order when bisecting failures
 
@@ -44,12 +46,16 @@ tox -e py311,py312,py313,py314  # full test matrix
 
 # Benchmarks (asv; see Performance & Benchmarks)
 asv run --quick             # fast feedback, one sample per benchmark
-asv continuous master HEAD  # what the CI PR gate runs (blocks at --factor 1.25)
+# what the CI PR gate measures with; the block/pass decision itself is made
+# by .github/scripts/asv_gate.py (blocks at 1.25x, but only above a 10ms
+# baseline — see Performance & Benchmarks)
+asv continuous dev HEAD --factor 1.1 --interleave-rounds
 
-# Docs — CI runs `tox -e docs` on Python 3.12; it is STRICT
-# (`sphinx-build -n -W --keep-going`), so any warning fails the build.
-# tox needs 3.11+, so run the same flags from a project venv instead;
-# a bare `sphinx-build -b html` hides warnings that fail CI.
+# Docs — CI runs `tox -e docs` on Python 3.12 (`[testenv:docs] basepython`);
+# it is STRICT (`sphinx-build -n -W --keep-going`), so any warning fails the
+# build. Deps come from requirements.txt. Run the same flags from a project
+# venv on 3.12 instead of a bare `sphinx-build -b html`, which hides
+# warnings that fail CI.
 python -m sphinx -n -W --keep-going -b html docs/source/ docs/_build/
 ```
 
@@ -80,7 +86,7 @@ python -m sphinx -n -W --keep-going -b html docs/source/ docs/_build/
 The layering ladder below is also the module inventory of `src/pybroker/`:
 
 ```
-L0  common, vect, parallel   — import nothing from pybroker
+L0  common, vect, parallel   — import nothing from pybroker at runtime
 L1  interval, log, config    — import common only
 L2  scope                    — common, interval, log
 L3  cache, portfolio, eval, slippage, data
@@ -92,12 +98,17 @@ L6  strategy                 — the only module that may import everything
 
 - **Runtime imports point downward only.** If a change needs an upward
   import, the code is in the wrong module — move it, don't import it.
+  (`common.py` has one `TYPE_CHECKING`-only `from pybroker.strategy import
+  Execution`, which doesn't count — it never executes.)
 - **Intentional cycle breaks — do not "fix" (as of 2.0.0):**
-  - scope↔model: importlib indirection in `scope.py` (`_ModelImports`,
-    lines 62-96) plus a mid-file `from pybroker.scope import ...` in
-    `model.py` (~line 826).
-  - optimize↔strategy: mid-file import block in `optimize.py` (~line 316)
-    plus `TYPE_CHECKING`-only imports of `strategy`.
+  - scope↔model: importlib indirection in `scope.py` (`_ModelImports`)
+    plus a mid-file `from pybroker.scope import ...` in `model.py`.
+  - optimize↔strategy: mid-file import block in `optimize.py` plus
+    `TYPE_CHECKING`-only imports of `strategy`.
+  - scope↔model (function-local): `from pybroker.model import
+    _lag_feature_cols` inside a function in `scope.py`.
+  - optimize↔strategy (function-local): `from pybroker.strategy import
+    _DEFAULT_JSON_INCLUDE` inside a function in `optimize.py`.
   - portfolio→slippage and slippage→strategy are `TYPE_CHECKING`-only.
   Ruff ignores E402 globally to permit these. Moving them to the top of
   the file creates real import cycles.
@@ -153,8 +164,10 @@ between runs on NumPy arrays and Numba kernels.
   is wrong — stop and restructure.
 - **Sanctioned ingress** (DataFrame → ndarray): `DataSource.query`,
   `Strategy._fetch_data`, the `scope.py` frame→`SymbolArrayStore`
-  converters (`symbol_array_store_from_frame` and siblings — the *only*
-  DataFrame→ndarray conversion sites), and `indicator._to_bar_data`.
+  converters (`symbol_array_store_from_frame` and siblings), and
+  `indicator._to_bar_data`. These are the sanctioned sites, not the only
+  `.to_numpy()` calls in `src/` — `interval.py` and `model.py` also
+  convert directly where a DataFrame is already their own local input.
 - **Sanctioned egress** (results → user): `Strategy._to_test_result` (the
   `TestResult` frames), `eval`'s `BootstrapResult` frames, `get_signals`,
   `ModelInput.to_dataframe` (for the user's `predict_fn`), and
@@ -191,7 +204,7 @@ between runs on NumPy arrays and Numba kernels.
   input at index > `i`.
 - **Defensive patterns to imitate, not remove:**
   - `ColumnScope.fetch_value` raises on `end_index <= 0` and clamps
-    overshoot instead of letting an index wrap (`scope.py:989-993`).
+    overshoot instead of letting an index wrap.
   - `IntervalScope.completed_index` clamps rather than allowing a
     negative index to wrap to a future compressed bar.
   - `IndicatorScope.fetch` raises `ValueError` rather than truncating an
@@ -236,9 +249,13 @@ between runs on NumPy arrays and Numba kernels.
 
 - ruff format + check: line length **79**, double quotes, 4-space indent,
   target py312; lint select E4/E7/E9/F with E402 off (see Architecture).
-  mypy must pass on `src` (`tox -e typecheck`).
-- Typing: pre-PEP-604 `Optional[X]`/`Union[X, Y]`, but modern builtin
-  generics (`dict[str, int]`, `tuple[str, ...]`); `NDArray[np.float64]`
+  mypy must pass on `src` (`tox -e typecheck`). `[mypy] python_version` in
+  `setup.cfg` is pinned to the *floor* of the supported matrix (currently
+  3.11), not the newest version — `check_python_versions.py` enforces this
+  on purpose, so it moves only when the floor itself moves.
+- Typing: pre-PEP-604 `Optional[X]`/`Union[X, Y]` is the convention (one
+  existing exception: `scope.py` has a bare `X | None`), but modern
+  builtin generics (`dict[str, int]`, `tuple[str, ...]`); `NDArray[np.float64]`
   from `numpy.typing`; `Final` for module constants; `# type: ignore[code]`
   with the specific code named.
 - Containers by intent: `NamedTuple` for immutable records (and the only
@@ -254,7 +271,9 @@ between runs on NumPy arrays and Numba kernels.
 
 ## Testing Conventions
 
-- `tests/test_<module>.py` maps 1:1 to `src/pybroker/<module>.py`. Shared
+- `tests/test_<module>.py` mostly maps 1:1 to `src/pybroker/<module>.py`,
+  plus feature-focused suites with no single matching module (e.g.
+  `test_model_lags.py`, `test_model_per_bar.py`). Shared
   fixtures live in `tests/fixtures.py` and are star-imported
   (`from .fixtures import *` — F403/F405 are per-file-ignored on purpose).
 - Golden numbers are **computed, not hardcoded**: recompute expectations
@@ -276,14 +295,40 @@ between runs on NumPy arrays and Numba kernels.
 ## Performance & Benchmarks
 
 - The asv suite lives in `benchmarks/` (`bench_backtest`, `bench_common`,
-  `bench_data`, `bench_slippage`; config in `asv.conf.json`, compared
-  against `master`). Process doc: `docs/source/benchmarking.rst`.
+  `bench_data`, `bench_slippage`; config in `asv.conf.json`). The PR gate
+  compares against the PR's base branch, normally `dev`. Process doc:
+  `docs/source/benchmarking.rst`.
+- **Getting a number you can trust** — the gate's thresholds are worthless if
+  the measurement is noise:
+  - **Measure on an idle machine.** A loaded workstation has produced a 40%
+    spread on byte-identical work, and a 0.69–1.33× range on a comparison
+    that read 1.22–1.29× on a quiet box.
+  - **Interleave the arms and alternate which runs first**, then report the
+    median *paired* ratio and the win count — never the ratio of two medians.
+    Running all of A then all of B has repeatedly produced phantom results in
+    both directions.
+  - **`cProfile` is for ranking, not for shares of runtime.** Its per-call
+    overhead swamps cheap, frequent functions: it attributed 86.9 ms to
+    `dict.get` where the real cost was 11.6 ms (72.8 ns × 159,698 calls), so
+    ~86% of that figure was the profiler. It also cannot see C-level work at
+    all, so `Decimal` arithmetic is invisible inside its callers.
+  - **Prefer scenarios above ~0.3 s.** Fixed costs dominate short ones: result
+    assembly measured 29% of a 0.07 s run and 2.5% of a 0.48 s run.
+  - **Attribute the win to a stage, not just the total.** If overall time
+    improves but the stage you changed did not, the gain came from somewhere
+    else and the conclusion is wrong.
 - **Perf-sensitive change → run the relevant benches before and after:**
-  `asv continuous master HEAD` (a targeted `--bench <pattern>` pass first
-  is fine). CI blocks PRs on regressions > 1.25× unless the PR carries the
-  `bench-override` label, and reports everything > 1.1× without blocking —
-  1.1 sits below the shared runner's noise floor. **New hot path → add a
-  benchmark.**
+  `asv continuous dev HEAD --factor 1.1 --interleave-rounds` (a targeted
+  `--bench <pattern>` pass first is fine) — this reproduces what CI
+  *measures*, not the gate itself. CI blocks PRs on regressions > 1.25×
+  *and* only once the benchmark's baseline reaches 10ms
+  (`GATE_MIN_SECONDS`); shorter benchmarks are reported, never blocking —
+  that floor exists because the shared runner has produced ratios from
+  0.65–1.29× on sub-2ms benchmarks of identical code. Everything > 1.1× is
+  reported regardless of the floor. The block/pass decision is made by
+  `.github/scripts/asv_gate.py`, invoked from `asv-pr.yml` — read it before
+  changing gate behavior. Override via the `bench-override` PR label.
+  **New hot path → add a benchmark.**
 - `WalkforwardCold` intentionally includes Numba JIT compile time — it
   validates the `cache=True` contract. Never add warmup to it.
 - Ad-hoc JSON-baseline runners exist for targeted comparisons
@@ -298,6 +343,11 @@ between runs on NumPy arrays and Numba kernels.
   `.github/scripts/check_python_versions.py` fails CI when they drift.
   Adding or dropping a version means editing the JSON and whatever that
   check reports — never a workflow literal.
+- **CI surface not covered above:** `.github/workflows/schedule.yml` is a
+  nightly duplicate of `main.yml`; `.github/actions/setup-pybroker/action.yml`
+  is the composite both asv workflows use to set up a checkout;
+  `.github/scripts/asv_gate.py` makes the benchmark block/pass decision
+  (see above).
 
 ## Docs
 
@@ -326,8 +376,11 @@ users symlink them into their agent's skills directory
 - **Generated vs hand-authored.** `references/wiki-*.md`,
   `references/api-public-surface.md`, and `references/pybroker_*.pyi` are
   generated from the local notebooks and source — never hand-edit them;
-  regenerate with `.venv12/bin/python scripts/gen_skill_refs.py` and
-  verify with `--check`. Hand-authored: `SKILL.md`, `assets/*_template.py`,
+  regenerate with a project venv on the tooling Python (3.12):
+  `<venv>/bin/python scripts/gen_skill_refs.py`, then
+  `ruff format skills/*/references/*.pyi` (the generator doesn't format
+  its own `.pyi` output), then verify with `--check`. Hand-authored:
+  `SKILL.md`, `assets/*_template.py`,
   the `*-patterns.md` references, the `agents/openai.yaml` interface
   sidecars, and `wiki-index.md` outside the strategy creator's generated
   `## User Guide Wiki` block.
@@ -408,7 +461,8 @@ users symlink them into their agent's skills directory
 
 - **Never add columns to, widen, or copy the user's input DataFrame.**
   Feature and derived data stays numpy-backed, out-of-band (see the
-  model-input docstring contract in `model.py`, ~line 1548).
+  model-input docstring contract in the `model()` decorator's docstring
+  in `model.py`).
 - API design: obvious names; no user-side assembly of intermediate
   objects; reuse existing parameters before adding new ones; `predict_fn`
   uses the trained model's own API. If correct usage would need a
@@ -422,7 +476,7 @@ users symlink them into their agent's skills directory
   for short positions; docs and examples show only `margin` and
   `unrealized_pnl` for shorts.
 - Git: never `git stash` (use a detached worktree for comparisons);
-  commit/push only when asked; PRs target `master`.
+  commit/push only when asked; PRs target `dev`.
 
 ## Before You Claim Done
 
@@ -442,10 +496,12 @@ done.
 6. Targeted tests, then the full suite: `python -m pytest`
 7. If indicators, scopes, or context slicing were touched:
    `python -m pytest tests/test_vect.py -k look_ahead`
-8. If perf-sensitive: `asv continuous master HEAD` — no regression
-   > 1.25× (the blocking threshold); investigate anything > 1.1×.
+8. If perf-sensitive: `asv continuous dev HEAD --factor 1.1
+   --interleave-rounds` — no regression > 1.25× at or above a 10ms
+   baseline (the blocking threshold); investigate anything > 1.1×.
 9. If the public API changed: export added in `__init__.py`, docstrings
    complete, `:exclude-members:` in `pybroker.strategy.rst` updated.
 10. If `skills/`, public signatures/docstrings in `src/`, or the doc
-    notebooks changed: `.venv12/bin/python scripts/gen_skill_refs.py
-    --check`; regenerate on drift.
+    notebooks changed: regenerate with `scripts/gen_skill_refs.py` on a
+    tooling-Python (3.12) venv, `ruff format skills/*/references/*.pyi`,
+    then verify with `--check`.
