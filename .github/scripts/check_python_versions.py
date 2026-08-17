@@ -77,11 +77,13 @@ def check_setup_cfg(
         )
 
     mypy_version = cfg.get("mypy", "python_version").strip()
-    if mypy_version != floor:
+    if mypy_version != tooling:
         fail.append(
             f"setup.cfg [mypy]: 'python_version' is {mypy_version!r}, "
-            f"expected {floor!r} -- mypy must check against the oldest "
-            "supported version, not the newest."
+            f"expected {tooling!r} -- mypy must match the typecheck "
+            "interpreter (tooling), not the matrix floor. Numpy 2.5 "
+            "stubs use Python 3.12 type statements that the floor "
+            "cannot parse, and the floor cannot install numpy 2.5."
         )
 
     basepython = cfg.get("testenv:typecheck", "basepython").strip()

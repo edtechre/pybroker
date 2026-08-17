@@ -250,9 +250,11 @@ between runs on NumPy arrays and Numba kernels.
 - ruff format + check: line length **79**, double quotes, 4-space indent,
   target py312; lint select E4/E7/E9/F with E402 off (see Architecture).
   mypy must pass on `src` (`tox -e typecheck`). `[mypy] python_version` in
-  `setup.cfg` is pinned to the *floor* of the supported matrix (currently
-  3.11), not the newest version — `check_python_versions.py` enforces this
-  on purpose, so it moves only when the floor itself moves.
+  `setup.cfg` is pinned to the *tooling* interpreter (currently 3.12),
+  matching typecheck `basepython` — not the matrix floor. Numpy 2.5 stubs
+  use Python 3.12 `type` statements that mypy rejects when
+  `python_version` is 3.11, and 3.11 cannot install numpy 2.5.
+  `check_python_versions.py` enforces this; it moves when tooling moves.
 - Typing: pre-PEP-604 `Optional[X]`/`Union[X, Y]` is the convention (one
   existing exception: `scope.py` has a bare `X | None`), but modern
   builtin generics (`dict[str, int]`, `tuple[str, ...]`); `NDArray[np.float64]`
