@@ -49,6 +49,13 @@ jobs:
       - name: Check declaration sites against the matrix
         run: python .github/scripts/check_python_versions.py
 
+      - name: Check actions are pinned to commit SHAs
+        run: |
+          python .github/scripts/check_action_pins.py \
+            --verify-remote
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
   format:
     name: Check formatting
     needs: versions
