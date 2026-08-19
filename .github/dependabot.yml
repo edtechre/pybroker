@@ -1,4 +1,16 @@
 version: 2
+
+# A cooldown holds a release back until it has been public for a set
+# number of days. Pinning to a commit SHA freezes what CI runs, but a bot
+# that bumps to a release the hour it appears re-opens the window pinning
+# closed: compromised packages and actions are typically caught within
+# days of publication, so the delay is what turns a pin into protection
+# rather than bookkeeping.
+#
+# GitHub applies a 3-day default; 7 days is chosen here because nothing
+# this repository depends on releases often enough for the wait to cost
+# anything. Security updates ignore cooldown entirely, so this never
+# delays a fix for a known vulnerability.
 updates:
   - package-ecosystem: "pip"
     directory: "/"
@@ -6,9 +18,16 @@ updates:
       interval: "weekly"
     target-branch: "dev"
     open-pull-requests-limit: 10
+    cooldown:
+      default-days: 7
 
+  # github-actions supports only default-days -- the semver-*-days keys
+  # are rejected for this ecosystem, since action tags are not required
+  # to be semver.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
     target-branch: "dev"
+    cooldown:
+      default-days: 7
