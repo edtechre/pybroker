@@ -21,7 +21,10 @@ short the benchmark is, not of the threshold: no factor separates signal
 from noise down there, it only trades false positives for blindness.
 
 This gates on both axes. A benchmark blocks only when it is slow enough
-to measure on a noisy runner *and* it regressed past the factor.
+to measure on a noisy runner *and* it regressed past the factor. One
+exception overrides even that: benchmarks timing disk I/O rather than
+pybroker code never block, because for them duration is not a proxy for
+quiet -- see ``IO_BOUND``.
 Everything else is reported, so a real microbenchmark regression stays
 visible to a human -- it just does not block a PR on a coin flip.
 
@@ -33,10 +36,36 @@ seconds, so there is no rendered table to parse and no units to convert.
 import argparse
 import itertools
 import sys
-from typing import NamedTuple
+from typing import Final, NamedTuple
 
 from asv.config import Config
 from asv.results import iter_results_for_machine_and_hash
+
+# Benchmarks whose timed section is dominated by filesystem I/O rather
+# than by pybroker code. The duration floor assumes a slower benchmark is
+# a quieter one, which holds while the runtime is CPU work and fails for
+# disk: ``DataSourceCacheWrite.time_cache_write`` blocked a PR whose
+# ``src/`` and ``benchmarks/`` were byte-identical to base, at 1.48x
+# (28.7ms -> 42.6ms), and re-running that same job on that same commit
+# passed. At 28ms it clears any floor low enough to still catch a real
+# regression, so duration cannot separate it from noise -- what varies is
+# the runner's disk, not this project. The table above says the same from
+# the other direction: ``CacheDiskHit`` read 1.18 on one leg and 0.65 on
+# another with nothing changed.
+#
+# These are reported, never blocking. ``CacheL1Hit`` is deliberately not
+# here: it reads an in-process dict and is ordinary CPU work.
+IO_BOUND: Final = (
+    "bench_data.DataSourceCacheRead.",
+    "bench_data.DataSourceCacheWrite.",
+    "bench_backtest.CacheHit.",
+    "bench_backtest.CacheDiskHit.",
+)
+
+
+def is_io_bound(name: str) -> bool:
+    """Whether a benchmark measures the runner's disk more than this code."""
+    return name.startswith(IO_BOUND)
 
 
 def format_seconds(seconds: float) -> str:
@@ -110,9 +139,11 @@ def classify(
     """Splits changed benchmarks into blocking, reported and improved.
 
     A benchmark blocks only if it is both slower than ``factor`` and slow
-    enough overall to be measurable (``floor``). Everything that moved by
-    ``report_factor`` either way is still reported, so a microbenchmark
-    regression is visible even though it cannot block.
+    enough overall to be measurable (``floor``), and is not one of the
+    ``IO_BOUND`` benchmarks, for which duration says nothing about noise.
+    Everything that moved by ``report_factor`` either way is still
+    reported, so a microbenchmark regression is visible even though it
+    cannot block.
     """
     blocking: list[Change] = []
     reported: list[Change] = []
@@ -123,7 +154,7 @@ def classify(
         if not old > 0.0:
             continue
         change = Change(name, old, new)
-        if change.ratio >= factor and old >= floor:
+        if change.ratio >= factor and old >= floor and not is_io_bound(name):
             blocking.append(change)
         elif change.ratio >= report_factor:
             reported.append(change)
@@ -189,9 +220,14 @@ def main() -> int:
             "the factor):"
         )
         for change in verdict.reported:
+            why = (
+                " [I/O-bound, never blocks]"
+                if is_io_bound(change.name)
+                else ""
+            )
             print(
                 f"  {change.ratio:>5.2f}  {change.name}  "
-                f"(baseline {format_seconds(change.before)})"
+                f"(baseline {format_seconds(change.before)}){why}"
             )
     if verdict.blocking:
         print(
