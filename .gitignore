@@ -8,6 +8,7 @@ __pycache__
 docs/build
 docs/_build/
 docs/source/notebooks/.ipynb_checkpoints
+build/
 dist/
 src/lib_pybroker.egg-info
 .idea/
