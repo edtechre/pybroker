@@ -110,7 +110,9 @@ work both from plain Python and inside your own `@njit` kernels:
 - `highv(array, n)` / `lowv(array, n)` — rolling highest/lowest over
   `n` bars.
 - `sumv(array, n)` — rolling sum over `n` bars.
-- `returnv(array, n=1)` — rolling returns (NaN, not inf, on zero base).
+- `returnv(array, n=1, use_log=False)` — rolling returns (NaN, not inf,
+  on zero base). Pass `use_log=True` for log returns,
+  `log(array[i] / array[i - n])`; NaN at or below zero.
 - `cross(a, b)` — 1 where `a` crosses above `b`, else 0.
 - `atr(high, low, close, lookback)` — Average True Range.
 

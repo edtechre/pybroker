@@ -433,6 +433,57 @@ def test_wrappers(fn, values, period, expected):
 
 
 @pytest.mark.parametrize(
+    "values, period, expected",
+    [
+        (
+            [1, 1.5, 1.7, 1.3, 1.2, 1.4],
+            1,
+            [
+                np.nan,
+                np.log(1.5 / 1),
+                np.log(1.7 / 1.5),
+                np.log(1.3 / 1.7),
+                np.log(1.2 / 1.3),
+                np.log(1.4 / 1.2),
+            ],
+        ),
+        (
+            [1, 1.5, 1.7, 1.3, 1.2, 1.4],
+            2,
+            [
+                np.nan,
+                np.nan,
+                np.log(1.7 / 1),
+                np.log(1.3 / 1.5),
+                np.log(1.2 / 1.7),
+                np.log(1.4 / 1.3),
+            ],
+        ),
+        ([1], 1, [np.nan]),
+        ([], 5, []),
+    ],
+)
+def test_returns_when_use_log(values, period, expected):
+    n = len(values)
+    dates = pd.date_range(start="1/1/2018", end="1/1/2019").to_numpy()[:n]
+    bar_data = BarData(
+        date=dates,
+        open=np.zeros(n),
+        high=np.zeros(n),
+        low=np.zeros(n),
+        close=np.array(values),
+        volume=None,
+        vwap=None,
+    )
+    indicator = returns("my_indicator", "close", period, use_log=True)
+    series = indicator(bar_data)
+    assert np.array_equal(series.index.to_numpy(), dates)
+    assert np.array_equal(
+        np.round(series.values, 6), np.round(expected, 6), equal_nan=True
+    )
+
+
+@pytest.mark.parametrize(
     "fn, args",
     [
         (

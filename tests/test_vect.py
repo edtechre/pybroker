@@ -117,6 +117,45 @@ def test_returnv(array, n, expected):
     )
 
 
+@pytest.mark.parametrize(
+    "array, n, expected",
+    [
+        (
+            [1, 1.5, 1.7, 1.3, 1.2, 1.4],
+            1,
+            [
+                np.nan,
+                np.log(1.5 / 1),
+                np.log(1.7 / 1.5),
+                np.log(1.3 / 1.7),
+                np.log(1.2 / 1.3),
+                np.log(1.4 / 1.2),
+            ],
+        ),
+        (
+            [1, 1.5, 1.7, 1.3, 1.2, 1.4],
+            2,
+            [
+                np.nan,
+                np.nan,
+                np.log(1.7 / 1),
+                np.log(1.3 / 1.5),
+                np.log(1.2 / 1.7),
+                np.log(1.4 / 1.3),
+            ],
+        ),
+        ([1], 1, [np.nan]),
+        ([], 5, []),
+    ],
+)
+def test_returnv_when_use_log(array, n, expected):
+    assert np.array_equal(
+        np.round(returnv(np.array(array), n, True), 6),
+        np.round(expected, 6),
+        equal_nan=True,
+    )
+
+
 @pytest.mark.parametrize("fnv", [lowv, highv, sumv, returnv])
 @pytest.mark.parametrize(
     "array, n, expected_msg",
@@ -3151,6 +3190,18 @@ def test_returnv_when_base_is_zero_then_undefined():
     np.testing.assert_allclose(result[2:], [1.0, 0.5])
 
 
+def test_returnv_when_use_log_and_non_positive_then_undefined():
+    """A log return is undefined at or below zero, and must be NaN rather
+    than the -inf np.log yields at zero, which a rolling window could never
+    recover from."""
+    values = np.ascontiguousarray([0.0, 1.0, 0.0, -1.0, 2.0, 4.0])
+    result = np.asarray(returnv(values, 1, True))
+    # Zero base, zero value, negative value, negative base.
+    assert np.isnan(result[1:5]).all()
+    assert not np.isinf(result).any()
+    np.testing.assert_allclose(result[5], np.log(2.0))
+
+
 def test_adx_computes_at_exactly_two_lookbacks_of_data():
     """The insufficient-data guard was one bar too strict."""
     _, high, low, close, _ = _ohlcv(n=28)
@@ -3173,7 +3224,12 @@ def test_normalized_volume_index_does_not_fabricate_zero_from_nan():
 
 
 def _indicator_args(fn_name, open_, high, low, close, volume):
-    """Argument sets for the no-lookahead sweep, keyed by function name."""
+    """Argument sets for the no-lookahead sweep, keyed by function name.
+
+    A ``"fn[variant]"`` key sweeps one kernel a second time under a
+    different flag setting; the function is resolved from the part before
+    the bracket.
+    """
     return {
         "adx": ((high, low, close, 14), {}),
         "aroon_up": ((high, low, 25), {}),
@@ -3204,6 +3260,7 @@ def _indicator_args(fn_name, open_, high, low, close, volume):
         "quadratic_trend": ((close, high, low, close, 20, 10), {}),
         "reactivity": ((high, low, close, volume, 20), {}),
         "returnv": ((close, 5), {}),
+        "returnv[log]": ((close, 5), {"use_log": True}),
         "stochastic": ((high, low, close, 20), {}),
         "stochastic_rsi": ((close, 20, 20), {}),
         "volume_momentum": ((volume, 20, 3), {}),
@@ -3240,6 +3297,7 @@ def _indicator_args(fn_name, open_, high, low, close, volume):
         "quadratic_trend",
         "reactivity",
         "returnv",
+        "returnv[log]",
         "stochastic",
         "stochastic_rsi",
         "volume_momentum",
@@ -3255,7 +3313,8 @@ def test_indicator_does_not_look_ahead(fn_name):
     """
     import pybroker.vect as vect_module
 
-    fn = getattr(vect_module, fn_name)
+    # A "fn[variant]" key sweeps one kernel under a second flag setting.
+    fn = getattr(vect_module, fn_name.partition("[")[0])
     open_, high, low, close, volume = _ohlcv(n=400)
     args, kwargs = _indicator_args(fn_name, open_, high, low, close, volume)
     before = np.asarray(fn(*args, **kwargs), dtype=np.float64).copy()

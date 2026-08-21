@@ -596,7 +596,7 @@ Computes data for multiple indicators.
 
 - `highest(name: str, field: str, period: int) -> Indicator`: Creates a rolling high :class:`.Indicator`.
 - `lowest(name: str, field: str, period: int) -> Indicator`: Creates a rolling low :class:`.Indicator`.
-- `returns(name: str, field: str, period: int=1) -> Indicator`: Creates a rolling returns :class:`.Indicator`.
+- `returns(name: str, field: str, period: int=1, use_log: bool=False) -> Indicator`: Creates a rolling returns :class:`.Indicator`.
 - `detrended_rsi(name: str, field: str, short_length: int, long_length: int, reg_length: int) -> Indicator`: Detrended Relative Strength Index (RSI).
 - `macd(name: str, short_length: int, long_length: int, smoothing: float=0.0, scale: float=1.0) -> Indicator`: Moving Average Convergence Divergence.
 - `stochastic(name: str, lookback: int, smoothing: int=0) -> Indicator`: Stochastic.
@@ -1340,7 +1340,7 @@ Contains vectorized utility functions.
 - `lowv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]`: Calculates the lowest values for every ``n`` period in ``array``.
 - `highv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]`: Calculates the highest values for every ``n`` period in ``array``.
 - `sumv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]`: Calculates the sums for every ``n`` period in ``array``.
-- `returnv(array: NDArray[np.float64], n: int=1) -> NDArray[np.float64]`: Calculates returns.
+- `returnv(array: NDArray[np.float64], n: int=1, use_log: bool=False) -> NDArray[np.float64]`: Calculates returns.
 - `cross(a: NDArray[np.float64], b: NDArray[np.float64]) -> NDArray[np.bool_]`: Checks for crossover of ``a`` above ``b``.
 - `normal_cdf(z: float) -> float`: Computes the CDF of the standard normal distribution.
 - `inverse_normal_cdf(p: float) -> float`: Computes the inverse CDF of the standard normal distribution.

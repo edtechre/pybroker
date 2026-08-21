@@ -786,7 +786,9 @@ def lowest(name: str, field: str, period: int) -> Indicator:
     return indicator(name, _lowest)
 
 
-def returns(name: str, field: str, period: int = 1) -> Indicator:
+def returns(
+    name: str, field: str, period: int = 1, use_log: bool = False
+) -> Indicator:
     """Creates a rolling returns :class:`.Indicator`.
 
     Args:
@@ -794,6 +796,8 @@ def returns(name: str, field: str, period: int = 1) -> Indicator:
         field: :class:`pybroker.common.BarData` field for computing the rolling
             returns.
         period: Returns period. Defaults to 1.
+        use_log: Whether to compute log returns instead of arithmetic returns.
+            Defaults to ``False``.
 
     Returns:
         Rolling returns :class:`.Indicator`.
@@ -801,7 +805,7 @@ def returns(name: str, field: str, period: int = 1) -> Indicator:
 
     def _returns(data: BarData):
         values = getattr(data, field)
-        return returnv(values, period)
+        return returnv(values, period, use_log)
 
     return indicator(name, _returns)
 

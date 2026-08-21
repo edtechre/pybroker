@@ -212,11 +212,17 @@ def sumv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
 
 
 @njit(cache=True)
-def returnv(array: NDArray[np.float64], n: int = 1) -> NDArray[np.float64]:
+def returnv(
+    array: NDArray[np.float64], n: int = 1, use_log: bool = False
+) -> NDArray[np.float64]:
     """Calculates returns.
 
     Args:
+        array: :class:`numpy.ndarray` of data.
         n: Return period. Defaults to 1.
+        use_log: Whether to compute log returns, ``log(array[i] /
+            array[i - n])``, instead of arithmetic returns. Defaults to
+            ``False``.
 
     Returns:
         :class:`numpy.ndarray` of returns.
@@ -228,10 +234,19 @@ def returnv(array: NDArray[np.float64], n: int = 1) -> NDArray[np.float64]:
     out = np.full(out_len, np.nan)
     for i in range(n, out_len):
         base = array[i - n]
-        # A zero base has no defined return. Numba raises ZeroDivisionError
-        # here rather than yielding inf, which would abort a backtest on a
-        # single bad bar; leave it undefined instead.
-        out[i] = (array[i] - base) / base if base != 0 else np.nan
+        value = array[i]
+        if use_log:
+            # A log return is undefined at or below zero. np.log would yield
+            # -inf at zero and NaN below it; NaN for both keeps a single bad
+            # bar from permanently poisoning a rolling window downstream,
+            # matching the arithmetic branch below.
+            out[i] = np.log(value / base) if base > 0 and value > 0 else np.nan
+        else:
+            # A zero base has no defined return. Numba raises
+            # ZeroDivisionError here rather than yielding inf, which would
+            # abort a backtest on a single bad bar; leave it undefined
+            # instead.
+            out[i] = (value - base) / base if base != 0 else np.nan
     return out
 
 

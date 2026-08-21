@@ -193,7 +193,9 @@ def highest(name: str, field: str, period: int) -> Indicator:
 def lowest(name: str, field: str, period: int) -> Indicator:
     """Creates a rolling low :class:`.Indicator`."""
 
-def returns(name: str, field: str, period: int = 1) -> Indicator:
+def returns(
+    name: str, field: str, period: int = 1, use_log: bool = False
+) -> Indicator:
     """Creates a rolling returns :class:`.Indicator`."""
 
 # --- src/pybroker/vect.py ---
@@ -214,7 +216,9 @@ def highv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
 def lowv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
     """Calculates the lowest values for every ``n`` period in ``array``."""
 
-def returnv(array: NDArray[np.float64], n: int = 1) -> NDArray[np.float64]:
+def returnv(
+    array: NDArray[np.float64], n: int = 1, use_log: bool = False
+) -> NDArray[np.float64]:
     """Calculates returns."""
 
 def sumv(array: NDArray[np.float64], n: int) -> NDArray[np.float64]:
