@@ -57,8 +57,43 @@ jobs:
       - name: Check declaration sites against the matrix
         run: python .github/scripts/check_python_versions.py
 
-      - name: Check actions are pinned to commit SHAs
-        run: python .github/scripts/check_action_pins.py
+  # Two independent gates over the workflow files themselves. pinact owns
+  # pinning: every external `uses:` must be a full commit SHA carrying a
+  # trailing `# <version>` comment, since a bare SHA is unreviewable and
+  # is also what the nightly cross-checks against upstream. zizmor owns
+  # everything else -- credential persistence, token scopes, template
+  # injection, secrets handling.
+  workflow-audit:
+    name: Audit workflows
+    needs: versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      # `fix: false` is check-only: it never edits a file and never
+      # pushes, so `contents: read` is enough. `no_api: true` keeps this
+      # gate offline, which is what lets it block every pull request
+      # without depending on the GitHub API being reachable.
+      - name: Check pins and version comments
+        uses: suzuki-shunsuke/pinact-action@896d595f299e71d65b9d28349d6956abe144390a # v3.0.0
+        with:
+          fix: "false"
+          no_api: "true"
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: ${{ needs.versions.outputs.tooling }}
+
+      - name: Install tox
+        run: python -m pip install --no-cache-dir tox
+
+      # `always()` so an unpinned action above cannot hide the security
+      # findings below: these are independent gates sharing one checkout.
+      - name: Run zizmor
+        if: always()
+        run: tox -e zizmor
 
   format:
     name: Check formatting
@@ -196,6 +231,7 @@ jobs:
     if: startsWith(github.event.ref, 'refs/tags/v')
     needs:
       - verify-versions
+      - workflow-audit
       - format
       - lint
       - typecheck
