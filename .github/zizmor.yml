@@ -1,0 +1,17 @@
+# zizmor audits these workflows on every push and again, online, in the
+# nightly. Findings are fixed, not filtered -- this file exists for the
+# one finding that cannot be fixed from a pull request.
+#
+# `use-trusted-publishing` asks main.yml's publish job to authenticate to
+# PyPI with a trusted publisher instead of the PYPI_API_TOKEN secret.
+# Doing so requires a publisher registered on the PyPI project and a
+# GitHub Environment declared in this repository's settings; neither is
+# reachable from a commit, so the finding would sit red forever and train
+# everyone to ignore the audit.
+#
+# Delete this block once the trusted publisher exists -- that is the
+# entire remaining zizmor backlog on the default persona.
+rules:
+  use-trusted-publishing:
+    ignore:
+      - main.yml
