@@ -231,6 +231,7 @@ jobs:
     if: startsWith(github.event.ref, 'refs/tags/v')
     needs:
       - verify-versions
+      - workflow-audit
       - format
       - lint
       - typecheck
