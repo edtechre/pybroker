@@ -58,12 +58,48 @@ jobs:
       - name: Check declaration sites against the matrix
         run: python .github/scripts/check_python_versions.py
 
-      - name: Check actions are pinned to commit SHAs
-        run: |
-          python .github/scripts/check_action_pins.py \
-            --verify-remote
+  # The same two gates main.yml runs, with the network the nightly has and
+  # a pull request does not: zizmor adds its online audits (a GHSA filed
+  # against a pinned action), and pinact cross-checks each SHA against the
+  # tag its comment names -- a comment claiming v7 over a fork's commit is
+  # only detectable from upstream.
+  workflow-audit:
+    name: Audit workflows
+    needs: versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      # Reports, never fails. A pin merely *behind* its tag is safe by
+      # construction, and this cannot tell that apart from a comment that
+      # lies. Five of the pinned actions ride moving major tags (# v7,
+      # # v5), and Dependabot's 7-day cooldown guarantees a week-long
+      # stale window after each upstream release -- blocking here would
+      # turn every one of those releases into a red build, which is the
+      # treadmill that makes people abandon pinning altogether.
+      - name: Verify version comments against upstream tags
+        uses: suzuki-shunsuke/pinact-action@896d595f299e71d65b9d28349d6956abe144390a # v3.0.0
+        continue-on-error: true
+        with:
+          fix: "false"
+          verify: "true"
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: ${{ needs.versions.outputs.tooling }}
+
+      - name: Install tox
+        run: python -m pip install --no-cache-dir tox
+
+      # No --offline here, unlike main.yml: with a token zizmor also runs
+      # its online audits.
+      - name: Run zizmor
+        if: always()
+        run: tox -e zizmor -- .
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
 
   format:
     name: Check formatting

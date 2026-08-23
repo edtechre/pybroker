@@ -350,6 +350,19 @@ between runs on NumPy arrays and Numba kernels.
   is the composite both asv workflows use to set up a checkout;
   `.github/scripts/asv_gate.py` makes the benchmark block/pass decision
   (see above).
+- **Workflow security is gated by two tools, not by a script.** The
+  `workflow-audit` job in both `main.yml` and `schedule.yml` runs
+  **pinact** — every external `uses:` must be a full commit SHA carrying a
+  trailing `# <version>` comment — and **zizmor** (`tox -e zizmor`,
+  version pinned in the tox env) for everything else: token scopes,
+  credential persistence, template injection. pinact runs `no_api` and
+  blocks on pull requests; the nightly instead runs its `verify` pass
+  under `continue-on-error`, because a pin merely behind its tag is safe
+  and failing there would redden CI after every upstream release.
+  `.github/zizmor.yml` holds the one ignored finding
+  (`use-trusted-publishing`, blocked on PyPI trusted-publisher setup).
+  Adding an action means pasting the tag, pushing, and pinning what CI
+  reports — never hand-editing a SHA, which is Dependabot's job.
 
 ## Docs
 
