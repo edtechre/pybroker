@@ -1,6 +1,10 @@
 import os
 import sys
 
+from sphinx.ext.intersphinx import (
+    missing_reference as intersphinx_missing_reference,
+)
+
 sys.path.insert(0, os.path.abspath("../../src/"))
 sys.path.insert(0, os.path.abspath("notebooks/"))
 
@@ -160,6 +164,30 @@ def _shorten_config_toc_names(app, doctree):
         ref.append(nodes.literal("", short))
 
 
+def _resolve_numpy_ndarray_alias(app, env, node, contnode):
+    """Redirects numpy >= 2.5's private ``NDArray`` alias to its public name.
+
+    numpy < 2.5 built ``numpy.typing.NDArray`` as a :class:`types.GenericAlias`
+    that Sphinx collapsed into a link to :class:`numpy.ndarray`. numpy 2.5
+    declares it with a PEP 695 ``type`` statement instead, so it is a
+    :class:`typing.TypeAliasType` whose ``__module__`` is the private
+    ``numpy._typing._array_like``. Autodoc then cross-references that private
+    path, which resolves nowhere: every annotated signature loses its link,
+    and under ``-n -W`` the build fails.
+
+    numpy's own inventory documents the alias as ``py:data``
+    ``numpy.typing.NDArray``, so retarget the reference there and let
+    intersphinx resolve it. That restores a working link instead of leaving
+    bare text behind a suppressed warning. A no-op on numpy < 2.5, which
+    never emits the private target.
+    """
+    if node.get("reftarget") != "numpy._typing._array_like.NDArray":
+        return None
+    node["reftarget"] = "numpy.typing.NDArray"
+    node["reftype"] = "data"
+    return intersphinx_missing_reference(app, env, node, contnode)
+
+
 def setup(app):
     # Run before TocTreeCollector (default priority 500).
     app.connect(
@@ -167,3 +195,5 @@ def setup(app):
     )
     # After TocTreeCollector has built env.tocs for this doc.
     app.connect("doctree-read", _shorten_config_toc_names, priority=600)
+    # numpy >= 2.5 renders NDArray as an unresolvable private path.
+    app.connect("missing-reference", _resolve_numpy_ndarray_alias)
