@@ -1,7 +1,7 @@
 # Case studies: what this skill exists to catch (and not overclaim)
 
 Three real findings from this repo, each illustrating a different failure mode the phases in
-SKILL.md are designed to catch. Read before Phase 3/4 if a result feels uncertain, or as a
+SKILL.md are designed to catch. Read before Phase 4/5 if a result feels uncertain, or as a
 sanity check on your own findings before writing them up.
 
 ## 1. Conceptual/behavioral change with no signature change (mypy)
@@ -21,7 +21,7 @@ looks like without touching any function signature this repo calls.
 The lesson: when triaging a type-checker, linter, or any tool whose whole job is "decide
 whether code is correct," don't just check for removed functions or renamed parameters —
 ask whether the tool's *definition of correct* changed. Running the new version against the
-real codebase (Phase 3) is the only way to find this; changelog-reading alone under-reports
+real codebase (Phase 4) is the only way to find this; changelog-reading alone under-reports
 it unless the changelog explicitly calls out "stricter narrowing" or similar, and even then
 you won't know which lines it touches without running it.
 
@@ -48,7 +48,7 @@ akshare bump — because it mocked the fallback API's return value using the **o
 The line executed every time; the mock never reflected the new reality, so the test could
 never have caught this regression no matter how many times it ran.
 
-The lesson (Phase 4): "this line has test coverage" and "a test here would catch a real
+The lesson (Phase 5): "this line has test coverage" and "a test here would catch a real
 regression" are different claims. The only way to tell them apart is to read what shape of
 data the test actually constructs and ask whether that shape still matches what the
 dependency's new version actually returns — not whether the assertion count is nonzero.
@@ -80,7 +80,7 @@ not defaulting to belief or disbelief.
 
 During this skill's own calibration, one run triaged an `nbsphinx` bump that had zero test or
 CI coverage (docs-tooling-only, nothing in the pipeline builds the docs). Correctly following
-Phase 4's instinct to become the coverage, it built the actual documentation with the *new*
+Phase 5's instinct to become the coverage, it built the actual documentation with the *new*
 nbsphinx version, watched it succeed with zero warnings, and concluded "safe, nothing to
 fix" — a clean, confident verdict, arrived at by actually executing something rather than
 just reading a changelog.
@@ -93,7 +93,7 @@ only thing keeping the documentation buildable at all. The skill-following run n
 discovered this because it only ever asked "does the new version work," never "was the old
 version already broken."
 
-The lesson (why Phase 4 now says to check both directions): confirming the new version works
+The lesson (why Phase 5 now says to check both directions): confirming the new version works
 answers half the question. It catches regressions but is blind to the mirror case — a bump
 that's actually a load-bearing fix — because "safe, nothing to fix" and "safe, and here's
 what it silently fixed" look identical from the forward-only check alone. Whenever you're
