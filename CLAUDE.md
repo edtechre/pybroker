@@ -472,6 +472,43 @@ users symlink them into their agent's skills directory
       `symbols=` controls — not a blanket replacement for the metrics
       print, since the default JSON payload is usually larger.
 
+## Dependency Bumps
+
+**Any diff that moves a version constraint — `requirements.txt`,
+`setup.cfg`, `pyproject.toml`, or a `uses:` ref in
+`.github/workflows/` — is triaged with the
+`dependency-migration-triage` skill before it is judged.** That includes
+Dependabot PRs, a bump you are asked to review, and one you make
+yourself. Green CI is necessary and not sufficient: it proves the
+selected checks still pass, never that any of them was capable of
+catching what changed. Do not eyeball a bump and call it safe; the skill
+exists because the expensive findings hide in bumps everyone assumes are
+boring.
+
+Two things about this repo save a triage from rediscovering them:
+
+- **`requirements.txt` governs only the docs builds** — `[testenv:docs]`
+  and `.readthedocs.yml`, both on Python 3.12, plus a `hashFiles` cache
+  key. It does not feed the test matrix. `install_requires` in
+  `setup.cfg` is what users actually resolve, `[testenv:typecheck]` pins
+  mypy exactly, and `[testenv:lint]`/`[testenv:format]` install **ruff
+  unpinned**. So a `requirements.txt` floor bump usually changes nothing
+  CI does — always check whether the matching `setup.cfg` constraint is
+  the one that needed to move.
+- **The floors are open-ended `>=`**, so a fresh install already resolves
+  to the post-bump version. Reproducing a "before" arm needs `==` pins;
+  without them both arms of a comparison install the same thing and the
+  experiment measures nothing.
+
+Numeric and compiled dependencies (`numpy`, `numba`, `llvmlite`,
+`pandas`) carry one extra obligation, because determinism is a shipped
+feature: prove results are **bit-identical**, not merely that tests pass.
+Run a seeded backtest over `tests/testdata/daily_1.pkl` on both arms and
+diff full-precision `EvalMetrics` plus hashes of the portfolio,
+positions, orders, trades and bootstrap frames. Leave the performance
+verdict to the asv gate — see § Performance & Benchmarks on why a number
+measured on a loaded workstation is worthless.
+
 ## Project Rules
 
 - **Never add columns to, widen, or copy the user's input DataFrame.**
