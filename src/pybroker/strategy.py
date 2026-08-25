@@ -113,6 +113,7 @@ from numpy.typing import NDArray
 from typing import (
     Any,
     Callable,
+    Concatenate,
     Iterable,
     Iterator,
     Literal,
@@ -120,11 +121,11 @@ from typing import (
     MutableMapping,
     NamedTuple,
     Optional,
+    ParamSpec,
     Sequence,
     TypeGuard,
     Union,
 )
-from typing_extensions import Concatenate, ParamSpec
 
 
 P = ParamSpec("P")

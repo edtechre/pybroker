@@ -25,10 +25,9 @@ from typing import (
     NamedTuple,
     Optional,
     Sequence,
-    TypeGuard,
     Union,
-    cast,
 )
+from typing_extensions import TypeIs
 
 if TYPE_CHECKING:
     from pybroker.strategy import Execution
@@ -651,7 +650,7 @@ def _dataframe_records(
 
 def _is_symbol_selector(
     symbols: Union[frozenset[str], SymbolSelector],
-) -> TypeGuard[SymbolSelector]:
+) -> TypeIs[SymbolSelector]:
     """Returns whether ``symbols`` is a :class:`.SymbolSelector`."""
     return callable(symbols) and not isinstance(symbols, (str, bytes))
 
@@ -664,7 +663,7 @@ def _static_symbols(
     window is split."""
     if _is_symbol_selector(symbols):
         return frozenset()
-    return cast(frozenset[str], symbols)
+    return symbols
 
 
 def _ensure_range_index(df: pd.DataFrame) -> pd.DataFrame:
@@ -723,7 +722,7 @@ def _resolve_execution_symbols(
                 f"symbol selector returned unknown symbols: {sorted(unknown)}."
             )
         return frozenset(selected)
-    return cast(frozenset[str], execution.symbols)
+    return execution.symbols
 
 
 def _resolve_executions(

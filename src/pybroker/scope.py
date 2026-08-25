@@ -49,6 +49,7 @@ from typing import (
     Literal,
     Mapping,
     NamedTuple,
+    Never,
     Optional,
     Sequence,
     Union,
@@ -2331,6 +2332,7 @@ class PriceScope:
             close = self._fetch_price_type(symbol, _PRICE_CLOSE)
             fill_price = (open_ + low + high + close) / 4.0
         else:
+            _unreachable_price: Never = price
             raise ValueError(f"Unknown price: {price!r}")
         self._bar_cache[key] = fill_price
         return fill_price

@@ -40,6 +40,7 @@ from typing import (
     Literal,
     Mapping,
     NamedTuple,
+    Never,
     Optional,
     Union,
     cast,
@@ -646,6 +647,7 @@ class Portfolio:
         elif self._fee_mode == FeeMode.PER_SHARE:
             fees = self._fee_amount * shares
         else:
+            _unreachable_fee_mode: Never = self._fee_mode
             raise ValueError(f"Unknown FeeMode: {self._fee_mode!r}")
         return fees
 
@@ -1967,6 +1969,7 @@ class Portfolio:
         elif stop.stop_type == StopType.TRAILING:
             fill_price = self._trigger_trailing_stop(stop, price_scope)
         else:
+            _unreachable_trigger_stop_type: Never = stop.stop_type
             raise ValueError(f"Unknown stop type: {stop.stop_type}")
         if fill_price is None:
             return False, fill_price
@@ -2001,6 +2004,7 @@ class Portfolio:
             )
             order_type = "buy"
         else:
+            _unreachable_pos_type: Never = stop.pos_type
             raise ValueError(f"Unknown pos_type: {stop.pos_type}")
         if stop.pos_type == "long":
             intent = PositionIntent.SELL_TO_CLOSE
@@ -2015,6 +2019,7 @@ class Portfolio:
         elif stop.stop_type == StopType.TRAILING:
             stop_order_type = OrderType.STOP_TRAILING
         else:
+            _unreachable_order_stop_type: Never = stop.stop_type
             raise ValueError(f"Unknown stop type: {stop.stop_type}")
         self._add_order(
             date=date,

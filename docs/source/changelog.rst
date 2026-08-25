@@ -2,6 +2,11 @@
 Changelog
 #########
 
+2.0.1
+=====
+
+* Adds ``typing_extensions`` to install dependencies. It was already imported by :mod:`pybroker.strategy` but never declared, so installs relied on it being pulled in indirectly by another dependency.
+
 2.0.0
 =====
 

@@ -13,6 +13,7 @@ from abc import ABC
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import TYPE_CHECKING, Literal, Mapping, Optional
+from typing_extensions import override
 
 from pybroker.common import DataCol, to_decimal
 from pybroker.scope import ColumnScope, IndicatorScope
@@ -209,6 +210,7 @@ class FixedSlippageModel(SlippageModel):
             return fill_price * self._buy_multiplier
         return fill_price * self._sell_multiplier
 
+    @override
     def apply_slippage(self, ctx: SlippageContext) -> tuple[Decimal, Decimal]:
         return (
             ctx.shares,
@@ -245,6 +247,7 @@ class VolatilitySlippageModel(SlippageModel):
     def is_fill_noop(self) -> bool:
         return self.scale == 0
 
+    @override
     def apply_slippage(self, ctx: SlippageContext) -> tuple[Decimal, Decimal]:
         if self.scale == 0:
             return ctx.shares, ctx.fill_price
@@ -349,6 +352,7 @@ class VolumeSlippageModel(SlippageModel):
     def is_fill_noop(self) -> bool:
         return not self._cap_enabled and not self._impact_enabled
 
+    @override
     def validate(self, strategy: "Strategy") -> None:
         if self.is_fill_noop:
             return
@@ -374,6 +378,7 @@ class VolumeSlippageModel(SlippageModel):
             stacklevel=2,
         )
 
+    @override
     def apply_slippage(self, ctx: SlippageContext) -> tuple[Decimal, Decimal]:
         if self.is_fill_noop:
             return ctx.shares, ctx.fill_price
