@@ -255,6 +255,22 @@ between runs on NumPy arrays and Numba kernels.
   use Python 3.12 `type` statements that mypy rejects when
   `python_version` is 3.11, and 3.11 cannot install numpy 2.5.
   `check_python_versions.py` enforces this; it moves when tooling moves.
+- Typing imports: take a name from `typing` when it exists on the supported
+  floor (3.11); reach for `typing_extensions` only for features newer than
+  that floor — today exactly `override` (stdlib 3.12) and `TypeIs` (stdlib
+  3.13). `typing_extensions` re-exports the stdlib object where one exists,
+  so this is not a backport shim. It is a declared runtime dependency
+  (`install_requires`), not a dev-only one.
+- Exhaustive `if/elif` over an `Enum` or `Literal` ends with
+  `_unreachable_<what>: Never = <expr>` before the existing `raise
+  ValueError(...)`. That gets mypy's exhaustiveness check while keeping the
+  runtime error message users see — `assert_never()` would replace it with an
+  `AssertionError`. Never do this inside an `@njit` kernel (see `vect.py`'s
+  `_trend`): Numba cannot compile it.
+- `@override` goes on overrides of **concrete** base methods only. Abstract
+  methods are already enforced by ABC. It matters most in `slippage.py`, where
+  `apply_slippage` has a no-op default and `is_fill_noop` detects overriding by
+  method identity — so a typo there silently disables slippage.
 - Typing: pre-PEP-604 `Optional[X]`/`Union[X, Y]` is the convention (one
   existing exception: `scope.py` has a bare `X | None`), but modern
   builtin generics (`dict[str, int]`, `tuple[str, ...]`); `NDArray[np.float64]`

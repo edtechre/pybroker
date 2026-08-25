@@ -10,6 +10,7 @@ import sys
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Final, Iterable, Optional, Union
+from typing_extensions import override
 
 import alpaca.data.historical.crypto as alpaca_crypto
 import alpaca.data.historical.stock as alpaca_stock
@@ -383,6 +384,7 @@ class Alpaca(DataSource):
         super().__init__()
         self._api = alpaca_stock.StockHistoricalDataClient(api_key, api_secret)
 
+    @override
     def query(
         self,
         symbols: Union[str, Iterable[str]],
@@ -477,6 +479,7 @@ class AlpacaCrypto(DataSource):
             api_key, api_secret
         )
 
+    @override
     def query(
         self,
         symbols: Union[str, Iterable[str]],
@@ -540,6 +543,7 @@ class YFinance(DataSource):
         self.auto_adjust = auto_adjust
         self._scope.register_custom_cols(self.ADJ_CLOSE)
 
+    @override
     def query(
         self,
         symbols: Union[str, Iterable[str]],
