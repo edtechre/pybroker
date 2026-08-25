@@ -539,6 +539,16 @@ def _reseed_sampler(sampler: BaseSampler, seed: int, _depth: int = 0) -> None:
     defensively and leaves a sampler that does not expose it -- a third-party
     subclass, say -- untouched rather than raising.
 
+    ``LazyRandomState.rng`` is a read-only property, so the generator it
+    wraps is replaced rather than assigned through -- hence reaching one
+    level further in, to ``_rng._rng``.
+
+    That wrapper is why ``install_requires`` floors optuna at 3.4: before
+    3.4 the generator sat directly on ``_rng`` with nothing to reach
+    through, the guard below would not match, and the sampler would keep
+    its original stream -- ``seed=`` buying no reproducibility at all,
+    silently. Do not lower that floor without handling the older shape.
+
     Recurses into delegated inner samplers: ``TPESampler`` draws its first
     ``n_startup_trials`` from an inner ``RandomSampler``, so with the small
     per-window trial counts a walkforward uses, re-seeding only the outer
@@ -549,13 +559,8 @@ def _reseed_sampler(sampler: BaseSampler, seed: int, _depth: int = 0) -> None:
     if _depth > 3:
         return
     rng = getattr(sampler, "_rng", None)
-    if rng is not None:
-        state = np.random.RandomState(seed)
-        try:
-            rng.rng = state
-        except AttributeError:
-            if hasattr(rng, "_rng"):
-                rng._rng = state
+    if rng is not None and hasattr(rng, "_rng"):
+        rng._rng = np.random.RandomState(seed)
     for offset, attr in enumerate(
         ("_random_sampler", "_independent_sampler", "_base_sampler")
     ):
