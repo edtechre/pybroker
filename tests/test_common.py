@@ -139,6 +139,7 @@ def test_bars_to_df_when_optional_cols_none():
         ("10week", [(10, "week")]),
         ("3d 20m", [(3, "day"), (20, "min")]),
         ("30s", [(30, "sec")]),
+        ("  1H   30MIN  ", [(1, "hour"), (30, "min")]),
     ],
 )
 def test_parse_timeframe_success(tf, expected):
@@ -157,6 +158,12 @@ def test_parse_timeframe_success(tf, expected):
         "1d5m",
         "1d 5mm",
         "",
+        "1.5h",
+        "-1h",
+        "+1h",
+        "1h,",
+        "1h!",
+        "1h 30m?",
     ],
 )
 def test_parse_timeframe_invalid(tf):
