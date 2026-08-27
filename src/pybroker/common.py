@@ -387,9 +387,14 @@ def parse_timeframe(timeframe: str) -> list[tuple[int, str]]:
         value and ``str`` unit of one of the following: ``sec``, ``min``,
         ``hour``, ``day``, ``week``.
     """
-    parts = _tf_pattern.findall(timeframe)
     tokens = timeframe.split()
-    if not parts or len(parts) != len(tokens):
+    parts = []
+    for token in tokens:
+        match = _tf_pattern.fullmatch(token)
+        if match is None:
+            raise ValueError("Invalid timeframe format.")
+        parts.append(match.groups())
+    if not parts:
         raise ValueError("Invalid timeframe format.")
     result = []
     seen_units = set()
