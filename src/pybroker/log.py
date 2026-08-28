@@ -251,7 +251,7 @@ class Logger:
         if self._train_model_start_time is None:
             return
         self._info(
-            f"Finished training model {model_sym}:",
+            f"Finished training model {model_sym}: %s",
             self._format_time(self._train_model_start_time),
         )
         self._train_model_start_time = None
