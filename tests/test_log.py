@@ -15,6 +15,7 @@ from unittest.mock import patch
 import numpy as np
 
 from .fixtures import *  # noqa: F401
+from pybroker.common import ModelSymbol
 from pybroker.log import Logger
 from pybroker.scope import PendingOrder
 
@@ -157,6 +158,21 @@ class TestLogger:
         assert "2020-01-01 00:00:00 to 2020-12-31 00:00:00" in message
         assert "timeframe: 1d" in message
         assert "['AAPL', 'MSFT']" in message
+
+    def test_info_train_model_completed_includes_elapsed_time(
+        self, scope, caplog
+    ):
+        caplog.set_level(logging.INFO, logger="pybroker")
+        logger = Logger(scope)
+        model_sym = ModelSymbol("test", "AAPL")
+        logger._train_model_start_time = 100
+        with patch("pybroker.log.time.time", return_value=105):
+            logger.info_train_model_completed(model_sym)
+        try:
+            message = caplog.records[-1].getMessage()
+        except TypeError:
+            message = ""
+        assert message == f"Finished training model {model_sym}: 0:00:05"
 
 
 def test_info_walkforward_on_days_prints_day_names(scope, caplog):
