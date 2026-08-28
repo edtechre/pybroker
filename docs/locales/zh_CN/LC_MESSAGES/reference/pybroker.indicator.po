@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-09 17:02-0700\n"
+"POT-Creation-Date: 2026-08-27 20:21-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -20,66 +20,64 @@ msgstr ""
 "Generated-By: Babel 2.18.0\n"
 
 #: ../../source/reference/pybroker.indicator.rst:2
-#: bd847a480e04424ebe19f5eb2dd0fecf
+#: 6608313ea66e46f1b9a18859eb806372
 msgid "pybroker.indicator module"
 msgstr "pybroker.indicator 模块"
 
 #: ../../source/reference/pybroker.indicator.rst:4
-#: 8b7416a6753147329aceaa78516bd926
+#: 18e3baf11a444537b2c4d63f322505e8
 msgid ""
 "PyBroker reimplements standard indicators with volatility normalization "
 "and a robust non-linear rescaling so their values are comparable across "
 "symbols and market regimes."
 msgstr "PyBroker 对标准指标进行了重新实现，加入了波动率归一化和稳健的非线性重缩放，使其值在不同股票代码和不同市场状态下都具有可比性。"
 
-#: 3067c1af76054b56833e313f706f6631 of pybroker.indicator:1
+#: b14ee304ed474a2e8e6c989e43e02dce of pybroker.indicator:1
 msgid "Contains indicator related functionality."
 msgstr "包含与指标相关的功能。"
 
-#: 8eebfb6bbdcf44e18602963275a12328 of pybroker.indicator.Indicator:1
+#: e2d0c1a1aad344ea9f426734af023f93 of pybroker.indicator.Indicator:1
 msgid "Class representing an indicator."
 msgstr "表示一个指标的类。"
 
 #: ../../source/reference/pybroker.indicator.rst
-#: 068f085aa9e94a4a8e28f5dd7c61b4e7 0ad87c80a0e94762b8233f14189e615f
-#: 158dd55fc9a04387b1f7b026ce4be3a0 1943c7a6d2084f91865362678ca627a7
-#: 2f003c822d304f13aaf49fe34498292b 2f5c4caccc564ebcbb40f5ab32c766f8
-#: 351b91db39bf41d091df2cdf6117078a 385a288181d14aee8f935663ac84acd5
-#: 4f18ff24496f41e3b5fac4913967ed58 5ed31242690c4fb6a64fc5d48f7ce602
-#: 65903ab313f547d7bfc8bad300da23a1 667e657ea2e7418db5dc4854ac3fc973
-#: 74c9b1dc035c48d49c80e0bc9e03de77 7ee5f5afe86c453798ccd284ca68ddcc
-#: 87f6b4c08eb04828a51dfedf79044e08 8f89385913ac4fd2a2d4753a80279097
-#: 93661b3654eb4b0aa9630c1a518361c0 9955e3b9acac429fbeaccd98c078fe70
-#: a0ca8eda1d2a47c8b2dcd381dde2f601 a6cb572712df4f63af67a6febcca9e30
-#: aa035e775e8041758219cfc418097e1c ba57af46d4eb4315b6896d16a59eaf1d
-#: bcec2c06839f4c538ac3d2703a9e4ae2 c297a379f11b4fac98bd5178e0e2b06c
-#: c4fdbc2656744deb9374a17d675dd8af c547c3c8dd0b45eaa5dde120583e815d
-#: cbe6939a8e554116b8e2b162d556dda4 d2a8e38f71a8455bac20b7a9a9c4fafd
-#: dafd2a3466de487c958a973376ddee8a e079d65b825c4cd28fd0b8c77d856700
-#: e572915bc1ec48cbaaf437a370ee220d e613d8dfaa4c4c7e9065e32fbc905733
-#: efbd117e64d04b1a978ae2f8ee154437 f3c2b32b082c4001b4f483abdd0f72d2
-#: f4b6f149273f4411abc1e3282b149b0a f67837d41d5d48d19e2b2134fb3520bf
-#: ffd441e0bb9e4bbe9152a87199c2c90d
+#: 0a748cf12f214c39b12f4a79380e5fa0 0a8ceabbb6974fcabefce91d29b18184
+#: 171cc07793b941d283fc9f927592001e 23872d603d0349b793463a637d53ba1c
+#: 2e1341f620744cdbbb9bf8e21a902014 38530e49f93d4d298a563f04d3271e2c
+#: 40e0eec8ff864b548a07c24312c862b2 50255d57a8d84c0fabd7c6cecbbed227
+#: 571090a510c94975a3e2b1356683e797 5c52bb67cef24ce0982524e0822a432f
+#: 6531ddff2dcb41379a62a1e70e4a34c7 6c08dee8375540e6a631af44b4ade078
+#: 711fd229d52645bf8d9109ce79859ca3 722f9f83171848149ea50c9f4b355437
+#: 73f00288665e403595657921314ec382 77838d1daffc42e18d651b013d7997c5
+#: 7cd8876a6fec4b06a8dfdc1335a9b83a 879d206ad3d642349d948beb4e019018
+#: 885997778c524819af95b8dcf206fed6 8a11b5f1b0dd4da7a05a69f24f7222ab
+#: 9d0399522413420e98e1735467ea4e60 a33dd752243c4a7ea90f8245421a69a4
+#: afdf566d4bec47afbb85ed2c9b45557b b506fafe9bbe45aa91a2ab052ac36455
+#: ba1d458812d9459e9ebffec1d5123897 c18f0b9170f141668d994535fe63bf67
+#: c191b689a3594a8eb78785b6a2b2fc3e cb24fe0837204e939ca5abf1fd916e39
+#: cdff6f5f08dd49139f7d13dd8d73509d e6a7b1b1ac1f47f6ad1318f63a18a9e4
+#: eccde704416d4a08b82951b5fd51f165 ed1a1e165e644cdcb9ba2b09d5044b97
+#: f34966190b38423785e9cd7f7f71acf4 ffc5f76c702843ef8641631afd839bfa
 msgid "Parameters"
 msgstr "参数"
 
-#: 444bee97b28a4588aa8c42c5c9629fd3 of pybroker.indicator.Indicator:3
+#: 0d0defc9ebdb41faba08f5e994fb2826 of pybroker.indicator.Indicator:3
 msgid "Name of indicator."
 msgstr "指标名称。"
 
-#: 9d98c71de8a24f7294c086df250786e2 of pybroker.indicator.Indicator:4
+#: 4cc45f8968a8432b9882a48452904e94 of pybroker.indicator.Indicator:4
 msgid ":class:`Callable` used to compute the series of indicator values."
 msgstr "用于计算指标值序列的 :class:`Callable`。"
 
-#: 3e79f2df06824c1d8a432b486e790aec of pybroker.indicator.Indicator:5
+#: a94dcaf2bd284282a46054037cb106ff of pybroker.indicator.Indicator:5
 msgid "``dict`` of kwargs to pass to ``fn``."
 msgstr "传递给 ``fn`` 的关键字参数 ``dict``。"
 
-#: fd5aebe1231e493ca5e64f05eff128a7 of pybroker.indicator.Indicator.__call__:1
+#: 36381a5fe6364a65b6fefaa1e5f8fae6 of pybroker.indicator.Indicator.__call__:1
 msgid "Computes indicator values."
 msgstr "计算指标值。"
 
-#: 19b75ec4cc834c31ba1184cda01951c2 of pybroker.indicator.Indicator.intervals:1
+#: e730bf7d7e8543a589e826d8dbef909a of pybroker.indicator.Indicator.intervals:1
 msgid ""
 "Binds this indicator to one or more compression intervals for use with "
 ":meth:`pybroker.strategy.Strategy.add_execution`."
@@ -87,7 +85,7 @@ msgstr ""
 "将此指标绑定到一个或多个压缩区间，以便与 :meth:`pybroker.strategy.Strategy.add_execution` "
 "搭配使用。"
 
-#: 9171cf6e64f24306be493195fdbef12d of pybroker.indicator.Indicator.intervals:4
+#: f16d8424a1ac4cff86f07970bf7b230e of pybroker.indicator.Indicator.intervals:4
 msgid ""
 "A bound indicator is computed on exactly the listed intervals, where its "
 "values are read with :meth:`pybroker.context.IntervalContext.indicator`. "
@@ -105,7 +103,7 @@ msgstr ""
 ":meth:`~pybroker.strategy.Strategy.add_execution` 的 ``intervals`` "
 "参数中再次声明它们::"
 
-#: bc2c3bfc564041f5af3e505c180b7274 of
+#: 908674d4283748dfb5a42ed158908b20 of
 #: pybroker.indicator.Indicator.intervals:19
 msgid ""
 "One or more :class:`~pybroker.interval.TimeframeInterval`\\ s to compute "
@@ -117,33 +115,31 @@ msgstr ""
 "线间隔，或使用字面量 ``'base'`` 表示基础时间框架。"
 
 #: ../../source/reference/pybroker.indicator.rst
-#: 01300ad311714bc3aa58714b03a72a1c 02ca277e06cc468eba4ddb3624bbdaa6
-#: 145368c6a2314dffa78d629647c0db63 1a42ebb77c6c4cb2b6d46eda7ba4d9b2
-#: 24327e8fc4bd47998af87e2792bed3f6 2c1eade691e34c3a911ec75584c18202
-#: 2f6600ce5ab34723924ebd419b2d4eda 30d5b65adccf45e68cfe4402b00a37b5
-#: 32f311e8edee4ea89d1665046678404a 3fe0045b130040f9ba566ea234b7d170
-#: 40cc1f90e9da489fa27f9ebbce360a3c 582e51afca054662bfe6c3cf1900c2bc
-#: 5d40d45db2c5413cbdbfa154612f45b8 6dbd963089954ce6bf828fd8c7b87e26
-#: 6e16bde5916a42f384983d067139eb63 7ab68baf79324d1cae5481e2b52e70a0
-#: 841d20042c3a40a4924190692f671706 8ba969c12dd948b39612150d3e136d32
-#: 907addc7e2b24518885ba371bc165298 9136327a7c054148a7a179d51a017b8a
-#: 9336e6b774de4472a69f8484da867ff7 a5ccfcbf5d07492daf19e84ab6fe1a6a
-#: aa6e64f693ac49d7a8109e558efc8ca2 c3b9b612b58148a8987ba9bceea565ae
-#: cfed72df90e44bd9a2f94de2a0d5265a d490e1444f214cb4a923f2cd49a70ddc
-#: d74cedf78bcf42319c3b7047342e32ae e4974fe94dc24d929095a448cdc10de3
-#: e699717af7084852910ec630b259d85d eb9a0e1a3e8d442e88e9b5f53da8ef7b
-#: eebebd4bcda649d89f0295772f119702 eff10007c13941a6b27221bd8cf43af9
-#: f7382f75de82468cb16c035cc84fc571 f7e44d7914964d76998843a003d56e27
-#: f8cc692f3bf940b0ac0cb6cb588ce97f f8f4b0a66e274e5ba9696667adeb1986
+#: 082815cf07914898877ca4b1fdffeb02 2fd9c3b31b374a228a6210e3519413ab
+#: 333eeaa2c92f41a794e4e4d5672a23d5 3689959103b6472cac2f01d6786dd911
+#: 3f072d62151541939fc7f1f36d15f008 3f10e7742ebc4fe28aefa018921adce9
+#: 4073771bd62d489f9f1b422a7da826d1 465346d7e96649daab4d69959a83f345
+#: 4f134afa49e7497ea6c252349500f2b3 508a103e46144d13bb7ed39e5efd4043
+#: 5387e5611d7e40ecb924334b2ee36ce4 5fbedb624b1f44fc9bf9764a43318164
+#: 744d5de2c8304813837948751308ed17 772c02c34278435b91ed2e2401994616
+#: 794866ee017547989cd89d0311cf8b96 7debeb451b33499a87f4b5650efa521f
+#: 859f21cbe43d411a953b5ed255158f2a 8eb21c2e4f014f6fb52b44fa1e0a1aad
+#: a091e1d875914104adc2fc77a8aca7e2 a316a14b7ccb4337848bc232ec630b3c
+#: b8d874cc53a642a2abc0c5aa60509081 c16f419f5c0e45e1944a8fb0a7cf8a4a
+#: cb14def40dbd48ba8b4f79472d2ba951 d78786ef08ed489294812628db0332e3
+#: e2fbda446aad42a0a7db3620ac85de36 e831812e738543ef93cac015cd051046
+#: ec612dcd592a476ab29b366518eef345 ec69ad6b317f4055b5c0513016408922
+#: f4f25f6625284a06977bf02bd7da8cd9 f73c26b983a74655b740796c11d1d610
+#: fee528dd8e05451f8ba37472c89e94de ff5011a61f774be8a31afaa4ea9735e8
 msgid "Returns"
 msgstr "返回"
 
-#: 35739e0155624ed2a1893eb300788bc8 of
+#: 3cf94db20d7a4b0480d06696378bb1a4 of
 #: pybroker.indicator.Indicator.intervals:25
 msgid ":class:`.IntervalBoundIndicator` binding this indicator to ``intervals``."
 msgstr "将此指标绑定到 ``intervals`` 的 :class:`.IntervalBoundIndicator`。"
 
-#: 3c289737f84b44a2a53fd12951780f38 of pybroker.indicator.Indicator.iqr:1
+#: 08e79e6fbfa34b1faf412888c9f0e34f of pybroker.indicator.Indicator.iqr:1
 msgid ""
 "Generates indicator data with ``data`` and computes its `interquartile "
 "range (IQR) <https://en.wikipedia.org/wiki/Interquartile_range>`_."
@@ -151,7 +147,7 @@ msgstr ""
 "使用 ``data`` 生成指标数据，并计算其 `四分位距（IQR） "
 "<https://en.wikipedia.org/wiki/Interquartile_range>`_。"
 
-#: 669330558200487dab7c8a604d63b5ce of
+#: d8e4c743e76047d298bc226f396b63ea of
 #: pybroker.indicator.Indicator.relative_entropy:1
 msgid ""
 "Generates indicator data with ``data`` and computes its relative `entropy"
@@ -160,21 +156,21 @@ msgstr ""
 "使用 ``data`` 生成指标数据，并计算其相对 `熵 "
 "<https://en.wikipedia.org/wiki/Entropy_(information_theory)>`_。"
 
-#: 9edb1c9498414be4a9d64bbfe4a2499b of pybroker.indicator.IndicatorSet:1
+#: 41fa07029945488e8f0c9a82e4eb308a of pybroker.indicator.IndicatorSet:1
 msgid "Computes data for multiple indicators."
 msgstr "计算多个指标的数据。"
 
-#: 8508c151e9a249c88e56f6a609b4f76d of
+#: 5662cf5ea30a40c8ad8f10d269c995e0 of
 #: pybroker.indicator.IndicatorSet.__call__:1
 msgid "Computes indicator data."
 msgstr "计算指标数据。"
 
-#: cb193b9461b5453a91e53f17398b2f1f of
+#: 58a19bc9efc645beb9b88a668962cba8 of
 #: pybroker.indicator.IndicatorSet.__call__:3
 msgid ":class:`pandas.DataFrame` of input data."
 msgstr "输入数据的 :class:`pandas.DataFrame`。"
 
-#: 26bd3da82f2c492695ec4156d39c780a of
+#: 79735f57a6ce4b888c38f40b7d378457 of
 #: pybroker.indicator.IndicatorSet.__call__:4
 msgid ""
 "If ``True``, indicator data is computed in parallel using multiple "
@@ -182,52 +178,52 @@ msgid ""
 " ``False``."
 msgstr "如果为 ``True``，指标数据会使用多个进程并行计算。如果为 ``False``，则串行计算。默认为 ``False``。"
 
-#: 9c496a58ef144e75bd284fcadf3e31e6 of
+#: ce840a500ee742b385da49b2dc010476 of
 #: pybroker.indicator.IndicatorSet.__call__:8
 msgid ":class:`pandas.DataFrame` containing the computed indicator data."
 msgstr "包含计算出的指标数据的 :class:`pandas.DataFrame`。"
 
-#: ed8eae63bd6c470a9c249cb6d0c280f1 of pybroker.indicator.IndicatorSet.add:1
+#: e50adfed34794bbd826cd165ab3a2c3d of pybroker.indicator.IndicatorSet.add:1
 msgid "Adds indicators."
 msgstr "添加指标。"
 
-#: 5ec8dd44a2f24b69be01a0f018e31ff4 of pybroker.indicator.IndicatorSet.clear:1
+#: 3e457b7a163f4cb8bb99d250eef00727 of pybroker.indicator.IndicatorSet.clear:1
 msgid "Removes all indicators."
 msgstr "移除所有指标。"
 
-#: db45828d66974ffc980dab118da61ed9 of pybroker.indicator.IndicatorSet.remove:1
+#: 5163bf3501fc442d99045988f3c77204 of pybroker.indicator.IndicatorSet.remove:1
 msgid "Removes indicators."
 msgstr "移除指标。"
 
-#: 041e2ebeb41e499fb32c72d70b88bf0e of pybroker.indicator.IndicatorsMixin:1
+#: 1d802a8d8c6b447e8a6a71cfc0c36913 of pybroker.indicator.IndicatorsMixin:1
 msgid "Mixin implementing indicator related functionality."
 msgstr "实现与指标相关功能的 Mixin。"
 
-#: f1d043729404469caa473844936ee542 of
+#: dbee66e7dc374bef9cc9b1b6b8063f00 of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:1
 msgid ""
 "Computes indicator data for the provided "
 ":class:`pybroker.common.IndicatorSymbol` pairs."
 msgstr "为给定的 :class:`pybroker.common.IndicatorSymbol` 组合计算指标数据。"
 
-#: fc6679e4790b4051a12e367f2ec1140d of
+#: 12401f0911324181a78678d5bf701914 of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:4
 msgid ":class:`pandas.DataFrame` used to compute the indicator values."
 msgstr "用于计算指标值的 :class:`pandas.DataFrame`。"
 
-#: b20e731d8ddd4b168e6dbf7d7495010e of
+#: 279601284f6748bbb1557ebc8e48833d of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:5
 msgid ""
 "``Iterable`` of :class:`pybroker.common.IndicatorSymbol` pairs of "
 "indicators to compute."
 msgstr "待计算指标的 :class:`pybroker.common.IndicatorSymbol` 组合的 ``Iterable``。"
 
-#: 8cc0fb57aac443d59352d665eaf7accb of
+#: 00bbd69c7ab84afaba483f8820528282 of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:8
 msgid "Date fields used to key cache data. Pass ``None`` to disable caching."
 msgstr "用于为缓存数据生成键的日期字段。传入 ``None`` 可禁用缓存。"
 
-#: fb844093b6f24ffd972e3ce18dfba344 of
+#: b161f2b35a72445caea6feaee37e2c36 of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:10
 msgid ""
 "If ``True``, indicator data is computed in parallel using multiple "
@@ -237,12 +233,12 @@ msgstr ""
 "如果为 ``True``，指标数据会使用多个进程并行计算。如果为 ``False``，则为所有 "
 ":class:`pybroker.common.IndicatorSymbol` 组合串行计算。"
 
-#: 26343f2143204f56946e31056c8ddcdc of
+#: af08840823a542c78290560128267519 of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:14
 msgid "Optional compressed interval data."
 msgstr "可选的压缩区间数据。"
 
-#: 5661de9655c54728becd598257eee0a0 of
+#: 31c42bac396d4cb0bf79c69b23f8ee3c of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:15
 msgid ""
 "Optional pre-built :class:`pybroker.scope.SymbolArrayStore` to avoid "
@@ -251,7 +247,7 @@ msgstr ""
 "可选的预先构建好的 :class:`pybroker.scope.SymbolArrayStore`，用于避免从 ``df`` "
 "重新构建各品种的数组。"
 
-#: 93b31dfbcde84b16886653da38722e8f of
+#: f9137b1d648041edac1c75ff28fd0704 of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:17
 msgid ""
 "Optional hyperparameter overrides for indicators that declare "
@@ -261,7 +257,7 @@ msgstr ""
 "为声明了超参数的指标提供可选的超参数覆盖值。在 :meth:`pybroker.optimize.OptimizeMixin.optimize` "
 "期间，结果会在内存中被记忆化（memoized）。"
 
-#: dbb54eb65c7d4d899154e680694074fe of
+#: ca815e990cbe447ab27e0fc04dd5ebbb of
 #: pybroker.indicator.IndicatorsMixin.compute_indicators:22
 msgid ""
 "``dict`` mapping each :class:`pybroker.common.IndicatorSymbol` pair to a "
@@ -270,30 +266,29 @@ msgstr ""
 "将每个 :class:`pybroker.common.IndicatorSymbol` 组合映射到其计算出的指标值 "
 ":class:`pandas.Series` 的 ``dict``。"
 
-#: 0e53e54bfc5240deb3d99edeb97f30ab of pybroker.indicator.adx:1
+#: 39fd37b4380b40e7a3d66feb2677d6dc of pybroker.indicator.adx:1
 msgid "Average Directional Movement Index."
 msgstr "平均动向指数（Average Directional Movement Index，ADX）。"
 
-#: 051d7879907b49e9b77ded4baac95898 0770bd21caa941e6817a44e0781cd944
-#: 11d692ff06f74068a71ae2b8240817ec 14620bb1db3a400f9ab6966c348587fb
-#: 158b8213be584fef855aeeba8f123857 1a2762eadbb543b88fd3fbb826ceef49
-#: 1bb8f91ce10b4608a007336cc5cb75bd 237c5b85b4a14df08cd7eb1c78d76420
-#: 2b3129ffb1aa44a09310617b8c50179f 2ee9dcfec5bb43c884c6a0ff57e4b717
-#: 35896f556c7d4dbb8cbe5a64ea05cdc0 39c346decb5b468aad16d037595d87ef
-#: 3a984d7da9f541938a86fc1f2660eb06 441ec392789e4603b96fbd2d7ec77002
-#: 4420cc5f040e4e5ca1f95f5f596f2c62 48a94801924f4f059a16898d17a5c6d5
-#: 4d6021cb2d084c13a5df8a899e83b0b7 4fc967e0b94740f4840e647c6531cb86
-#: 67584f1cfa33428e957b803af2796189 81bb920060a645a2868d1a920d66899e
-#: 8af084f6b1cd4dab8cf34effc2b15fd3 90b526ff82a2458981737aacc0a60671
-#: 916c7b002ce345fc9cfd275088dcd42d 9aeb744cabc648a6b59d38b7e5078ab0
-#: 9b23720b1c1c468c972a3dc8be8e32c8 b109462fe8414eaa85d7458f82780bb3
-#: b1fe3c1588c94bbda504452f9993bf35 c0b940748521443e97e900405746d906
-#: c9de1cf860dc41da9e8292732bd933be d6855972b8f8427fad4466f41af0e8df
-#: e79a42b930be40eeb864efd369ce8d44 f765b83eab68481d87f38e457b5bb988 of
-#: pybroker.indicator.adx:3 pybroker.indicator.aroon_diff:3
-#: pybroker.indicator.aroon_down:3 pybroker.indicator.aroon_up:3
-#: pybroker.indicator.atr:3 pybroker.indicator.close_minus_ma:3
-#: pybroker.indicator.cubic_deviation:3 pybroker.indicator.cubic_trend:3
+#: 0103af62d9d5450a83a4840d86ecd60f 0d38105a97314612ba99abca7b868fd9
+#: 2512156acce648a893898aa70d5ca80b 299fd120d1ed4b429ca2ff7181dfacb8
+#: 32efc7af15114dbfb9631e58a577651d 3648cdb4991c4ac5a05c70e4907336c8
+#: 4f68c0efb549499eb065e9704ce47c83 502efd72cf3b4738b4dd123d99ce0b53
+#: 6461e56d0d3048ba9b8053c5434cdbae 68d630318b594c9e83307e6849eaeb6a
+#: 6c2283cd57ec4e05a663140f1c693a44 7054a850ae7f49e09f0cc740d6732889
+#: 79bf285885e047d1b00a14f8d0ffa6e9 7fb38c2d8953445cb6ebd7af399ce43e
+#: 80c5206885234b77a20a50cb344736fd 847c8a7dc2f74bfeb98d0ea86062d8a2
+#: 84fb48f2eb914c70affb44765e8e1982 8744c4ff5f204508b54188f4f3c0eb9a
+#: 88421e5e7e9b4076bf52e765914667e2 9a3bcdcd36114d7eadd64add971df5ac
+#: a153a327aa8643b382789cac093a507e ac5f088a07734e75986ed14f1c06943a
+#: b7d79c649956429e976b96bf191c23b7 c3c22b3ec4f64b31a6a019c6899bde93
+#: c6c5d27e68ec4a8eb5beff078dd8fe46 d43ec9daebee4c16bf3ed1a21550d53c
+#: d9efc2db040e40a1a65a3d2ea8ac8275 daf69515aff84f11a295d59269b4e1e8
+#: ee9ec2d070b545458cc210c54d97a675 of pybroker.indicator.adx:3
+#: pybroker.indicator.aroon_diff:3 pybroker.indicator.aroon_down:3
+#: pybroker.indicator.aroon_up:3 pybroker.indicator.atr:3
+#: pybroker.indicator.close_minus_ma:3 pybroker.indicator.cubic_deviation:3
+#: pybroker.indicator.cubic_trend:3
 #: pybroker.indicator.delta_on_balance_volume:3
 #: pybroker.indicator.detrended_rsi:3 pybroker.indicator.highest:3
 #: pybroker.indicator.intraday_intensity:3 pybroker.indicator.laguerre_rsi:3
@@ -313,21 +308,21 @@ msgstr "平均动向指数（Average Directional Movement Index，ADX）。"
 msgid "Indicator name."
 msgstr "指标名称。"
 
-#: 07d8599cd969457199a506b82f74c484 19dd72fb6bcb410baff2929147dde409
-#: 1cb0ffb72031481384ab62e49be4263d 2153ddfe5da1440bab75654bcf18873f
-#: 389b22e2a2244446bd573f60287b1183 408d58668674461e9a1f454de5e91e28
-#: 7e944a4435c34a1aa9ed58843691bff1 9b7eaab88560409097d2938151de7cd1
-#: a1f461a41d7f4ce49e518b4e33d681a8 a48c776c3dd54205beebf525267bd937
-#: af4b966731dd4d568ca8e614c44a1872 b3b823385a0c4e469ce6aa724cd3752b
-#: b64dbb6dfe90409286259c968f57a676 bb5bb66deebe423bb3437be5760ccd38
-#: c3290a4d0c434f5390e40caeca50920b c84106bdc6e843ca9d22041d3d5246d0
-#: cbaef38140814e8e905dda93eae639bc e0571c2b86c342cba74cc376e92f321d
-#: e6c3d876c25546ee8e418c628d5f7f5b e9c1ef72145b450f8a58f42d8a70910c
-#: f16762328f5345488c1ab0ebcb7f3fab fa81e8c2a2a64f669466d089c82fb712 of
-#: pybroker.indicator.adx:4 pybroker.indicator.aroon_diff:4
-#: pybroker.indicator.aroon_down:4 pybroker.indicator.aroon_up:4
-#: pybroker.indicator.atr:4 pybroker.indicator.close_minus_ma:4
-#: pybroker.indicator.cubic_deviation:5 pybroker.indicator.cubic_trend:5
+#: 05fa2d5af12f44e7a72acde38348b021 08bc6f5f58d64e01a15f0fd8363af9de
+#: 1010b481b4d0456e8d3c3d4fd9016221 128cf8fae90240949aaf5304d71da064
+#: 269e7cb2ab8d499da330685379d7525c 3219ba98d84a4d328239d04ec62f687e
+#: 334cd1e1b6af4ca197a9420a4e6b18ef 46ff5e0a07244d81870fafd9d89cbaa1
+#: 5627e438e0b948109134917446064a42 56d09337e7d545c6926ea24d52600e6e
+#: 68b985c823504c23be320bd5cecbee0d 70e9d3c485e741bea86f1ba07b50f5c2
+#: 72a8bc33ab4b4cfc934dd01b6d91b6d4 8972c6765b2c462e9113360d331b1192
+#: 8a934d74cb4243b9b4ff06943a74d09e c60f569adf4c420d84c7636a5a14a4bb
+#: cc335c21651e4057a769652ccca8e9b8 d59d877a1c8c4124bc2db781fa0da225
+#: d6bc6779247f48aeaa3315cde4410d9a e2ca921e599640d8939d8244e9acb164
+#: fa3ef8ae0436400f805646e30c310de9 of pybroker.indicator.adx:4
+#: pybroker.indicator.aroon_diff:4 pybroker.indicator.aroon_down:4
+#: pybroker.indicator.aroon_up:4 pybroker.indicator.atr:4
+#: pybroker.indicator.close_minus_ma:4 pybroker.indicator.cubic_deviation:5
+#: pybroker.indicator.cubic_trend:5
 #: pybroker.indicator.delta_on_balance_volume:4
 #: pybroker.indicator.intraday_intensity:4
 #: pybroker.indicator.linear_deviation:5 pybroker.indicator.linear_trend:5
@@ -343,56 +338,56 @@ msgstr "指标名称。"
 msgid "Number of lookback bars."
 msgstr "回溯 K 线数量。"
 
-#: 5df243f33bdc4cf6869051677fa90272 of pybroker.indicator.adx:6
+#: 984be81855bb4943a9734509a568ef30 of pybroker.indicator.adx:6
 msgid "Average Directional Movement Index :class:`.Indicator`."
 msgstr "平均动向指数 :class:`.Indicator`。"
 
-#: 800be7a8ae6745898e492d6b0c5a9604 of pybroker.indicator.aroon_diff:1
+#: ee6f1b561d994b77b9b58c46a550f55e of pybroker.indicator.aroon_diff:1
 msgid "Aroon Upward Trend minus Aroon Downward Trend."
 msgstr "Aroon 上升趋势指标减去 Aroon 下降趋势指标。"
 
-#: 0b08da179a7344d7998866a329bf9ff2 of pybroker.indicator.aroon_diff:6
+#: 96fe6b22611f4ef99519f2e783a5debb of pybroker.indicator.aroon_diff:6
 msgid "Aroon Upward Trend minus Aroon Downward Trend :class:`.Indicator`."
 msgstr "Aroon 上升趋势指标减去 Aroon 下降趋势指标 :class:`.Indicator`。"
 
-#: 8a3acf9194cb4d1ea38c498a194b53b3 of pybroker.indicator.aroon_down:1
+#: 56701dced1024e42bd983ab36299774d of pybroker.indicator.aroon_down:1
 msgid "Aroon Downward Trend."
 msgstr "Aroon 下降趋势指标。"
 
-#: 2f612df27713401f935649cdaf5604b7 of pybroker.indicator.aroon_down:6
+#: 898a0e91ff774bd293327776dbcc82f7 of pybroker.indicator.aroon_down:6
 msgid "Aroon Downward Trend :class:`.Indicator`."
 msgstr "Aroon 下降趋势指标 :class:`.Indicator`。"
 
-#: 6a2f62cd2bfd47ad81a2935d44f4710a of pybroker.indicator.aroon_up:1
+#: 5529390e55e14abfacbf71c2b978098d of pybroker.indicator.aroon_up:1
 msgid "Aroon Upward Trend."
 msgstr "Aroon 上升趋势指标。"
 
-#: 16e44d802748437aa98dcdef91e2b9e1 of pybroker.indicator.aroon_up:6
+#: 9625bd0be7ba4788b3c2fec1cd3bfb27 of pybroker.indicator.aroon_up:6
 msgid "Aroon Upward Trend :class:`.Indicator`."
 msgstr "Aroon 上升趋势指标 :class:`.Indicator`。"
 
-#: eb9fe4a1663d464fa9e17e2faf2bdcb2 of pybroker.indicator.atr:1
+#: 92a4b873dfa443de9be16ad8b29b9e29 of pybroker.indicator.atr:1
 msgid "Average True Range (ATR)."
 msgstr "平均真实波幅（Average True Range，ATR）。"
 
-#: f29da6d966124b8482394528e143198e of pybroker.indicator.atr:6
+#: ab6e0544282f4bf49927133526d1ee09 of pybroker.indicator.atr:6
 msgid "Average True Range :class:`.Indicator`."
 msgstr "平均真实波幅 :class:`.Indicator`。"
 
-#: a07cb019f96d4970ae7a6713b42ad888 of pybroker.indicator.close_minus_ma:1
+#: 919d75cfd94f4e69bd91851f4ad8156d of pybroker.indicator.close_minus_ma:1
 msgid "Close Minus Moving Average."
 msgstr "收盘价减去移动平均线（Close Minus Moving Average）。"
 
-#: 3beb7c5439064bd39f74bed405f9fb0c 8b9671195e1e4da78c8af1efbf42176c
-#: a4b6897ece6846f6879f209a02ea1174 e31b65cc5d154feca2a56463871c285f of
+#: 346f199ccda640839e0c1fd5ef8f7a6f c8babb9936bb4549bbb0666a4f714954
+#: e4fe2eceb3cb4d788e3f967e24b101fc f2501bf8927c4747ab3a7b3a4d02189a of
 #: pybroker.indicator.close_minus_ma:5 pybroker.indicator.cubic_trend:6
 #: pybroker.indicator.linear_trend:6 pybroker.indicator.quadratic_trend:6
 msgid "Lookback length used for Average True Range (ATR) normalization."
 msgstr "用于平均真实波幅（ATR）归一化的回溯长度。"
 
-#: 11ea23aff3cf4e9f9ecd1bfba030a090 8ac93043c0c945ec95c1029914688bbe
-#: 8ee1570864324e3d84c433d52abb45f8 94a76128e3c747978176ca1b6ab1b5a0
-#: b2ede1682eee4aad966f00093eb5f8a8 d736ca431bd14016aebcdafc3d6c487f of
+#: 09b38b5c9fff47b6accbde46c629226b 61d118e4463e40abb9024b948b31e84a
+#: a868c7aaf65348c08920c62d9f591396 c55026f437d34aed892d8947be69132d
+#: d15b4e90777848b196827830d5c3f729 eb20c33ae6c34a26a1b499b7bcbd25e8 of
 #: pybroker.indicator.close_minus_ma:7 pybroker.indicator.cubic_trend:8
 #: pybroker.indicator.linear_trend:8 pybroker.indicator.macd:8
 #: pybroker.indicator.quadratic_trend:8
@@ -402,19 +397,19 @@ msgid ""
 "less. Defaults to ``1.0``."
 msgstr "大于 ``1.0`` 会使返回值被压缩得更多，小于 ``1.0`` 则压缩得更少。默认为 ``1.0``。"
 
-#: 586d965578584a6bbaa5026ffcaadc10 of pybroker.indicator.close_minus_ma:10
+#: 7543da47f9a44804bcb7a272e6a4c598 of pybroker.indicator.close_minus_ma:10
 msgid "Close Minus Moving Average :class:`.Indicator`."
 msgstr "收盘价减去移动平均线 :class:`.Indicator`。"
 
-#: 6b4c38a9dc78418d81ba8ded5ff47310 of pybroker.indicator.cubic_deviation:1
+#: edbca3d3a2384996abab68281a5c27ea of pybroker.indicator.cubic_deviation:1
 msgid "Deviation from Cubic Trend."
 msgstr "相对三次趋势的偏离度（Deviation from Cubic Trend）。"
 
-#: 2d7216ae2f604e4c83af1ea31c506f54 341846f389174c5bb90a627b4ed69fc1
-#: 39b56a854a9848e2bee44df2cec57153 6521c2f25c0247b090afa6912c9420eb
-#: 701d68fd327c409288381b4cff323ccb 7d85be67a1a74756af812164449f502d
-#: 7fb4e53ef5d94d3a9cdb74ba7682ce50 aeb360f2132f4b67a9e4d38a74e2835e
-#: c28aba87323d43478b2a905a84ed56b5 of pybroker.indicator.cubic_deviation:4
+#: 07f2f46c756d49cabe5747170a745850 17fedce91a284b2ea9b0355af1c47163
+#: 2f9543a027a144de997c5e4dc22baab6 35a1b000d1954b2d9ce23afaa032c95c
+#: 4ea065296ea74e098e8b3512287a2d8b 74750c5ff20444188cad695a6d163e3b
+#: 8b6850fa4701486db6e313d5e7d7e285 9111c55975db4700abf291a04416d9f8
+#: dee11b9a7bf44e8e952f0ebf2818a4cb of pybroker.indicator.cubic_deviation:4
 #: pybroker.indicator.cubic_trend:4 pybroker.indicator.detrended_rsi:4
 #: pybroker.indicator.linear_deviation:4 pybroker.indicator.linear_trend:4
 #: pybroker.indicator.macd:4 pybroker.indicator.quadratic_deviation:4
@@ -422,9 +417,9 @@ msgstr "相对三次趋势的偏离度（Deviation from Cubic Trend）。"
 msgid ":class:`pybroker.common.BarData` field name."
 msgstr ":class:`pybroker.common.BarData` 字段名称。"
 
-#: 17578e8cc28845b3b80d3d33dba4103d 23a8e85575f6447c9615f049de42b41b
-#: 36e5ccae541642ccaa5cd70efa7a2f75 4e7319bbd5e746638ff613f9fe29eabb
-#: 6e7d453a15874ca59046ea44956c1784 81d27e5da27d4cbf8de4c414e0f7903a of
+#: 46bc9bcc13c9435fbb413e3b826766e5 53ce58b728664402a481d432b53cc7c8
+#: 7fdebdf5af4c4dfa9654d8a714ae0b73 d3b86e3f9063401ca459b4edcaf3feae
+#: e315dbe47dc040ff9ba230360cfcda6f ea11020a2aee494b9f98d3708bdcd55a of
 #: pybroker.indicator.cubic_deviation:6
 #: pybroker.indicator.delta_on_balance_volume:6
 #: pybroker.indicator.linear_deviation:6
@@ -435,182 +430,182 @@ msgid ""
 "less. Defaults to ``0.6``."
 msgstr "大于 ``1.0`` 会使返回值被压缩得更多，小于 ``1.0`` 则压缩得更少。默认为 ``0.6``。"
 
-#: 15836469a01f4c69b44082f291cb7d51 of pybroker.indicator.cubic_deviation:9
+#: a53d45379dd341749114a10c1050e82a of pybroker.indicator.cubic_deviation:9
 msgid "Deviation from Cubic Trend :class:`.Indicator`."
 msgstr "相对三次趋势的偏离度 :class:`.Indicator`。"
 
-#: bacdbec394534298a3d53505501dde09 of pybroker.indicator.cubic_trend:1
+#: 029278b2e6d54e449cc7ab93828a6132 of pybroker.indicator.cubic_trend:1
 msgid "Cubic Trend Strength."
 msgstr "三次趋势强度（Cubic Trend Strength）。"
 
-#: a9fac65dd445492c9949183e5eb13046 of pybroker.indicator.cubic_trend:11
+#: d8b5af03106b4a439b31431e2d8f1dcc of pybroker.indicator.cubic_trend:11
 msgid "Cubic Trend Strength :class:`.Indicator`."
 msgstr "三次趋势强度 :class:`.Indicator`。"
 
-#: 614c31d610db46e0939b31eac6860e1e of
+#: fcf831aeef4646cd83256b148b16b036 of
 #: pybroker.indicator.delta_on_balance_volume:1
 msgid "Delta On-Balance Volume."
 msgstr "能量潮变化量（Delta On-Balance Volume）。"
 
-#: 06864ca9ea634633a8d0f08850d72c06 of
+#: 81cbf8f2e4ca43d7bb209b37abb1d498 of
 #: pybroker.indicator.delta_on_balance_volume:5
 msgid "Lag for differencing."
 msgstr "差分所使用的滞后期。"
 
-#: e27693a8a23b4c19bfdacccc59465c4d of
+#: 0ee2ea1cd2024349aabb33d8230aae89 of
 #: pybroker.indicator.delta_on_balance_volume:9
 msgid "Delta On-Balance Volume :class:`.Indicator`."
 msgstr "能量潮变化量 :class:`.Indicator`。"
 
-#: 232924a99e35442d8ad9b1bbb09a6ad2 of pybroker.indicator.detrended_rsi:1
+#: 15a3154726c749e4b02792964106fd12 of pybroker.indicator.detrended_rsi:1
 msgid "Detrended Relative Strength Index (RSI)."
 msgstr "去趋势相对强弱指数（Detrended RSI）。"
 
-#: bdfb45b56ef142f89d63e3242ae2ef3c of pybroker.indicator.detrended_rsi:5
+#: 04bd2546b1044d69806c73732db8fec0 of pybroker.indicator.detrended_rsi:5
 msgid "Lookback for the short-term RSI."
 msgstr "短期 RSI 的回溯长度。"
 
-#: 21112d6c7a714558b4902cdb7bfd5fe1 of pybroker.indicator.detrended_rsi:6
+#: 58f5c9c52e04430abc634ce42730e793 of pybroker.indicator.detrended_rsi:6
 msgid "Lookback for the long-term RSI."
 msgstr "长期 RSI 的回溯长度。"
 
-#: 0105213c56c54f11ada7b0806bcceb33 of pybroker.indicator.detrended_rsi:7
+#: fa9b4ce708664775838767a43c8cd451 of pybroker.indicator.detrended_rsi:7
 msgid "Number of bars used for linear regressions."
 msgstr "用于线性回归的 K 线数量。"
 
-#: 4985e9391f504ff7ab968ea3ae2edfb5 of pybroker.indicator.detrended_rsi:9
+#: cc81861b451846cfbcd36ccb88da3a5d of pybroker.indicator.detrended_rsi:9
 msgid "Detrended RSI :class:`.Indicator`."
 msgstr "去趋势 RSI :class:`.Indicator`。"
 
-#: e7ad4e5543d24e89b30ce4f217c4d57f of pybroker.indicator.highest:1
+#: c360f88acde741a0aadfbbc055d4bad5 of pybroker.indicator.highest:1
 msgid "Creates a rolling high :class:`.Indicator`."
 msgstr "创建一个滚动最高价 :class:`.Indicator`。"
 
-#: 2b60c6853bdf486aa4288e6a1708e6ae of pybroker.indicator.highest:4
+#: d2ad6d3083d141fab6ba0a62ca932ac6 of pybroker.indicator.highest:4
 msgid ":class:`pybroker.common.BarData` field for computing the rolling high."
 msgstr "用于计算滚动最高价的 :class:`pybroker.common.BarData` 字段。"
 
-#: 6314cfec607449a78e3aad27c66e40f1 914beeab4f2243c291f3c344888b7026 of
+#: 8997a2ac65a746aca5a3460cacc31183 c7f72a8151ad414d8c4d6b87c0b9566c of
 #: pybroker.indicator.highest:6 pybroker.indicator.lowest:6
 msgid "Lookback period."
 msgstr "回溯周期。"
 
-#: f84d6758d3424d0e9350433aa9d9577a of pybroker.indicator.highest:8
+#: ec2cb74886e240f6bc89682c0fa45c90 of pybroker.indicator.highest:8
 msgid "Rolling high :class:`.Indicator`."
 msgstr "滚动最高价 :class:`.Indicator`。"
 
-#: 49f8941763bc43c4988f4b4b2eb46780 of pybroker.indicator.indicator:1
+#: febc5b52fe77497786a96f00a754ee81 of pybroker.indicator.indicator:1
 msgid ""
 "Creates an :class:`.Indicator` instance and registers it globally with "
 "``name``."
 msgstr "创建一个 :class:`.Indicator` 实例，并以 ``name`` 全局注册。"
 
-#: a737524946034021a7f21abd5d9e44d5 of pybroker.indicator.indicator:4
+#: dd68210a47ab4983acc86649295e7b94 of pybroker.indicator.indicator:4
 msgid "Name for referencing the indicator globally."
 msgstr "用于全局引用该指标的名称。"
 
-#: 7e746bdba7f743d089285842ecb8a0d9 of pybroker.indicator.indicator:5
+#: 427ff1bfd11d4367a079798e45cafa8a of pybroker.indicator.indicator:5
 msgid ""
 "``Callable[[BarData, ...], NDArray[float]]`` used to compute the series "
 "of indicator values."
 msgstr "用于计算指标值序列的 ``Callable[[BarData, ...], NDArray[float]]``。"
 
-#: baa088943cfa43e296fe96017f2ea9b3 of pybroker.indicator.indicator:7
+#: 08f80445599c40c682183165d63046c5 of pybroker.indicator.indicator:7
 msgid "Additional arguments to pass to ``fn``."
 msgstr "传递给 ``fn`` 的附加参数。"
 
-#: 8612dfccf1444b29b55083065dc9cc2a of pybroker.indicator.indicator:9
+#: 92f71cf1e4fa478692719c370821c94d of pybroker.indicator.indicator:9
 msgid ":class:`.Indicator` instance."
 msgstr ":class:`.Indicator` 实例。"
 
-#: 5935cdf0781f43d98a7c7124c79da264 of pybroker.indicator.intraday_intensity:1
+#: 27c94b95121f40d7964f1b084cc3c992 of pybroker.indicator.intraday_intensity:1
 msgid "Intraday Intensity."
 msgstr "日内强度（Intraday Intensity）。"
 
-#: 1a86059ce0934b6aa0ee5424066fd342 e167dbbae14e4a0088b2ab96df00cc5a
-#: f2c4f9db5c7546e8b717270648690450 of pybroker.indicator.intraday_intensity:5
+#: 2c999791ca5c445eb9cbd0cfa72cbc5d 4bd83a7e39144731826d9369bbe15ac4
+#: 95dffa11c6f947cda65aa0cd97cf485c of pybroker.indicator.intraday_intensity:5
 #: pybroker.indicator.money_flow:5 pybroker.indicator.stochastic_rsi:7
 msgid "Amount of smoothing; <= 1 for none. Defaults to ``0``."
 msgstr "平滑量；``<= 1`` 表示不平滑。默认为 ``0``。"
 
-#: 8db17119bbfe47ce8944c01d336a980e of pybroker.indicator.intraday_intensity:7
+#: 60a47a865af0434399678319a3d7ce7e of pybroker.indicator.intraday_intensity:7
 msgid "Intraday Intensity :class:`.Indicator`."
 msgstr "日内强度 :class:`.Indicator`。"
 
-#: e18f1d3178d94e96ad59a4511e8c4d62 of pybroker.indicator.laguerre_rsi:1
+#: 72c89a6f02cf4214b558498c01315e9a of pybroker.indicator.laguerre_rsi:1
 msgid "Laguerre Relative Strength Index (RSI)."
 msgstr "拉盖尔相对强弱指数（Laguerre RSI）。"
 
-#: 0cfe2810afb340509dc6b24e8962a465 of pybroker.indicator.laguerre_rsi:4
+#: d4074c38eda74f2997fbab217146daca of pybroker.indicator.laguerre_rsi:4
 msgid "Fractal Energy length. Defaults to ``13``."
 msgstr "分形能量（Fractal Energy）长度。默认为 ``13``。"
 
-#: 0190b0d3c26a4395be1330e7eb9bb0fd of pybroker.indicator.laguerre_rsi:6
+#: 5593cf3d5d3148a3ac92ba7d09b70f9e of pybroker.indicator.laguerre_rsi:6
 msgid "Laguerre RSI :class:`.Indicator`."
 msgstr "拉盖尔 RSI :class:`.Indicator`。"
 
-#: b0733d7a853640d19e93346dfbf28e74 of pybroker.indicator.linear_deviation:1
+#: 940eed0a556e4c5298bc17f0591107d7 of pybroker.indicator.linear_deviation:1
 msgid "Deviation from Linear Trend."
 msgstr "相对线性趋势的偏离度（Deviation from Linear Trend）。"
 
-#: 32c6804961004071ac3722dbcfd2451d of pybroker.indicator.linear_deviation:9
+#: 2996aaa5d3824d6ab77ddb3f4f6fd4bf of pybroker.indicator.linear_deviation:9
 msgid "Deviation from Linear Trend :class:`.Indicator`."
 msgstr "相对线性趋势的偏离度 :class:`.Indicator`。"
 
-#: 66168ae3e47646c682a4aad3f605da72 of pybroker.indicator.linear_trend:1
+#: 0f0bdebd8222431d90a9e4c7c68b15bc of pybroker.indicator.linear_trend:1
 msgid "Linear Trend Strength."
 msgstr "线性趋势强度（Linear Trend Strength）。"
 
-#: 6a799cbdd0e8461089b4bdfaf3fa76ce of pybroker.indicator.linear_trend:11
+#: 18e944421e264296a561b5b295eb3fee of pybroker.indicator.linear_trend:11
 msgid "Linear Trend Strength :class:`.Indicator`."
 msgstr "线性趋势强度 :class:`.Indicator`。"
 
-#: d18c5e3e513c49db8cf7eef41f379af5 of pybroker.indicator.lowest:1
+#: 0a31c69a6fd044838ccdfccd9b4de293 of pybroker.indicator.lowest:1
 msgid "Creates a rolling low :class:`.Indicator`."
 msgstr "创建一个滚动最低价 :class:`.Indicator`。"
 
-#: 611a61c17d7d4bc7b41af0b99e42b4f7 of pybroker.indicator.lowest:4
+#: dba1aa7d50524bd1a4d2aeeaccfc8bcd of pybroker.indicator.lowest:4
 msgid ":class:`pybroker.common.BarData` field for computing the rolling low."
 msgstr "用于计算滚动最低价的 :class:`pybroker.common.BarData` 字段。"
 
-#: 8ca0277f14704db3a412eace1c2b2066 of pybroker.indicator.lowest:8
+#: 3e1cce039fa14a3d9f55947e1e650762 of pybroker.indicator.lowest:8
 msgid "Rolling low :class:`.Indicator`."
 msgstr "滚动最低价 :class:`.Indicator`。"
 
-#: 785bfc6e0326422a809b6ae56700643c of pybroker.indicator.macd:1
+#: 37c708fe6a6146e08ac0581907f0ca6e of pybroker.indicator.macd:1
 msgid "Moving Average Convergence Divergence."
 msgstr "指数平滑异同移动平均线（Moving Average Convergence Divergence，MACD）。"
 
-#: 565bce2fc0ac4e8898ad34f19eab474d of pybroker.indicator.macd:5
+#: 985ce062bcdc442994151cd6c1d3b477 of pybroker.indicator.macd:5
 msgid "Short-term lookback."
 msgstr "短期回溯长度。"
 
-#: a07b771beea34eeab08d00e5c15cc903 of pybroker.indicator.macd:6
+#: 1daa8da766ab4d8ea2153cac7db0c57d of pybroker.indicator.macd:6
 msgid "Long-term lookback."
 msgstr "长期回溯长度。"
 
-#: ef39a041b9634c1a8fc25ff17e8ffb43 of pybroker.indicator.macd:7
+#: 33c01a2132474aaaaf4b07a01bd7a388 of pybroker.indicator.macd:7
 msgid "Compute MACD minus smoothed if >= 2."
 msgstr "计算 MACD 减去其平滑值（当参数 ``>= 2`` 时）。"
 
-#: f73f93ac2fde43f3ac200be1f3cc1de8 of pybroker.indicator.macd:11
+#: 27e69c78b86c432988c36eefa0e1e207 of pybroker.indicator.macd:11
 msgid "Moving Average Convergence Divergence :class:`.Indicator`."
 msgstr "指数平滑异同移动平均线 :class:`.Indicator`。"
 
-#: f0637016b00a4ed889e902597f0b3024 of pybroker.indicator.money_flow:1
+#: 9a860b5837054d25a36675983b4b1a1e of pybroker.indicator.money_flow:1
 msgid "Chaikin's Money Flow."
 msgstr "佳庆资金流量指标（Chaikin's Money Flow）。"
 
-#: d173445f5c0947c6b1de77ceabfae719 of pybroker.indicator.money_flow:7
+#: c4e0905077e240d28dd4ef754be64b29 of pybroker.indicator.money_flow:7
 msgid "Chaikin's Money Flow :class:`.Indicator`."
 msgstr "佳庆资金流量指标 :class:`.Indicator`。"
 
-#: 2b0e3d83dc6348ff8aed08cb4dbce140 of
+#: 58f153589c63403eace454fdb10796c2 of
 #: pybroker.indicator.normalized_negative_volume_index:1
 msgid "Normalized Negative Volume Index."
 msgstr "归一化负成交量指标（Normalized Negative Volume Index）。"
 
-#: 1ac915d5c11943808445b367bb04fb3e 52ac9046611849998c76a3dbee71d043 of
+#: 364b89bc19c84cc6bc78e2a20b38247c 54ae72fcedde452787f8cbc682d51fe3 of
 #: pybroker.indicator.normalized_negative_volume_index:5
 #: pybroker.indicator.normalized_positive_volume_index:5
 msgid ""
@@ -618,191 +613,197 @@ msgid ""
 "less. Defaults to ``0.5``."
 msgstr "大于 ``1.0`` 会使返回值被压缩得更多，小于 ``1.0`` 则压缩得更少。默认为 ``0.5``。"
 
-#: 0e31badd3b524613af07ec70a46566c9 of
+#: 2f7ceff1bac74ff6a2c94d1b434a08b7 of
 #: pybroker.indicator.normalized_negative_volume_index:8
 msgid "Normalized Negative Volume Index :class:`.Indicator`."
 msgstr "归一化负成交量指标 :class:`.Indicator`。"
 
-#: e35fb73a87e5485a97c0218665c62f56 of
+#: 5acb7a791ea34a46959e85e6783f5bec of
 #: pybroker.indicator.normalized_on_balance_volume:1
 msgid "Normalized On-Balance Volume."
 msgstr "归一化能量潮指标（Normalized On-Balance Volume）。"
 
-#: 1d07e12ff87e4896966bf7acf7964664 of
+#: 7a91bac015d04b69a1b32f9cb253a90e of
 #: pybroker.indicator.normalized_on_balance_volume:8
 msgid "Normalized On-Balance Volume :class:`.Indicator`."
 msgstr "归一化能量潮指标 :class:`.Indicator`。"
 
-#: 67cc9794e2d14864a3c64b1d85afcfa8 of
+#: f49018d2f9ea42399b2309dbc2c54d93 of
 #: pybroker.indicator.normalized_positive_volume_index:1
 msgid "Normalized Positive Volume Index."
 msgstr "归一化正成交量指标（Normalized Positive Volume Index）。"
 
-#: 0f3241e504fc428a9a4f1b8cbf26eb86 of
+#: dbfca4e95b034c04b2bc0b3489f84d4d of
 #: pybroker.indicator.normalized_positive_volume_index:8
 msgid "Normalized Positive Volume Index :class:`.Indicator`."
 msgstr "归一化正成交量指标 :class:`.Indicator`。"
 
-#: a08476fe7f744827bc1bc1bd8f7d119c of
+#: 232e565fdb234b4fa4bf31828e4c946a of
 #: pybroker.indicator.price_change_oscillator:1
 msgid "Price Change Oscillator."
 msgstr "价格变化振荡指标（Price Change Oscillator）。"
 
-#: 7c73ef248a364284bb6bac646fe6c0f8 a4187da7a40446d1abcfaeeb1a6aa1bc of
+#: 4b99c929eb3742f39c00e15bf7f08c82 8e0dce41e21449978467a5b0601d0a5c of
 #: pybroker.indicator.price_change_oscillator:4
 #: pybroker.indicator.volume_momentum:4
 msgid "Number of short lookback bars."
 msgstr "短期回溯 K 线数量。"
 
-#: 18967d3369094bd7b16ad03601186dc1 of
+#: 78ba2824a62d499f97d088e63185e90f of
 #: pybroker.indicator.price_change_oscillator:5
 msgid ""
 "Multiplier used to compute number of long lookback bars = ``multiplier * "
 "short_length``."
 msgstr "用于计算长期回溯 K 线数量的乘数：长期回溯长度 = ``multiplier * short_length``。"
 
-#: 7c5f4682c377451da0fafa65d97df073 of
+#: 9eb99747c75c45cbbccf75f4fe91b0e9 of
 #: pybroker.indicator.price_change_oscillator:7
 msgid ""
 "Increase > 1.0 for more compression of return values, decrease < 1.0 for "
 "less. Defaults to ``4.0``."
 msgstr "大于 ``1.0`` 会使返回值被压缩得更多，小于 ``1.0`` 则压缩得更少。默认为 ``4.0``。"
 
-#: 607aaa8691b8414398fcdf460d47a8fd of
+#: fead9bdfeae54ecd9d1de215f0f7f4c2 of
 #: pybroker.indicator.price_change_oscillator:10
 msgid "Price Change Oscillator :class:`.Indicator`."
 msgstr "价格变化振荡指标 :class:`.Indicator`。"
 
-#: 50f7f4e05e65450eb278131f3107033c of pybroker.indicator.price_intensity:1
+#: 9d1ff24163344c6f81dcfca283827403 of pybroker.indicator.price_intensity:1
 msgid "Price Intensity."
 msgstr "价格强度（Price Intensity）。"
 
-#: 7d1f0d9ed0934a79a646979b29aa8954 of pybroker.indicator.price_intensity:4
+#: 261ad4b180cf4ec7956a26f4fd6eb345 of pybroker.indicator.price_intensity:4
 msgid "Amount of smoothing. Defaults to ``0``."
 msgstr "平滑量。默认为 ``0``。"
 
-#: fc990ab4888c49389d455479b7d8c02b of pybroker.indicator.price_intensity:5
+#: d251e856ddd54aadafe3ede073e49c57 of pybroker.indicator.price_intensity:5
 msgid ""
 "Increase > 1.0 for more compression of return values, decrease < 1.0 for "
 "less. Defaults to ``0.8``."
 msgstr "大于 ``1.0`` 会使返回值被压缩得更多，小于 ``1.0`` 则压缩得更少。默认为 ``0.8``。"
 
-#: 7906eecf2ae34703a442f76e07187bf3 of pybroker.indicator.price_intensity:8
+#: 9a25e47f9f634fe9a1bd4c6780c527fe of pybroker.indicator.price_intensity:8
 msgid "Price Intensity :class:`.Indicator`."
 msgstr "价格强度 :class:`.Indicator`。"
 
-#: c1d32ebbeaa541f4af186d110cddb683 of pybroker.indicator.price_volume_fit:1
+#: 1b6e1981bcf34e14bc5f661a5a3a098c of pybroker.indicator.price_volume_fit:1
 msgid "Price Volume Fit."
 msgstr "价量拟合指标（Price Volume Fit）。"
 
-#: b2ee5e04faf44297963eed0c69a07bf1 of pybroker.indicator.price_volume_fit:5
+#: b797c1af9bb849ff9e546316f251974a of pybroker.indicator.price_volume_fit:5
 msgid ""
 "Increase > 1.0 for more compression of return values, decrease < 1.0 for "
 "less. Defaults to ``9.0``."
 msgstr "大于 ``1.0`` 会使返回值被压缩得更多，小于 ``1.0`` 则压缩得更少。默认为 ``9.0``。"
 
-#: 35250970822d493ca01ce76054d04586 of pybroker.indicator.price_volume_fit:8
+#: a5f4fc2dff5a4a4da88752739a9b5922 of pybroker.indicator.price_volume_fit:8
 msgid "Price Volume Fit :class:`.Indicator`."
 msgstr "价量拟合指标 :class:`.Indicator`。"
 
-#: cf9a08b3953d4f21a9f4c50d22883215 of pybroker.indicator.quadratic_deviation:1
+#: 1bab29aa9f0040fda359225b64c58b94 of pybroker.indicator.quadratic_deviation:1
 msgid "Deviation from Quadratic Trend."
 msgstr "相对二次趋势的偏离度（Deviation from Quadratic Trend）。"
 
-#: 47b9cea251d845bdb7068ca86d502350 of pybroker.indicator.quadratic_deviation:9
+#: 7d20bd343c9849548c4ae10d687bd60f of pybroker.indicator.quadratic_deviation:9
 msgid "Deviation from Quadratic Trend :class:`.Indicator`."
 msgstr "相对二次趋势的偏离度 :class:`.Indicator`。"
 
-#: cec131f25c0d40bf988ff87e51a28b55 of pybroker.indicator.quadratic_trend:1
+#: 124bdc3c2aa14ec6b92d09c3a387ca57 of pybroker.indicator.quadratic_trend:1
 msgid "Quadratic Trend Strength."
 msgstr "二次趋势强度（Quadratic Trend Strength）。"
 
-#: 5effcaef3f854ebe851eec4e0411196b of pybroker.indicator.quadratic_trend:11
+#: d1b9ffd29b2e4b1ba5a7a6a8186c7915 of pybroker.indicator.quadratic_trend:11
 msgid "Quadratic Trend Strength :class:`.Indicator`."
 msgstr "二次趋势强度 :class:`.Indicator`。"
 
-#: 446ee87a19a04077b54f0fd5e9c409ea of pybroker.indicator.reactivity:1
+#: 60f477aeed9048a3b09d130f10b2c71d of pybroker.indicator.reactivity:1
 msgid "Reactivity."
 msgstr "反应性指标（Reactivity）。"
 
-#: de86561c68d14f5380cd7ab2f210810e of pybroker.indicator.reactivity:5
+#: d16ba08df48e494ea83a4bbed05127e7 of pybroker.indicator.reactivity:5
 msgid "Smoothing multiplier."
 msgstr "平滑乘数。"
 
-#: 06de069d72a64c01b61bdd3dffd4bb10 of pybroker.indicator.reactivity:9
+#: 18a601f445264dc98cb48c94ae1381f3 of pybroker.indicator.reactivity:9
 msgid "Reactivity :class:`.Indicator`."
 msgstr "反应性指标 :class:`.Indicator`。"
 
-#: 613a8b3be01e4dec9cceeee7a85d8c77 of pybroker.indicator.returns:1
+#: e522266ddb554974a184c9c444d4e2bc of pybroker.indicator.returns:1
 msgid "Creates a rolling returns :class:`.Indicator`."
 msgstr "创建一个滚动收益率 :class:`.Indicator`。"
 
-#: 4fbbe2d17fe1488f96120dd8f743cd0d of pybroker.indicator.returns:4
+#: 78b80b1e34e54edc9c8f84cfacae7f70 of pybroker.indicator.returns:4
 msgid ":class:`pybroker.common.BarData` field for computing the rolling returns."
 msgstr "用于计算滚动收益率的 :class:`pybroker.common.BarData` 字段。"
 
-#: 16d0a799cb0a496b831675e552b8eb0f of pybroker.indicator.returns:6
+#: d54ca08ce23c4b31b75be212166f648a of pybroker.indicator.returns:6
 msgid "Returns period. Defaults to 1."
 msgstr "收益率计算周期。默认为 1。"
 
-#: 6337108648ea48cfa1af2b60a055df06 of pybroker.indicator.returns:8
+#: 73e0d063889d44c3a91d1252e062a059 of pybroker.indicator.returns:7
+msgid ""
+"Whether to compute log returns instead of arithmetic returns. Defaults to"
+" ``False``."
+msgstr "是否计算对数收益率，而非算术收益率。默认为 ``False``。"
+
+#: e654f88d7e314ae4baf4514f8abd33e0 of pybroker.indicator.returns:10
 msgid "Rolling returns :class:`.Indicator`."
 msgstr "滚动收益率 :class:`.Indicator`。"
 
-#: a6fcd2b093974d5f9212b4d14b04f150 of pybroker.indicator.stochastic:1
+#: 0a123a6056c44f1f93db73156fa209ed of pybroker.indicator.stochastic:1
 msgid "Stochastic."
 msgstr "随机指标（Stochastic，KD）。"
 
-#: aee01ecd06954191b3bfb3ea2bdd4e50 of pybroker.indicator.stochastic:5
+#: 987871b5544840488050697e12c50e83 of pybroker.indicator.stochastic:5
 msgid ""
 "Number of times the raw stochastic is smoothed, either 0, 1, or 2 times. "
 "Defaults to ``0``."
 msgstr "原始随机值被平滑的次数，为 0、1 或 2 次。默认为 ``0``。"
 
-#: bc564b35a32f4c8e85416bf4e3d4844f of pybroker.indicator.stochastic:8
+#: 47d777b6d1414f129d13c766a3f7f823 of pybroker.indicator.stochastic:8
 msgid "Stochastic :class:`.Indicator`."
 msgstr "随机指标 :class:`.Indicator`。"
 
-#: 4b906d17990d4f7ea5c733b22c4dd31b of pybroker.indicator.stochastic_rsi:1
+#: 60bec8e435094c2daef87063570fb19f of pybroker.indicator.stochastic_rsi:1
 msgid "Stochastic Relative Strength Index (RSI)."
 msgstr "随机相对强弱指数（Stochastic RSI）。"
 
-#: c9f24e5cb8c14d00a8a4023d51ee5aaf of pybroker.indicator.stochastic_rsi:5
+#: 6189081349d540c29537dd775b088362 of pybroker.indicator.stochastic_rsi:5
 msgid "Lookback length for RSI calculation."
 msgstr "RSI 计算的回溯长度。"
 
-#: 5c5c3f42324c49e4b22cc1fc110d8552 of pybroker.indicator.stochastic_rsi:6
+#: fb1d003fb8b74341ac3779fbcb8b5aa0 of pybroker.indicator.stochastic_rsi:6
 msgid "Lookback length for Stochastic calculation."
 msgstr "随机指标（Stochastic）计算的回溯长度。"
 
-#: 82e5999b2f784f8588154f06eb4c65d5 of pybroker.indicator.stochastic_rsi:9
+#: 3cbbaaf2f3a74717acbfe5363bfd5d56 of pybroker.indicator.stochastic_rsi:9
 msgid "Stochastic RSI :class:`.Indicator`."
 msgstr "随机 RSI :class:`.Indicator`。"
 
-#: 83c1d24be8c345c19750b9c326247dd6 of pybroker.indicator.volume_momentum:1
+#: 820a8d3081184048965e035f751bdb89 of pybroker.indicator.volume_momentum:1
 msgid "Volume Momentum."
 msgstr "成交量动量（Volume Momentum）。"
 
-#: 4f8136bb0c7241028f0aa9700a5d3a89 of pybroker.indicator.volume_momentum:5
+#: 3eefa91a84904a129cffdb53429f61de of pybroker.indicator.volume_momentum:5
 msgid "Lookback multiplier. Defaults to ``2``."
 msgstr "回溯乘数。默认为 ``2``。"
 
-#: 0048c1c12c924c6689a3dda05642117d of pybroker.indicator.volume_momentum:6
+#: 73e0d063889d44c3a91d1252e062a059 of pybroker.indicator.volume_momentum:6
 msgid ""
 "Increase > 1.0 for more compression of return values, decrease < 1.0 for "
 "less. Defaults to ``3.0``."
 msgstr "大于 ``1.0`` 会使返回值被压缩得更多，小于 ``1.0`` 则压缩得更少。默认为 ``3.0``。"
 
-#: e5c652304b894bb780b6717dc7a57996 of pybroker.indicator.volume_momentum:9
+#: fc94e78656ee4de1a0d4fe53806a7e92 of pybroker.indicator.volume_momentum:9
 msgid "Volume Momentum :class:`.Indicator`."
 msgstr "成交量动量 :class:`.Indicator`。"
 
-#: d15ee893ab2b4890bf3f031bddc09fe1 of
+#: a563fa9a381f472b9942ef5a25d6858d of
 #: pybroker.indicator.volume_weighted_ma_ratio:1
 msgid "Volume-Weighted Moving Average Ratio."
 msgstr "成交量加权移动平均比率（Volume-Weighted Moving Average Ratio）。"
 
-#: d61bec14c9894670aee028ab5a4db5cf of
+#: e093b5541d3b4f65959ad93bede6f3e9 of
 #: pybroker.indicator.volume_weighted_ma_ratio:8
 msgid "Volume-Weighted Moving Average Ratio :class:`.Indicator`."
 msgstr "成交量加权移动平均比率 :class:`.Indicator`。"

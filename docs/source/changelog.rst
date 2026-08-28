@@ -5,7 +5,15 @@ Changelog
 2.0.1
 =====
 
+* Adds ``use_log`` to the `returns <https://www.pybroker.com/en/latest/reference/pybroker.indicator.html#pybroker.indicator.returns>`_ indicator and `returnv <https://www.pybroker.com/en/latest/reference/pybroker.vect.html#pybroker.vect.returnv>`_ for computing log returns.
+
 * Adds ``typing_extensions`` to install dependencies. It was already imported by :mod:`pybroker.strategy` but never declared, so installs relied on it being pulled in indirectly by another dependency.
+
+* Requires ``optuna>=3.4``. Earlier versions store the sampler's random generator in a different place, where `optimize <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.optimize>`_ could not re-seed it, so passing ``seed`` did not make the search reproducible.
+
+* Fixes `parse_timeframe <https://www.pybroker.com/en/latest/reference/pybroker.common.html#pybroker.common.parse_timeframe>`_ to reject malformed timeframes instead of silently reading a valid token out of them; ``"1.5h"`` was parsed as 5 hours and ``"-1h"`` as 1 hour.
+
+* Fixes the "Finished training model" log message, which raised a ``TypeError`` instead of reporting the elapsed training time.
 
 2.0.0
 =====

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PyBroker \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-09 17:02-0700\n"
+"POT-Creation-Date: 2026-08-18 18:58-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -19,11 +19,11 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../source/benchmarking.rst:2 b0fb816de5744ce7979427f24ec5a124
+#: ../../source/benchmarking.rst:2 b62fabd238e143e997c34b5c684a1ab4
 msgid "Benchmarking with asv"
 msgstr "使用 asv 进行基准测试"
 
-#: ../../source/benchmarking.rst:4 45c326efb46f436ead3f4d755b29f396
+#: ../../source/benchmarking.rst:4 240764e4189d403289ce54962231d0b8
 msgid ""
 "PyBroker uses `asv (Airspeed Velocity) <https://asv.readthedocs.io/>`_ to"
 " track backtest performance across commits. asv runs benchmarks, stores "
@@ -34,37 +34,37 @@ msgstr ""
 "跨提交跟踪回测性能。asv 运行基准测试，将每次提交的结果存储在 ``.asv/results/`` 下，并生成用于可视化回归跟踪的 HTML "
 "仪表盘。"
 
-#: ../../source/benchmarking.rst:9 4b39cded121d480ca41b64e5ff884f2d
+#: ../../source/benchmarking.rst:9 972a3981c0af4e40b00e136794dc63ff
 msgid ""
 "The benchmark suite lives in ``benchmarks/`` and is exercised in CI on "
 "every pull request via ``.github/workflows/asv-pr.yml``, which runs ``asv"
-" continuous origin/master HEAD`` once per supported Python version and "
+" continuous origin/<base> HEAD`` once per supported Python version and "
 "posts a sticky PR comment per version with the diff. The versions come "
 "from ``.github/python-versions.json``, the single source of truth the "
 "test matrix and the nightly benchmark run read as well."
 msgstr ""
 "基准测试套件位于 ``benchmarks/`` 目录下，并通过 ``.github/workflows/asv-pr.yml`` 在每个 "
 "pull request 的 CI 中执行，该工作流会针对每个受支持的 Python 版本运行一次 ``asv continuous "
-"origin/master HEAD``，并为每个版本发布一条包含差异的置顶 PR 评论。这些版本来自 ``.github/python-"
+"origin/<base> HEAD``，并为每个版本发布一条包含差异的置顶 PR 评论。这些版本来自 ``.github/python-"
 "versions.json``——测试矩阵和夜间基准测试运行同样以它为唯一真实来源。"
 
-#: ../../source/benchmarking.rst:17 dee1545620c24214b0c4315ce7287cab
+#: ../../source/benchmarking.rst:17 73b9e0410cc74c8a9e979f5c1254735b
 msgid "Installation"
 msgstr "安装"
 
-#: ../../source/benchmarking.rst:25 598c48331ef040aeb4afbd7da9abafb9
+#: ../../source/benchmarking.rst:25 13d1a000b43f48318a19040a891c012a
 msgid "Running"
 msgstr "运行"
 
-#: ../../source/benchmarking.rst:27 1ad4f847d9cf472aa7dfc4df9330f893
+#: ../../source/benchmarking.rst:27 c2cef9671a8c40d1ab4f3c9c97392f73
 msgid "Benchmark the current working tree:"
 msgstr "对当前工作树进行基准测试："
 
-#: ../../source/benchmarking.rst:34 c6838ee8afd54bc5b8c3cf191324fe07
+#: ../../source/benchmarking.rst:34 5f602333e2334448b6c37c477cd9d3db
 msgid "Compare two commits:"
 msgstr "比较两次提交："
 
-#: ../../source/benchmarking.rst:41 064b2fda45c042bfbc3ca7988fc446ba
+#: ../../source/benchmarking.rst:41 0f244719aafc40a8a45e92319418a827
 msgid ""
 "The PR gate uses two thresholds. It blocks at ``--factor 1.25`` and "
 "reports everything that moved by ``1.1`` or more, resolving the base as "
@@ -73,13 +73,13 @@ msgstr ""
 "PR 门禁使用两个阈值：在 ``--factor 1.25`` 处拦截，并报告所有变动幅度达到 ``1.1`` 或以上的项，其中基准提交解析为 "
 "``origin/<base branch>``："
 
-#: ../../source/benchmarking.rst:50 60d89e22fbdd4483a8a784d318aa1283
+#: ../../source/benchmarking.rst:50 f3073c30e6484a7d905aa56f89b04900
 msgid ""
 "The second command re-reads the results the first one stored, so it costs"
 " no extra benchmarking."
 msgstr "第二条命令会重新读取第一条命令存储的结果，因此不会产生额外的基准测试开销。"
 
-#: ../../source/benchmarking.rst:53 49f2e0f6b11b475d9e553a4aafc73f49
+#: ../../source/benchmarking.rst:53 9143030d25b144ceb89313dfa66cf536
 msgid ""
 "Why the gate is looser than the report: ``1.1`` is below a shared "
 "runner's noise floor. Across six ``asv continuous`` runs whose ``src/`` "
@@ -94,7 +94,7 @@ msgstr ""
 "的微基准测试上，比值最高达 ``1.18``。而向前分析宏基准测试（耗时 100ms 及以上）从未出现变动。将门禁设在 ``1.25`` "
 "可以过滤掉已测得的噪声；``1.1`` 的表格则保留了较小的变动，供人工判断。"
 
-#: ../../source/benchmarking.rst:61 1a00cc7bf01a42f08dfca36337cf1c57
+#: ../../source/benchmarking.rst:61 5d073ae4912449c7bf2ec45df33d595b
 msgid ""
 "Two flags do part of the work but are not sufficient alone. "
 "``--interleave-rounds`` alternates rounds between the two commits instead"
@@ -109,7 +109,7 @@ msgstr ""
 "会在两次提交之间交替运行轮次，而不是把每次提交的轮次集中运行，这样任务过程中的漂移（散热降频、噪声邻居、页缓存）会均匀影响两侧，而不会完全落在后运行的那次提交上；它复用现有的轮次，因此不会产生额外开销"
 "。``--no-stats`` 则被刻意 *不* 使用：它会禁用显著性检验，仅将原始中位数与 ``--factor`` 进行比较。"
 
-#: ../../source/benchmarking.rst:70 e12e6dff4c69499592756a29a60ed34c
+#: ../../source/benchmarking.rst:70 095664077ac04ad8a1a9277ad7ab1875
 msgid ""
 "If the noise floor rises, raise the sampling (``--attribute rounds=N``) "
 "rather than the gate factor — loosening the factor trades away real "
@@ -118,15 +118,15 @@ msgstr ""
 "如果噪声下限上升，应提高采样量（``--attribute "
 "rounds=N``），而不是放宽门禁的比例因子——放宽该因子会以牺牲真实的覆盖率为代价。"
 
-#: ../../source/benchmarking.rst:74 879451123f704d3da6394dca107d5c79
+#: ../../source/benchmarking.rst:74 fe49b90ef982447899841cebd1bcdf75
 msgid "Generate and preview the HTML dashboard:"
 msgstr "生成并预览 HTML 仪表盘："
 
-#: ../../source/benchmarking.rst:82 b9d62eafeca04f328a61d421eb03c2de
+#: ../../source/benchmarking.rst:82 f8df086bf1a744bebabd410a2712fd19
 msgid "Benchmark Suite"
 msgstr "基准测试套件"
 
-#: ../../source/benchmarking.rst:84 b51209add77641daadcf6f2a7f1320c4
+#: ../../source/benchmarking.rst:84 db5dc2dbbf5c43c4a00b98cbb19279f7
 msgid ""
 "The asv suite lives in ``benchmarks/`` across four modules. CI fails PRs "
 "on regressions greater than 1.25x unless the PR carries the ``bench-"
@@ -137,7 +137,7 @@ msgstr ""
 " 带有 ``bench-override`` 标签；对于超过 1.1 "
 "倍但未达到该标准的回退，则仅报告而不阻断。新增的热路径应当添加相应的基准测试。"
 
-#: ../../source/benchmarking.rst:89 75e4c71819d445cba9d52ae4d7c4c597
+#: ../../source/benchmarking.rst:89 f8c05184f7ad4a8fba5dff851dbb6dad
 msgid ""
 "``bench_backtest.py`` - end-to-end walkforward (warm, cold, scaled, "
 "models, intervals, slippage-free) plus microbenchmarks for the indicator "
@@ -147,23 +147,23 @@ msgstr ""
 "``bench_backtest.py`` —— "
 "端到端的向前分析基准（预热、冷启动、扩展规模、模型、时间区间、无滑点），以及针对指标和评估内核、``SymbolArrayStore``、滞后特征准备和缓存的微基准测试。同时还会跟踪向前分析权益曲线的哈希值，以便标记数值上的偏差。"
 
-#: ../../source/benchmarking.rst:93 074fb9d9b55e4056b711fa672dbfb05d
+#: ../../source/benchmarking.rst:93 bf95bcdd12754dca920baebbd2c2721e
 msgid "``bench_common.py`` - result-export quantize and interval compression."
 msgstr "``bench_common.py`` —— 结果导出的量化处理和时间区间压缩。"
 
-#: ../../source/benchmarking.rst:94 4638c227fec74e408e459fcef866abd9
+#: ../../source/benchmarking.rst:94 ef120574799b466a838df877dc59a452
 msgid ""
 "``bench_data.py`` - data-source cache I/O and yfinance reshape, on pinned"
 " fixtures only."
 msgstr "``bench_data.py`` —— 数据源缓存 I/O 和 yfinance 数据重塑，仅针对固定版本的测试夹具。"
 
-#: ../../source/benchmarking.rst:96 0fbb879801eb4eccb64491cf23dd36bd
+#: ../../source/benchmarking.rst:96 84e4a48e4c964b689412f68f3ae3daa7
 msgid ""
 "``bench_slippage.py`` - walkforward under the volume and volatility "
 "slippage models."
 msgstr "``bench_slippage.py`` —— 在成交量和波动率滑点模型下的向前分析。"
 
-#: ../../source/benchmarking.rst:99 340fd330bb5a4006b8ce4452749a490d
+#: ../../source/benchmarking.rst:99 47235afcfd974e23aa4410e9e9cf6ca5
 msgid ""
 "Walkforward benches run on ``tests/testdata/daily_1.pkl`` (4 symbols, 2 "
 "years daily, 2020 rows), the fixture the test suite uses via "
@@ -176,11 +176,11 @@ msgstr ""
 "数据。``WalkforwardCold`` 和 ``WalkforwardProperCold`` 刻意承担 Numba 的 JIT "
 "编译开销，因此切勿为二者添加预热（warmup）。"
 
-#: ../../source/benchmarking.rst:106 05569eff6dff4a50afca5f0a780d051c
+#: ../../source/benchmarking.rst:106 a03ca694a6c84ed3b96d67bb8232a60b
 msgid "Environment"
 msgstr "环境"
 
-#: ../../source/benchmarking.rst:108 a41111da0c3f418b8acd4315ed88cbd0
+#: ../../source/benchmarking.rst:108 3ea31268cdfe48af998fe838bb73b45a
 msgid ""
 "``asv.conf.json`` uses ``environment_type: virtualenv`` so each commit is"
 " benchmarked in a fresh virtualenv built from ``setup.cfg``. The install "
@@ -190,7 +190,7 @@ msgstr ""
 "``setup.cfg`` 新建的虚拟环境中进行基准测试。安装命令为 ``python -mpip install -e .``：不使用 "
 "Poetry，也不使用 tox，只用 pip。"
 
-#: ../../source/benchmarking.rst:112 5e43fee319934c8bb1cdeae2920bac37
+#: ../../source/benchmarking.rst:112 cf3edb47f0c745dc9856e701b7f739f4
 msgid ""
 "Its ``pythons`` lists every supported version, kept in step with "
 "``.github/python-versions.json`` by "
@@ -202,11 +202,11 @@ msgstr ""
 " 与 ``.github/python-versions.json`` 保持同步。asv "
 "会为其能找到解释器的每个条目构建一个环境，因此本地运行会覆盖已安装的那些版本；传入 ``--python`` 可以只选择其中一个："
 
-#: ../../source/benchmarking.rst:123 916b070fb2b843b2b1e20e12020616bf
+#: ../../source/benchmarking.rst:123 b03c056748504e009c5f8916c9b078d4
 msgid "CI always passes ``--python`` explicitly, one version per matrix leg."
 msgstr "CI 总是显式传入 ``--python``，矩阵中的每个分支对应一个版本。"
 
-#: ../../source/benchmarking.rst:125 47fe55561ca943a098a7544974e10d88
+#: ../../source/benchmarking.rst:125 4920daa9d3464f22a59ef587b847d4f3
 msgid ""
 "For local ad-hoc benchmarking you can switch the config to "
 "``environment_type: existing`` (uses the currently activated venv) to "
@@ -217,11 +217,11 @@ msgstr ""
 "existing``（使用当前已激活的虚拟环境），以跳过针对每次提交重建环境的步骤。如果修改了 "
 "``asv.conf.json``，请在提交前将其还原。"
 
-#: ../../source/benchmarking.rst:131 3dcbdd686fe741c09ea05ee4a75ba911
+#: ../../source/benchmarking.rst:131 bbc784eced39455193397a315b739113
 msgid "Adding a Benchmark"
 msgstr "添加基准测试"
 
-#: ../../source/benchmarking.rst:133 23ff1df37ee6449cbd6c948222b98973
+#: ../../source/benchmarking.rst:133 28a6faf155a942d1bdace87d27078e3d
 msgid ""
 "Create a new file under ``benchmarks/`` (or add a class to an existing "
 "one). asv picks up any class with ``time_``, ``peakmem_``, or ``track_`` "
@@ -231,7 +231,7 @@ msgstr ""
 "``time_``、``peakmem_`` 或 ``track_`` 方法的类。``setup`` "
 "会在每个基准测试方法之前运行，``teardown`` 则在之后运行。"
 
-#: ../../source/benchmarking.rst:137 158ab2f9f5984041b7f0172c2205630a
+#: ../../source/benchmarking.rst:137 0357aff9206e460dadeb52ca244cda37
 msgid ""
 "See `the asv writing-benchmarks guide "
 "<https://asv.readthedocs.io/en/latest/writing_benchmarks.html>`_ for "
