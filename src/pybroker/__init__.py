@@ -112,4 +112,4 @@ from pybroker.vect import (
     sumv as sumv,
 )
 
-__version__ = "2.0.1"
+__version__ = "2.0.2"
