@@ -658,7 +658,7 @@ def _build_sliced_sym_arrays(
         start = int(indices[0])
         end = int(indices[-1]) + 1
         return {
-            col: np.asarray(arr[start:end], copy=True)
+            col: np.array(arr[start:end], copy=True)
             for col, arr in sym_data.items()
         }
     float_cols: list[str] = []
@@ -683,7 +683,7 @@ def _build_sliced_sym_arrays(
         for c, col in enumerate(float_cols):
             result[col] = gathered[c].copy()
     for col in other_cols:
-        result[col] = np.asarray(sym_data[col][indices], copy=True)
+        result[col] = np.array(sym_data[col][indices], copy=True)
     if date_col in sym_data:
         dates_arr = np.ascontiguousarray(
             sym_data[date_col], dtype="datetime64[ns]"
