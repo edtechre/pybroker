@@ -234,19 +234,106 @@ def _bca_boot_conf_sharpe(
     n = len(x)
     if not n:
         return BootConfIntervals(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    idx = np.zeros(n, dtype=np.int64)
-    x_buff = np.zeros(n)
-    boot = np.zeros(n_boot)
+    # randint masks each 32-bit draw before rejecting indices outside n.
+    # Compute that mask once rather than setting up the range for every draw.
+    mask = np.uint64(n - 1)
+    mask |= mask >> 1
+    mask |= mask >> 2
+    mask |= mask >> 4
+    mask |= mask >> 8
+    mask |= mask >> 16
+    mask |= mask >> 32
+
+    def fill_indices(indices):
+        if n == 1:
+            indices[0] = 0
+        elif n > 0x100000000:
+            for j in range(n):
+                indices[j] = np.uint64(np.random.randint(0, n))
+        else:
+            j = 0
+            while j < n:
+                # Bound each batch by the remaining samples so no draws
+                # beyond this replicate's random sequence are consumed.
+                draws = np.random.randint(0, 0x100000000, n - j)
+                for draw in draws:
+                    index = np.uint64(draw) & mask
+                    # Rejected indices are overwritten at the same position.
+                    indices[j] = index
+                    j += int(index < n)
+
+    indices = np.empty(n, dtype=np.uint64)
+    x_buff = np.empty(n)
+    boot = np.empty(n_boot)
     theta_hat = sharpe_ratio(x, None)
     z0_count = 0
-    for i in range(n_boot):
-        _fill_bootstrap_row(idx, n)
-        for j in range(n):
-            x_buff[j] = x[idx[j]]
-        param = sharpe_ratio(x_buff, None)
-        boot[i] = param
+    total = 0.0
+    fill_indices(indices)
+    for j in range(n):
+        value = x[indices[j]]
+        x_buff[j] = value
+        total += value
+    mean = total / n
+    for i in range(1, n_boot):
+        # Finish the previous row's variance before overwriting each value
+        # with the next draw. Both reductions retain their original order.
+        fill_indices(indices)
+        total = 0.0
+        sum_sq = 0.0
+        j = 0
+        # Batch gathers to reduce loop overhead without regrouping the sum.
+        # Unsigned indices avoid negative-index adjustment for these draws.
+        while j + 3 < n:
+            idx0 = indices[j]
+            idx1 = indices[j + 1]
+            idx2 = indices[j + 2]
+            idx3 = indices[j + 3]
+            value0 = x[idx0]
+            value1 = x[idx1]
+            value2 = x[idx2]
+            value3 = x[idx3]
+            diff0 = x_buff[j] - mean
+            diff1 = x_buff[j + 1] - mean
+            diff2 = x_buff[j + 2] - mean
+            diff3 = x_buff[j + 3] - mean
+            sum_sq += diff0 * diff0
+            sum_sq += diff1 * diff1
+            sum_sq += diff2 * diff2
+            sum_sq += diff3 * diff3
+            x_buff[j] = value0
+            x_buff[j + 1] = value1
+            x_buff[j + 2] = value2
+            x_buff[j + 3] = value3
+            total += value0
+            total += value1
+            total += value2
+            total += value3
+            j += 4
+        for j in range(j, n):
+            value = x[indices[j]]
+            diff = x_buff[j] - mean
+            sum_sq += diff * diff
+            x_buff[j] = value
+            total += value
+        std = (sum_sq / n) ** 0.5
+        param = 0.0
+        if std != 0:
+            param = mean / std
+        boot[i - 1] = param
         if param < theta_hat:
             z0_count += 1
+        mean = total / n
+    sum_sq = 0.0
+    for j in range(n):
+        diff = x_buff[j] - mean
+        sum_sq += diff * diff
+    std = (sum_sq / n) ** 0.5
+    param = 0.0
+    if std != 0:
+        param = mean / std
+    boot[n_boot - 1] = param
+    if param < theta_hat:
+        z0_count += 1
     jackknife = _jackknife_sharpe(x)
     return _bca_intervals_from_boot(boot, z0_count, jackknife, n)
 
