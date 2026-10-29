@@ -919,7 +919,7 @@ def ulcer_index(
             else:
                 dd[i] = (values[i] - peak) / peak * 100
         return np.sqrt(np.mean(np.square(dd)))
-    if n <= period:
+    if n < period:
         return 0
     start = period - 1
     dd = np.zeros(n - start)
