@@ -80,7 +80,7 @@ jobs:
       # turn every one of those releases into a red build, which is the
       # treadmill that makes people abandon pinning altogether.
       - name: Verify version comments against upstream tags
-        uses: suzuki-shunsuke/pinact-action@896d595f299e71d65b9d28349d6956abe144390a # v3.0.0
+        uses: suzuki-shunsuke/pinact-action@2a42f29b3397967439ed46e7650f3045f49699f9 # v3.0.1
         continue-on-error: true
         with:
           fix: "false"
