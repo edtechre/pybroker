@@ -1033,19 +1033,16 @@ def _compute_completed(
     still forming. Interior bins are unaffected: they close at their final base
     bar, matching ``ctx.close[-1]`` being the current bar's close.
     """
-    completed = (
-        np.searchsorted(ends, np.arange(n, dtype=np.int64), side="right") - 1
-    )
-    if len(ends) == 0:
-        return completed
-    last_bin = len(ends) - 1
-    if interval_n > 0:
-        last_bin_size = ends[last_bin] - starts[last_bin] + 1
-        if last_bin_size >= interval_n:
-            return completed
-    mask = completed == last_bin
-    completed = completed.copy()
-    completed[mask] = last_bin - 1
+    # Bins are contiguous, so the map is a running count of closed bin ends.
+    # A still-forming trailing bin does not close at its final bar.
+    closed = ends
+    if len(ends) and (
+        interval_n <= 0 or ends[-1] - starts[-1] + 1 < interval_n
+    ):
+        closed = ends[:-1]
+    completed = np.bincount(closed, minlength=n)
+    np.cumsum(completed, out=completed)
+    completed -= 1
     return completed
 
 
