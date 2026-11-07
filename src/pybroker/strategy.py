@@ -149,7 +149,15 @@ def _date_to_active_syms(
     test_dates_set = frozenset(test_dates)
     if not sym_exec_dates:
         return {}, True
-    aligned = all(dates == test_dates_set for dates in sym_exec_dates.values())
+    n = len(test_dates_set)
+    test_arr = np.sort(np.fromiter(test_dates_set, "datetime64[ns]", n))
+    aligned = all(
+        len(dates) == n
+        and np.array_equal(
+            np.sort(np.fromiter(dates, "datetime64[ns]", n)), test_arr
+        )
+        for dates in sym_exec_dates.values()
+    )
     if aligned:
         return {}, True
     date_to_syms: dict[np.datetime64, list[str]] = defaultdict(list)
