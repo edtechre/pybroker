@@ -654,13 +654,10 @@ def _build_sliced_sym_arrays(
     """Builds per-symbol column arrays for ``indices`` row selection."""
     if len(indices) == 0:
         return {}
-    if len(indices) > 0 and indices[-1] - indices[0] + 1 == len(indices):
+    if indices[-1] - indices[0] + 1 == len(indices):
         start = int(indices[0])
         end = int(indices[-1]) + 1
-        return {
-            col: np.array(arr[start:end], copy=True)
-            for col, arr in sym_data.items()
-        }
+        return {col: arr[start:end].copy() for col, arr in sym_data.items()}
     float_cols: list[str] = []
     other_cols: list[str] = []
     for col, arr in sym_data.items():
@@ -885,6 +882,9 @@ def slice_symbol_array_store_by_dates(
     if len(target) == 0:
         return SymbolArrayStore(frozenset(), {})
     target_sorted = len(target) <= 1 or bool(np.all(target[:-1] <= target[1:]))
+    # A backing is lex-sorted by (symbol, date) when built, so only plain
+    # stores need a per-symbol sortedness scan.
+    backed = store.backing is not None
     sym_arrays: dict[str, dict[str, NDArray]] = {}
     for sym in store.symbols:
         sym_data = store.sym_arrays[sym]
@@ -892,10 +892,11 @@ def slice_symbol_array_store_by_dates(
         if dates is None or len(dates) == 0:
             continue
         dates_arr = np.ascontiguousarray(dates, dtype="datetime64[ns]")
-        dates_sorted = len(dates_arr) <= 1 or bool(
-            np.all(dates_arr[:-1] <= dates_arr[1:])
-        )
-        if target_sorted and dates_sorted:
+        if target_sorted and (
+            backed
+            or len(dates_arr) <= 1
+            or (dates_arr[:-1] <= dates_arr[1:]).all()
+        ):
             indices = _sorted_dates_indices_njit(dates_arr, target)
         else:
             mask = _dates_in_target_mask(dates_arr, target)
