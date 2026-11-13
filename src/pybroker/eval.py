@@ -1141,14 +1141,14 @@ def annual_total_return_percent(
     """
     if initial_value == 0 or total_bars <= 1:
         return 0
+    growth = (pnl + initial_value) / initial_value
+    if growth <= 0:
+        # A fractional power of a non-positive base is NaN, and NaN fails an
+        # Optuna trial. A wiped-out account is a total annual loss, as in
+        # calmar_ratio and upi.
+        return -100.0
     # total_bars values span total_bars - 1 return intervals.
-    return (
-        np.power(
-            (pnl + initial_value) / initial_value,
-            bars_per_year / (total_bars - 1),
-        )
-        - 1
-    ) * 100
+    return (np.power(growth, bars_per_year / (total_bars - 1)) - 1) * 100
 
 
 def r_squared(values: NDArray[np.float64]) -> float:

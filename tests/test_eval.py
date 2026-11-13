@@ -622,6 +622,8 @@ def test_total_return_percent(initial_value, pnl, expected_return):
         (100, 10, 252, 0, 0),
         # A single bar spans no return interval to annualize.
         (100, 10, 252, 1, 0),
+        # A loss larger than the account is a total loss, not NaN.
+        (100, -150, 252, 756, -100),
     ],
 )
 def test_annual_total_return_percent(
