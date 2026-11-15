@@ -401,6 +401,7 @@ def test_relative_entropy(values, expected_entropy):
         # An explicit period keeps the trailing-window variant.
         ([100, 101, 102, 100, 99, 103, 103, 102], 2, 0.909259),
         ([100, 101, 102, 100, 99, 103, 103, 102], 1, 0),
+        ([100, 90, 95], 3, 5),
         ([0, 0, 0, 0, 0], 2, 0),
         ([1, 1, 1, 1, 1], 2, 0),
         ([100], 14, 0),
