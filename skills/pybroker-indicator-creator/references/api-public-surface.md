@@ -432,6 +432,8 @@ Contains drawdown metrics.
 - `iqr(values: NDArray[np.float64]) -> float`: Computes the `interquartile range (IQR) <https://en.wikipedia.org/wiki/Interquartile_range>`_ of ``values``.
 - `ulcer_index(values: NDArray[np.float64], period: Optional[int]=None) -> float`: Computes the `Ulcer Index <https://en.wikipedia.org/wiki/Ulcer_index>`_ of ``values``: the root mean square of percentage drawdowns from the running peak.
 - `upi(values: NDArray[np.float64], period: Optional[int]=None, ui: Optional[float]=None, bars_per_year: Optional[int]=None) -> float`: Computes the `Ulcer Performance Index <https://en.wikipedia.org/wiki/Ulcer_index>`_ of ``values``: return divided by the :func:`.ulcer_index`.
+- `pain_index(values: NDArray[np.float64]) -> float`: Computes the Pain Index of ``values``: the mean absolute percentage drawdown from the running peak.
+- `pain_ratio(values: NDArray[np.float64], pi: Optional[float]=None, bars_per_year: Optional[int]=None) -> float`: Computes the Pain Ratio of ``values``: return divided by the :func:`.pain_index`.
 - `win_loss_rate(pnls: NDArray[np.float64]) -> tuple[float, float]`: Computes the win rate and loss rate as percentages.
 - `winning_losing_trades(pnls: NDArray[np.float64]) -> tuple[int, int]`: Returns the number of winning and losing trades.
 - `total_profit_loss(pnls: NDArray[np.float64]) -> tuple[float, float]`: Computes total profit and loss.
@@ -527,6 +529,8 @@ Contains metrics for evaluating a :class:`pybroker.strategy.Strategy`.
 - `profit_factor: float = 0`
 - `ulcer_index: float = 0`
 - `upi: float = 0`
+- `pain_index: float = 0`
+- `pain_ratio: float = 0`
 - `equity_r2: float = 0`
 - `std_error: float = 0`
 - `annual_std_error: Optional[float] = None`
