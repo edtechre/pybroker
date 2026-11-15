@@ -494,6 +494,8 @@ class EvalMetrics:
     profit_factor: float = 0
     ulcer_index: float = 0
     upi: float = 0
+    pain_index: float = 0
+    pain_ratio: float = 0
     equity_r2: float = 0
     std_error: float = 0
     annual_std_error: Optional[float] = None
