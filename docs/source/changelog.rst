@@ -2,6 +2,26 @@
 Changelog
 #########
 
+2.0.3
+=====
+
+* Fixes the `AKShare <https://www.pybroker.com/en/latest/reference/pybroker.ext.data.html#pybroker.ext.data.AKShare>`_ data source on ``akshare>=1.20.46``, which renamed ``stock_zh_a_hist`` to ``stock_zh_a_hist_em`` and removed the old name. Older ``akshare`` versions still work.
+
+* Fixes the `Ulcer Index <https://www.pybroker.com/en/latest/reference/pybroker.eval.html#pybroker.eval.ulcer_index>`_ returning 0 when the values span exactly one ``period``.
+
+* Speeds up the Sharpe Ratio bootstrap confidence intervals by 3.75x. Results are bit-identical.
+
+* Speeds up the backtest bar loop by 1.7x when all symbols share the same trading calendar.
+
+* Speeds up date slicing of the per-window data in `walkforward <https://www.pybroker.com/en/latest/reference/pybroker.strategy.html#pybroker.strategy.Strategy.walkforward>`_ by 1.3x.
+
+* Speeds up compressing base bars into 5-minute `intervals <https://www.pybroker.com/en/latest/notebooks/15.%20Multiple%20Time%20Intervals.html>`_ by 6.2x. Results are identical.
+
+2.0.2
+=====
+
+* Fixes a ``TypeError`` raised by every backtest on NumPy 1.x. PyBroker supports ``numpy>=1.26.4``, but called ``np.asarray`` with ``copy=``, which requires NumPy 2.
+
 2.0.1
 =====
 
