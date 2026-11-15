@@ -64,8 +64,14 @@ def _fetch_akshare_symbol(
             "python -m pip install 'akshare>=1.17.50'"
         ) from exc
 
+    # akshare 1.20.46 renamed stock_zh_a_hist to stock_zh_a_hist_em (same
+    # signature and columns) and dropped the old name, while the supported
+    # floor (1.17.50) only has the old one.
+    em_hist = getattr(akshare, "stock_zh_a_hist_em", None)
+    if em_hist is None:
+        em_hist = akshare.stock_zh_a_hist
     try:
-        return akshare.stock_zh_a_hist(
+        return em_hist(
             symbol=simple_symbol,
             start_date=start_date_str,
             end_date=end_date_str,

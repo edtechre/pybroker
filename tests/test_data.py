@@ -29,6 +29,14 @@ from pybroker.ext.data import YQuery
 from unittest import mock
 from yahooquery import Ticker
 
+# akshare 1.20.46 renamed stock_zh_a_hist to stock_zh_a_hist_em; patch
+# whichever name the installed version exposes.
+_AK_EM_HIST = (
+    "stock_zh_a_hist_em"
+    if hasattr(akshare, "stock_zh_a_hist_em")
+    else "stock_zh_a_hist"
+)
+
 API_KEY = "api_key"
 API_SECRET = "api_secret"
 API_VERSION = "v2"
@@ -752,7 +760,7 @@ class TestAKShare:
                 "symbol": symbols,
             }
         )
-        with mock.patch("akshare.stock_zh_a_hist", return_value=expected_df):
+        with mock.patch.object(akshare, _AK_EM_HIST, return_value=expected_df):
             df = ak.query(symbols, START_DATE, END_DATE, timeframe)
         assert set(df.columns) == {
             "date",
@@ -785,8 +793,9 @@ class TestAKShare:
     @pytest.mark.usefixtures("setup_ds_cache")
     def test_query_when_empty_result(self, columns):
         ak = AKShare()
-        with mock.patch(
-            "akshare.stock_zh_a_hist",
+        with mock.patch.object(
+            akshare,
+            _AK_EM_HIST,
             return_value=pd.DataFrame(columns=columns),
         ):
             df = ak.query(["A"], START_DATE, END_DATE)
@@ -822,12 +831,13 @@ class TestAKShare:
             }
         )
         with (
-            mock.patch(
-                "akshare.stock_zh_a_hist",
+            mock.patch.object(
+                akshare,
+                _AK_EM_HIST,
                 side_effect=ConnectionError("failed"),
             ),
-            mock.patch(
-                "akshare.stock_zh_a_hist_tx", return_value=expected_df
+            mock.patch.object(
+                akshare, "stock_zh_a_hist_tx", return_value=expected_df
             ) as mock_tx,
         ):
             df = ak.query(symbols, START_DATE, END_DATE, "1d")
@@ -875,7 +885,7 @@ class TestAKShare:
         with (
             mock.patch.object(
                 akshare,
-                "stock_zh_a_hist",
+                _AK_EM_HIST,
                 side_effect=ConnectionError("failed"),
             ),
             mock.patch.object(
@@ -903,7 +913,7 @@ class TestAKShare:
         produced a clean empty backtest with no diagnostic, where YQuery
         raises for the identical condition."""
         ak = AKShare()
-        with mock.patch("akshare.stock_zh_a_hist") as fetch:
+        with mock.patch.object(akshare, _AK_EM_HIST) as fetch:
             with pytest.raises(ValueError, match="Unsupported timeframe"):
                 ak.query(["A"], START_DATE, END_DATE, "2d")
         assert not fetch.called
@@ -914,6 +924,36 @@ class TestAKShare:
         with mock.patch.dict(sys.modules, {"akshare": None}):
             with pytest.raises(ImportError, match="akshare>=1.17.50"):
                 ak.query(["A"], START_DATE, END_DATE)
+
+    @pytest.mark.parametrize(
+        "em_name", ["stock_zh_a_hist_em", "stock_zh_a_hist"]
+    )
+    @pytest.mark.usefixtures("setup_ds_cache")
+    def test_query_uses_available_em_endpoint_name(self, em_name):
+        """akshare 1.20.46 renamed stock_zh_a_hist to stock_zh_a_hist_em and
+        dropped the old name. Both must work, whatever version is installed
+        here, since the supported floor predates the rename."""
+        em_df = pd.DataFrame(
+            {
+                "日期": [END_DATE],
+                "开盘": [1],
+                "收盘": [2],
+                "最高": [3],
+                "最低": [4],
+                "成交量": [5],
+            }
+        )
+        fetch = mock.Mock(return_value=em_df)
+        stub = mock.Mock(spec=[em_name, "stock_zh_a_hist_tx"])
+        setattr(stub, em_name, fetch)
+        ak = AKShare()
+        with mock.patch.dict(sys.modules, {"akshare": stub}):
+            df = ak.query(["000001"], START_DATE, END_DATE)
+        fetch.assert_called_once()
+        stub.stock_zh_a_hist_tx.assert_not_called()
+        assert len(df) == 1
+        assert df["close"].iloc[0] == 2
+        assert df["volume"].iloc[0] == 5
 
 
 class TestYQuery:
@@ -1026,7 +1066,7 @@ class TestExtDataEdgeCases:
             columns=["日期", "开盘", "收盘", "最高", "最低", "成交量"]
         )
         ak = AKShare()
-        with mock.patch("akshare.stock_zh_a_hist", return_value=empty_em):
+        with mock.patch.object(akshare, _AK_EM_HIST, return_value=empty_em):
             df = ak.query(["A"], START_DATE, END_DATE, "1d")
         assert df.empty
         assert {"date", "symbol", "open", "high", "low", "close"} <= set(
@@ -1069,9 +1109,9 @@ class TestExtDataEdgeCases:
             return em_frame.copy()
 
         ak = AKShare()
-        with mock.patch("akshare.stock_zh_a_hist", side_effect=em_fetch):
-            with mock.patch(
-                "akshare.stock_zh_a_hist_tx", return_value=tx_frame.copy()
+        with mock.patch.object(akshare, _AK_EM_HIST, side_effect=em_fetch):
+            with mock.patch.object(
+                akshare, "stock_zh_a_hist_tx", return_value=tx_frame.copy()
             ):
                 df = ak.query(["000001", "000002"], START_DATE, END_DATE)
         assert len(df) == 2
