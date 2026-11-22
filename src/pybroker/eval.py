@@ -1006,6 +1006,56 @@ def upi(
     return float(np.mean(r) / ui)
 
 
+@njit(cache=True)
+def pain_index(values: NDArray[np.float64]) -> float:
+    """Computes the Pain Index of ``values``: the mean absolute percentage
+    drawdown from the running peak.
+
+    Where the :func:`.ulcer_index` squares each drawdown before averaging,
+    the Pain Index averages drawdown depths directly, so it is never larger
+    than the Ulcer Index of the same values.
+
+    Args:
+        values: Array of values.
+    """
+    n = len(values)
+    if not n:
+        return 0
+    total = 0.0
+    peak = values[0]
+    for i in range(n):
+        if values[i] > peak:
+            peak = values[i]
+        if peak != 0:
+            total += abs((values[i] - peak) / peak * 100)
+    return total / n
+
+
+@njit(cache=True)
+def pain_ratio(
+    values: NDArray[np.float64],
+    pi: Optional[float] = None,
+    bars_per_year: Optional[int] = None,
+) -> float:
+    """Computes the Pain Ratio of ``values``: return divided by the
+    :func:`.pain_index`.
+
+    The return, and every edge case, matches :func:`.upi`, with the Pain
+    Index in place of the Ulcer Index.
+
+    Args:
+        values: Array of values.
+        pi: Precomputed :func:`.pain_index` of ``values``.
+        bars_per_year: Number of bars per annum. When set, the numerator is
+            the annualized return (CAGR) of ``values``, measured in
+            percentage; when ``None``, the numerator is the mean per-bar
+            return percentage.
+    """
+    if pi is None:
+        pi = pain_index(values)
+    return upi(values, None, pi, bars_per_year)
+
+
 def win_loss_rate(pnls: NDArray[np.float64]) -> tuple[float, float]:
     """Computes the win rate and loss rate as percentages.
 
@@ -1439,6 +1489,10 @@ class EvalMetrics:
             :attr:`pybroker.config.StrategyConfig.bars_per_year` is set, and
             is the mean per-bar return otherwise. ``inf`` for a genuinely
             drawdown-free gain.
+        pain_index: Pain Index: mean absolute percentage drawdown of the
+            equity curve from its running peak.
+        pain_ratio: Pain Ratio: return divided by the Pain Index, with the
+            same return and edge cases as ``upi``.
         equity_r2: R^2 of the equity curve, computed per bar on market values
             of portfolio.
         std_error: Standard deviation of the portfolio market values across
@@ -1490,6 +1544,8 @@ class EvalMetrics:
     profit_factor: float = field(default=0)
     ulcer_index: float = field(default=0)
     upi: float = field(default=0)
+    pain_index: float = field(default=0)
+    pain_ratio: float = field(default=0)
     equity_r2: float = field(default=0)
     std_error: float = field(default=0)
     annual_std_error: Optional[float] = field(default=None)
@@ -1681,6 +1737,10 @@ class EvaluateMixin:
         r2 = r_squared(market_values)
         ui = ulcer_index(market_values)
         upi_ = upi(market_values, ui=ui, bars_per_year=bars_per_year)
+        pi = pain_index(market_values)
+        pain_ratio_ = pain_ratio(
+            market_values, pi=pi, bars_per_year=bars_per_year
+        )
         std_error = float(np.std(market_values))
         total_pnl = float(trade_stats.total_pnl)
         total_return_pct = total_return_percent(
@@ -1756,6 +1816,8 @@ class EvaluateMixin:
             equity_r2=r2,
             ulcer_index=ui,
             upi=upi_,
+            pain_index=pi,
+            pain_ratio=pain_ratio_,
             std_error=std_error,
             annual_std_error=annual_std_error,
             annual_volatility_pct=annual_volatility_pct,

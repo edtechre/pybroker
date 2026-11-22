@@ -33,6 +33,8 @@ from pybroker.eval import (
     max_drawdown,
     max_drawdown_percent,
     max_wins_losses,
+    pain_index,
+    pain_ratio,
     profit_factor,
     r_squared,
     relative_entropy,
@@ -486,6 +488,80 @@ def test_upi_when_invalid_period_then_error(values, period):
 
 
 @pytest.mark.parametrize(
+    "values, expected_pi",
+    [
+        # Drawdowns from the running peaks 102 and 103 are 0, 0, 0,
+        # 2/102, 3/102, 0, 0 and 1/103, in percent, averaged over 8 bars.
+        (
+            [100, 101, 102, 100, 99, 103, 103, 102],
+            (200 / 102 + 300 / 102 + 100 / 103) / 8,
+        ),
+        ([100, 90, 80], 10),
+        ([100, 90, 95], 5),
+        ([0, 0, 0, 0, 0], 0),
+        ([1, 1, 1, 1, 1], 0),
+        ([100], 0),
+        ([], 0),
+    ],
+)
+def test_pain_index(values, expected_pi):
+    assert_metric(pain_index(np.array(values, dtype=float)), expected_pi)
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        [100, 101, 102, 100, 99, 103, 103, 102],
+        [100, 90, 80],
+        [100, 50, 0],
+        [100, 90, 95, 120, 60, 61],
+    ],
+)
+def test_pain_index_never_exceeds_ulcer_index(values):
+    values = np.array(values, dtype=float)
+    assert pain_index(values) <= ulcer_index(values)
+
+
+@pytest.mark.parametrize(
+    "values, pi, bars_per_year, expected",
+    [
+        # Two bars per year make the holding period one year: a 10% CAGR
+        # over a pain index of (0 + 10 + 0) / 3.
+        ([100, 90, 110], None, 2, 3.0),
+        # Mean per-bar return of (-10% - 11.11%) / 2 over a pain index of 10.
+        ([100, 90, 80], None, None, (-10 - 100 / 9) / 2 / 10),
+        ([100, 90, 80], None, 252, ((0.8 ** (252 / 2)) - 1) * 100 / 10),
+        ([100, 90, 110], 5.0, 2, 2.0),
+        # The degenerate cases follow upi.
+        ([100, 101], None, None, float("inf")),
+        ([100, 101], None, 252, float("inf")),
+        # -10% over a pain index of (0 + 10) / 2.
+        ([100, 90], None, None, -2.0),
+        ([100], None, None, 0),
+        ([], None, None, 0),
+    ],
+)
+def test_pain_ratio(values, pi, bars_per_year, expected):
+    assert_metric(
+        pain_ratio(np.array(values, dtype=float), pi, bars_per_year), expected
+    )
+
+
+def test_pain_ratio_shares_the_upi_numerator():
+    values = np.array([100, 101, 102, 100, 99, 103, 103, 102], dtype=float)
+    for bars_per_year in (None, 252):
+        pain_return = pain_ratio(values, bars_per_year=bars_per_year)
+        upi_return = upi(values, bars_per_year=bars_per_year)
+        assert pain_return * pain_index(values) == pytest.approx(
+            upi_return * ulcer_index(values)
+        )
+
+
+def test_pain_ratio_nan_values_score_nan():
+    assert math.isnan(pain_ratio(np.array([100.0, np.nan, 90.0])))
+
+
+@pytest.mark.parametrize(
     "values, expected_win_rate, expected_loss_rate",
     [
         ([0.1, 0.2, 0.3, -0.2, 0.11, -0.3, -0.4, 0, 0.1, 0.2, 0.2], 70, 30),
@@ -729,6 +805,7 @@ class TestEvaluateMixin:
         assert metrics.sortino == expected_sortino
         assert metrics.profit_factor == 1.0759385033768167
         assert metrics.ulcer_index == 2.351691016175545
+        assert metrics.pain_index <= metrics.ulcer_index
         assert metrics.equity_r2 == 0.8979045919638434
         assert metrics.std_error == 69646.36129687089
         assert metrics.total_fees == 0
@@ -1060,6 +1137,7 @@ def test_degenerate_metrics_never_fail_an_optuna_trial(
         ("sortino", sortino_ratio(returns)),
         ("calmar", calmar_ratio(returns, 252)),
         ("upi", upi(market_values)),
+        ("pain_ratio", pain_ratio(market_values)),
         ("sharpe", sharpe_ratio(returns)),
     ):
         assert not _is_failed_score(value), f"{label}: {name} = {value!r}"
