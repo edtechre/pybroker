@@ -847,6 +847,12 @@ def test_buy_and_sell_when_fees(
     assert portfolio.fees == expected_buy_fees + expected_sell_fees
 
 
+def test_buy_when_fee_callable_without_fee_amount():
+    portfolio = Portfolio(CASH, lambda _: Decimal("9.99"))
+    order = portfolio.buy(DATE_1, SYMBOL_1, SHARES_1, FILL_PRICE_1)
+    assert order.fees == Decimal("9.99")
+
+
 def test_subtract_fees():
     portfolio = Portfolio(3, FeeMode.PER_ORDER, fee_amount=1)
     order = portfolio.buy(DATE_1, SYMBOL_1, shares=1, fill_price=1)

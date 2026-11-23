@@ -627,7 +627,7 @@ class Portfolio:
         order_type: Literal["buy", "sell"],
     ) -> Decimal:
         fees = Decimal()
-        if self._fee_mode is None or self._fee_amount is None:
+        if self._fee_mode is None:
             return fees
         if callable(self._fee_mode):
             fees = to_decimal(
@@ -640,6 +640,8 @@ class Portfolio:
                     )
                 )
             )
+        elif self._fee_amount is None:
+            return fees
         elif self._fee_mode == FeeMode.ORDER_PERCENT:
             fees = self._fee_amount / _DECIMAL_100 * fill_price * shares
         elif self._fee_mode == FeeMode.PER_ORDER:
