@@ -8,7 +8,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 
 import sys
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Final, Iterable, Optional, Union
 from typing_extensions import override
 
@@ -583,7 +583,8 @@ class YFinance(DataSource):
         df = yfinance.download(
             list(symbols),
             start=start_date,
-            end=end_date,
+            # yfinance treats end as exclusive.
+            end=end_date + timedelta(days=1),
             progress=show_yf_progress_bar,
             auto_adjust=self.auto_adjust,
         )

@@ -14,7 +14,7 @@ import re
 import sys
 import yfinance
 from .fixtures import *  # noqa: F401
-from datetime import datetime
+from datetime import datetime, timedelta
 from pybroker.cache import DataSourceCacheKey
 from pybroker.common import to_seconds
 from pybroker.data import (
@@ -652,8 +652,11 @@ class TestYFinance:
         if auto_adjust:
             expected_df = expected_df.drop(columns=["Adj Close"])
         yf = YFinance(auto_adjust=auto_adjust)
-        with mock.patch.object(yfinance, "download", return_value=expected_df):
+        with mock.patch.object(
+            yfinance, "download", return_value=expected_df
+        ) as download:
             df = yf.query(param_symbols, START_DATE, END_DATE)
+        assert download.call_args.kwargs["end"] == END_DATE + timedelta(days=1)
         expected_columns = {
             "date",
             "open",
