@@ -706,6 +706,30 @@ class TestYFinance:
         assert (df["date"].unique() == expected_df.index.unique()).all()
 
     @pytest.mark.usefixtures("setup_ds_cache")
+    @pytest.mark.parametrize("auto_adjust", [True, False])
+    def test_query_when_symbol_has_no_bar_on_date(
+        self, symbols, yfinance_df, auto_adjust
+    ):
+        # yfinance aligns every symbol to the union of all dates and pads the
+        # dates a symbol did not trade with NaN.
+        expected_df = yfinance_df.copy()
+        if auto_adjust:
+            expected_df = expected_df.drop(columns=["Adj Close"])
+        sym = symbols[0]
+        n_missing = 3
+        missing_dates = expected_df.index[10 : 10 + n_missing]
+        sym_cols = [col for col in expected_df.columns if col[1] == sym]
+        expected_df.loc[missing_dates, sym_cols] = float("nan")
+        yf = YFinance(auto_adjust=auto_adjust)
+        with mock.patch.object(yfinance, "download", return_value=expected_df):
+            df = yf.query(symbols, START_DATE, END_DATE)
+        assert df.shape[0] == 2020 - n_missing
+        assert not df[["open", "high", "low", "close"]].isna().any().any()
+        sym_dates = df[df["symbol"] == sym]["date"]
+        assert not sym_dates.isin(missing_dates).any()
+        assert len(sym_dates) == len(expected_df) - n_missing
+
+    @pytest.mark.usefixtures("setup_ds_cache")
     @pytest.mark.parametrize(
         "columns",
         [

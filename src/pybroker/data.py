@@ -658,4 +658,16 @@ class YFinance(DataSource):
                     [df[("Adj Close", sym)].values for sym in sym_list]
                 )
             result = pd.DataFrame(result_data)
+            # yfinance aligns every symbol to the union of all dates and pads
+            # the dates a symbol did not trade with NaN, which would turn
+            # into bars that never existed.
+            result = result.dropna(
+                subset=[
+                    DataCol.OPEN.value,
+                    DataCol.HIGH.value,
+                    DataCol.LOW.value,
+                    DataCol.CLOSE.value,
+                ],
+                how="all",
+            )
         return result
