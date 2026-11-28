@@ -976,8 +976,11 @@ class TestYQuery:
                 "symbol": symbols,
             }
         )
-        with mock.patch.object(Ticker, "history", return_value=expected_df):
+        with mock.patch.object(
+            Ticker, "history", return_value=expected_df
+        ) as history:
             df = yq.query(symbols, START_DATE, END_DATE, timeframe)
+        assert history.call_args.kwargs["end"] == END_DATE + timedelta(days=1)
         assert set(df.columns) == {
             "date",
             "open",
