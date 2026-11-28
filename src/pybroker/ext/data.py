@@ -6,7 +6,7 @@ This code is licensed under Apache 2.0 with Commons Clause license
 (see LICENSE for details).
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 import pandas as pd
@@ -212,7 +212,8 @@ class YQuery(DataSource):
             )
         df = ticker.history(
             start=start_date,
-            end=end_date,
+            # yahooquery treats end as exclusive.
+            end=end_date + timedelta(days=1),
             interval=self._tf_to_period[timeframe],
             adj_ohlc=adjust,
         )
